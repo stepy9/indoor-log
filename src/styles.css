@@ -533,5 +533,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 #trainersEmpty { margin: 24px 0; text-align: center; }
 .trainers-table th:first-child, .trainers-table td:first-child { text-align: left; }
 .library-resistance { white-space: nowrap; }
-.library-resistance .link-button { margin-left: 6px; }
+.level-button { width: 64px; height: 28px; padding: 0; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--accent); background: var(--surface); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.level-button:hover { border-color: var(--accent); }
+.lap-resistance-activity { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
 #lapResistanceDialog .laps-scroll { max-height: 50vh; }

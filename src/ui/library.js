@@ -124,10 +124,12 @@ function openLapResistance(entry) {
   const note = byId("lapResistanceNote");
   note.textContent = trainer ? t("lapResistanceTrainer", { name: trainer.name, levels: trainer.levels }) : t("lapResistanceNoTrainer");
   note.className = `field-note${trainer ? "" : " is-error"}`;
+  const activityLevel = byId("lapResistanceActivity");
+  activityLevel.value = entry.resistance ?? "";
   const renderRows = () => {
     byId("lapResistanceRows").replaceChildren(...laps.map((lap, index) => {
       const input = Object.assign(document.createElement("input"), {
-        type: "number", className: "level-input", min: "1", value: lap.resistance ?? "", placeholder: entry.resistance ?? "—",
+        type: "number", className: "level-input", min: "1", value: lap.resistance ?? "", placeholder: activityLevel.value || "—",
       });
       input.setAttribute("aria-label", t("resistance"));
       input.addEventListener("change", () => {
@@ -163,9 +165,13 @@ function openLapResistance(entry) {
     laps = lapLevelsFromPlan(laps, steps, (percent) => levelFromPercent(percent, trainer));
     renderRows();
   };
+  activityLevel.oninput = renderRows;
   byId("lapResistanceCancel").onclick = () => lapsDialog.close();
   byId("lapResistanceSave").onclick = async () => {
     entry.laps = laps;
+    const level = Math.round(Number(activityLevel.value));
+    if (level > 0) entry.resistance = level;
+    else delete entry.resistance;
     await saveEntries([entry]).catch(() => {});
     lapsDialog.close();
   };
@@ -254,12 +260,13 @@ async function renderList() {
     kind.after(trainerCell);
     const resistance = document.createElement("td");
     resistance.className = "library-resistance";
-    resistance.append(resistanceInput(entry));
-    // A resistance per lap is worth setting only in an interval workout.
+    // An interval workout sets its resistance lap by lap, the activity's own among them, in a dialog of its own.
     if (entry.laps?.length >= 2 && workoutKind(entry) === "intervals") {
-      const lapsButton = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("lapResistanceOpen"), title: t("lapResistanceTitle") });
+      const lapsButton = Object.assign(document.createElement("button"), { type: "button", className: "level-button", textContent: t("lapResistanceOpen"), title: t("lapResistanceTitle") });
       lapsButton.addEventListener("click", () => openLapResistance(entry));
       resistance.append(lapsButton);
+    } else {
+      resistance.append(resistanceInput(entry));
     }
     trainerCell.after(resistance);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
