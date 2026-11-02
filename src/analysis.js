@@ -145,7 +145,9 @@ export function workoutKind(entry) {
   if (entry.kind) return entry.kind;
   if (!kinds.has(entry)) {
     const restLaps = entry.laps.filter((lap) => lap.intensity === "recovery" || lap.intensity === "rest").length;
-    kinds.set(entry, restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
+    // Interval laps, even when every one is work, as in a stroke-rate fartlek; older entries show them by their targets.
+    const intervalLaps = entry.intervalLaps || entry.laps.filter((lap) => lap.target != null).length >= 2;
+    kinds.set(entry, intervalLaps || restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
   }
   return kinds.get(entry);
 }

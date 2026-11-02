@@ -72,3 +72,19 @@ test("a FIT exported here keeps its name and lap types and outranks the Kinomap 
   assert.deepEqual(mergeDuplicates([converted], [exported]).save.map((entry) => entry.source), ["export"]);
   assert.deepEqual(mergeDuplicates([exported], [converted]).save, []);
 });
+
+test("interval laps make an interval workout even when every lap is work, and the latest export wins", async () => {
+  const { workoutKind } = await import("../src/analysis.js");
+  const kinomap = parseKinomap(fs.readFileSync(path.join(folder, "activity.tcx"), "utf8"));
+  const start = kinomap.records[0].timeMs;
+  const fartlek = buildWorkout(kinomap, null, {
+    lapDistanceMeters: "intervals",
+    segments: [0, 60, 120, 180].map((second, index) => ({ startMs: start + second * 1000, intensity: "active", targetType: "cadence", target: index % 2 ? 24 : 20 })),
+  });
+  const saved = entryFromWorkout(fartlek, { exported: true });
+  assert.equal(workoutKind(saved), "intervals");
+  const fromFit = entryFromFit(decodeGarminFit(fartlek.fitBytes));
+  assert.equal(workoutKind(fromFit), "intervals");
+  // Converting again after the FIT was added replaces it.
+  assert.deepEqual(mergeDuplicates([fromFit], [saved]).save, [saved]);
+});

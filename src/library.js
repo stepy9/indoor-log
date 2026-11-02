@@ -22,12 +22,16 @@ function columns(records) {
 const lapFields = ["startMs", "endMs", "timerSeconds", "distance", "avgHeartRate", "maxHeartRate", "avgPower", "maxPower", "avgCadence", "avgSpeed", "intensity", "target", "targetType"];
 
 // A converted or merged workout, as buildWorkout returns it.
-export function entryFromWorkout(workout, { name = workout.activityName, savedAt = Date.now() } = {}) {
+// exported marks the workout as saved when its FIT was exported, with every setting the user made.
+export function entryFromWorkout(workout, { name = workout.activityName, savedAt = Date.now(), exported = false } = {}) {
   return {
     id: entryId(workout.sport, workout.startMs),
     name,
     sport: workout.sport,
     source: workout.mode,
+    exported,
+    // Laps split by workout intervals make it an interval workout, whatever the laps' types.
+    intervalLaps: (workout.segments?.length ?? 0) >= 2,
     startMs: workout.startMs,
     endMs: workout.endMs,
     savedAt,
@@ -81,6 +85,8 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
     name: (exported && fit.workoutName) || name || "Garmin",
     sport,
     source: exported ? "export" : "fit",
+    // An export carries one workout step per interval lap; a plain export has a single step.
+    intervalLaps: exported && fit.workoutSteps >= 2,
     startMs: fit.startMs,
     endMs: fit.endMs,
     savedAt,
@@ -100,9 +106,10 @@ export function sameWorkout(a, b) {
   return overlap >= 0.5 * Math.min(a.endMs - a.startMs, b.endMs - b.startMs);
 }
 
-// The fuller recording wins: a FIT exported here, which holds the laps as they were set, then Kinomap with the watch,
-// then Kinomap alone, then the watch alone.
-const sourceRank = { export: 4, merge: 3, convert: 2, fit: 1 };
+// The fuller recording wins: an export, which holds the laps as they were set (a FIT exported here, or the workout
+// saved when it was exported), then Kinomap with the watch, then Kinomap alone, then the watch alone.
+const sourceRank = { merge: 3, convert: 2, fit: 1 };
+const rank = (entry) => (entry.source === "export" || entry.exported ? 4 : sourceRank[entry.source] ?? 0);
 
 // Adds entries to the library's, one per workout; on a tie the later entry wins. Returns what to write and what to delete.
 export function mergeDuplicates(existing, incoming) {
@@ -114,7 +121,7 @@ export function mergeDuplicates(existing, incoming) {
       continue;
     }
     const other = kept[index];
-    const winner = (sourceRank[entry.source] ?? 0) >= (sourceRank[other.source] ?? 0) ? entry : other;
+    const winner = rank(entry) >= rank(other) ? entry : other;
     const loser = winner === entry ? other : entry;
     // A kind picked by hand outlives the recording it was picked on.
     kept[index] = winner.kind || !loser.kind ? winner : { ...winner, kind: loser.kind };

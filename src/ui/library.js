@@ -23,7 +23,7 @@ export const savesToLibrary = () => savedDefaults().saveToLibrary !== false;
 export async function rememberWorkout(workout) {
   if (!savesToLibrary() || !workout) return;
   try {
-    await addEntries([entryFromWorkout(workout)]);
+    await addEntries([entryFromWorkout(workout, { exported: true })]);
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
   }

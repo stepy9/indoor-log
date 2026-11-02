@@ -61,6 +61,7 @@ export function decodeGarminFit(input) {
       intensity: lap.intensity ?? null,
     })),
     workoutName: messages.workoutMesgs?.[0]?.wktName ?? null,
+    workoutSteps: messages.workoutStepMesgs?.length ?? 0,
     fileId: messages.fileIdMesgs?.[0] ?? null,
   };
 }
