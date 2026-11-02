@@ -146,11 +146,19 @@ function renderList() {
     text.append(
       // Every converted name starts with "Kinomap - "; the list leaves it out, the tooltip keeps it.
       Object.assign(document.createElement("strong"), { textContent: entry.name.replace(/^Kinomap - /, ""), title: entry.name }),
-      Object.assign(document.createElement("span"), {
-        textContent: `${shortDate(entry.startMs)} · ${formatDuration(entry.summary.timerSeconds)} · ${displayNumber(entry.summary.distance / 1000, 2)} km`,
-      }),
     );
-    row.append(checkbox, swatch, text, kindSelect(entry, render, "kind-tag"));
+    // Under the name: date, time and distance, with the workout type at the end of the line.
+    const meta = Object.assign(document.createElement("span"), { className: "compare-item-meta" });
+    meta.append(
+      Object.assign(document.createElement("span"), {
+        // Each value keeps together, so a narrow row wraps only between them.
+        textContent: [shortDate(entry.startMs), formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`]
+          .map((part) => part.replaceAll(" ", " ")).join(" · "),
+      }),
+      kindSelect(entry, render, "kind-tag"),
+    );
+    text.append(meta);
+    row.append(checkbox, swatch, text);
     return row;
   }));
   byId("compareLimit").hidden = view.slots.size < slotCount;
