@@ -156,7 +156,11 @@ function renderCalendar(range, entries) {
   const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: format(day, { weekday: "short" }) }));
   const cells = days.map((day) => {
     const cell = Object.assign(document.createElement("div"), { className: "diary-day" });
-    cell.classList.toggle("is-outside", day < range[0] || day >= range[1]);
+    // Days of the months around only keep the weekdays in line, so they stay empty.
+    if (day < range[0] || day >= range[1]) {
+      cell.className = "diary-day is-outside";
+      return cell;
+    }
     cell.classList.toggle("is-today", day === today);
     cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: format(day, { day: "numeric" }) }));
     cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map(activityButton));
