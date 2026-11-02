@@ -159,21 +159,47 @@ const svgNode = (name, attributes, text) => {
   return element;
 };
 
+// A round step for the value axis, about three to a chart: 1, 2, 2.5 or 5 times a power of ten in metres,
+// whole minutes or hours in time.
+function axisStep(max, metric) {
+  const rough = max / 3;
+  const steps = metric === "distance"
+    ? [1, 2, 2.5, 5].flatMap((factor) => [1, 10, 100, 1000, 10_000, 100_000].map((power) => factor * power))
+    : [5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 600, 1200, 1800, 3000, 6000].map((minutes) => minutes * 60);
+  return steps.sort((a, b) => a - b).find((step) => step >= rough) ?? rough;
+}
+
+const axisText = (value, metric) => (metric === "distance"
+  ? (value >= 1000 ? `${displayNumber(value / 1000, value % 1000 ? 1 : 0)} km` : `${displayNumber(value)} m`)
+  : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
+
 // One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
 function drawBars(buckets, groups, metric, height) {
   const svg = svgNode("svg", { class: "diary-chart", role: "img" });
   svg.setAttribute("aria-label", t("diaryChart"));
   const width = Math.max(320, Math.round(byId("diaryCharts").getBoundingClientRect().width) || 1000);
-  const left = 8;
+  // The value axis takes the left edge, its labels right-aligned against the plot.
+  const left = 56;
+  const right = 8;
   const top = 22;
   const bottom = 26;
   const plotHeight = height - top - bottom;
   // Only what the chart draws counts, for the bar totals and the scale alike.
   const drawn = (entries) => entries.filter((entry) => groups.some(({ has }) => has(entry)));
-  const max = Math.max(...buckets.map((bucket) => barValue(drawn(bucket.entries), metric)), 0);
-  const slot = (width - left * 2) / buckets.length;
+  const highest = Math.max(...buckets.map((bucket) => barValue(drawn(bucket.entries), metric)), 0);
+  const step = highest ? axisStep(highest, metric) : 0;
+  // Bars are scaled to the round value above the highest, so the top gridline is labelled.
+  const max = step ? Math.ceil(highest / step) * step : 0;
+  const slot = (width - left - right) / buckets.length;
   const barWidth = Math.max(4, Math.min(48, slot * 0.6));
-  const children = [svgNode("line", { x1: left, x2: width - left, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" })];
+  const children = [];
+  for (let value = step; step && value <= max + 1e-9; value += step) {
+    const y = top + plotHeight - (value / max) * plotHeight;
+    children.push(svgNode("line", { x1: left, x2: width - right, y1: y, y2: y, class: "diary-grid" }));
+    children.push(svgNode("text", { x: left - 8, y: y + 4, class: "diary-axis-label" }, axisText(value, metric)));
+  }
+  children.push(svgNode("line", { x1: left, x2: width - right, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" }));
+  children.push(svgNode("text", { x: left - 8, y: top + plotHeight + 4, class: "diary-axis-label" }, "0"));
   buckets.forEach((bucket, index) => {
     const x = left + slot * index + (slot - barWidth) / 2;
     const total = barValue(drawn(bucket.entries), metric);
@@ -197,7 +223,7 @@ function drawBars(buckets, groups, metric, height) {
     // A hit target the whole height of the column, wider than the bar.
     group.prepend(svgNode("rect", { x: left + slot * index, y: top, width: slot, height: plotHeight, fill: "transparent" }));
     children.push(group);
-    if (total === max || buckets.length <= 12) children.push(svgNode("text", { x: x + barWidth / 2, y: y - 6, class: "diary-bar-label" }, barText(total, metric)));
+    if (total === highest || buckets.length <= 12) children.push(svgNode("text", { x: x + barWidth / 2, y: y - 6, class: "diary-bar-label" }, barText(total, metric)));
   });
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.style.height = `${height}px`;
