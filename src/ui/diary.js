@@ -25,6 +25,23 @@ const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(`${key}T12:00:00Z`));
 // Each kind keeps its place in the categorical palette.
 const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;
+const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
+
+// Several sports at once: their distances do not add up, so the chart counts time and is split by sport.
+const mixedSports = () => view.sport === "all" && new Set(view.entries.map((entry) => entry.sport)).size > 1;
+const barMetric = () => (mixedSports() && view.barMetric === "distance" ? "seconds" : view.barMetric);
+
+// What a bar is split into: sports when several are shown, workout kinds within one.
+function barGroups() {
+  if (mixedSports()) {
+    return sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)).map((sport, index) => ({
+      label: sportLabel(sport), color: `var(--compare-${index + 1})`, has: (entry) => entry.sport === sport,
+    }));
+  }
+  return workoutKinds.map((kind) => ({
+    label: kindLabel(kind, view.sport === "all" ? null : view.sport), color: kindColor(kind), has: (entry) => workoutKind(entry) === kind,
+  }));
+}
 const km = (meters, digits = 1) => `${displayNumber(meters / 1000, digits)} km`;
 const hours = (seconds) => (seconds >= 3600 ? `${displayNumber(seconds / 3600, 1)} h` : `${Math.round(seconds / 60)} min`);
 
@@ -82,7 +99,10 @@ function renderControls(range) {
   sport.value = present.includes(view.sport) ? view.sport : "all";
   view.sport = sport.value;
   for (const button of byId("diaryPeriod").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.period === view.period));
-  for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
+  for (const button of byId("diaryBarMetric").querySelectorAll("button")) {
+    button.setAttribute("aria-pressed", String(button.dataset.metric === barMetric()));
+    button.hidden = button.dataset.metric === "distance" && mixedSports();
+  }
   byId("diaryTitle").textContent = periodTitle(range);
   byId("diaryCalendarTitle").textContent = periodTitle(range);
   renderJump(range);
@@ -92,7 +112,14 @@ function renderControls(range) {
 }
 
 // The period's totals, each beside the change from the period before.
-function renderTiles(current, previous) {
+// Distance sport by sport, as several sports' kilometres do not add up.
+function distanceBySport(entries) {
+  return sports.map((sport) => [sport, entries.filter((entry) => entry.sport === sport)])
+    .filter(([, list]) => list.length)
+    .map(([sport, list]) => `${sportIcon[sport]} ${km(list.reduce((sum, entry) => sum + (entry.summary.distance ?? 0), 0))}`);
+}
+
+function renderTiles(current, previous, entries) {
   // A change that rounds away in its own units reads as none.
   const change = (now, before, text) => {
     if (now == null || before == null) return "";
@@ -103,7 +130,9 @@ function renderTiles(current, previous) {
   };
   const tiles = [
     [t("diarySessions"), String(current.count), change(current.count, previous.count, (value) => String(value))],
-    [t("diaryDistance"), km(current.distance), change(current.distance, previous.distance, (value) => km(value))],
+    mixedSports()
+      ? [t("diaryDistance"), distanceBySport(entries).join("\n") || "0 km", "", "is-split"]
+      : [t("diaryDistance"), km(current.distance), change(current.distance, previous.distance, (value) => km(value))],
     [t("diaryTime"), hours(current.seconds), change(current.seconds, previous.seconds, hours)],
     [t("lapPower"), current.avgPower == null ? "—" : `${displayNumber(current.avgPower)} W`, change(current.avgPower, previous.avgPower, (value) => `${displayNumber(value)} W`)],
     [t("lapHeartRate"), current.avgHeartRate == null ? "—" : `${displayNumber(current.avgHeartRate)} bpm`, change(current.avgHeartRate, previous.avgHeartRate, (value) => `${displayNumber(value)} bpm`)],
@@ -111,8 +140,8 @@ function renderTiles(current, previous) {
   byId("diaryPrevious").textContent = previous.partial
     ? t("diaryVersusPart", { from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
     : t(`diaryVersus_${view.period}`);
-  byId("diaryTiles").replaceChildren(...tiles.map(([label, value, delta]) => {
-    const tile = Object.assign(document.createElement("div"), { className: "diary-tile" });
+  byId("diaryTiles").replaceChildren(...tiles.map(([label, value, delta, modifier]) => {
+    const tile = Object.assign(document.createElement("div"), { className: `diary-tile${modifier ? ` ${modifier}` : ""}` });
     tile.append(
       Object.assign(document.createElement("span"), { className: "diary-tile-label", textContent: label }),
       Object.assign(document.createElement("strong"), { className: "diary-tile-value", textContent: value }),
@@ -122,9 +151,9 @@ function renderTiles(current, previous) {
   }));
 }
 
-const barValue = (entries) => (view.barMetric === "count" ? entries.length
-  : entries.reduce((sum, entry) => sum + ((view.barMetric === "distance" ? entry.summary.distance : entry.summary.timerSeconds) ?? 0), 0));
-const barText = (value) => (view.barMetric === "count" ? String(value) : view.barMetric === "distance" ? km(value) : hours(value));
+const barValue = (entries) => (barMetric() === "count" ? entries.length
+  : entries.reduce((sum, entry) => sum + ((barMetric() === "distance" ? entry.summary.distance : entry.summary.timerSeconds) ?? 0), 0));
+const barText = (value) => (barMetric() === "count" ? String(value) : barMetric() === "distance" ? km(value) : hours(value));
 
 // One bar per day of a week or month, per month of a year; each bar stacked by workout kind.
 function renderBars(range, entries) {
@@ -155,13 +184,13 @@ function renderBars(range, entries) {
     if (!total || !max) return;
     const group = node("g", { class: "diary-bar" });
     let y = top + plotHeight;
-    // Kinds stack in their fixed order, each segment parted from the next by a surface gap.
-    for (const kind of workoutKinds) {
-      const value = barValue(bucket.entries.filter((entry) => workoutKind(entry) === kind));
+    // Groups stack in their fixed order, each segment parted from the next by a surface gap.
+    for (const { has, color } of barGroups()) {
+      const value = barValue(bucket.entries.filter(has));
       if (!value) continue;
       const segment = (value / max) * plotHeight;
       y -= segment;
-      group.append(node("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: kindColor(kind) }));
+      group.append(node("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: color }));
     }
     const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
     group.append(node("title", {}, `${when}\n${barText(total)} · ${t("diarySessionsCount", { count: bucket.entries.length })}`));
@@ -177,9 +206,14 @@ function renderBars(range, entries) {
 
 function activityButton(entry) {
   const button = Object.assign(document.createElement("button"), { type: "button", className: "diary-activity" });
-  button.style.setProperty("--kind", kindColor(workoutKind(entry)));
+  // The stripe matches the chart's legend: the sport's colour when several are shown, the kind's within one.
+  const group = barGroups().find(({ has }) => has(entry));
+  button.style.setProperty("--kind", group?.color ?? kindColor(workoutKind(entry)));
+  const name = Object.assign(document.createElement("span"), { className: "diary-activity-name", textContent: entry.name.replace(/^Kinomap - /, "") });
+  // With several sports shown, each activity also names its sport by an icon.
+  if (mixedSports()) name.prepend(Object.assign(document.createElement("span"), { className: "diary-sport", textContent: `${sportIcon[entry.sport]} `, ariaHidden: "true" }));
   button.append(
-    Object.assign(document.createElement("span"), { className: "diary-activity-name", textContent: entry.name.replace(/^Kinomap - /, "") }),
+    name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
   );
   button.title = `${entry.name}\n${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}\n${t("diaryOpen")}`;
@@ -211,11 +245,11 @@ function renderCalendar(range, entries) {
 }
 
 function renderLegend() {
-  byId("diaryLegend").replaceChildren(...workoutKinds.map((kind) => {
+  byId("diaryLegend").replaceChildren(...barGroups().map(({ label, color }) => {
     const item = Object.assign(document.createElement("span"), { className: "diary-legend-item" });
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
-    swatch.style.background = kindColor(kind);
-    item.append(swatch, kindLabel(kind, view.sport === "all" ? null : view.sport));
+    swatch.style.background = color;
+    item.append(swatch, label);
     return item;
   }));
 }
@@ -232,7 +266,7 @@ function render() {
   const whole = periodRange(view.period, shiftPeriod(view.period, view.day, -1));
   byId("diaryEmpty").hidden = view.entries.length > 0;
   renderControls(range);
-  renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] });
+  renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
   renderBars(range, current);
   renderLegend();
   renderCalendar(range, current);
