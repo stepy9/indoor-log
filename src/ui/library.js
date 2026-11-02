@@ -37,9 +37,10 @@ export async function rememberWorkout(workout, kind = "") {
 export const kindLabel = (kind, sport) => t(kind === "recovery" && sport === "running" ? "kindJog"
   : `kind${kind[0].toUpperCase()}${kind.slice(1)}`);
 
-export function renderKindOptions(select, detected, value = select.value, sport = null) {
+// compact names the automatic option by its kind alone, for the narrow comparison list.
+export function renderKindOptions(select, detected, value = select.value, sport = null, compact = false) {
   select.replaceChildren(
-    new Option(t("kindAuto", { kind: kindLabel(detected, sport) }), ""),
+    new Option(compact ? kindLabel(detected, sport) : t("kindAuto", { kind: kindLabel(detected, sport) }), ""),
     ...workoutKinds.map((kind) => new Option(kindLabel(kind, sport), kind)),
   );
   select.value = value ?? "";
@@ -49,7 +50,7 @@ export function renderKindOptions(select, detected, value = select.value, sport 
 export function kindSelect(entry, onChange, className = "kind-select") {
   const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
-  renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport);
+  renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport, className === "kind-tag");
   select.dataset.kind = entry.kind || detectedKind(entry);
   select.addEventListener("change", async () => {
     if (select.value) entry.kind = select.value;
