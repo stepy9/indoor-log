@@ -23,6 +23,8 @@ export const state = {
   kinomapFile: null,
   kinomapText: null,
   outputDirectoryHandle: null,
+  // The Kinomap file picked or dropped on its own, so the save dialog can open in its folder.
+  kinomapFileHandle: null,
   kinomap: null,
   fitFile: null,
   fit: null,

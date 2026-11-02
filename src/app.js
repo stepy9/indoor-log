@@ -467,7 +467,7 @@ function parseCurrentKinomap(manual = false) {
   }
 }
 
-async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = false } = {}) {
+async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = false, fileHandle = null } = {}) {
   if (!file) return;
   if (!keepBatch && state.batch) {
     // Leaving the folder also drops the watch FIT paired with its open activity.
@@ -482,6 +482,7 @@ async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = fal
   }
   state.error = null;
   state.outputDirectoryHandle = sourceDirectoryHandle;
+  state.kinomapFileHandle = fileHandle;
   try {
     state.kinomapFile = file;
     elements.activityName.value = `Kinomap - ${titleFromKinomapFileName(file.name) || t("fallbackActivity")}`;
@@ -750,7 +751,22 @@ async function chooseFolder() {
   }
 }
 
-byId("kinomapButton").addEventListener("click", () => elements.kinomapInput.click());
+// Picking the Kinomap file through the file system API keeps its handle, so the export can be saved beside it.
+byId("kinomapButton").addEventListener("click", async () => {
+  if (typeof window.showOpenFilePicker !== "function") {
+    elements.kinomapInput.click();
+    return;
+  }
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      id: "kinomap-source",
+      types: [{ description: "Kinomap TCX / PWX", accept: { "application/xml": [".tcx", ".pwx"] } }],
+    });
+    await loadKinomap(await handle.getFile(), null, { fileHandle: handle });
+  } catch (error) {
+    if (error.name !== "AbortError") elements.kinomapInput.click();
+  }
+});
 byId("continueButton").addEventListener("click", () => showView("workspace"));
 byId("changeFilesButton").addEventListener("click", () => showView("setup"));
 byId("fitButton").addEventListener("click", () => elements.fitInput.click());
@@ -858,12 +874,15 @@ for (const [tileId, input, accepts] of [
   const tile = byId(tileId);
   tile.addEventListener("dragover", (event) => { event.preventDefault(); tile.classList.add("is-dragging"); });
   tile.addEventListener("dragleave", () => tile.classList.remove("is-dragging"));
-  tile.addEventListener("drop", (event) => {
+  tile.addEventListener("drop", async (event) => {
     event.preventDefault();
     tile.classList.remove("is-dragging");
-    const file = [...event.dataTransfer.files].find((item) => accepts.test(item.name));
-    if (input === elements.kinomapInput) loadKinomap(file);
-    else loadFit(file);
+    const files = [...event.dataTransfer.files];
+    const index = files.findIndex((item) => accepts.test(item.name));
+    // The handle has to be asked for while the drop event is still running.
+    const handle = event.dataTransfer.items[index]?.getAsFileSystemHandle?.();
+    if (input === elements.kinomapInput) loadKinomap(files[index], null, { fileHandle: await handle?.catch(() => null) ?? null });
+    else loadFit(files[index]);
   });
 }
 

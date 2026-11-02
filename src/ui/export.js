@@ -40,11 +40,38 @@ export async function saveFit(fitBytes, filename, directoryHandle) {
   return { saved: false, fallbackMessage };
 }
 
+// Without a folder to save beside, a save dialog lets the user pick where; it opens next to the source file when that is known.
+async function saveFitAs(fitBytes, filename) {
+  const options = {
+    suggestedName: filename,
+    types: [{ description: "FIT", accept: { "application/octet-stream": [".fit"] } }],
+    ...(state.kinomapFileHandle ? { startIn: state.kinomapFileHandle } : { id: "kinomap-fit-save", startIn: "downloads" }),
+  };
+  const handle = await window.showSaveFilePicker(options);
+  const writable = await handle.createWritable();
+  await writable.write(new Blob([fitBytes], { type: "application/octet-stream" }));
+  await writable.close();
+  return handle.name;
+}
+
 export async function exportFit() {
   if (!state.result) return;
   const filename = fitFileName(elements.activityName.value || state.result.activityName, t("fallbackActivity"));
   if (state.outputDirectoryHandle) setNotice(t("savingBesideFiles"));
   try {
+    if (!state.outputDirectoryHandle && typeof window.showSaveFilePicker === "function") {
+      let savedName;
+      try {
+        savedName = await saveFitAs(state.result.fitBytes, filename);
+      } catch (error) {
+        if (error.name === "AbortError") return;
+        throw error;
+      }
+      rememberExport(kinomapExportKey(state.kinomapFile?.name));
+      await rememberWorkout(state.result);
+      setNotice(t("savedAs", { filename: savedName }), "success");
+      return;
+    }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
     await rememberWorkout(state.result);
