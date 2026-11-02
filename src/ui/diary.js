@@ -14,7 +14,9 @@ const view = {
   period: "month",
   // Any day inside the period shown.
   day: null,
-  // What the chart's bars add up: "distance", "seconds" or "count".
+  // Sports or kinds turned off in the chart's legend.
+  hidden: new Set(),
+  // What the chart's bars add up: "distance" or "seconds".
   barMetric: "distance",
 };
 
@@ -29,17 +31,16 @@ const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 
 // Several sports at once: their distances do not add up, so the chart counts time and is split by sport.
 const mixedSports = () => view.sport === "all" && new Set(view.entries.map((entry) => entry.sport)).size > 1;
-const barMetric = () => (mixedSports() && view.barMetric === "distance" ? "seconds" : view.barMetric);
 
 // What a bar is split into: sports when several are shown, workout kinds within one.
 function barGroups() {
   if (mixedSports()) {
     return sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)).map((sport, index) => ({
-      label: sportLabel(sport), color: `var(--compare-${index + 1})`, has: (entry) => entry.sport === sport,
+      key: sport, label: sportLabel(sport), color: `var(--compare-${index + 1})`, has: (entry) => entry.sport === sport,
     }));
   }
   return workoutKinds.map((kind) => ({
-    label: kindLabel(kind, view.sport === "all" ? null : view.sport), color: kindColor(kind), has: (entry) => workoutKind(entry) === kind,
+    key: kind, label: kindLabel(kind, view.sport === "all" ? null : view.sport), color: kindColor(kind), has: (entry) => workoutKind(entry) === kind,
   }));
 }
 const km = (meters, digits = 1) => `${displayNumber(meters / 1000, digits)} km`;
@@ -99,10 +100,7 @@ function renderControls(range) {
   sport.value = present.includes(view.sport) ? view.sport : "all";
   view.sport = sport.value;
   for (const button of byId("diaryPeriod").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.period === view.period));
-  for (const button of byId("diaryBarMetric").querySelectorAll("button")) {
-    button.setAttribute("aria-pressed", String(button.dataset.metric === barMetric()));
-    button.hidden = button.dataset.metric === "distance" && mixedSports();
-  }
+  for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
   byId("diaryTitle").textContent = periodTitle(range);
   byId("diaryCalendarTitle").textContent = periodTitle(range);
   renderJump(range);
@@ -151,57 +149,82 @@ function renderTiles(current, previous, entries) {
   }));
 }
 
-const barValue = (entries) => (barMetric() === "count" ? entries.length
-  : entries.reduce((sum, entry) => sum + ((barMetric() === "distance" ? entry.summary.distance : entry.summary.timerSeconds) ?? 0), 0));
-const barText = (value) => (barMetric() === "count" ? String(value) : barMetric() === "distance" ? km(value) : hours(value));
+const barValue = (entries, metric) => entries.reduce((sum, entry) => sum + ((metric === "distance" ? entry.summary.distance : entry.summary.timerSeconds) ?? 0), 0);
+const barText = (value, metric) => (metric === "distance" ? km(value) : hours(value));
 
-// One bar per day of a week or month, per month of a year; each bar stacked by workout kind.
-function renderBars(range, entries) {
-  const buckets = periodBuckets(view.period, range, entries, zone);
-  const svg = byId("diaryChart");
-  const width = Math.max(320, Math.round(svg.getBoundingClientRect().width) || 1000);
-  const height = 220;
+const svgNode = (name, attributes, text) => {
+  const element = document.createElementNS(svgNs, name);
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+  if (text != null) element.textContent = text;
+  return element;
+};
+
+// One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
+function drawBars(buckets, groups, metric, height) {
+  const svg = svgNode("svg", { class: "diary-chart", role: "img" });
+  svg.setAttribute("aria-label", t("diaryChart"));
+  const width = Math.max(320, Math.round(byId("diaryCharts").getBoundingClientRect().width) || 1000);
   const left = 8;
   const top = 22;
   const bottom = 26;
   const plotHeight = height - top - bottom;
-  const max = Math.max(...buckets.map((bucket) => barValue(bucket.entries)), 0);
+  // Only what the chart draws counts, for the bar totals and the scale alike.
+  const drawn = (entries) => entries.filter((entry) => groups.some(({ has }) => has(entry)));
+  const max = Math.max(...buckets.map((bucket) => barValue(drawn(bucket.entries), metric)), 0);
   const slot = (width - left * 2) / buckets.length;
   const barWidth = Math.max(4, Math.min(48, slot * 0.6));
-  const node = (name, attributes, text) => {
-    const element = document.createElementNS(svgNs, name);
-    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-    if (text != null) element.textContent = text;
-    return element;
-  };
-  const children = [node("line", { x1: left, x2: width - left, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" })];
+  const children = [svgNode("line", { x1: left, x2: width - left, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" })];
   buckets.forEach((bucket, index) => {
     const x = left + slot * index + (slot - barWidth) / 2;
-    const total = barValue(bucket.entries);
+    const total = barValue(drawn(bucket.entries), metric);
     const label = view.period === "year" ? format(`${bucket.key}-01`, { month: "short" })
       : view.period === "week" ? format(bucket.key, { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
-    children.push(node("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
+    children.push(svgNode("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
     if (!total || !max) return;
-    const group = node("g", { class: "diary-bar" });
+    const group = svgNode("g", { class: "diary-bar" });
     let y = top + plotHeight;
     // Groups stack in their fixed order, each segment parted from the next by a surface gap.
-    for (const { has, color } of barGroups()) {
-      const value = barValue(bucket.entries.filter(has));
+    for (const { has, color } of groups) {
+      const value = barValue(bucket.entries.filter(has), metric);
       if (!value) continue;
       const segment = (value / max) * plotHeight;
       y -= segment;
-      group.append(node("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: color }));
+      group.append(svgNode("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: color }));
     }
     const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
-    group.append(node("title", {}, `${when}\n${barText(total)} · ${t("diarySessionsCount", { count: bucket.entries.length })}`));
+    const sessions = drawn(bucket.entries).length;
+    group.append(svgNode("title", {}, `${when}\n${barText(total, metric)} · ${t("diarySessionsCount", { count: sessions })}`));
     // A hit target the whole height of the column, wider than the bar.
-    group.prepend(node("rect", { x: left + slot * index, y: top, width: slot, height: plotHeight, fill: "transparent" }));
+    group.prepend(svgNode("rect", { x: left + slot * index, y: top, width: slot, height: plotHeight, fill: "transparent" }));
     children.push(group);
-    if (total === max || buckets.length <= 12) children.push(node("text", { x: x + barWidth / 2, y: y - 6, class: "diary-bar-label" }, barText(total)));
+    if (total === max || buckets.length <= 12) children.push(svgNode("text", { x: x + barWidth / 2, y: y - 6, class: "diary-bar-label" }, barText(total, metric)));
   });
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.style.height = `${height}px`;
   svg.replaceChildren(...children);
-  byId("diaryChartEmpty").hidden = max > 0;
+  return svg;
+}
+
+// Time adds up across sports, so it is one chart split by sport (or by kind within one).
+// Distance does not: with several sports each gets its own row on its own scale.
+function renderBars(range, entries) {
+  const buckets = periodBuckets(view.period, range, entries, zone);
+  const metric = view.barMetric;
+  const charts = [];
+  const shownGroups = barGroups().filter(({ key }) => !view.hidden.has(key));
+  // A single sport left shown needs no rows of its own.
+  if (metric === "distance" && mixedSports() && shownGroups.length > 1) {
+    for (const group of shownGroups) {
+      const row = Object.assign(document.createElement("div"), { className: "diary-chart-row" });
+      row.append(Object.assign(document.createElement("span"), { className: "diary-chart-caption", textContent: `${sportIcon[group.key]} ${group.label}` }));
+      row.append(drawBars(buckets, [group], metric, 130));
+      charts.push(row);
+    }
+  } else {
+    charts.push(drawBars(buckets, shownGroups, metric, 220));
+  }
+  byId("diaryCharts").replaceChildren(...charts);
+  byId("diaryChartEmpty").hidden = entries.length > 0;
 }
 
 function activityButton(entry) {
@@ -244,12 +267,21 @@ function renderCalendar(range, entries) {
   byId("diaryCalendar").replaceChildren(...head, ...cells);
 }
 
+// Each legend entry turns its sport or kind on and off in the chart; the last one shown stays on.
 function renderLegend() {
-  byId("diaryLegend").replaceChildren(...barGroups().map(({ label, color }) => {
-    const item = Object.assign(document.createElement("span"), { className: "diary-legend-item" });
+  const groups = barGroups();
+  byId("diaryLegend").replaceChildren(...groups.map(({ key, label, color }) => {
+    const item = Object.assign(document.createElement("button"), { type: "button", className: "diary-legend-item" });
+    item.setAttribute("aria-pressed", String(!view.hidden.has(key)));
+    item.title = t("diaryLegendToggle");
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
     swatch.style.background = color;
     item.append(swatch, label);
+    item.addEventListener("click", () => {
+      if (view.hidden.has(key)) view.hidden.delete(key);
+      else if (groups.filter((group) => !view.hidden.has(group.key)).length > 1) view.hidden.add(key);
+      render();
+    });
     return item;
   }));
 }
