@@ -96,3 +96,22 @@ test("a name typed by hand outlives the recording it was typed on", () => {
   assert.equal(save[0].name, "Kinomap - Easy");
   assert.equal(save[0].source, "export");
 });
+
+test("a plan's resistance lands on the laps it covers, and hand-set resistance outlives a newer recording", async () => {
+  const { lapLevelsFromPlan } = await import("../src/library.js");
+  const { parseKinomapPlan } = await import("../src/core.js");
+  const start = 1_000_000;
+  const laps = [0, 69, 101, 161].map((second) => ({ startMs: start + second * 1000 }));
+  const steps = parseKinomapPlan("00:07  70%  20rpm  A\n01:09  80%  24rpm  A\n01:41  70%  20rpm  A\n02:41  0%  0rpm  CD", start);
+  const toLevel = (percent) => (percent > 0 ? Math.round((percent / 100) * 15) : null);
+  // The first lap starts before the plan's first step and the last one on a step without resistance.
+  assert.deepEqual(lapLevelsFromPlan(laps, steps, toLevel).map((lap) => lap.resistance), [undefined, 12, 11, undefined]);
+
+  const entry = (id, source, extra = {}) => ({ id, source, sport: "rowing", startMs: 0, endMs: 600_000, name: "A", laps: [{}, {}], ...extra });
+  const set = entry("old", "fit", { trainer: "Woodrower", resistance: 6, laps: [{ resistance: 11 }, { resistance: 12 }] });
+  const { save } = mergeDuplicates([set], [entry("new", "export")]);
+  assert.equal(save[0].id, "new");
+  assert.equal(save[0].trainer, "Woodrower");
+  assert.equal(save[0].resistance, 6);
+  assert.deepEqual(save[0].laps.map((lap) => lap.resistance), [11, 12]);
+});

@@ -127,10 +127,15 @@ export function mergeDuplicates(existing, incoming) {
     const other = kept[index];
     const winner = rank(entry) >= rank(other) ? entry : other;
     const loser = winner === entry ? other : entry;
-    // A kind picked or a name typed by hand outlives the recording it was set on.
+    // A kind picked, a name typed or a resistance set by hand outlives the recording it was set on.
     const kind = !winner.kind && loser.kind ? { kind: loser.kind } : null;
     const name = !winner.renamed && loser.renamed ? { name: loser.name, renamed: true } : null;
-    kept[index] = kind || name ? { ...winner, ...kind, ...name } : winner;
+    const trainer = !winner.trainer && loser.trainer ? { trainer: loser.trainer } : null;
+    const resistance = !winner.resistance && loser.resistance ? { resistance: loser.resistance } : null;
+    const lapLevels = loser.laps?.some((lap) => lap.resistance) && !winner.laps?.some((lap) => lap.resistance) && winner.laps?.length === loser.laps.length
+      ? { laps: winner.laps.map((lap, lapIndex) => (loser.laps[lapIndex].resistance ? { ...lap, resistance: loser.laps[lapIndex].resistance } : lap)) }
+      : null;
+    kept[index] = kind || name || trainer || resistance || lapLevels ? { ...winner, ...kind, ...name, ...trainer, ...resistance, ...lapLevels } : winner;
   }
   const keptIds = new Set(kept.map((entry) => entry.id));
   const existingById = new Map(existing.map((entry) => [entry.id, entry]));
@@ -139,6 +144,17 @@ export function mergeDuplicates(existing, incoming) {
     remove: existing.filter((entry) => !keptIds.has(entry.id)).map((entry) => entry.id),
     count: kept.length,
   };
+}
+
+// The level each lap is rowed on, from plan steps (parsed against the activity's start) and the trainer's levels;
+// a lap takes the step running two seconds after it starts, so a lap cut at a step's own start gets that step.
+// Laps the plan gives no resistance keep theirs.
+export function lapLevelsFromPlan(laps, steps, toLevel) {
+  return laps.map((lap) => {
+    const step = steps.filter((candidate) => candidate.startMs <= lap.startMs + 2000).at(-1);
+    const level = step ? toLevel(step.resistancePercent) : null;
+    return level ? { ...lap, resistance: level } : lap;
+  });
 }
 
 // A backup is one JSON file with every entry, read back by parseBackup.

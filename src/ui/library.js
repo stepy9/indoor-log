@@ -1,9 +1,10 @@
-import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
+import { buildWorkout, decodeGarminFit, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { detectedKind, workoutKinds } from "../analysis.js";
-import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
+import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
+import { levelFromPercent, trainers } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
 const toggle = byId("librarySaveToggle");
@@ -95,6 +96,83 @@ function resistanceInput(entry) {
   return input;
 }
 
+// The trainer of a saved activity, by name; a name no longer set up stays listed so it is not lost.
+function trainerSelect(entry) {
+  const select = Object.assign(document.createElement("select"), { className: "kind-select" });
+  select.setAttribute("aria-label", t("trainer"));
+  const names = trainers().filter((trainer) => trainer.sport === entry.sport).map((trainer) => trainer.name);
+  if (entry.trainer && !names.includes(entry.trainer)) names.push(entry.trainer);
+  select.append(new Option("—", ""), ...names.map((name) => new Option(name, name)));
+  select.value = entry.trainer ?? "";
+  select.addEventListener("change", async () => {
+    if (select.value) entry.trainer = select.value;
+    else delete entry.trainer;
+    await saveEntries([entry]).catch(() => {});
+  });
+  return select;
+}
+
+const trainerOf = (entry) => trainers().find((trainer) => trainer.sport === entry.sport && trainer.name === entry.trainer) ?? null;
+const intensityKey = { warmup: "intensityWarmup", active: "intensityActive", recovery: "intensityRecovery", rest: "intensityRest", cooldown: "intensityCooldown" };
+
+// Resistance lap by lap for a saved activity: typed per lap, or taken from a Kinomap plan through its trainer's levels.
+function openLapResistance(entry) {
+  const lapsDialog = byId("lapResistanceDialog");
+  let laps = entry.laps.map((lap) => ({ ...lap }));
+  byId("lapResistanceName").textContent = entry.name;
+  const trainer = trainerOf(entry);
+  const note = byId("lapResistanceNote");
+  note.textContent = trainer ? t("lapResistanceTrainer", { name: trainer.name, levels: trainer.levels }) : t("lapResistanceNoTrainer");
+  note.className = `field-note${trainer ? "" : " is-error"}`;
+  const renderRows = () => {
+    byId("lapResistanceRows").replaceChildren(...laps.map((lap, index) => {
+      const input = Object.assign(document.createElement("input"), {
+        type: "number", className: "level-input", min: "1", value: lap.resistance ?? "", placeholder: entry.resistance ?? "—",
+      });
+      input.setAttribute("aria-label", t("resistance"));
+      input.addEventListener("change", () => {
+        const level = Math.round(Number(input.value));
+        if (level > 0) lap.resistance = level;
+        else delete lap.resistance;
+      });
+      const cells = [
+        String(index + 1),
+        formatDuration((lap.startMs - entry.startMs) / 1000),
+        formatDuration(lap.timerSeconds ?? 0),
+        lap.target ? `${lap.target} ${lap.targetType === "power" ? "W" : "rpm"}` : "—",
+        t(intensityKey[lap.intensity] ?? "intensityActive"),
+      ];
+      const row = document.createElement("tr");
+      row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
+      const cell = document.createElement("td");
+      cell.append(input);
+      row.append(cell);
+      return row;
+    }));
+  };
+  const text = byId("lapResistancePlan");
+  text.value = "";
+  text.classList.remove("is-invalid");
+  text.onpaste = () => setTimeout(() => {
+    text.value = kinomapPlanText(text.value);
+  });
+  byId("lapResistanceApply").disabled = !trainer;
+  byId("lapResistanceApply").onclick = () => {
+    const steps = parseKinomapPlan(text.value, entry.startMs);
+    text.classList.toggle("is-invalid", !steps.some((step) => step.resistancePercent > 0));
+    laps = lapLevelsFromPlan(laps, steps, (percent) => levelFromPercent(percent, trainer));
+    renderRows();
+  };
+  byId("lapResistanceCancel").onclick = () => lapsDialog.close();
+  byId("lapResistanceSave").onclick = async () => {
+    entry.laps = laps;
+    await saveEntries([entry]).catch(() => {});
+    lapsDialog.close();
+  };
+  renderRows();
+  lapsDialog.showModal();
+}
+
 export function kindSelect(entry, onChange, className = "kind-select") {
   const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
@@ -171,9 +249,19 @@ async function renderList() {
     const kind = document.createElement("td");
     kind.append(kindSelect(entry, renderList));
     row.children[2].after(kind);
+    const trainerCell = document.createElement("td");
+    trainerCell.append(trainerSelect(entry));
+    kind.after(trainerCell);
     const resistance = document.createElement("td");
+    resistance.className = "library-resistance";
     resistance.append(resistanceInput(entry));
-    kind.after(resistance);
+    // A resistance per lap is worth setting only in an interval workout.
+    if (entry.laps?.length >= 2 && workoutKind(entry) === "intervals") {
+      const lapsButton = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("lapResistanceOpen"), title: t("lapResistanceTitle") });
+      lapsButton.addEventListener("click", () => openLapResistance(entry));
+      resistance.append(lapsButton);
+    }
+    trainerCell.after(resistance);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
