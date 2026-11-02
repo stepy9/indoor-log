@@ -2,6 +2,7 @@ import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, inve
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
+import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -682,37 +683,54 @@ function render() {
   }
 }
 
+// A new language redraws whichever of the comparison and the diary is open.
 export function rerenderCompare() {
   render();
+  rerenderDiary();
 }
 
-function showCompare(on) {
-  const views = ["setupView", "workspaceView"];
-  if (on) {
-    previousView = views.find((id) => !byId(id).hidden) ?? previousView;
-    for (const id of views) byId(id).hidden = true;
-  } else {
-    byId(previousView).hidden = false;
+// The view shown: "converter" (its setup or workspace, whichever was open), "compare" or "diary".
+let currentView = "converter";
+
+function showView(name) {
+  const converterViews = ["setupView", "workspaceView"];
+  if (currentView === "converter" && name !== "converter") {
+    previousView = converterViews.find((id) => !byId(id).hidden) ?? previousView;
+    for (const id of converterViews) byId(id).hidden = true;
   }
-  byId("compareView").hidden = !on;
-  // The comparison may use a wider window than the converter, so six activities fit side by side.
-  document.body.classList.toggle("is-comparing", on);
+  if (name === "converter") byId(previousView).hidden = false;
+  currentView = name;
+  byId("compareView").hidden = name !== "compare";
+  byId("diaryView").hidden = name !== "diary";
+  // The comparison and the diary may use a wider window than the converter, so six activities fit side by side.
+  document.body.classList.toggle("is-comparing", name !== "converter");
   for (const button of document.querySelectorAll("[data-app-view]")) {
-    button.setAttribute("aria-pressed", String((button.dataset.appView === "compare") === on));
+    button.setAttribute("aria-pressed", String(button.dataset.appView === name));
   }
   window.scrollTo({ top: 0 });
-  if (on) refresh();
+  if (name === "compare") refresh();
+  if (name === "diary") showDiary();
+}
+
+// One activity on its own in the comparison, as the diary opens it.
+function openInCompare(entry) {
+  view.sport = entry.sport;
+  view.mode = "overlay";
+  view.zoom = null;
+  view.slots = new Map([[entry.id, 1]]);
+  showView("compare");
 }
 
 export function setupCompare({ onConverter }) {
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.addEventListener("click", () => {
-      const toCompare = button.dataset.appView === "compare";
-      if (toCompare === !byId("compareView").hidden) return;
-      showCompare(toCompare);
-      if (!toCompare) onConverter();
+      const name = button.dataset.appView;
+      if (name === currentView) return;
+      showView(name);
+      if (name === "converter") onConverter();
     });
   }
+  setupDiary({ onOpen: openInCompare });
   for (const button of document.querySelectorAll("[data-compare-mode]")) {
     button.addEventListener("click", () => {
       view.mode = button.dataset.compareMode;

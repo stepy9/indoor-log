@@ -24,6 +24,7 @@
         <nav class="app-nav" aria-label="Sekce" data-i18n-aria="sections">
           <button type="button" data-app-view="converter" aria-pressed="true" data-i18n="navConverter">Převodník</button>
           <button type="button" data-app-view="compare" aria-pressed="false" data-i18n="navCompare">Porovnání</button>
+          <button type="button" data-app-view="diary" aria-pressed="false" data-i18n="navDiary">Deník</button>
         </nav>
         <div class="topbar-actions">
           <button class="library-button" id="libraryButton" type="button"><span data-i18n="library">Knihovna</span></button>
@@ -342,6 +343,44 @@
           <button class="export-button" id="intervalsSave" type="button" data-i18n="save">Uložit</button>
         </div>
       </dialog>
+      <section class="diary-view" id="diaryView" hidden>
+        <div class="card diary-head">
+          <div class="diary-nav">
+            <button class="outline-button" id="diaryBack" type="button" aria-label="Předchozí" data-i18n-aria="diaryBack" title="Předchozí" data-i18n-title="diaryBack">‹</button>
+            <h2 id="diaryTitle"></h2>
+            <button class="outline-button" id="diaryForward" type="button" aria-label="Další" data-i18n-aria="diaryForward" title="Další" data-i18n-title="diaryForward">›</button>
+            <button class="link-button" id="diaryToday" type="button" data-i18n="diaryToday">Dnes</button>
+          </div>
+          <div class="diary-filters">
+            <select id="diarySport" aria-label="Sport" data-i18n-aria="librarySport"></select>
+            <div class="segmented" id="diaryPeriod" role="group" aria-label="Období" data-i18n-aria="diaryPeriod">
+              <button type="button" data-period="week" aria-pressed="false" data-i18n="diaryWeek">Týden</button>
+              <button type="button" data-period="month" aria-pressed="true" data-i18n="diaryMonth">Měsíc</button>
+              <button type="button" data-period="year" aria-pressed="false" data-i18n="diaryYear">Rok</button>
+            </div>
+          </div>
+        </div>
+        <p class="field-note" id="diaryEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná. Stáhněte aktivitu v převodníku nebo přidejte soubory do knihovny.</p>
+        <section class="card">
+          <div class="panel-title-row"><span class="field-label" data-i18n="diarySummary">Souhrn</span><span class="estimate-note" id="diaryPrevious"></span></div>
+          <div class="diary-tiles" id="diaryTiles"></div>
+        </section>
+        <section class="card">
+          <div class="panel-title-row">
+            <div class="diary-legend" id="diaryLegend"></div>
+            <div class="segmented" id="diaryBarMetric" role="group" aria-label="Sloupce" data-i18n-aria="diaryBars">
+              <button type="button" data-metric="distance" aria-pressed="true" data-i18n="diaryDistance">Vzdálenost</button>
+              <button type="button" data-metric="seconds" aria-pressed="false" data-i18n="diaryTime">Čas</button>
+              <button type="button" data-metric="count" aria-pressed="false" data-i18n="diarySessions">Tréninky</button>
+            </div>
+          </div>
+          <svg class="diary-chart" id="diaryChart" role="img" aria-label="Graf období" data-i18n-aria="diaryChart"></svg>
+          <p class="field-note" id="diaryChartEmpty" data-i18n="diaryNothing" hidden>V tomto období žádný trénink.</p>
+        </section>
+        <section class="card" id="diaryCalendarCard">
+          <div class="diary-calendar" id="diaryCalendar"></div>
+        </section>
+      </section>
       <section class="compare-view" id="compareView" hidden>
         <aside class="card compare-picker">
           <div class="panel-title-row">
