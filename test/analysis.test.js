@@ -69,6 +69,9 @@ test("sorts activities into time and sport-specific distance ranges", () => {
   assert.ok(!inLengthRange(activity(20, 4), "time:2"));
   assert.ok(inLengthRange(activity(90, 20), "time:3"));
   assert.ok(inLengthRange(activity(20, 4), "distance:1"));
+  // A 1.98 km test sits in both neighbouring ranges, 2.2 km only in the upper one.
+  assert.ok(inLengthRange(activity(8, 1.98), "distance:0") && inLengthRange(activity(8, 1.98), "distance:1"));
+  assert.ok(!inLengthRange(activity(9, 2.2), "distance:0"));
   assert.ok(!inLengthRange(activity(20, 4, "cycling"), "distance:1"));
   assert.ok(inLengthRange(activity(90, 30, "cycling"), "distance:1"));
   assert.ok(inLengthRange(activity(90, 20), "all"));
@@ -84,4 +87,23 @@ test("trend values give one number per activity, with times improving downwards"
   assert.equal(trendValue(activity, "bestPower"), 220);
   assert.ok(trendIsTime("bestShort", "rowing"));
   assert.ok(!trendIsTime("pace", "cycling"));
+});
+
+test("a slice of an activity has its own summary and best efforts", async () => {
+  const { sliceEntry } = await import("../src/analysis.js");
+  const activity = { ...entry(), laps: [], summary: { timerSeconds: 600, distance: 2460, calories: 60 } };
+  const fast = sliceEntry(activity, "time", 300, 360);
+  assert.equal(fast.summary.timerSeconds, 60);
+  assert.equal(fast.summary.avgPower, 298);
+  assert.equal(fast.summary.calories, 6);
+  assert.equal(bestTime(fast, 250), 50);
+  assert.equal(sliceEntry(activity, "distance", 99999, 100000).records.seconds.length, 0);
+});
+
+test("a lap gives its value for each compared metric", async () => {
+  const { lapValue } = await import("../src/analysis.js");
+  const lap = { avgPower: 150, avgHeartRate: 140, avgCadence: 24, distance: 500, timerSeconds: 120 };
+  assert.equal(lapValue(lap, "power", "rowing"), 150);
+  assert.equal(Math.round(lapValue(lap, "pace", "rowing")), 120);
+  assert.equal(lapValue({ ...lap, avgSpeed: 5 }, "pace", "rowing"), 100);
 });

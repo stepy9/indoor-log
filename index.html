@@ -305,7 +305,7 @@
 
             <div class="export-row">
               <div class="start-stamp"><span data-i18n="outputStart">Čas aktivity</span><strong id="startStamp">—</strong></div>
-              <button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Stáhnout FIT</span><span aria-hidden="true">↓</span></button>
+              <button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Uložit FIT</span><span aria-hidden="true">↓</span></button>
             </div>
             <div class="notice-slot" id="workspaceNoticeSlot"><div class="notice" id="notice" role="status" hidden></div></div>
           </section>
@@ -320,6 +320,8 @@
         <details class="plan-paste">
           <summary data-i18n="pastePlan">Vložit plán z Kinomapu</summary>
           <textarea id="planText" rows="4" placeholder="01:09  80%  24rpm  A"></textarea>
+          <span class="estimate-note" id="planSummary"></span>
+          <div class="laps-scroll plan-preview-scroll"><table class="laps-table plan-preview" id="planPreview" hidden></table></div>
           <button class="accent-button" id="planApply" type="button" data-i18n="pastePlanApply">Načíst plán</button>
         </details>
         <div class="laps-scroll">
@@ -407,6 +409,7 @@
             <div class="laps-scroll"><table class="laps-table compare-table trend-table" id="trendTable"></table></div>
           </section>
           <div class="compare-tables" id="compareTables" hidden>
+            <p class="field-note compare-range-note" id="compareRangeNote" hidden></p>
             <section class="card">
               <span class="field-label" data-i18n="compareSummary">Souhrn</span>
               <div class="laps-scroll"><table class="laps-table compare-table" id="compareSummary"></table></div>
@@ -414,6 +417,10 @@
             <section class="card">
               <span class="field-label" data-i18n="compareBest">Nejlepší úseky</span>
               <div class="laps-scroll"><table class="laps-table compare-table" id="compareBest"></table></div>
+            </section>
+            <section class="card" id="compareLapsCard" hidden>
+              <span class="field-label" id="compareLapsTitle"></span>
+              <div class="laps-scroll"><table class="laps-table compare-table" id="compareLapsTable"></table></div>
             </section>
           </div>
         </div>

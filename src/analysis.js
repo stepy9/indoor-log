@@ -175,12 +175,16 @@ export const lengthRanges = {
 export const rangesFor = (by, sport) => (by === "time" ? lengthRanges.time : lengthRanges.distance[sport] ?? lengthRanges.distance.rowing);
 
 // The filter reads "time:1" or "distance:0", the range's place in its list; anything else lets every activity through.
+// Neighbouring ranges overlap by 100 m or half a minute, so a 1.98 km test counts as both "under 2 km" and "2–5 km".
+const rangeTolerance = { time: 0.5, distance: 0.1 };
+
 export function inLengthRange(entry, filter) {
   const [by, index] = String(filter).split(":");
   const range = by === "time" || by === "distance" ? rangesFor(by, entry.sport)[Number(index)] : null;
   if (!range) return true;
   const amount = by === "time" ? entry.summary.timerSeconds / 60 : entry.summary.distance / 1000;
-  return amount >= range[0] && amount < range[1];
+  const tolerance = rangeTolerance[by];
+  return amount >= range[0] - tolerance && amount < range[1] + tolerance;
 }
 
 // One number per activity for the trend over time.
@@ -209,3 +213,42 @@ export function trendValue(entry, metric) {
 
 // Times and paces improve downwards, except cycling, whose pace is a speed.
 export const trendIsTime = (metric, sport) => metric === "bestShort" || metric === "bestLong" || (metric === "pace" && sport !== "cycling");
+
+// The part of an activity between from and to on the axis, with its own summary, for a zoomed chart.
+export function sliceEntry(entry, axis, from, to) {
+  const { records } = entry;
+  const key = axis === "distance" ? records.distance : records.seconds;
+  const kept = key.map((value, index) => (Number.isFinite(value) && value >= from && value <= to ? index : -1)).filter((index) => index >= 0);
+  const pick = (column) => kept.map((index) => column[index]);
+  const sliced = Object.fromEntries(Object.entries(records).map(([field, column]) => [field, pick(column)]));
+  if (kept.length < 2) return { ...entry, records: sliced, laps: [], summary: {} };
+  const values = (field) => sliced[field].filter(Number.isFinite);
+  const mean = (field) => (values(field).length ? Math.round(values(field).reduce((sum, value) => sum + value, 0) / values(field).length) : null);
+  const highest = (field) => (values(field).length ? Math.max(...values(field)) : null);
+  const timerSeconds = sliced.seconds.at(-1) - sliced.seconds[0];
+  const distance = Math.max(0, (values("distance").at(-1) ?? 0) - (values("distance")[0] ?? 0));
+  return {
+    ...entry,
+    records: sliced,
+    laps: [],
+    summary: {
+      timerSeconds,
+      distance,
+      avgPower: mean("power"), maxPower: highest("power"),
+      avgHeartRate: mean("heartRate"), maxHeartRate: highest("heartRate"),
+      avgCadence: mean("cadence"), maxCadence: highest("cadence"),
+      avgSpeed: timerSeconds > 0 ? distance / timerSeconds : null,
+      // Calories go by the share of the moving time.
+      calories: entry.summary.calories && entry.summary.timerSeconds > 0 ? Math.round(entry.summary.calories * timerSeconds / entry.summary.timerSeconds) : null,
+    },
+  };
+}
+
+// A lap's value for the metric the comparison shows.
+export function lapValue(lap, metric, sport) {
+  if (metric === "power") return lap.avgPower ?? null;
+  if (metric === "heartRate") return lap.avgHeartRate ?? null;
+  if (metric === "cadence") return lap.avgCadence ?? null;
+  const speed = lap.avgSpeed ?? (lap.timerSeconds > 0 && lap.distance != null ? lap.distance / lap.timerSeconds : null);
+  return paceFrom(speed, sport);
+}

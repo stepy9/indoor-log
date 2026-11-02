@@ -1,4 +1,4 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue } from "../analysis.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
@@ -211,7 +211,7 @@ function pan(by) {
   const from = Math.min(Math.max(0, view.zoom[0] + by), Math.max(0, view.fullMaxX - span));
   view.zoom = [from, from + span];
   view.hoverX = null;
-  renderChart();
+  renderZoomed();
 }
 
 function renderChart() {
@@ -371,12 +371,39 @@ function renderTable(id, rows, picked) {
   }));
 }
 
+// Lap by lap for the activities with laps: the metric the chart shows, under the lap number and the type of the first.
+function renderLapTable(picked) {
+  const withLaps = picked.filter((entry) => entry.laps?.length >= 2);
+  const card = byId("compareLapsCard");
+  card.hidden = !withLaps.length;
+  if (!withLaps.length) return;
+  byId("compareLapsTitle").textContent = t("compareLaps", { metric: metricLabel(view.metric, view.sport) });
+  const count = Math.max(...withLaps.map((entry) => entry.laps.length));
+  const intensityKey = { warmup: "intensityWarmup", active: "intensityActive", recovery: "intensityRecovery", rest: "intensityRest", cooldown: "intensityCooldown" };
+  const rows = Array.from({ length: count }, (_, index) => {
+    const lap = withLaps.find((entry) => entry.laps[index])?.laps[index];
+    const type = intensityKey[lap?.intensity];
+    return [`${index + 1}${type ? ` · ${t(type)}` : ""}`, (entry) => {
+      const value = entry.laps[index] ? lapValue(entry.laps[index], view.metric, view.sport) : null;
+      return metricText(value, view.metric, view.sport);
+    }];
+  });
+  renderTable("compareLapsTable", rows, withLaps);
+}
+
 function renderTables() {
-  const picked = selected();
-  byId("compareTables").hidden = !picked.length;
-  if (!picked.length) return;
+  const all = selected();
+  byId("compareTables").hidden = !all.length;
+  if (!all.length) return;
   const sport = view.sport;
-  const unit = (value, suffix, digits = 0) => (value == null ? "—" : `${displayNumber(value, digits)} ${suffix}`);
+  // A zoomed chart narrows the summary and best efforts to its stretch; laps stay whole.
+  const zoom = view.zoom;
+  const picked = zoom ? all.map((entry) => sliceEntry(entry, view.axis, zoom[0], zoom[1])) : all;
+  const rangeNote = byId("compareRangeNote");
+  rangeNote.hidden = !zoom;
+  if (zoom) rangeNote.textContent = t("compareRange", { from: axisText(zoom[0]), to: axisText(zoom[1]) });
+  renderLapTable(all);
+  const unit = (value, suffix, digits = 0) => (!Number.isFinite(value) ? "—" : `${displayNumber(value, digits)} ${suffix}`);
   const cadence = sport === "running" ? "spm" : "rpm";
   renderTable("compareSummary", [
     [t("lapTime"), (entry) => formatDuration(entry.summary.timerSeconds)],
@@ -551,6 +578,12 @@ function renderMode() {
   byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
 }
 
+// A new zoom redraws the chart and the tables under it, which follow the zoomed stretch.
+function renderZoomed() {
+  renderChart();
+  renderTables();
+}
+
 function drawChart() {
   if (view.mode === "trend") renderTrendChart();
   else renderChart();
@@ -698,13 +731,13 @@ export function setupCompare({ onConverter }) {
     if (to - from >= 8) {
       view.zoom = widened([valueAtPixel(from), valueAtPixel(to)]);
       view.hoverX = null;
-      renderChart();
+      renderZoomed();
     } else renderHover();
   });
   chart.addEventListener("dblclick", () => {
     if (!view.zoom) return;
     view.zoom = null;
-    renderChart();
+    renderZoomed();
   });
   chart.addEventListener("pointermove", (event) => {
     const layout = view.layout;
@@ -733,7 +766,7 @@ export function setupCompare({ onConverter }) {
   byId("compareZoomRight").addEventListener("click", () => view.zoom && pan((view.zoom[1] - view.zoom[0]) / 2));
   byId("compareZoomReset").addEventListener("click", () => {
     view.zoom = null;
-    renderChart();
+    renderZoomed();
   });
   chart.addEventListener("pointerleave", () => {
     view.hoverX = null;

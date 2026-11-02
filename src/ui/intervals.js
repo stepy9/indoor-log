@@ -31,6 +31,35 @@ function average(records, field, fromMs, toMs) {
   return numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null;
 }
 
+// The pasted plan as a table of its steps before it is loaded; the box grows with the plan, up to 16 lines.
+function renderPlanPreview() {
+  const text = byId("planText");
+  text.rows = Math.min(16, Math.max(4, text.value.split("\n").length));
+  const steps = parseKinomapPlan(text.value, 0);
+  const table = byId("planPreview");
+  table.hidden = !steps.length;
+  byId("planSummary").textContent = steps.length ? t("planSummary", { count: steps.length, total: formatDuration(steps.at(-1).startMs / 1000) }) : "";
+  if (!steps.length) return;
+  const head = document.createElement("tr");
+  head.append(...["#", t("segmentStart"), t("segmentDuration"), t("segmentTarget"), t("lapType")].map((title) => Object.assign(document.createElement("th"), { textContent: title })));
+  const types = Object.fromEntries(intensityOptions);
+  const rows = steps.map((step, index) => {
+    const next = steps[index + 1];
+    const cells = [
+      String(index + 1),
+      formatDuration(step.startMs / 1000),
+      next ? formatDuration((next.startMs - step.startMs) / 1000) : "—",
+      step.target ? `${step.target} ${step.targetType === "power" ? "W" : "rpm"}` : "—",
+      t(types[step.intensity] ?? "intensityActive"),
+    ];
+    const row = document.createElement("tr");
+    row.className = `is-${step.intensity}`;
+    row.append(...cells.map((cell) => Object.assign(document.createElement("td"), { textContent: cell })));
+    return row;
+  });
+  table.replaceChildren(head, ...rows);
+}
+
 // Edits a copy of the segments; Save hands back a sorted list that starts at the workout start.
 export function openIntervalsDialog(workout, segments, onSave) {
   const dialog = byId("intervalsDialog");
@@ -191,7 +220,10 @@ export function openIntervalsDialog(workout, segments, onSave) {
       else lines.at(-1)?.push(token);
     }
     if (lines.length) text.value = lines.map((line) => line.join("  ")).join("\n");
+    renderPlanPreview();
   });
+  byId("planText").oninput = renderPlanPreview;
+  renderPlanPreview();
   byId("planApply").onclick = () => {
     // Steps past the end (or the plan's own total line) are left out.
     const planned = parseKinomapPlan(byId("planText").value, startMs).filter((segment) => segment.startMs < endMs - 1000);

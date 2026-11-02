@@ -524,3 +524,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .compare-chart.is-panning { cursor: grabbing; }
 #compareZoomHint { margin: 6px 0 0; }
 #compareZoomHint[hidden] { display: none; }
+.compare-range-note { margin: 0; color: var(--accent); font-weight: 600; }
+.compare-range-note[hidden], #compareLapsCard[hidden] { display: none; }
+.plan-preview-scroll { max-height: 260px; margin: 6px 0 10px; }
+.plan-preview-scroll:has(> [hidden]) { display: none; }
