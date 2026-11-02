@@ -1,7 +1,7 @@
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { detectedKind, workoutKind } from "../analysis.js";
-import { addEntries, backupText, clearEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
+import { detectedKind, workoutKinds } from "../analysis.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 
@@ -33,19 +33,24 @@ export async function rememberWorkout(workout, kind = "") {
 }
 
 // Automatic, interval or steady; the automatic option names the kind the data gives.
-export function renderKindOptions(select, detected, value = select.value) {
+// An easy session is a jog when running and recovery on the rower or the bike.
+export const kindLabel = (kind, sport) => t(kind === "recovery" && sport === "running" ? "kindJog"
+  : `kind${kind[0].toUpperCase()}${kind.slice(1)}`);
+
+export function renderKindOptions(select, detected, value = select.value, sport = null) {
   select.replaceChildren(
-    new Option(t("kindAuto", { kind: t(detected === "intervals" ? "kindIntervals" : "kindSteady") }), ""),
-    new Option(t("kindIntervals"), "intervals"),
-    new Option(t("kindSteady"), "steady"),
+    new Option(t("kindAuto", { kind: kindLabel(detected, sport) }), ""),
+    ...workoutKinds.map((kind) => new Option(kindLabel(kind, sport), kind)),
   );
   select.value = value ?? "";
 }
 
-function kindSelect(entry, onChange) {
-  const select = Object.assign(document.createElement("select"), { className: "kind-select" });
+// The type of a saved activity, changed in place; className lets the comparison list show it as a tag.
+export function kindSelect(entry, onChange, className = "kind-select") {
+  const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
-  renderKindOptions(select, detectedKind(entry), entry.kind ?? "");
+  renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport);
+  select.dataset.kind = entry.kind || detectedKind(entry);
   select.addEventListener("change", async () => {
     if (select.value) entry.kind = select.value;
     else delete entry.kind;
@@ -53,21 +58,6 @@ function kindSelect(entry, onChange) {
     onChange();
   });
   return select;
-}
-
-// The kind tag switches an activity between interval and steady and keeps the choice in the library.
-export function kindTag(entry, onChange) {
-  const kind = workoutKind(entry);
-  const tag = Object.assign(document.createElement("button"), {
-    type: "button", className: `kind-tag is-${kind}`, textContent: t(kind === "intervals" ? "kindIntervals" : "kindSteady"), title: t("kindSwitch"),
-  });
-  tag.addEventListener("click", async (event) => {
-    event.preventDefault();
-    entry.kind = kind === "intervals" ? "steady" : "intervals";
-    await saveEntries([entry]).catch(() => {});
-    onChange();
-  });
-  return tag;
 }
 
 function shortDate(epochMs) {
@@ -78,27 +68,48 @@ function shortDate(epochMs) {
 
 const value = (number, unit) => (number == null ? "—" : `${displayNumber(number)} ${unit}`);
 
+// The library shows one sport at a time; the tab opened last is kept for the next visit.
+const sports = ["rowing", "cycling", "running"];
+let librarySport = null;
+let shown = [];
+
+function renderSportTabs(all) {
+  const counts = Object.fromEntries(sports.map((sport) => [sport, all.filter((entry) => entry.sport === sport).length]));
+  if (!sports.includes(librarySport)) librarySport = savedDefaults().librarySport ?? all[0]?.sport ?? "rowing";
+  byId("librarySports").replaceChildren(...sports.map((sport) => {
+    const button = Object.assign(document.createElement("button"), { type: "button", textContent: `${sportLabel(sport)} (${counts[sport]})` });
+    button.setAttribute("aria-pressed", String(sport === librarySport));
+    button.addEventListener("click", () => {
+      librarySport = sport;
+      saveDefaults({ librarySport: sport });
+      renderList();
+    });
+    return button;
+  }));
+}
+
 async function renderList() {
-  let entries;
+  let all;
   try {
     // Duplicates saved before the library looked for them go away when it opens.
     await addEntries([]);
-    entries = await listEntries();
+    all = await listEntries();
   } catch (error) {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
     return;
   }
-  byId("libraryCount").textContent = t("libraryCount", { count: entries.length });
+  renderSportTabs(all);
+  const entries = all.filter((entry) => entry.sport === librarySport);
+  shown = entries;
+  byId("libraryCount").textContent = t("libraryCount", { count: all.length });
   byId("libraryEmpty").hidden = entries.length > 0;
-  byId("libraryBackupButton").disabled = !entries.length;
+  byId("libraryBackupButton").disabled = !all.length;
   byId("libraryClearButton").disabled = !entries.length;
-  byId("libraryClearButton").dataset.count = String(entries.length);
   byId("libraryRows").replaceChildren(...entries.map((entry) => {
     const row = document.createElement("tr");
     const cells = [
       shortDate(entry.startMs),
       entry.name.replace(/^Kinomap - /, ""),
-      sportLabel(entry.sport),
       t(`librarySource_${entry.source}`),
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
@@ -109,7 +120,7 @@ async function renderList() {
     row.children[1].title = entry.name;
     const kind = document.createElement("td");
     kind.append(kindSelect(entry, renderList));
-    row.children[3].after(kind);
+    row.children[2].after(kind);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
@@ -189,11 +200,11 @@ export function setupLibrary() {
     filesInput.value = "";
   });
   byId("libraryBackupButton").addEventListener("click", downloadBackup);
-  // Emptying the library cannot be undone, so it asks first and names how many activities go.
-  byId("libraryClearButton").addEventListener("click", async (event) => {
-    if (!window.confirm(t("libraryClearConfirm", { count: event.currentTarget.dataset.count }))) return;
-    await clearEntries();
-    libraryNote(t("libraryCleared"), "success");
+  // Emptying the open sport cannot be undone, so it asks first and names the sport and how many activities go.
+  byId("libraryClearButton").addEventListener("click", async () => {
+    if (!window.confirm(t("libraryClearConfirm", { count: shown.length, sport: sportLabel(librarySport) }))) return;
+    await deleteEntries(shown.map((entry) => entry.id));
+    libraryNote(t("libraryCleared", { sport: sportLabel(librarySport) }), "success");
     renderList();
   });
   byId("libraryRestoreButton").addEventListener("click", () => backupInput.click());

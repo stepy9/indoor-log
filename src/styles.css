@@ -476,8 +476,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .compare-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .compare-filters input { grid-column: 1 / -1; }
 .compare-filters input, .compare-filters select { width: 100%; }
-.kind-tag { flex: 0 0 auto; margin-left: auto; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 11px; font-weight: 600; cursor: pointer; }
-.kind-tag.is-intervals { border-color: var(--accent); color: var(--accent); }
+.kind-tag { flex: 0 0 auto; max-width: 110px; height: 24px; margin-left: auto; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 11px; font-weight: 600; cursor: pointer; }
+.kind-tag:not([data-kind="steady"]) { border-color: var(--accent); color: var(--accent); }
 .kind-tag:hover { border-color: var(--ink); color: var(--ink); }
 #overlayControls, #trendControls { flex: 1; margin: 0; }
 #overlayControls[hidden], #trendControls[hidden] { display: none; }
@@ -493,5 +493,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .danger-link { color: var(--danger-ink); }
 .danger-link:hover { color: var(--danger); }
 .danger-link:disabled { opacity: .4; cursor: default; }
-.library-table .kind-tag { margin-left: 0; }
 .kind-select { height: 28px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font-size: 12px; }
+.library-sports { display: flex; width: fit-content; margin: 4px 0 12px; }
+.library-sports button { padding: 6px 14px; }

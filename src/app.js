@@ -711,7 +711,7 @@ function render() {
       renderSummary(state.result.summary, state.result.startMs, state.result.endMs, state.result.sport);
       renderLaps(state.result.laps, state.result.sport);
       // The automatic option shows the kind the library would give this workout.
-      renderKindOptions(elements.workoutKind, detectedKind(entryFromWorkout(state.result)));
+      renderKindOptions(elements.workoutKind, detectedKind(entryFromWorkout(state.result)), elements.workoutKind.value, state.result.sport);
       renderChecks();
       elements.export.disabled = false;
       elements.liveState.classList.add("is-ready");

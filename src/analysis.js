@@ -141,6 +141,9 @@ function clearRests(entry) {
 const finiteValues = (list) => list.filter(Number.isFinite);
 const average = (list) => (list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : null);
 
+// Kinds a workout can have; the data only tells intervals from steady, the rest are picked by hand.
+export const workoutKinds = ["steady", "intervals", "tempo", "race", "recovery"];
+
 export const workoutKind = (entry) => entry.kind || detectedKind(entry);
 
 // The kind the data and laps give, ignoring any hand-picked one.

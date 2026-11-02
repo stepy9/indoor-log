@@ -1,7 +1,7 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds } from "../analysis.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
-import { kindTag, openLibrary } from "./library.js";
+import { kindLabel, kindSelect, openLibrary } from "./library.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -96,6 +96,12 @@ function renderLengths() {
   if (select.value !== view.length) view.length = select.value = "all";
 }
 
+function renderKindFilter() {
+  const select = byId("compareKind");
+  select.replaceChildren(new Option(t("compareKindAll"), "all"), ...workoutKinds.map((kind) => new Option(kindLabel(kind, view.sport), kind)));
+  select.value = view.kind;
+}
+
 function renderSports() {
   const select = byId("compareSport");
   const sports = [...new Set(view.entries.map((entry) => entry.sport))];
@@ -144,7 +150,7 @@ function renderList() {
         textContent: `${shortDate(entry.startMs)} · ${formatDuration(entry.summary.timerSeconds)} · ${displayNumber(entry.summary.distance / 1000, 2)} km`,
       }),
     );
-    row.append(checkbox, swatch, text, kindTag(entry, render));
+    row.append(checkbox, swatch, text, kindSelect(entry, render, "kind-tag"));
     return row;
   }));
   byId("compareLimit").hidden = view.slots.size < slotCount;
@@ -476,6 +482,7 @@ function render() {
   if (byId("compareView").hidden) return;
   renderSports();
   renderLengths();
+  renderKindFilter();
   renderList();
   renderMode();
   if (view.mode === "trend") {

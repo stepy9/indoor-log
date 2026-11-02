@@ -183,6 +183,10 @@ export const deleteEntry = (id) => run("readwrite", (store) => store.delete(id))
 
 export const clearEntries = () => run("readwrite", (store) => store.clear());
 
+export const deleteEntries = (ids) => run("readwrite", (store) => {
+  for (const id of ids) store.delete(id);
+});
+
 // Saves entries, dropping duplicates already in the library or among themselves; with none it only tidies the library.
 // Returns how many of the given entries were left out as duplicates of a fuller recording.
 export async function addEntries(entries) {
