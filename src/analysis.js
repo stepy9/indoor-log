@@ -323,12 +323,10 @@ export function movingAverage(values, size) {
   });
 }
 
-// The values that beat every one before them; the first sets the mark but is no record yet.
+// The best value of all, the first time it was reached; none when a single value or heart rate, which has no better way.
 export function recordFlags(values, direction) {
-  let best = null;
-  return values.map((value) => {
-    const record = best != null && direction !== 0 && (direction > 0 ? value > best : value < best);
-    if (best == null || record) best = value;
-    return record;
-  });
+  if (direction === 0 || values.length < 2) return values.map(() => false);
+  const best = direction > 0 ? Math.max(...values) : Math.min(...values);
+  const index = values.indexOf(best);
+  return values.map((_, at) => at === index);
 }

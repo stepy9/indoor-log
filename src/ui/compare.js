@@ -527,7 +527,7 @@ function groupTitle(from) {
   return new Intl.DateTimeFormat(locale(), { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${from}T12:00:00Z`));
 }
 
-// The trend's points: one per activity, or per week or month put together; each marked when it beat every one before.
+// The trend's points: one per activity, or per week or month put together; the best of the range is marked.
 function trendPoints() {
   const metric = view.trendMetric;
   const perActivity = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric) })).filter((point) => Number.isFinite(point.y));

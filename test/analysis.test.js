@@ -125,7 +125,7 @@ test("laps on the same resistance are put together, weighted by their time", asy
   assert.equal(Math.round(pace.get(11).value), 120);
 });
 
-test("the trend puts activities together by week, keeps the best effort and the record-breaking values", async () => {
+test("the trend puts activities together by week, keeps the best effort and the best value", async () => {
   const { groupTrend, movingAverage, recordFlags } = await import("../src/analysis.js");
   const at = (day, y, seconds = 600) => ({ x: Date.parse(`${day}T08:00:00Z`), y, entry: { summary: { timerSeconds: seconds, distance: seconds * 4 } } });
   // Monday and Wednesday of one week, then the Monday after.
@@ -135,7 +135,8 @@ test("the trend puts activities together by week, keeps the best effort and the 
   const best = groupTrend(points, "week", "bestShort", "rowing", "UTC");
   assert.equal(best[0].y, 100);
   assert.deepEqual(movingAverage([1, 2, 3, 4], 3), [1, 1.5, 2, 3]);
-  assert.deepEqual(recordFlags([5, 4, 6, 6, 7], 1), [false, false, true, false, true]);
+  assert.deepEqual(recordFlags([5, 4, 7, 6, 7], 1), [false, false, true, false, false]);
   assert.deepEqual(recordFlags([120, 118, 121], -1), [false, true, false]);
+  assert.deepEqual(recordFlags([120], -1), [false]);
   assert.deepEqual(recordFlags([140, 150], 0), [false, false]);
 });
