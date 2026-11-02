@@ -1,4 +1,4 @@
-# Kinomap FIT Studio
+# Indoor Log
 
 Local browser tool for converting Kinomap TCX/PWX data to FIT or merging it with a Garmin watch FIT. Supports indoor rowing, indoor cycling, and treadmill running, without GPS; speed, cadence, power, and heart rate are included when present in the sources. Source files are processed in the browser and are not uploaded.
 

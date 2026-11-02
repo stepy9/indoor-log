@@ -1,7 +1,7 @@
 {
-  "name": "Kinomap FIT Studio",
-  "short_name": "Kinomap FIT",
-  "description": "Turns Kinomap workouts into FIT files for Garmin Connect, optionally merged with heart rate from your watch.",
+  "name": "Indoor Log",
+  "short_name": "Indoor Log",
+  "description": "Converts Kinomap indoor workouts to FIT for Garmin Connect and keeps a diary of your rowing, cycling and treadmill sessions.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
