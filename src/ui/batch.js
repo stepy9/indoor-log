@@ -6,6 +6,7 @@ const note = byId("batchNote");
 const exportButton = byId("batchExportButton");
 const folderExportButton = byId("batchFolderExportButton");
 const applyButton = byId("batchApplyButton");
+const selectAllButton = byId("batchSelectAllButton");
 
 function shortDate(epochMs) {
   if (!Number.isFinite(epochMs)) return "—";
@@ -26,7 +27,7 @@ function statusFor(item) {
   return ["", mode];
 }
 
-export function renderBatchTabs({ onSelect, onToggle }) {
+export function renderBatchTabs({ onSelect, onToggle, onToggleAll }) {
   const batch = state.batch;
   panel.hidden = !batch;
   if (!batch) return;
@@ -60,6 +61,12 @@ export function renderBatchTabs({ onSelect, onToggle }) {
   }));
   const selected = batch.items.filter((item) => item.selected).length;
   note.textContent = t("batchSelected", { count: selected, total: batch.items.length });
+  // One link selects every activity that can be exported, or clears the selection once all of them are selected.
+  const selectable = batch.items.filter((item) => !item.error);
+  const allSelected = selectable.length > 0 && selectable.every((item) => item.selected);
+  selectAllButton.textContent = t(allSelected ? "batchSelectNone" : "batchSelectAll");
+  selectAllButton.disabled = !selectable.length || batch.busy;
+  selectAllButton.onclick = () => onToggleAll(!allSelected);
   exportButton.disabled = !selected || batch.busy;
   // Saving everything into one chosen folder needs the File System Access API, so desktop Chromium only.
   folderExportButton.hidden = typeof window.showDirectoryPicker !== "function";

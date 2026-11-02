@@ -298,6 +298,10 @@ function renderBatch() {
       item.selected = selected;
       renderBatch();
     },
+    onToggleAll: (selected) => {
+      for (const item of state.batch.items) if (!item.error) item.selected = selected;
+      renderBatch();
+    },
   });
 }
 
