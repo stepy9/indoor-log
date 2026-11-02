@@ -83,6 +83,43 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
   };
 }
 
+// The same workout recorded twice, such as the Kinomap file and the watch FIT: same sport,
+// starts at most five minutes apart and at least half of the shorter one overlapping.
+const duplicateStartMs = 5 * 60_000;
+
+export function sameWorkout(a, b) {
+  if (a.sport !== b.sport || Math.abs(a.startMs - b.startMs) > duplicateStartMs) return false;
+  const overlap = Math.min(a.endMs, b.endMs) - Math.max(a.startMs, b.startMs);
+  return overlap >= 0.5 * Math.min(a.endMs - a.startMs, b.endMs - b.startMs);
+}
+
+// The fuller recording wins: Kinomap with the watch, then Kinomap alone, then the watch alone.
+const sourceRank = { merge: 3, convert: 2, fit: 1 };
+
+// Adds entries to the library's, one per workout; on a tie the later entry wins. Returns what to write and what to delete.
+export function mergeDuplicates(existing, incoming) {
+  const kept = [];
+  for (const entry of [...existing, ...incoming]) {
+    const index = kept.findIndex((other) => sameWorkout(other, entry));
+    if (index < 0) {
+      kept.push(entry);
+      continue;
+    }
+    const other = kept[index];
+    const winner = (sourceRank[entry.source] ?? 0) >= (sourceRank[other.source] ?? 0) ? entry : other;
+    const loser = winner === entry ? other : entry;
+    // A kind picked by hand outlives the recording it was picked on.
+    kept[index] = winner.kind || !loser.kind ? winner : { ...winner, kind: loser.kind };
+  }
+  const keptIds = new Set(kept.map((entry) => entry.id));
+  const existingById = new Map(existing.map((entry) => [entry.id, entry]));
+  return {
+    save: kept.filter((entry) => existingById.get(entry.id) !== entry),
+    remove: existing.filter((entry) => !keptIds.has(entry.id)).map((entry) => entry.id),
+    count: kept.length,
+  };
+}
+
 // A backup is one JSON file with every entry, read back by parseBackup.
 export function backupText(entries) {
   return JSON.stringify({ format: backupFormat, version: 1, entries });
@@ -128,6 +165,23 @@ export const saveEntries = (entries) => run("readwrite", (store) => {
 });
 
 export const deleteEntry = (id) => run("readwrite", (store) => store.delete(id));
+
+export const clearEntries = () => run("readwrite", (store) => store.clear());
+
+// Saves entries, dropping duplicates already in the library or among themselves; with none it only tidies the library.
+// Returns how many of the given entries were left out as duplicates of a fuller recording.
+export async function addEntries(entries) {
+  const existing = await run("readonly", (store) => store.getAll());
+  const { save, remove } = mergeDuplicates(existing, entries);
+  if (save.length || remove.length) {
+    await run("readwrite", (store) => {
+      for (const id of remove) store.delete(id);
+      for (const entry of save) store.put(entry);
+    });
+  }
+  const saved = new Set(save.map((entry) => entry.id));
+  return { skipped: entries.filter((entry) => !saved.has(entry.id)).length };
+}
 
 export async function listEntries() {
   const entries = await run("readonly", (store) => store.getAll());

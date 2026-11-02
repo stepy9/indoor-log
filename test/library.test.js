@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../src/core.js";
-import { backupText, entryFromFit, entryFromWorkout, entryId, parseBackup } from "../src/library.js";
+import { backupText, entryFromFit, entryFromWorkout, entryId, mergeDuplicates, parseBackup, sameWorkout } from "../src/library.js";
 
 const folder = path.resolve("test", "fixtures", "rowing");
 
@@ -33,4 +33,21 @@ test("a backup reads back its entries and refuses other files", () => {
   const entry = { id: "rowing-1", records: { seconds: [0, 1] } };
   assert.deepEqual(parseBackup(backupText([entry])), [entry]);
   assert.throws(() => parseBackup(JSON.stringify({ entries: [] })));
+});
+
+test("the same workout saved twice keeps the fuller recording and a hand-picked kind", () => {
+  const entry = (id, source, startMs, extra = {}) => ({ id, source, sport: "rowing", startMs, endMs: startMs + 600_000, ...extra });
+  const watch = entry("watch", "fit", 1_000_000, { kind: "steady" });
+  const kinomap = entry("kinomap", "convert", 1_007_000);
+  const other = entry("other", "convert", 9_000_000);
+  const { save, remove, count } = mergeDuplicates([watch, other], [kinomap]);
+  assert.deepEqual(save.map((item) => item.id), ["kinomap"]);
+  assert.equal(save[0].kind, "steady");
+  assert.deepEqual(remove, ["watch"]);
+  assert.equal(count, 2);
+  // A watch FIT added after the Kinomap one is left out.
+  assert.deepEqual(mergeDuplicates([kinomap], [{ ...watch, kind: undefined }]).save, []);
+  // Workouts far apart or of another sport are not duplicates.
+  assert.ok(!sameWorkout(kinomap, other));
+  assert.ok(!sameWorkout(kinomap, { ...kinomap, sport: "cycling" }));
 });

@@ -1,6 +1,6 @@
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { backupText, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
+import { addEntries, backupText, clearEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 
@@ -22,7 +22,7 @@ export const savesToLibrary = () => savedDefaults().saveToLibrary !== false;
 export async function rememberWorkout(workout) {
   if (!savesToLibrary() || !workout) return;
   try {
-    await saveEntries([entryFromWorkout(workout)]);
+    await addEntries([entryFromWorkout(workout)]);
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
   }
@@ -39,6 +39,8 @@ const value = (number, unit) => (number == null ? "—" : `${displayNumber(numbe
 async function renderList() {
   let entries;
   try {
+    // Duplicates saved before the library looked for them go away when it opens.
+    await addEntries([]);
     entries = await listEntries();
   } catch (error) {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
@@ -47,6 +49,8 @@ async function renderList() {
   byId("libraryCount").textContent = t("libraryCount", { count: entries.length });
   byId("libraryEmpty").hidden = entries.length > 0;
   byId("libraryBackupButton").disabled = !entries.length;
+  byId("libraryClearButton").disabled = !entries.length;
+  byId("libraryClearButton").dataset.count = String(entries.length);
   byId("libraryRows").replaceChildren(...entries.map((entry) => {
     const row = document.createElement("tr");
     const cells = [
@@ -94,8 +98,8 @@ async function addFiles(files) {
       failed.push(`${file.name}: ${translateMessage(error.message)}`);
     }
   }
-  if (entries.length) await saveEntries(entries);
-  libraryNote([t("libraryAdded", { count: entries.length }), ...failed].join(" · "), failed.length ? "error" : "success");
+  const { skipped } = entries.length ? await addEntries(entries) : { skipped: 0 };
+  libraryNote([t("libraryAdded", { count: entries.length - skipped }), ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []), ...failed].join(" · "), failed.length ? "error" : "success");
   renderList();
 }
 
@@ -114,8 +118,8 @@ async function downloadBackup() {
 async function restoreBackup(file) {
   try {
     const entries = parseBackup(await file.text());
-    await saveEntries(entries);
-    libraryNote(t("libraryRestored", { count: entries.length }), "success");
+    const { skipped } = await addEntries(entries);
+    libraryNote([t("libraryRestored", { count: entries.length - skipped }), ...(skipped ? [t("libraryDuplicates", { count: skipped })] : [])].join(" · "), "success");
   } catch (error) {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
   }
@@ -139,6 +143,13 @@ export function setupLibrary() {
     filesInput.value = "";
   });
   byId("libraryBackupButton").addEventListener("click", downloadBackup);
+  // Emptying the library cannot be undone, so it asks first and names how many activities go.
+  byId("libraryClearButton").addEventListener("click", async (event) => {
+    if (!window.confirm(t("libraryClearConfirm", { count: event.currentTarget.dataset.count }))) return;
+    await clearEntries();
+    libraryNote(t("libraryCleared"), "success");
+    renderList();
+  });
   byId("libraryRestoreButton").addEventListener("click", () => backupInput.click());
   backupInput.addEventListener("change", () => {
     if (backupInput.files[0]) restoreBackup(backupInput.files[0]);

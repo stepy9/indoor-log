@@ -488,3 +488,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .trend-table td.is-better { color: var(--success); }
 .trend-table td.is-worse { color: var(--danger); }
 .trend-table th:nth-child(-n+2), .trend-table td:nth-child(-n+2) { text-align: left; }
+.library-table th:nth-child(2), .library-table td:nth-child(2) { text-align: left; }
+.danger-link { color: var(--danger-ink); }
+.danger-link:hover { color: var(--danger); }
+.danger-link:disabled { opacity: .4; cursor: default; }
