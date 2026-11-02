@@ -233,6 +233,14 @@ function renderChart() {
   })).filter((line) => line.points.length);
   byId("compareZoomBar").hidden = !zoom;
   byId("compareZoomHint").hidden = !lines.length;
+  // The arrows move by half the zoomed stretch; their tooltips say how far.
+  if (zoom) {
+    const step = axisText((zoom[1] - zoom[0]) / 2);
+    for (const [id, key] of [["compareZoomLeft", "zoomLeftBy"], ["compareZoomRight", "zoomRightBy"]]) {
+      byId(id).title = t(key, { step });
+      byId(id).setAttribute("aria-label", byId(id).title);
+    }
+  }
   if (!lines.length) {
     const empty = byId("compareChartEmpty");
     empty.textContent = t(zoom ? "zoomEmpty" : "compareChartEmpty");
