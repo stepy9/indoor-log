@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bestAverage, bestTime, downsample, invertedMetric, paceFrom, series } from "../src/analysis.js";
+import { bestAverage, bestTime, downsample, inLengthRange, invertedMetric, paceFrom, series, workoutKind } from "../src/analysis.js";
 
 // Ten minutes at 1 Hz: 4 m/s with 200 W, except a minute at 5 m/s and 300 W from 5:00.
 function entry(sport = "rowing") {
@@ -50,4 +50,23 @@ test("best efforts find the fast minute and stay empty when the activity is too 
   assert.equal(bestAverage(entry(), "power", 1200), null);
   assert.equal(bestTime(entry(), 300), 60);
   assert.equal(bestTime(entry(), 100000), null);
+});
+
+test("tells interval workouts from steady ones, and a hand-picked kind wins", () => {
+  const steady = { ...entry(), laps: [] };
+  steady.records = { ...steady.records, power: steady.records.seconds.map(() => 200) };
+  assert.equal(workoutKind(steady), "steady");
+  const intervals = { ...entry(), laps: [] };
+  intervals.records = { ...intervals.records, power: intervals.records.seconds.map((second) => (Math.floor(second / 60) % 2 ? 300 : 120)) };
+  assert.equal(workoutKind(intervals), "intervals");
+  assert.equal(workoutKind({ ...intervals, kind: "steady" }), "steady");
+});
+
+test("sorts activities into length ranges by moving time", () => {
+  const minutes = (value) => ({ summary: { timerSeconds: value * 60 } });
+  assert.ok(inLengthRange(minutes(10), "short"));
+  assert.ok(inLengthRange(minutes(20), "medium"));
+  assert.ok(!inLengthRange(minutes(20), "long"));
+  assert.ok(inLengthRange(minutes(90), "longer"));
+  assert.ok(inLengthRange(minutes(90), "all"));
 });

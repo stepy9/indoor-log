@@ -342,6 +342,22 @@
             <select id="compareSport" aria-label="Sport" data-i18n-aria="librarySport"></select>
           </div>
           <p class="field-note" id="compareEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná. Stáhněte aktivitu v převodníku nebo přidejte soubory do knihovny.</p>
+          <div class="compare-filters">
+            <input id="compareSearch" type="search" placeholder="Hledat název" data-i18n-placeholder="compareSearch" aria-label="Hledat název" data-i18n-aria="compareSearch" />
+            <select id="compareLength" aria-label="Délka" data-i18n-aria="compareLength">
+              <option value="all" data-i18n="compareLengthAll">Jakákoli délka</option>
+              <option value="short" data-i18n="compareLengthShort">do 15 min</option>
+              <option value="medium" data-i18n="compareLengthMedium">15–30 min</option>
+              <option value="long" data-i18n="compareLengthLong">30–60 min</option>
+              <option value="longer" data-i18n="compareLengthLonger">nad 60 min</option>
+            </select>
+            <select id="compareKind" aria-label="Typ" data-i18n-aria="compareKind">
+              <option value="all" data-i18n="compareKindAll">Všechny typy</option>
+              <option value="intervals" data-i18n="kindIntervals">Intervaly</option>
+              <option value="steady" data-i18n="kindSteady">Souvislý</option>
+            </select>
+          </div>
+          <p class="field-note" id="compareNoMatch" data-i18n="compareNoMatch" hidden>Filtru neodpovídá žádná aktivita.</p>
           <div class="compare-list" id="compareList"></div>
           <p class="field-note" id="compareLimit" data-i18n="compareLimit" hidden>Porovnat lze nejvýš 6 aktivit najednou.</p>
           <button class="outline-button" id="compareLibraryButton" type="button" data-i18n="compareManage">Spravovat knihovnu</button>

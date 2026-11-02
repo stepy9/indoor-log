@@ -97,6 +97,7 @@ export function applyStaticTranslations() {
   for (const element of document.querySelectorAll("[data-i18n]")) element.textContent = t(element.dataset.i18n);
   for (const element of document.querySelectorAll("[data-i18n-aria]")) element.setAttribute("aria-label", t(element.dataset.i18nAria));
   for (const element of document.querySelectorAll("[data-i18n-title]")) element.title = t(element.dataset.i18nTitle);
+  for (const element of document.querySelectorAll("[data-i18n-placeholder]")) element.placeholder = t(element.dataset.i18nPlaceholder);
 }
 
 export function setNotice(text = "", type = "") {

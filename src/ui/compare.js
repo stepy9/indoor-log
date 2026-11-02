@@ -1,5 +1,5 @@
-import { bestAverage, bestTime, downsample, effortDistances, invertedMetric, paceFrom, powerDurations, series } from "../analysis.js";
-import { listEntries } from "../library.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
+import { listEntries, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { openLibrary } from "./library.js";
 
@@ -12,6 +12,9 @@ const view = {
   // Selected entry id → colour slot 1–6.
   slots: new Map(),
   sport: null,
+  search: "",
+  length: "all",
+  kind: "all",
   metric: "power",
   axis: "distance",
   smoothSeconds: 10,
@@ -91,9 +94,33 @@ function toggle(entry, on) {
   render();
 }
 
+// Name, length and kind narrow the list; selected activities stay listed so they can still be unticked.
+function matches(entry) {
+  const search = view.search.trim().toLocaleLowerCase();
+  return (!search || entry.name.toLocaleLowerCase().includes(search))
+    && inLengthRange(entry, view.length)
+    && (view.kind === "all" || workoutKind(entry) === view.kind);
+}
+
+// The kind tag switches an activity between interval and steady and keeps the choice in the library.
+function kindTag(entry) {
+  const kind = workoutKind(entry);
+  const tag = Object.assign(document.createElement("button"), {
+    type: "button", className: `kind-tag is-${kind}`, textContent: t(kind === "intervals" ? "kindIntervals" : "kindSteady"), title: t("kindSwitch"),
+  });
+  tag.addEventListener("click", async (event) => {
+    event.preventDefault();
+    entry.kind = kind === "intervals" ? "steady" : "intervals";
+    await saveEntries([entry]).catch(() => {});
+    render();
+  });
+  return tag;
+}
+
 function renderList() {
-  const entries = view.entries.filter((entry) => entry.sport === view.sport);
+  const entries = view.entries.filter((entry) => entry.sport === view.sport && (view.slots.has(entry.id) || matches(entry)));
   byId("compareEmpty").hidden = view.entries.length > 0;
+  byId("compareNoMatch").hidden = !view.entries.length || entries.length > 0;
   byId("compareList").replaceChildren(...entries.map((entry) => {
     const slot = view.slots.get(entry.id);
     const row = document.createElement("label");
@@ -111,7 +138,7 @@ function renderList() {
         textContent: `${shortDate(entry.startMs)} · ${formatDuration(entry.summary.timerSeconds)} · ${displayNumber(entry.summary.distance / 1000, 2)} km`,
       }),
     );
-    row.append(checkbox, swatch, text);
+    row.append(checkbox, swatch, text, kindTag(entry));
     return row;
   }));
   byId("compareLimit").hidden = view.slots.size < slotCount;
@@ -316,6 +343,16 @@ export function setupCompare({ onConverter }) {
       if (toCompare === !byId("compareView").hidden) return;
       showCompare(toCompare);
       if (!toCompare) onConverter();
+    });
+  }
+  byId("compareSearch").addEventListener("input", (event) => {
+    view.search = event.target.value;
+    renderList();
+  });
+  for (const [id, key] of [["compareLength", "length"], ["compareKind", "kind"]]) {
+    byId(id).addEventListener("change", (event) => {
+      view[key] = event.target.value;
+      renderList();
     });
   }
   byId("compareSport").addEventListener("change", (event) => {

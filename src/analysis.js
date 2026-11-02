@@ -1,3 +1,5 @@
+import { detectIntervals } from "./core.js";
+
 // Comparing saved activities: series for the overlay chart and best efforts, from library entries.
 
 // Below this speed the athlete has stopped and a pace would run off to infinity.
@@ -114,3 +116,46 @@ export function bestTime(entry, meters) {
 
 export const powerDurations = [60, 300, 1200];
 export const effortDistances = { rowing: [500, 1000, 2000, 5000], running: [1000, 5000, 10000], cycling: [5000, 10000, 20000] };
+
+// Interval or steady: a hand-picked kind wins, then rest laps saved with the activity, then the shape of the data.
+const kinds = new WeakMap();
+// A rest counts when it is at least this much easier than the work on either side of it.
+const restContrast = 0.8;
+
+// Easy stretches between two harder ones that drop clearly below them; warm-up and cool-down do not count.
+function clearRests(entry) {
+  const { seconds } = entry.records;
+  const records = seconds.map((second, index) => ({
+    timeMs: second * 1000, power: entry.records.power[index], cadence: entry.records.cadence[index], speed: entry.records.speed[index],
+  }));
+  const { field, segments } = detectIntervals(records);
+  const means = segments.map((segment, index) => {
+    const until = segments[index + 1]?.startMs ?? Infinity;
+    return average(finiteValues(records.filter((record) => record.timeMs >= segment.startMs && record.timeMs < until).map((record) => record[field])));
+  });
+  return segments.filter((segment, index) => segment.intensity === "recovery"
+    && means[index] != null && means[index - 1] && means[index + 1]
+    && means[index] <= restContrast * (means[index - 1] + means[index + 1]) / 2).length;
+}
+
+const finiteValues = (list) => list.filter(Number.isFinite);
+const average = (list) => (list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : null);
+
+export function workoutKind(entry) {
+  if (entry.kind) return entry.kind;
+  if (!kinds.has(entry)) {
+    const restLaps = entry.laps.filter((lap) => lap.intensity === "recovery" || lap.intensity === "rest").length;
+    kinds.set(entry, restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
+  }
+  return kinds.get(entry);
+}
+
+// Length filters by moving time, in minutes.
+export const lengthRanges = { short: [0, 15], medium: [15, 30], long: [30, 60], longer: [60, Infinity] };
+
+export function inLengthRange(entry, range) {
+  if (!lengthRanges[range]) return true;
+  const [from, to] = lengthRanges[range];
+  const minutes = entry.summary.timerSeconds / 60;
+  return minutes >= from && minutes < to;
+}
