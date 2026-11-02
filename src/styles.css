@@ -115,9 +115,9 @@ button { cursor: pointer; }
 .library-table td:nth-child(2) { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #libraryNote.is-error { color: var(--danger); }
 #libraryNote.is-success { color: var(--success); }
-.privacy { display: flex; align-items: center; gap: 8px; }
-.privacy-dot, .state-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #4ade80; }
-.privacy-dot { box-shadow: 0 0 0 3px rgba(74, 222, 128, .18); }
+.privacy { display: flex; align-items: center; gap: 6px; }
+.privacy svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.state-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #4ade80; }
 
 .language-control { position: relative; display: flex; align-items: center; }
 .language-button { height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: 9px; color: var(--topbar-ink); background: rgba(255, 255, 255, .04); font-size: 12px; font-weight: 600; }
