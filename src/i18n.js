@@ -1,5 +1,13 @@
 export const translations = {
   cs: {
+    compareMode: "Režim",
+    modeOverlay: "Porovnat",
+    modeTrend: "Vývoj",
+    trendEfficiency: "Výkon na tep",
+    trendEmpty: "Filtru neodpovídá žádná aktivita s touto hodnotou.",
+    trendCount: "{count} tréninků podle filtru",
+    trendTable: "Tréninky ve vývoji",
+    trendChange: "Změna",
     compareSearch: "Hledat název",
     compareLength: "Délka",
     compareLengthAll: "Jakákoli délka",
@@ -291,6 +299,14 @@ export const translations = {
     unknownSportWarning: "Sport Kinomap nebyl rozpoznán; použije se veslování.",
   },
   en: {
+    compareMode: "Mode",
+    modeOverlay: "Compare",
+    modeTrend: "Progress",
+    trendEfficiency: "Power per heartbeat",
+    trendEmpty: "No activity matching the filter has this value.",
+    trendCount: "{count} workouts in the filter",
+    trendTable: "Workouts in the progress",
+    trendChange: "Change",
     compareSearch: "Search name",
     compareLength: "Length",
     compareLengthAll: "Any length",

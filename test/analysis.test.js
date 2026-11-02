@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bestAverage, bestTime, downsample, inLengthRange, invertedMetric, paceFrom, series, workoutKind } from "../src/analysis.js";
+import { bestAverage, bestTime, downsample, inLengthRange, invertedMetric, paceFrom, series, trendIsTime, trendValue, workoutKind } from "../src/analysis.js";
 
 // Ten minutes at 1 Hz: 4 m/s with 200 W, except a minute at 5 m/s and 300 W from 5:00.
 function entry(sport = "rowing") {
@@ -72,4 +72,16 @@ test("sorts activities into time and sport-specific distance ranges", () => {
   assert.ok(!inLengthRange(activity(20, 4, "cycling"), "distance:1"));
   assert.ok(inLengthRange(activity(90, 30, "cycling"), "distance:1"));
   assert.ok(inLengthRange(activity(90, 20), "all"));
+});
+
+test("trend values give one number per activity, with times improving downwards", () => {
+  const activity = { ...entry(), laps: [], summary: { timerSeconds: 600, distance: 2460, avgPower: 210, avgHeartRate: 150 } };
+  assert.equal(trendValue(activity, "avgPower"), 210);
+  assert.equal(trendValue(activity, "efficiency"), 1.4);
+  assert.equal(Math.round(trendValue(activity, "pace")), 122);
+  assert.equal(trendValue(activity, "bestShort"), 110);
+  assert.equal(trendValue(activity, "bestLong"), 485);
+  assert.equal(trendValue(activity, "bestPower"), 220);
+  assert.ok(trendIsTime("bestShort", "rowing"));
+  assert.ok(!trendIsTime("pace", "cycling"));
 });

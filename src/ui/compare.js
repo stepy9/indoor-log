@@ -1,4 +1,4 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
 import { listEntries, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { openLibrary } from "./library.js";
@@ -15,6 +15,9 @@ const view = {
   search: "",
   length: "all",
   kind: "all",
+  // "overlay" lays the selected activities over each other; "trend" follows every filtered one over time.
+  mode: "overlay",
+  trendMetric: "avgPower",
   metric: "power",
   axis: "distance",
   smoothSeconds: 10,
@@ -228,7 +231,7 @@ function renderChart() {
   }
   const guide = svg("g", { class: "compare-hover" });
   chart.append(guide);
-  view.layout = { lines, margin, plotWidth, plotHeight, maxX, xFor, yFor, guide };
+  view.layout = { lines, margin, plotWidth, plotHeight, minX: 0, maxX, xFor, yFor, guide };
   renderHover();
 }
 
@@ -246,6 +249,10 @@ function valueAt(points, x) {
 }
 
 function renderHover() {
+  if (view.layout?.trend) {
+    renderTrendHover();
+    return;
+  }
   const tooltip = byId("compareTooltip");
   const layout = view.layout;
   if (!layout || view.hoverX == null) {
@@ -323,14 +330,178 @@ function renderTables() {
   ], picked);
 }
 
+
+// Trend: one point per activity that passes the filters, oldest to newest.
+const trendEntries = () => view.entries.filter((entry) => entry.sport === view.sport && matches(entry)).sort((a, b) => a.startMs - b.startMs);
+
+function trendLabel(metric, sport) {
+  const { short, long } = trendDistances(sport);
+  const distance = (meters) => (meters >= 1000 ? `${meters / 1000} km` : `${meters} m`);
+  if (metric === "pace") return metricLabel("pace", sport);
+  if (metric === "bestShort") return t("compareBestTime", { distance: distance(short) });
+  if (metric === "bestLong") return t("compareBestTime", { distance: distance(long) });
+  if (metric === "bestPower") return t("compareBestPower", { duration: formatDuration(300) });
+  return t({ avgPower: "compareAvgPower", avgHeartRate: "compareAvgHeartRate", efficiency: "trendEfficiency" }[metric]);
+}
+
+function trendText(value, metric, sport) {
+  if (!Number.isFinite(value)) return "—";
+  if (metric === "pace") return metricText(value, "pace", sport);
+  if (trendIsTime(metric, sport)) return formatDuration(value);
+  if (metric === "efficiency") return `${displayNumber(value, 2)} W/bpm`;
+  return `${displayNumber(value)} ${metric === "avgHeartRate" ? "bpm" : "W"}`;
+}
+
+const dayDate = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
+
+function renderTrendControls() {
+  const select = byId("trendMetric");
+  select.replaceChildren(...trendMetrics.map((metric) => new Option(trendLabel(metric, view.sport), metric)));
+  select.value = view.trendMetric;
+}
+
+function renderTrendChart() {
+  const chart = byId("compareChart");
+  const metric = view.trendMetric;
+  const points = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric) })).filter((point) => Number.isFinite(point.y));
+  chart.replaceChildren();
+  view.layout = null;
+  const empty = byId("compareChartEmpty");
+  empty.hidden = points.length > 0;
+  empty.textContent = t("trendEmpty");
+  byId("trendNote").textContent = t("trendCount", { count: points.length });
+  if (!points.length) return;
+  const width = chart.clientWidth || 800;
+  const height = 320;
+  const margin = { top: 16, right: 24, bottom: 30, left: 72 };
+  const day = 86_400_000;
+  const minX = points[0].x - day;
+  const maxX = points.at(-1).x + day;
+  const ys = points.map((point) => point.y);
+  const low = Math.min(...ys);
+  const high = Math.max(...ys);
+  const pad = (high - low) * 0.15 || Math.abs(high) * 0.05 || 1;
+  const isTime = trendIsTime(metric, view.sport);
+  const yTicks = niceTicks(Math.max(0, low - pad), high + pad, 5, isTime ? [1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600] : metric === "efficiency" ? [0.05, 0.1, 0.2, 0.25, 0.5, 1] : null);
+  const yLow = Math.min(yTicks[0], low - pad);
+  const yHigh = Math.max(yTicks.at(-1), high + pad);
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const xFor = (x) => margin.left + ((x - minX) / (maxX - minX)) * plotWidth;
+  const yFor = (y) => {
+    const share = (y - yLow) / (yHigh - yLow || 1);
+    return margin.top + (isTime ? share : 1 - share) * plotHeight;
+  };
+  chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  chart.setAttribute("height", String(height));
+  for (const tick of yTicks) {
+    chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
+    const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
+    label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, metric === "efficiency" ? 2 : 0);
+    chart.append(label);
+  }
+  // Date ticks spread evenly; a short span shows fewer of them.
+  const tickCount = Math.min(6, Math.max(2, Math.round((maxX - minX) / day)));
+  for (let index = 0; index < tickCount; index += 1) {
+    const x = minX + ((maxX - minX) * (index + 0.5)) / tickCount;
+    const label = svg("text", { class: "compare-tick", x: xFor(x), y: height - 10, "text-anchor": "middle" });
+    label.textContent = dayDate(x);
+    chart.append(label);
+  }
+  chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
+  const d = points.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
+  chart.append(svg("path", { class: "compare-line trend-line", d, stroke: "var(--compare-1)" }));
+  for (const point of points) chart.append(svg("circle", { class: "compare-dot", cx: xFor(point.x), cy: yFor(point.y), r: 4.5, fill: "var(--compare-1)" }));
+  const guide = svg("g", { class: "compare-hover" });
+  chart.append(guide);
+  view.layout = { trend: true, points, margin, plotWidth, plotHeight, minX, maxX, xFor, yFor, guide };
+  renderHover();
+}
+
+// The activity nearest the pointer, marked with a ring and described in the tooltip.
+function renderTrendHover() {
+  const tooltip = byId("compareTooltip");
+  const layout = view.layout;
+  const point = view.hoverX == null ? null : layout.points.reduce((best, candidate) => (Math.abs(candidate.x - view.hoverX) < Math.abs(best.x - view.hoverX) ? candidate : best));
+  if (!point) {
+    layout.guide.replaceChildren();
+    tooltip.hidden = true;
+    return;
+  }
+  const x = layout.xFor(point.x);
+  layout.guide.replaceChildren(svg("circle", { class: "trend-ring", cx: x, cy: layout.yFor(point.y), r: 8 }));
+  tooltip.replaceChildren(
+    Object.assign(document.createElement("strong"), { textContent: trendText(point.y, view.trendMetric, view.sport) }),
+    Object.assign(document.createElement("span"), { textContent: shortDate(point.entry.startMs) }),
+    Object.assign(document.createElement("span"), { textContent: point.entry.name }),
+  );
+  tooltip.hidden = false;
+  const chartBox = byId("compareChart").getBoundingClientRect();
+  const left = x * (chartBox.width / (layout.margin.left + layout.plotWidth + layout.margin.right));
+  tooltip.style.left = `${left > chartBox.width / 2 ? left - tooltip.offsetWidth - 12 : left + 12}px`;
+}
+
+// Every activity in the trend, newest first, with the change against the one before it.
+function renderTrendTable() {
+  const entries = trendEntries();
+  const metric = view.trendMetric;
+  const sport = view.sport;
+  const isTime = trendIsTime(metric, sport);
+  const head = document.createElement("tr");
+  head.append(...[t("libraryDate"), t("libraryName"), t("lapTime"), t("lapDistanceColumn"), trendLabel(metric, sport), t("trendChange")]
+    .map((title) => Object.assign(document.createElement("th"), { textContent: title })));
+  let previous = null;
+  const rows = entries.map((entry) => {
+    const value = trendValue(entry, metric);
+    let change = "";
+    let tone = "";
+    if (Number.isFinite(value) && Number.isFinite(previous)) {
+      const delta = value - previous;
+      const better = metric === "avgHeartRate" ? null : isTime ? delta < 0 : delta > 0;
+      change = `${delta > 0 ? "+" : delta < 0 ? "−" : "±"}${isTime ? formatDuration(Math.abs(delta)) : displayNumber(Math.abs(delta), metric === "efficiency" ? 2 : 0)}`;
+      tone = delta === 0 || better == null ? "" : better ? "is-better" : "is-worse";
+    }
+    if (Number.isFinite(value)) previous = value;
+    const row = document.createElement("tr");
+    const cells = [shortDate(entry.startMs), entry.name, formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`, trendText(value, metric, sport), change];
+    row.append(...cells.map((text, index) => Object.assign(document.createElement("td"), { textContent: text, className: index === 5 ? tone : "" })));
+    return row;
+  }).reverse();
+  byId("trendTable").replaceChildren(head, ...rows);
+  byId("trendTableCard").hidden = !entries.length;
+}
+
+function renderMode() {
+  const trend = view.mode === "trend";
+  for (const button of document.querySelectorAll("[data-compare-mode]")) button.setAttribute("aria-pressed", String((button.dataset.compareMode === "trend") === trend));
+  byId("overlayControls").hidden = trend;
+  byId("trendControls").hidden = !trend;
+  byId("compareList").classList.toggle("is-trend", trend);
+  byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
+}
+
+function drawChart() {
+  if (view.mode === "trend") renderTrendChart();
+  else renderChart();
+}
+
 function render() {
   if (byId("compareView").hidden) return;
   renderSports();
   renderLengths();
   renderList();
-  renderControls();
-  renderChart();
-  renderTables();
+  renderMode();
+  if (view.mode === "trend") {
+    renderTrendControls();
+    renderTrendChart();
+    renderTrendTable();
+    byId("compareTables").hidden = true;
+  } else {
+    renderControls();
+    renderChart();
+    renderTables();
+    byId("trendTableCard").hidden = true;
+  }
 }
 
 export function rerenderCompare() {
@@ -362,14 +533,28 @@ export function setupCompare({ onConverter }) {
       if (!toCompare) onConverter();
     });
   }
+  for (const button of document.querySelectorAll("[data-compare-mode]")) {
+    button.addEventListener("click", () => {
+      view.mode = button.dataset.compareMode;
+      view.hoverX = null;
+      render();
+    });
+  }
+  byId("trendMetric").addEventListener("change", (event) => {
+    view.trendMetric = event.target.value;
+    view.hoverX = null;
+    render();
+  });
+  // The trend follows the filters, so they redraw it; the overlay only narrows the list.
+  const filtered = () => (view.mode === "trend" ? render() : renderList());
   byId("compareSearch").addEventListener("input", (event) => {
     view.search = event.target.value;
-    renderList();
+    filtered();
   });
   for (const [id, key] of [["compareLength", "length"], ["compareKind", "kind"]]) {
     byId(id).addEventListener("change", (event) => {
       view[key] = event.target.value;
-      renderList();
+      filtered();
     });
   }
   byId("compareSport").addEventListener("change", (event) => {
@@ -405,7 +590,7 @@ export function setupCompare({ onConverter }) {
     const box = chart.getBoundingClientRect();
     const scale = (layout.margin.left + layout.plotWidth + layout.margin.right) / box.width;
     const x = (event.clientX - box.left) * scale;
-    view.hoverX = x < layout.margin.left || x > layout.margin.left + layout.plotWidth ? null : ((x - layout.margin.left) / layout.plotWidth) * layout.maxX;
+    view.hoverX = x < layout.margin.left || x > layout.margin.left + layout.plotWidth ? null : layout.minX + ((x - layout.margin.left) / layout.plotWidth) * (layout.maxX - layout.minX);
     renderHover();
   });
   chart.addEventListener("pointerleave", () => {
@@ -413,6 +598,6 @@ export function setupCompare({ onConverter }) {
     renderHover();
   });
   new ResizeObserver(() => {
-    if (!byId("compareView").hidden) renderChart();
+    if (!byId("compareView").hidden) drawChart();
   }).observe(chart);
 }

@@ -360,6 +360,15 @@
         <div class="compare-main">
           <section class="card compare-chart-card">
             <div class="compare-controls">
+              <div class="segmented" role="group" aria-label="Režim" data-i18n-aria="compareMode">
+                <button type="button" data-compare-mode="overlay" data-i18n="modeOverlay">Porovnat</button>
+                <button type="button" data-compare-mode="trend" data-i18n="modeTrend">Vývoj</button>
+              </div>
+              <div class="compare-controls" id="trendControls" hidden>
+                <select id="trendMetric" aria-label="Veličina" data-i18n-aria="compareMetric"></select>
+                <span class="estimate-note" id="trendNote"></span>
+              </div>
+              <div class="compare-controls" id="overlayControls">
               <div class="segmented" role="group" aria-label="Veličina" data-i18n-aria="compareMetric">
                 <button type="button" data-compare-metric="power">Výkon</button>
                 <button type="button" data-compare-metric="pace">Tempo</button>
@@ -379,12 +388,17 @@
                   <option value="60">60 s</option>
                 </select>
               </label>
+              </div>
             </div>
             <div class="compare-chart-wrap">
               <svg class="compare-chart" id="compareChart" role="img" aria-label="Porovnání aktivit" data-i18n-aria="navCompare"></svg>
               <div class="compare-tooltip" id="compareTooltip" hidden></div>
               <p class="field-note compare-chart-empty" id="compareChartEmpty" data-i18n="compareChartEmpty">Vyberte vlevo jednu nebo více aktivit.</p>
             </div>
+          </section>
+          <section class="card" id="trendTableCard" hidden>
+            <span class="field-label" data-i18n="trendTable">Tréninky ve vývoji</span>
+            <div class="laps-scroll"><table class="laps-table compare-table trend-table" id="trendTable"></table></div>
           </section>
           <div class="compare-tables" id="compareTables" hidden>
             <section class="card">

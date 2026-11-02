@@ -170,3 +170,30 @@ export function inLengthRange(entry, filter) {
   const amount = by === "time" ? entry.summary.timerSeconds / 60 : entry.summary.distance / 1000;
   return amount >= range[0] && amount < range[1];
 }
+
+// One number per activity for the trend over time.
+export const trendMetrics = ["avgPower", "pace", "avgHeartRate", "efficiency", "bestShort", "bestLong", "bestPower"];
+
+// The short and long best-effort distances the trend follows: 500 m and 2 km for rowing.
+export const trendDistances = (sport) => {
+  const distances = effortDistances[sport] ?? effortDistances.rowing;
+  return { short: distances[0], long: distances[2] };
+};
+
+export function trendValue(entry, metric) {
+  const { summary, sport } = entry;
+  switch (metric) {
+    case "avgPower": return summary.avgPower ?? null;
+    case "avgHeartRate": return summary.avgHeartRate ?? null;
+    case "pace": return summary.timerSeconds > 0 ? paceFrom(summary.distance / summary.timerSeconds, sport) : null;
+    // Watts per heartbeat: more power for the same heart rate means better fitness.
+    case "efficiency": return summary.avgPower && summary.avgHeartRate ? summary.avgPower / summary.avgHeartRate : null;
+    case "bestShort": return bestTime(entry, trendDistances(sport).short);
+    case "bestLong": return bestTime(entry, trendDistances(sport).long);
+    case "bestPower": return bestAverage(entry, "power", 300);
+    default: return null;
+  }
+}
+
+// Times and paces improve downwards, except cycling, whose pace is a speed.
+export const trendIsTime = (metric, sport) => metric === "bestShort" || metric === "bestLong" || (metric === "pace" && sport !== "cycling");
