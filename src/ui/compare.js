@@ -152,7 +152,8 @@ function renderList() {
     const text = document.createElement("span");
     text.className = "compare-item-text";
     text.append(
-      Object.assign(document.createElement("strong"), { textContent: entry.name }),
+      // Every converted name starts with "Kinomap - "; the list leaves it out, the tooltip keeps it.
+      Object.assign(document.createElement("strong"), { textContent: entry.name.replace(/^Kinomap - /, ""), title: entry.name }),
       Object.assign(document.createElement("span"), {
         textContent: `${shortDate(entry.startMs)} · ${formatDuration(entry.summary.timerSeconds)} · ${displayNumber(entry.summary.distance / 1000, 2)} km`,
       }),
