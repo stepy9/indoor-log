@@ -297,8 +297,6 @@ function renderZone() {
   select.value = zone;
   // The offset in force right now, e.g. UTC+2 in Prague summer time.
   elements.zoneBadge.textContent = offsetLabel(zoneOffsetMinutes(zone));
-  // The footer always shows the computer's own zone, whatever the export uses.
-  elements.footerZone.textContent = systemZone();
   elements.manualStartLabel.textContent = t("manualStart", { zone });
 }
 
