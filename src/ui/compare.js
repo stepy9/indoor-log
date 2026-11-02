@@ -297,9 +297,11 @@ function renderTable(id, rows, picked) {
     th.title = `${entry.name} · ${shortDate(entry.startMs)}`;
     return th;
   }));
-  byId(id).replaceChildren(head, ...rows.map(([label, cell]) => {
+  // A row none of the activities has a value for stays out.
+  const filled = rows.map(([label, cell]) => [label, picked.map(cell)]).filter(([, values]) => values.some((value) => value !== "—"));
+  byId(id).replaceChildren(head, ...filled.map(([label, values]) => {
     const row = document.createElement("tr");
-    row.append(Object.assign(document.createElement("th"), { textContent: label }), ...picked.map((entry) => Object.assign(document.createElement("td"), { textContent: cell(entry) })));
+    row.append(Object.assign(document.createElement("th"), { textContent: label }), ...values.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     return row;
   }));
 }
@@ -322,7 +324,7 @@ function renderTables() {
     [t("compareAvgCadence"), (entry) => unit(entry.summary.avgCadence, cadence)],
     [t("compareCalories"), (entry) => unit(entry.summary.calories, "kcal")],
   ], picked);
-  const distanceLabel = (meters) => (meters >= 1000 ? `${meters / 1000} km` : `${meters} m`);
+  const distanceLabel = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000, 1)} km` : `${meters} m`);
   renderTable("compareBest", [
     ...(effortDistances[sport] ?? []).map((meters) => [t("compareBestTime", { distance: distanceLabel(meters) }), (entry) => {
       const seconds = bestTime(entry, meters);

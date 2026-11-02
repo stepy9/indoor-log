@@ -114,8 +114,13 @@ export function bestTime(entry, meters) {
   return best;
 }
 
-export const powerDurations = [60, 300, 1200];
-export const effortDistances = { rowing: [500, 1000, 2000, 5000], running: [1000, 5000, 10000], cycling: [5000, 10000, 20000] };
+// Best efforts to look for; the comparison shows only those at least one activity is long enough for.
+export const powerDurations = [60, 300, 1200, 1800, 3600];
+export const effortDistances = {
+  rowing: [500, 1000, 2000, 5000, 10000, 20000, 30000],
+  running: [1000, 5000, 10000, 21097.5, 42195],
+  cycling: [5000, 10000, 20000, 40000, 50000, 100000],
+};
 
 // Interval or steady: a hand-picked kind wins, then rest laps saved with the activity, then the shape of the data.
 const kinds = new WeakMap();
