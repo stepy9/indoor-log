@@ -441,6 +441,7 @@ export function parseKinomapPlan(text, startMs = 0) {
     const power = token.match(/^(\d+)w$/i);
     if (step && cadence && step.target == null) Object.assign(step, { targetType: "cadence", target: Number(cadence[1]) });
     else if (step && power && step.target == null) Object.assign(step, { targetType: "power", target: Number(power[1]) });
+    else if (step && /^\d+%$/.test(token) && step.resistancePercent == null) step.resistancePercent = Number(token.slice(0, -1));
     else if (step && planCodes[token.toUpperCase()]) step.code = planCodes[token.toUpperCase()];
   }
   const segments = steps
@@ -489,6 +490,7 @@ function lapsForSegments(records, segments, calories, timerSeconds, sport) {
       intensity: sorted[stepIndex]?.intensity ?? "active",
       targetType: sorted[stepIndex]?.targetType,
       target: sorted[stepIndex]?.target,
+      resistance: sorted[stepIndex]?.resistance,
       stepIndex,
       trigger: "time",
     };

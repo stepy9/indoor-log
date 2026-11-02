@@ -203,6 +203,9 @@
                 <label class="field"><span data-i18n="lapDistance">Délka kola</span><select id="lapPreset"></select></label>
                 <label class="field" id="lapCustomField" hidden><span data-i18n="lapCustom">Vlastní délka · m</span><input id="lapDistance" type="number" min="1" step="50" value="500" /></label>
                 <label class="field"><span data-i18n="workoutKindLabel">Typ tréninku</span><select id="workoutKind"></select></label>
+                <label class="field"><span data-i18n="trainer">Trenažér</span><select id="trainerSelect"></select></label>
+                <label class="field"><span data-i18n="resistance">Odpor</span><input id="resistanceInput" type="number" min="1" placeholder="—" /></label>
+                <button class="link-button manage-trainers" id="manageTrainersButton" type="button" data-i18n="manageTrainers">Spravovat trenažéry</button>
                 <button class="outline-button edit-intervals" id="editIntervalsButton" type="button" hidden data-i18n="editIntervals">Upravit intervaly</button>
               </div>
             </section>
@@ -326,7 +329,7 @@
         </details>
         <div class="laps-scroll">
           <table class="laps-table intervals-table">
-            <thead><tr><th>#</th><th data-i18n="segmentStart">Začátek</th><th data-i18n="segmentDuration">Délka</th><th data-i18n="lapCadence">Kadence</th><th data-i18n="lapPower">Výkon</th><th data-i18n="segmentTarget">Cíl</th><th data-i18n="lapType">Typ</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th data-i18n="segmentStart">Začátek</th><th data-i18n="segmentDuration">Délka</th><th data-i18n="lapCadence">Kadence</th><th data-i18n="lapPower">Výkon</th><th data-i18n="segmentTarget">Cíl</th><th data-i18n="resistance">Odpor</th><th data-i18n="lapType">Typ</th><th></th></tr></thead>
             <tbody id="intervalsRows"></tbody>
           </table>
         </div>
@@ -437,7 +440,7 @@
         <label class="check-field"><input id="librarySaveToggle" type="checkbox" checked /> <span data-i18n="librarySave">Ukládat stažené aktivity do knihovny</span></label>
         <div class="laps-scroll">
           <table class="laps-table library-table">
-            <thead><tr><th data-i18n="libraryDate">Datum</th><th data-i18n="libraryName">Název</th><th data-i18n="librarySource">Zdroj</th><th data-i18n="compareKind">Typ</th><th data-i18n="lapTime">Čas</th><th data-i18n="lapDistanceColumn">Vzdálenost</th><th data-i18n="lapPower">Výkon</th><th data-i18n="lapHeartRate">Tep</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="libraryDate">Datum</th><th data-i18n="libraryName">Název</th><th data-i18n="librarySource">Zdroj</th><th data-i18n="compareKind">Typ</th><th data-i18n="resistance">Odpor</th><th data-i18n="lapTime">Čas</th><th data-i18n="lapDistanceColumn">Vzdálenost</th><th data-i18n="lapPower">Výkon</th><th data-i18n="lapHeartRate">Tep</th><th></th></tr></thead>
             <tbody id="libraryRows"></tbody>
           </table>
           <p class="field-note" id="libraryEmpty" data-i18n="libraryEmpty">Knihovna je prázdná.</p>
@@ -450,6 +453,22 @@
           <span class="dialog-spacer"></span>
           <button class="link-button danger-link" id="libraryClearButton" type="button" data-i18n="libraryClear">Smazat vše</button>
           <button class="export-button" id="libraryClose" type="button" data-i18n="libraryCloseLabel">Zavřít</button>
+        </div>
+      </dialog>
+      <dialog class="intervals-dialog" id="trainersDialog" aria-labelledby="trainersTitle">
+        <div class="dialog-head"><h2 id="trainersTitle" data-i18n="trainersTitle">Trenažéry</h2></div>
+        <p class="field-note" data-i18n="trainersHint">Počet úrovní odporu a výchozí odpor, který převodník předvyplní. Procenta odporu z plánu Kinomapu se převedou na úrovně trenažéru.</p>
+        <div class="laps-scroll">
+          <table class="laps-table trainers-table">
+            <thead><tr><th data-i18n="trainerName">Název</th><th data-i18n="librarySport">Sport</th><th data-i18n="trainerLevels">Úrovně</th><th data-i18n="trainerDefault">Výchozí odpor</th><th></th></tr></thead>
+            <tbody id="trainersRows"></tbody>
+          </table>
+          <p class="field-note" id="trainersEmpty" data-i18n="trainersEmpty">Zatím žádný trenažér.</p>
+        </div>
+        <div class="dialog-actions">
+          <button class="outline-button" id="trainerAdd" type="button" data-i18n="trainerAdd">Přidat trenažér</button>
+          <span class="dialog-spacer"></span>
+          <button class="export-button" id="trainersClose" type="button" data-i18n="libraryCloseLabel">Zavřít</button>
         </div>
       </dialog>
       <div class="update-toast" id="updateToast" role="status" hidden>

@@ -524,3 +524,15 @@ test("reads a workout plan as Kinomap's API returns it", () => {
   assert.deepEqual(segments.map((segment) => segment.target), [22, 26, undefined]);
   assert.deepEqual(segments.map((segment) => segment.intensity), ["active", "active", "cooldown"]);
 });
+
+test("a pasted plan keeps Kinomap's resistance percentage and interval laps carry their segment's resistance", () => {
+  const steps = parseKinomapPlan(kinomapPlanText(JSON.stringify({ data: [{ time: 6, value: 22, percent: 75, type: "A" }, { time: 126, value: 26, percent: 85, type: "A" }] })));
+  assert.deepEqual(steps.map((step) => step.resistancePercent), [75, 85]);
+  const kinomap = fixtureKinomap(fixtures[0]);
+  const start = kinomap.records[0].timeMs;
+  const workout = buildWorkout(kinomap, null, {
+    lapDistanceMeters: "intervals",
+    segments: [{ startMs: start, intensity: "active", resistance: 11 }, { startMs: start + 120_000, intensity: "active", resistance: 13 }],
+  });
+  assert.deepEqual(workout.laps.map((lap) => lap.resistance), [11, 13]);
+});

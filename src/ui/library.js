@@ -21,11 +21,14 @@ export const savesToLibrary = () => savedDefaults().saveToLibrary !== false;
 
 // Called after each export; a failure here never stops the export itself.
 // kind is the workout type picked in the converter; empty leaves it to the data.
-export async function rememberWorkout(workout, kind = "") {
+// extra holds the trainer's name and the resistance set for the activity.
+export async function rememberWorkout(workout, kind = "", { trainer, resistance } = {}) {
   if (!savesToLibrary() || !workout) return;
   try {
     const entry = entryFromWorkout(workout, { exported: true });
     if (kind) entry.kind = kind;
+    if (trainer) entry.trainer = trainer;
+    if (resistance > 0) entry.resistance = resistance;
     await addEntries([entry]);
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
@@ -73,6 +76,21 @@ function nameInput(entry) {
     Object.assign(entry, { name: prefix + name, renamed: true });
     await saveEntries([entry]).catch(() => {});
     renderList();
+  });
+  return input;
+}
+
+// The activity's resistance, edited in place; empty removes it.
+function resistanceInput(entry) {
+  const input = Object.assign(document.createElement("input"), {
+    type: "number", className: "level-input", min: "1", value: entry.resistance ?? "", placeholder: "—", title: entry.trainer ?? "",
+  });
+  input.setAttribute("aria-label", t("resistance"));
+  input.addEventListener("change", async () => {
+    const level = Math.round(Number(input.value));
+    if (level > 0) entry.resistance = level;
+    else delete entry.resistance;
+    await saveEntries([entry]).catch(() => {});
   });
   return input;
 }
@@ -152,6 +170,9 @@ async function renderList() {
     const kind = document.createElement("td");
     kind.append(kindSelect(entry, renderList));
     row.children[2].after(kind);
+    const resistance = document.createElement("td");
+    resistance.append(resistanceInput(entry));
+    kind.after(resistance);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;

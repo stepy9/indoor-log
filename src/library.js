@@ -20,7 +20,7 @@ function columns(records) {
   };
 }
 
-const lapFields = ["startMs", "endMs", "timerSeconds", "distance", "avgHeartRate", "maxHeartRate", "avgPower", "maxPower", "avgCadence", "avgSpeed", "intensity", "target", "targetType"];
+const lapFields = ["startMs", "endMs", "timerSeconds", "distance", "avgHeartRate", "maxHeartRate", "avgPower", "maxPower", "avgCadence", "avgSpeed", "intensity", "target", "targetType", "resistance"];
 
 // A converted or merged workout, as buildWorkout returns it.
 // exported marks the workout as saved when its FIT was exported, with every setting the user made.

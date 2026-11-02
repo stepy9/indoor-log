@@ -385,7 +385,10 @@ function renderLapTable(picked) {
     const type = intensityKey[lap?.intensity];
     return [`${index + 1}${type ? ` · ${t(type)}` : ""}`, (entry) => {
       const value = entry.laps[index] ? lapValue(entry.laps[index], view.metric, view.sport) : null;
-      return metricText(value, view.metric, view.sport);
+      // The lap's resistance follows in brackets, its own or the activity's.
+      const resistance = entry.laps[index] ? entry.laps[index].resistance ?? entry.resistance : null;
+      const text = metricText(value, view.metric, view.sport);
+      return resistance && text !== "—" ? `${text} (${resistance})` : text;
     }];
   });
   renderTable("compareLapsTable", rows, withLaps);
@@ -415,6 +418,7 @@ function renderTables() {
     [t("compareMaxHeartRate"), (entry) => unit(entry.summary.maxHeartRate, "bpm")],
     [t("compareAvgCadence"), (entry) => unit(entry.summary.avgCadence, cadence)],
     [t("compareCalories"), (entry) => unit(entry.summary.calories, "kcal")],
+    [t("resistance"), (entry) => (entry.resistance ? String(entry.resistance) : "—")],
   ], picked);
   const distanceLabel = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000, 1)} km` : `${meters} m`);
   renderTable("compareBest", [

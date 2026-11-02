@@ -1,5 +1,9 @@
 import { detectIntervals, kinomapPlanText, parseKinomapPlan } from "../core.js";
 import { byId, displayNumber, formatDuration, t } from "./context.js";
+import { levelFromPercent } from "./trainers.js";
+
+// The trainer and resistance of the activity the dialog is open for; the plan preview reads them too.
+let current = { trainer: null, resistance: null };
 
 // Interval types offered for segments and laps, in workout order.
 export const intensityOptions = [
@@ -41,7 +45,7 @@ function renderPlanPreview() {
   byId("planSummary").textContent = steps.length ? t("planSummary", { count: steps.length, total: formatDuration(steps.at(-1).startMs / 1000) }) : "";
   if (!steps.length) return;
   const head = document.createElement("tr");
-  head.append(...["#", t("segmentStart"), t("segmentDuration"), t("segmentTarget"), t("lapType")].map((title) => Object.assign(document.createElement("th"), { textContent: title })));
+  head.append(...["#", t("segmentStart"), t("segmentDuration"), t("segmentTarget"), t("resistance"), t("lapType")].map((title) => Object.assign(document.createElement("th"), { textContent: title })));
   const types = Object.fromEntries(intensityOptions);
   const rows = steps.map((step, index) => {
     const next = steps[index + 1];
@@ -50,6 +54,8 @@ function renderPlanPreview() {
       formatDuration(step.startMs / 1000),
       next ? formatDuration((next.startMs - step.startMs) / 1000) : "—",
       step.target ? `${step.target} ${step.targetType === "power" ? "W" : "rpm"}` : "—",
+      // Kinomap's percentage, and the level it makes on the chosen trainer.
+      step.resistancePercent > 0 ? `${step.resistancePercent} %${current.trainer ? ` → ${levelFromPercent(step.resistancePercent, current.trainer)}` : ""}` : "—",
       t(types[step.intensity] ?? "intensityActive"),
     ];
     const row = document.createElement("tr");
@@ -61,7 +67,9 @@ function renderPlanPreview() {
 }
 
 // Edits a copy of the segments; Save hands back a sorted list that starts at the workout start.
-export function openIntervalsDialog(workout, segments, onSave) {
+// options: the activity's trainer, whose levels turn plan percentages into resistance, and its resistance.
+export function openIntervalsDialog(workout, segments, onSave, options = {}) {
+  current = { trainer: options.trainer ?? null, resistance: options.resistance ?? null };
   const dialog = byId("intervalsDialog");
   const { records, startMs, endMs } = workout;
   const cadenceUnit = workout.sport === "running" ? "spm" : "rpm";
@@ -173,6 +181,16 @@ export function openIntervalsDialog(workout, segments, onSave) {
       });
       target.append(targetValue, targetType);
 
+      // Resistance for this segment; left empty, the activity's applies.
+      const resistance = Object.assign(document.createElement("input"), {
+        type: "number", className: "level-input", min: "1", value: segment.resistance ?? "", placeholder: current.resistance ?? "—",
+      });
+      if (current.trainer) resistance.max = String(current.trainer.levels);
+      resistance.setAttribute("aria-label", `${t("resistance")} ${index + 1}`);
+      resistance.addEventListener("input", () => {
+        segment.resistance = Number(resistance.value) > 0 ? Math.round(Number(resistance.value)) : undefined;
+      });
+
       const cadence = average(records, "cadence", segment.startMs, nextMs);
       const power = average(records, "power", segment.startMs, nextMs);
       const cells = [
@@ -182,6 +200,7 @@ export function openIntervalsDialog(workout, segments, onSave) {
         cadence == null ? "—" : displayNumber(cadence),
         power == null ? "—" : `${displayNumber(power)} W`,
         target,
+        resistance,
         intensitySelectElement(segment.intensity, `${t("lapType")} ${index + 1}`, (value) => {
           segment.intensity = value;
           row.className = `is-${value}`;
@@ -229,6 +248,10 @@ export function openIntervalsDialog(workout, segments, onSave) {
     const planned = parseKinomapPlan(byId("planText").value, startMs).filter((segment) => segment.startMs < endMs - 1000);
     byId("planText").classList.toggle("is-invalid", !planned.length);
     if (!planned.length) return;
+    for (const segment of planned) {
+      const level = levelFromPercent(segment.resistancePercent, current.trainer);
+      if (level) segment.resistance = level;
+    }
     draft = planned;
     byId("planText").closest("details").open = false;
     renderRows();

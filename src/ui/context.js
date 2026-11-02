@@ -11,6 +11,7 @@ export const elements = {
   timeZone: byId("timeZoneSelect"), asWatch: byId("asWatchToggle"), cadenceAsPower: byId("cadenceAsPowerToggle"), zoneBadge: byId("zoneBadge"), footerZone: byId("footerZone"),
   manualStartLabel: byId("manualStartLabel"),
   workoutFeel: byId("workoutFeel"), workoutRpe: byId("workoutRpe"), workoutKind: byId("workoutKind"),
+  trainer: byId("trainerSelect"), resistance: byId("resistanceInput"),
   lapPreset: byId("lapPreset"), lapCustomField: byId("lapCustomField"), lapDistance: byId("lapDistance"), lapNote: byId("lapNote"),
   manualPanel: byId("manualDatePanel"), manualStart: byId("manualStart"), alignmentPanel: byId("alignmentPanel"),
   alignmentHint: byId("alignmentHint"), estimateNote: byId("estimateNote"), notice: byId("notice"), liveState: byId("liveState"),

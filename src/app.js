@@ -6,6 +6,7 @@ import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapF
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
 import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
+import { lastTrainerId, openTrainersDialog, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
@@ -64,7 +65,28 @@ function resetTrim(settings = {}) {
 }
 
 // A new activity starts from the lap distance last used for its sport.
+// The sport's trainers to pick from, keeping the chosen one when it is still there.
+function renderTrainerOptions(sport, selected = elements.trainer.value) {
+  elements.trainer.replaceChildren(new Option(t("noTrainer"), ""), ...trainers().filter((trainer) => trainer.sport === sport).map((trainer) => new Option(trainer.name, trainer.id)));
+  elements.trainer.value = trainerFor(selected)?.sport === sport ? selected : "";
+  const trainer = trainerFor(elements.trainer.value);
+  elements.resistance.max = trainer ? String(trainer.levels) : "";
+}
+
+// The trainer's usual resistance, which follows later changes to it until the user types another.
+function useDefaultResistance() {
+  elements.resistance.value = trainerFor(elements.trainer.value)?.defaultLevel ?? "";
+  elements.resistance.dataset.fromDefault = "true";
+}
+
+// A new activity starts on the trainer last used for its sport, at its usual resistance.
+function applyTrainerDefaults(sport) {
+  renderTrainerOptions(sport, lastTrainerId(sport));
+  useDefaultResistance();
+}
+
 function applySavedLapDistance(sport) {
+  applyTrainerDefaults(sport);
   const saved = savedDefaults().laps?.[sport];
   renderLapOptions(sport, saved?.preset ?? "");
   elements.lapDistance.value = saved?.custom ?? defaultLapDistance(sport);
@@ -106,6 +128,7 @@ function setLanguage(language, persist = true) {
   applyStaticTranslations();
   renderLapOptions(state.kinomap?.sport);
   renderFeelOptions();
+  renderTrainerOptions(state.kinomap?.sport);
   if (!state.kinomapFile && (!elements.activityName.value || elements.activityName.value === previousFallback || elements.activityName.value === "Kinomap - Rowing Workout")) {
     elements.activityName.value = `Kinomap - ${t("fallbackActivity")}`;
   }
@@ -231,6 +254,8 @@ function currentSettings() {
     segments: state.segments,
     zoneChoice: state.zoneChoice,
     workoutKind: elements.workoutKind.value,
+    trainerId: elements.trainer.value,
+    resistance: elements.resistance.value,
     activityName: elements.activityName.value,
     manualStart: elements.manualStart.value || undefined,
   };
@@ -250,6 +275,11 @@ function applySettings(settings) {
   state.segments = settings.segments ?? null;
   state.zoneChoice = settings.zoneChoice ?? null;
   elements.workoutKind.value = settings.workoutKind ?? "";
+  if (settings.trainerId !== undefined) {
+    renderTrainerOptions(state.kinomap?.sport, settings.trainerId);
+    elements.resistance.value = settings.resistance ?? "";
+    delete elements.resistance.dataset.fromDefault;
+  }
   if (settings.manualStart) {
     elements.manualStart.value = settings.manualStart;
     parseCurrentKinomap(true);
@@ -389,7 +419,12 @@ async function exportBatch(targetDirectory = null) {
       const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
       counts[saved ? "saved" : "downloaded"] += 1;
       rememberExport(kinomapExportKey(item.kinomapFile.name));
-      await rememberWorkout(workout, (item.settings ?? {}).workoutKind);
+      // A folder activity never opened goes out on its sport's usual trainer and resistance.
+      const settings = item.settings ?? {};
+      const trainer = trainerFor(settings.trainerId ?? lastTrainerId(item.sport));
+      await rememberWorkout(workout, settings.workoutKind, {
+        trainer: trainer?.name, resistance: Number(settings.resistance ?? trainer?.defaultLevel) || null,
+      });
       Object.assign(item, { status: null, failure: null, exported: true, selected: false });
     } catch (error) {
       counts.failed += 1;
@@ -799,12 +834,24 @@ elements.alignmentMode.addEventListener("change", () => {
   render();
 });
 byId("trimToggle").addEventListener("click", () => showTrim(!isTrimMode()));
+elements.trainer.addEventListener("change", () => {
+  const sport = state.kinomap?.sport;
+  if (sport) rememberTrainer(sport, elements.trainer.value);
+  renderTrainerOptions(sport);
+  useDefaultResistance();
+});
+elements.resistance.addEventListener("input", () => delete elements.resistance.dataset.fromDefault);
+byId("manageTrainersButton").addEventListener("click", () => openTrainersDialog(state.kinomap?.sport, () => {
+  const sport = state.kinomap?.sport;
+  renderTrainerOptions(sport, elements.trainer.value || lastTrainerId(sport));
+  if (elements.resistance.dataset.fromDefault) useDefaultResistance();
+}));
 byId("editIntervalsButton").addEventListener("click", () => {
   if (!state.result) return;
   openIntervalsDialog(state.result, state.result.segments, (segments) => {
     state.segments = segments;
     render();
-  });
+  }, { trainer: trainerFor(elements.trainer.value), resistance: Number(elements.resistance.value) || null });
 });
 byId("trimReset").addEventListener("click", () => {
   elements.trimStart.value = "0";

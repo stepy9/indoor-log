@@ -1,6 +1,10 @@
 import { fitFileName, kinomapExportKey } from "../files.js";
 import { elements, setNotice, state, t } from "./context.js";
 import { rememberWorkout } from "./library.js";
+import { trainerFor } from "./trainers.js";
+
+// The trainer and resistance picked in the converter, saved with the activity.
+const trainerSettings = () => ({ trainer: trainerFor(elements.trainer.value)?.name, resistance: Number(elements.resistance.value) || null });
 import { rememberExport } from "./preferences.js";
 
 function downloadFit(blob, filename) {
@@ -68,13 +72,13 @@ export async function exportFit() {
         throw error;
       }
       rememberExport(kinomapExportKey(state.kinomapFile?.name));
-      await rememberWorkout(state.result, elements.workoutKind.value);
+      await rememberWorkout(state.result, elements.workoutKind.value, trainerSettings());
       setNotice(t("savedAs", { filename: savedName }), "success");
       return;
     }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
-    await rememberWorkout(state.result, elements.workoutKind.value);
+    await rememberWorkout(state.result, elements.workoutKind.value, trainerSettings());
     if (saved) setNotice(t("savedBesideFiles"), "success");
     else if (fallbackMessage) setNotice(t("saveFallbackStarted", { message: fallbackMessage }));
     else setNotice(t("downloadStarted", { filename }), "success");
