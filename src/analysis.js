@@ -252,3 +252,31 @@ export function lapValue(lap, metric, sport) {
   const speed = lap.avgSpeed ?? (lap.timerSeconds > 0 && lap.distance != null ? lap.distance / lap.timerSeconds : null);
   return paceFrom(speed, sport);
 }
+
+// The laps rowed on each resistance level put together: the metric over them all, weighted by time
+// (pace and speed from their distance and time), and the time spent on the level.
+// A lap without its own resistance is on the activity's.
+export function levelValues(entry, metric, sport) {
+  const groups = new Map();
+  for (const lap of entry.laps ?? []) {
+    const level = lap.resistance ?? entry.resistance;
+    const seconds = lap.timerSeconds ?? 0;
+    if (!level || !(seconds > 0)) continue;
+    const group = groups.get(level) ?? { seconds: 0, distance: 0, weighted: 0, weight: 0 };
+    group.seconds += seconds;
+    group.distance += lap.distance ?? 0;
+    const value = lapValue(lap, metric, sport);
+    if (value != null) {
+      group.weighted += value * seconds;
+      group.weight += seconds;
+    }
+    groups.set(level, group);
+  }
+  const byDistance = !["power", "heartRate", "cadence"].includes(metric);
+  return new Map([...groups].map(([level, group]) => [level, {
+    seconds: group.seconds,
+    value: byDistance
+      ? (group.distance > 0 ? lapValue({ distance: group.distance, timerSeconds: group.seconds }, metric, sport) : null)
+      : (group.weight > 0 ? group.weighted / group.weight : null),
+  }]));
+}

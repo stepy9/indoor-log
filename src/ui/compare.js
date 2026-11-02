@@ -1,4 +1,4 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
@@ -26,6 +26,8 @@ const view = {
   zoom: null,
   // Where a drag over the chart started, in chart pixels.
   dragFrom: null,
+  // The laps card groups laps by resistance level or lists them lap by lap; null picks one from the activities.
+  lapGrouping: null,
   // A Shift-drag moving the zoomed stretch: where it started, in chart pixels, and the stretch at that moment.
   panFrom: null,
   // Where the longest selected activity ends on the x axis, so panning stops there.
@@ -377,6 +379,25 @@ function renderLapTable(picked) {
   const card = byId("compareLapsCard");
   card.hidden = !withLaps.length;
   if (!withLaps.length) return;
+  // With resistance set, laps on the same level can be compared together; without it, lap by lap.
+  const hasLevels = withLaps.some((entry) => entry.resistance || entry.laps.some((lap) => lap.resistance));
+  byId("compareLapsGrouping").hidden = !hasLevels;
+  // Runs of the same workout line up lap for lap; different workouts meet on the resistance they share.
+  const sameWorkout = new Set(withLaps.map((entry) => entry.name)).size === 1;
+  const grouping = view.lapGrouping ?? (sameWorkout ? "lap" : "level");
+  for (const button of byId("compareLapsGrouping").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.grouping === grouping));
+  if (hasLevels && grouping === "level") {
+    byId("compareLapsTitle").textContent = t("compareLevels", { metric: metricLabel(view.metric, view.sport) });
+    const perEntry = new Map(withLaps.map((entry) => [entry.id, levelValues(entry, view.metric, view.sport)]));
+    const levels = [...new Set([...perEntry.values()].flatMap((levelMap) => [...levelMap.keys()]))].sort((a, b) => a - b);
+    const rows = levels.map((level) => [t("compareLevel", { level }), (entry) => {
+      const group = perEntry.get(entry.id).get(level);
+      const text = group ? metricText(group.value, view.metric, view.sport) : "—";
+      return group && text !== "—" ? `${text} · ${formatDuration(group.seconds)}` : text;
+    }]);
+    renderTable("compareLapsTable", rows, withLaps);
+    return;
+  }
   byId("compareLapsTitle").textContent = t("compareLaps", { metric: metricLabel(view.metric, view.sport) });
   const count = Math.max(...withLaps.map((entry) => entry.laps.length));
   const intensityKey = { warmup: "intensityWarmup", active: "intensityActive", recovery: "intensityRecovery", rest: "intensityRest", cooldown: "intensityCooldown" };
@@ -768,6 +789,12 @@ export function setupCompare({ onConverter }) {
   });
   byId("compareZoomLeft").addEventListener("click", () => view.zoom && pan(-(view.zoom[1] - view.zoom[0]) / 2));
   byId("compareZoomRight").addEventListener("click", () => view.zoom && pan((view.zoom[1] - view.zoom[0]) / 2));
+  byId("compareLapsGrouping").addEventListener("click", (event) => {
+    const grouping = event.target.closest("button")?.dataset.grouping;
+    if (!grouping) return;
+    view.lapGrouping = grouping;
+    renderLapTable(selected());
+  });
   byId("compareZoomReset").addEventListener("click", () => {
     view.zoom = null;
     renderZoomed();

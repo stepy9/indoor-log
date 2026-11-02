@@ -422,7 +422,13 @@
               <div class="laps-scroll"><table class="laps-table compare-table" id="compareBest"></table></div>
             </section>
             <section class="card" id="compareLapsCard" hidden>
-              <span class="field-label" id="compareLapsTitle"></span>
+              <div class="panel-title-row">
+                <span class="field-label" id="compareLapsTitle"></span>
+                <div class="segmented compare-laps-grouping" id="compareLapsGrouping" role="group" aria-label="Seskupení kol" data-i18n-aria="compareLapsGrouping" hidden>
+                  <button type="button" data-grouping="level" aria-pressed="true" data-i18n="compareByLevel">Podle odporu</button>
+                  <button type="button" data-grouping="lap" aria-pressed="false" data-i18n="compareByLap">Po kolech</button>
+                </div>
+              </div>
               <div class="laps-scroll"><table class="laps-table compare-table" id="compareLapsTable"></table></div>
             </section>
           </div>

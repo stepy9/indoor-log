@@ -107,3 +107,20 @@ test("a lap gives its value for each compared metric", async () => {
   assert.equal(Math.round(lapValue(lap, "pace", "rowing")), 120);
   assert.equal(lapValue({ ...lap, avgSpeed: 5 }, "pace", "rowing"), 100);
 });
+
+test("laps on the same resistance are put together, weighted by their time", async () => {
+  const { levelValues } = await import("../src/analysis.js");
+  const entry = { resistance: 6, laps: [
+    { resistance: 11, timerSeconds: 60, distance: 250, avgPower: 100 },
+    { resistance: 12, timerSeconds: 30, distance: 150, avgPower: 150 },
+    { resistance: 11, timerSeconds: 120, distance: 500, avgPower: 130 },
+    { timerSeconds: 30, distance: 100, avgPower: 80 },
+  ] };
+  const power = levelValues(entry, "power", "rowing");
+  assert.deepEqual([...power.keys()], [11, 12, 6]);
+  assert.deepEqual(power.get(11), { seconds: 180, value: 120 });
+  assert.equal(power.get(6).value, 80);
+  const pace = levelValues(entry, "pace", "rowing");
+  // 750 m in 180 s is 120 s per 500 m.
+  assert.equal(Math.round(pace.get(11).value), 120);
+});
