@@ -42,7 +42,9 @@ function renderPlanPreview() {
   const steps = parseKinomapPlan(text.value, 0);
   const table = byId("planPreview");
   table.hidden = !steps.length;
-  byId("planSummary").textContent = steps.length ? t("planSummary", { count: steps.length, total: formatDuration(steps.at(-1).startMs / 1000) }) : "";
+  // Percentages without a trainer have no levels to become, which the summary says rather than dropping them quietly.
+  const noLevels = !current.trainer && steps.some((step) => step.resistancePercent > 0);
+  byId("planSummary").textContent = steps.length ? t("planSummary", { count: steps.length, total: formatDuration(steps.at(-1).startMs / 1000) }) + (noLevels ? ` · ${t("planNoTrainer")}` : "") : "";
   if (!steps.length) return;
   const head = document.createElement("tr");
   head.append(...["#", t("segmentStart"), t("segmentDuration"), t("segmentTarget"), t("resistance"), t("lapType")].map((title) => Object.assign(document.createElement("th"), { textContent: title })));
