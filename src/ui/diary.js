@@ -173,6 +173,33 @@ const axisText = (value, metric) => (metric === "distance"
   ? (value >= 1000 ? `${displayNumber(value / 1000, value % 1000 ? 1 : 0)} km` : `${displayNumber(value)} m`)
   : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
 
+// The bar's day or month, its total and what it is made of, beside the bar under the pointer.
+function showTooltip(bar, { when, total, parts, sessions }) {
+  const tooltip = byId("diaryTooltip");
+  const line = (className, text) => Object.assign(document.createElement("div"), { className, textContent: text });
+  const rows = parts.length > 1 ? parts.map(({ label, color, value }) => {
+    const row = Object.assign(document.createElement("div"), { className: "diary-tooltip-row" });
+    const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
+    swatch.style.background = color;
+    row.append(swatch, Object.assign(document.createElement("span"), { textContent: label }), Object.assign(document.createElement("strong"), { textContent: value }));
+    return row;
+  }) : [];
+  tooltip.replaceChildren(line("diary-tooltip-when", when), line("diary-tooltip-total", total), ...rows, line("diary-tooltip-sessions", t("diarySessionsCount", { count: sessions })));
+  tooltip.hidden = false;
+  // Beside the bar, flipped to its left near the right edge, and kept inside the card.
+  const card = tooltip.offsetParent.getBoundingClientRect();
+  const box = bar.getBoundingClientRect();
+  const width = tooltip.offsetWidth;
+  const rightSide = box.right - card.left + 10;
+  const left = rightSide + width > card.width - 8 ? box.left - card.left - width - 10 : rightSide;
+  tooltip.style.left = `${Math.max(8, left)}px`;
+  tooltip.style.top = `${Math.max(8, box.top - card.top)}px`;
+}
+
+function hideTooltip() {
+  byId("diaryTooltip").hidden = true;
+}
+
 // One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
 function drawBars(buckets, groups, metric, height) {
   const svg = svgNode("svg", { class: "diary-chart", role: "img" });
@@ -218,12 +245,12 @@ function drawBars(buckets, groups, metric, height) {
       group.append(svgNode("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: color }));
     }
     const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
-    const sessions = drawn(bucket.entries).length;
-    group.append(svgNode("title", {}, `${when}\n${barText(total, metric)} · ${t("diarySessionsCount", { count: sessions })}`));
+    const parts = groups.map(({ has, label, color }) => ({ label, color, value: barValue(bucket.entries.filter(has), metric) })).filter(({ value }) => value);
+    group.addEventListener("pointerenter", () => showTooltip(group, { when, total: barText(total, metric), parts: parts.map((part) => ({ ...part, value: barText(part.value, metric) })), sessions: drawn(bucket.entries).length }));
+    group.addEventListener("pointerleave", hideTooltip);
     // A hit target the whole height of the column, wider than the bar.
     group.prepend(svgNode("rect", { x: left + slot * index, y: top, width: slot, height: plotHeight, fill: "transparent" }));
     children.push(group);
-    if (total === highest || buckets.length <= 12) children.push(svgNode("text", { x: x + barWidth / 2, y: y - 6, class: "diary-bar-label" }, barText(total, metric)));
   });
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.style.height = `${height}px`;
