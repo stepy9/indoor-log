@@ -493,3 +493,4 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .danger-link { color: var(--danger-ink); }
 .danger-link:hover { color: var(--danger); }
 .danger-link:disabled { opacity: .4; cursor: default; }
+.library-table .kind-tag { margin-left: 0; }

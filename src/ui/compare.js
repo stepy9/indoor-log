@@ -1,7 +1,7 @@
 import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
-import { listEntries, saveEntries } from "../library.js";
+import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
-import { openLibrary } from "./library.js";
+import { kindTag, openLibrary } from "./library.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -121,20 +121,6 @@ function matches(entry) {
     && (view.kind === "all" || workoutKind(entry) === view.kind);
 }
 
-// The kind tag switches an activity between interval and steady and keeps the choice in the library.
-function kindTag(entry) {
-  const kind = workoutKind(entry);
-  const tag = Object.assign(document.createElement("button"), {
-    type: "button", className: `kind-tag is-${kind}`, textContent: t(kind === "intervals" ? "kindIntervals" : "kindSteady"), title: t("kindSwitch"),
-  });
-  tag.addEventListener("click", async (event) => {
-    event.preventDefault();
-    entry.kind = kind === "intervals" ? "steady" : "intervals";
-    await saveEntries([entry]).catch(() => {});
-    render();
-  });
-  return tag;
-}
 
 function renderList() {
   const entries = view.entries.filter((entry) => entry.sport === view.sport && (view.slots.has(entry.id) || matches(entry)));
@@ -158,7 +144,7 @@ function renderList() {
         textContent: `${shortDate(entry.startMs)} · ${formatDuration(entry.summary.timerSeconds)} · ${displayNumber(entry.summary.distance / 1000, 2)} km`,
       }),
     );
-    row.append(checkbox, swatch, text, kindTag(entry));
+    row.append(checkbox, swatch, text, kindTag(entry, render));
     return row;
   }));
   byId("compareLimit").hidden = view.slots.size < slotCount;

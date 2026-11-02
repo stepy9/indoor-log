@@ -1,6 +1,7 @@
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { addEntries, backupText, clearEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup } from "../library.js";
+import { workoutKind } from "../analysis.js";
+import { addEntries, backupText, clearEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 
@@ -26,6 +27,21 @@ export async function rememberWorkout(workout) {
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
   }
+}
+
+// The kind tag switches an activity between interval and steady and keeps the choice in the library.
+export function kindTag(entry, onChange) {
+  const kind = workoutKind(entry);
+  const tag = Object.assign(document.createElement("button"), {
+    type: "button", className: `kind-tag is-${kind}`, textContent: t(kind === "intervals" ? "kindIntervals" : "kindSteady"), title: t("kindSwitch"),
+  });
+  tag.addEventListener("click", async (event) => {
+    event.preventDefault();
+    entry.kind = kind === "intervals" ? "steady" : "intervals";
+    await saveEntries([entry]).catch(() => {});
+    onChange();
+  });
+  return tag;
 }
 
 function shortDate(epochMs) {
@@ -65,6 +81,9 @@ async function renderList() {
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     row.children[1].title = entry.name;
+    const kind = document.createElement("td");
+    kind.append(kindTag(entry, renderList));
+    row.children[3].after(kind);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
