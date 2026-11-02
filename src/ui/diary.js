@@ -32,15 +32,11 @@ const view = {
 
 const basisFor = (period) => (period === "year" && view.basis === "lastYear" ? "previous" : view.basis);
 
-// The periods to pick from: those with activities, other than the one shown.
-const pickable = (range) => periodsWith(view.period, shown(), zone).filter((start) => start !== range[0]);
-
-// The period picked by hand, or else the latest before the one shown that has activities.
+// The period picked by hand, or else the latest before the one shown that has activities, or else the one before.
 function pickedStart(range) {
-  const options = pickable(range);
   const kept = view.picked[view.period];
-  if (kept && options.includes(kept)) return kept;
-  return options.find((start) => start < range[0]) ?? options[0] ?? null;
+  if (kept) return kept;
+  return periodsWith(view.period, shown(), zone).find((start) => start < range[0]) ?? shiftPeriod(view.period, range[0], -1);
 }
 
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
@@ -86,20 +82,18 @@ function jumpYears() {
 }
 
 // The jump list for the period shown: its year, and its month or week within that year.
-function renderJump(range) {
-  const year = Number(range[0].slice(0, 4));
+// A year, then a month or a week of it: the lists of the jump under the title and of the period picked to compare with.
+function fillPeriodPicker(yearSelect, partSelect, start) {
+  const year = Number(start.slice(0, 4));
   const years = jumpYears();
   if (!years.includes(year)) years.push(year);
-  byId("diaryJumpYear").replaceChildren(...years.sort((a, b) => b - a).map((value) => new Option(String(value), String(value))));
-  byId("diaryJumpYear").value = String(year);
-  byId("diaryJumpMonthField").hidden = view.period !== "month";
-  byId("diaryJumpWeekField").hidden = view.period !== "week";
+  yearSelect.replaceChildren(...years.sort((a, b) => b - a).map((value) => new Option(String(value), String(value))));
+  yearSelect.value = String(year);
   if (view.period === "month") {
-    byId("diaryJumpMonth").replaceChildren(...Array.from({ length: 12 }, (_, index) => {
+    partSelect.replaceChildren(...Array.from({ length: 12 }, (_, index) => {
       const key = `${year}-${String(index + 1).padStart(2, "0")}-01`;
       return new Option(format(key, { month: "long" }), key);
     }));
-    byId("diaryJumpMonth").value = range[0];
   }
   if (view.period === "week") {
     // Every week numbered in the year: from the one holding 4 January to the last before the next year's first.
@@ -107,9 +101,24 @@ function renderJump(range) {
     for (let from = periodRange("week", `${year}-01-04`)[0]; from < periodRange("week", `${year + 1}-01-04`)[0]; from = addDays(from, 7)) {
       options.push(new Option(`${weekNumber(from)}. · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(from, 6), { day: "numeric", month: "numeric" })}`, from));
     }
-    byId("diaryJumpWeek").replaceChildren(...options);
-    byId("diaryJumpWeek").value = range[0];
+    partSelect.replaceChildren(...options);
   }
+  if (view.period !== "year") partSelect.value = start;
+}
+
+// The same period in another year: the month kept, or the week number as near as that year has it.
+function inYear(year, from) {
+  if (view.period !== "week") return `${year}${from.slice(4)}`;
+  const firstWeek = periodRange("week", `${year}-01-04`)[0];
+  const lastWeek = addDays(periodRange("week", `${Number(year) + 1}-01-04`)[0], -7);
+  const wanted = addDays(firstWeek, 7 * (weekNumber(from) - 1));
+  return wanted > lastWeek ? lastWeek : wanted;
+}
+
+function renderJump(range) {
+  byId("diaryJumpMonthField").hidden = view.period !== "month";
+  byId("diaryJumpWeekField").hidden = view.period !== "week";
+  fillPeriodPicker(byId("diaryJumpYear"), byId(view.period === "week" ? "diaryJumpWeek" : "diaryJumpMonth"), range[0]);
 }
 
 function toggleJump(open = byId("diaryJump").hidden) {
@@ -138,12 +147,9 @@ function renderControls(range) {
   const running = today >= range[0] && today < range[1];
   byId("diarySpan").hidden = !running;
   for (const button of byId("diarySpan").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.span === view.span));
-  const pick = byId("diaryBasisPick");
-  pick.hidden = basis !== "pick";
-  if (basis === "pick") {
-    pick.replaceChildren(...pickable(range).map((start) => new Option(periodTitle(periodRange(view.period, start)), start)));
-    pick.value = pickedStart(range) ?? "";
-  }
+  byId("diaryBasisPick").hidden = basis !== "pick";
+  byId("diaryBasisPickPart").hidden = view.period === "year";
+  if (basis === "pick") fillPeriodPicker(byId("diaryBasisPickYear"), byId("diaryBasisPickPart"), pickedStart(range));
   byId("diaryTitle").textContent = periodTitle(range);
   byId("diaryCalendarTitle").textContent = periodTitle(range);
   renderJump(range);
@@ -184,7 +190,7 @@ function renderTiles(current, previous, entries) {
     : previous.partial
     ? t("diaryVersusPart", { from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
     : basisFor(view.period) === "pick"
-      ? (previous.range ? t("diaryVersusPick", { name: periodTitle(previous.range) }) : t("diaryNothingToPick"))
+      ? t("diaryVersusPick", { name: periodTitle(previous.range) })
       : t(basisFor(view.period) === "lastYear" ? `diaryVersusLastYear_${view.period}` : `diaryVersus_${view.period}`);
   byId("diaryTiles").replaceChildren(...tiles.map(([label, value, delta, modifier]) => {
     const tile = Object.assign(document.createElement("div"), { className: `diary-tile${modifier ? ` ${modifier}` : ""}` });
@@ -428,12 +434,7 @@ function render() {
   const whole = previousRange(view.period, view.day, "", basis, picked);
   byId("diaryEmpty").hidden = view.entries.length > 0;
   renderControls(range);
-  if (basis === "pick" && !picked) {
-    // Nothing else to set the period against: values without a change.
-    renderTiles(totals(current), { count: null, distance: null, seconds: null, avgPower: null, avgHeartRate: null, range: null, partial: false }, current);
-  } else {
-    renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
-  }
+  renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
   renderBars(range, current);
   renderLegend();
   renderCalendar(range, current);
@@ -470,7 +471,12 @@ export function setupDiary({ onOpen }) {
     view.span = span;
     render();
   });
-  byId("diaryBasisPick").addEventListener("change", (event) => {
+  byId("diaryBasisPickYear").addEventListener("change", (event) => {
+    const range = periodRange(view.period, view.day);
+    view.picked[view.period] = inYear(event.target.value, pickedStart(range));
+    render();
+  });
+  byId("diaryBasisPickPart").addEventListener("change", (event) => {
     view.picked[view.period] = event.target.value;
     render();
   });
@@ -492,16 +498,7 @@ export function setupDiary({ onOpen }) {
   byId("diaryTitle").addEventListener("click", () => toggleJump());
   // A new year keeps the month, or the week number as near as that year has it.
   byId("diaryJumpYear").addEventListener("change", (event) => {
-    const year = event.target.value;
-    const [from] = periodRange(view.period, view.day);
-    if (view.period === "week") {
-      const firstWeek = periodRange("week", `${year}-01-04`)[0];
-      const lastWeek = addDays(periodRange("week", `${Number(year) + 1}-01-04`)[0], -7);
-      const wanted = addDays(firstWeek, 7 * (weekNumber(from) - 1));
-      view.day = wanted > lastWeek ? lastWeek : wanted;
-    } else {
-      view.day = `${year}${from.slice(4)}`;
-    }
+    view.day = inYear(event.target.value, periodRange(view.period, view.day)[0]);
     render();
   });
   for (const id of ["diaryJumpMonth", "diaryJumpWeek"]) {

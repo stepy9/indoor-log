@@ -380,7 +380,10 @@
               <button type="button" data-span="same" aria-pressed="false" data-i18n="diarySpanSame">Stejné dny</button>
               <button type="button" data-span="whole" aria-pressed="true" data-i18n="diarySpanWhole">Celé období</button>
             </div>
-            <select class="diary-basis-pick" id="diaryBasisPick" aria-label="Období ke srovnání" data-i18n-aria="diaryBasisPickLabel" hidden></select>
+            <div class="diary-basis-pick" id="diaryBasisPick" role="group" aria-label="Období ke srovnání" data-i18n-aria="diaryBasisPickLabel" hidden>
+              <select id="diaryBasisPickYear" aria-label="Rok" data-i18n-aria="diaryYear"></select>
+              <select id="diaryBasisPickPart" aria-label="Období" data-i18n-aria="diaryPeriod"></select>
+            </div>
           </div>
           <div class="diary-tiles" id="diaryTiles"></div>
         </section>
