@@ -546,6 +546,14 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .diary-calendar-nav { justify-content: center; margin-bottom: 12px; }
 .diary-calendar-nav h3 { min-width: 220px; margin: 0; font-size: 16px; text-align: center; }
 .diary-nav h2 { min-width: 300px; margin: 0; font-size: 20px; text-align: center; }
+.diary-jump-wrap { position: relative; }
+.diary-title-button { padding: 4px 10px; border: 1px solid transparent; border-radius: 8px; color: var(--ink); background: transparent; font: inherit; cursor: pointer; }
+.diary-title-button::after { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 4px 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); }
+.diary-title-button:hover, .diary-title-button[aria-expanded="true"] { border-color: var(--line-strong); background: var(--surface-2); }
+.diary-jump { position: absolute; top: calc(100% + 6px); left: 50%; z-index: 20; display: flex; gap: 10px; padding: 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(15, 23, 42, .18); transform: translateX(-50%); }
+.diary-jump[hidden], .diary-jump label[hidden] { display: none; }
+.diary-jump label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.diary-jump select { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 13px; }
 .diary-nav .outline-button { margin: 0; padding: 4px 12px; }
 .diary-nav .diary-today { margin-left: 4px; color: var(--ink); font-size: 13px; }
 .diary-nav .diary-today[hidden] { display: none; }

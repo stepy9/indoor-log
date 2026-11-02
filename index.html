@@ -347,7 +347,14 @@
         <div class="card diary-head">
           <div class="diary-nav">
             <button class="outline-button" id="diaryBack" type="button" aria-label="Předchozí" data-i18n-aria="diaryBack" title="Předchozí" data-i18n-title="diaryBack">‹</button>
-            <h2 id="diaryTitle"></h2>
+            <div class="diary-jump-wrap">
+              <h2><button class="diary-title-button" id="diaryTitle" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="diaryJump" title="Vybrat období" data-i18n-title="diaryJump"></button></h2>
+              <div class="diary-jump" id="diaryJump" role="dialog" aria-label="Vybrat období" data-i18n-aria="diaryJump" hidden>
+                <label><span data-i18n="diaryYear">Rok</span><select id="diaryJumpYear"></select></label>
+                <label id="diaryJumpMonthField"><span data-i18n="diaryMonth">Měsíc</span><select id="diaryJumpMonth"></select></label>
+                <label id="diaryJumpWeekField"><span data-i18n="diaryWeek">Týden</span><select id="diaryJumpWeek"></select></label>
+              </div>
+            </div>
             <button class="outline-button" id="diaryForward" type="button" aria-label="Další" data-i18n-aria="diaryForward" title="Další" data-i18n-title="diaryForward">›</button>
             <button class="outline-button diary-today" id="diaryToday" type="button" data-i18n="diaryToday">Dnes</button>
           </div>

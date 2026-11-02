@@ -34,6 +34,45 @@ function periodTitle([from, to]) {
   return `${t("diaryWeekNumber", { week: weekNumber(from) })} · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
 }
 
+// The years to jump to: from the first activity, or this year, up to this year.
+function jumpYears() {
+  const thisYear = Number(dayKey(Date.now(), zone).slice(0, 4));
+  const first = Math.min(thisYear, ...view.entries.map((entry) => Number(dayKey(entry.startMs, zone).slice(0, 4))));
+  return Array.from({ length: thisYear - first + 1 }, (_, index) => thisYear - index);
+}
+
+// The jump list for the period shown: its year, and its month or week within that year.
+function renderJump(range) {
+  const year = Number(range[0].slice(0, 4));
+  const years = jumpYears();
+  if (!years.includes(year)) years.push(year);
+  byId("diaryJumpYear").replaceChildren(...years.sort((a, b) => b - a).map((value) => new Option(String(value), String(value))));
+  byId("diaryJumpYear").value = String(year);
+  byId("diaryJumpMonthField").hidden = view.period !== "month";
+  byId("diaryJumpWeekField").hidden = view.period !== "week";
+  if (view.period === "month") {
+    byId("diaryJumpMonth").replaceChildren(...Array.from({ length: 12 }, (_, index) => {
+      const key = `${year}-${String(index + 1).padStart(2, "0")}-01`;
+      return new Option(format(key, { month: "long" }), key);
+    }));
+    byId("diaryJumpMonth").value = range[0];
+  }
+  if (view.period === "week") {
+    // Every week numbered in the year: from the one holding 4 January to the last before the next year's first.
+    const options = [];
+    for (let from = periodRange("week", `${year}-01-04`)[0]; from < periodRange("week", `${year + 1}-01-04`)[0]; from = addDays(from, 7)) {
+      options.push(new Option(`${weekNumber(from)}. · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(from, 6), { day: "numeric", month: "numeric" })}`, from));
+    }
+    byId("diaryJumpWeek").replaceChildren(...options);
+    byId("diaryJumpWeek").value = range[0];
+  }
+}
+
+function toggleJump(open = byId("diaryJump").hidden) {
+  byId("diaryJump").hidden = !open;
+  byId("diaryTitle").setAttribute("aria-expanded", String(open));
+}
+
 const shown = () => view.entries.filter((entry) => view.sport === "all" || entry.sport === view.sport);
 
 function renderControls(range) {
@@ -46,6 +85,7 @@ function renderControls(range) {
   for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
   byId("diaryTitle").textContent = periodTitle(range);
   byId("diaryCalendarTitle").textContent = periodTitle(range);
+  renderJump(range);
   // Back to today only from another period.
   const today = dayKey(Date.now(), zone);
   byId("diaryToday").hidden = today >= range[0] && today < range[1];
@@ -232,6 +272,37 @@ export function setupDiary({ onOpen }) {
   }
   // The chart is drawn at its real width, so a new window width redraws it.
   window.addEventListener("resize", render);
+  byId("diaryTitle").addEventListener("click", () => toggleJump());
+  // A new year keeps the month, or the week number as near as that year has it.
+  byId("diaryJumpYear").addEventListener("change", (event) => {
+    const year = event.target.value;
+    const [from] = periodRange(view.period, view.day);
+    if (view.period === "week") {
+      const firstWeek = periodRange("week", `${year}-01-04`)[0];
+      const lastWeek = addDays(periodRange("week", `${Number(year) + 1}-01-04`)[0], -7);
+      const wanted = addDays(firstWeek, 7 * (weekNumber(from) - 1));
+      view.day = wanted > lastWeek ? lastWeek : wanted;
+    } else {
+      view.day = `${year}${from.slice(4)}`;
+    }
+    render();
+  });
+  for (const id of ["diaryJumpMonth", "diaryJumpWeek"]) {
+    byId(id).addEventListener("change", (event) => {
+      view.day = event.target.value;
+      toggleJump(false);
+      render();
+    });
+  }
+  // A click elsewhere or Escape closes the jump list.
+  document.addEventListener("click", (event) => {
+    if (!byId("diaryJump").hidden && !event.target.closest(".diary-jump-wrap")) toggleJump(false);
+  });
+  byId("diaryJump").addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    toggleJump(false);
+    byId("diaryTitle").focus();
+  });
   byId("diaryToday").addEventListener("click", () => {
     view.day = dayKey(Date.now(), zone);
     render();
