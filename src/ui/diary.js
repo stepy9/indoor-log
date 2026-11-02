@@ -24,6 +24,8 @@ const view = {
   barMetric: remembered.barMetric === "seconds" ? "seconds" : "distance",
   // What the period is set against: "previous", "lastYear" (a week or a month only) or "pick", the period picked by hand.
   basis: ["lastYear", "pick"].includes(remembered.basis) ? remembered.basis : "previous",
+  // While the period runs, the other one counts "whole" or only as many days as have gone by ("same").
+  span: remembered.span === "same" ? "same" : "whole",
   // A day of the period picked by hand, kept per period type.
   picked: {},
 };
@@ -131,6 +133,11 @@ function renderControls(range) {
     if (button.dataset.basis === "previous") button.textContent = t(`diaryBasisPrevious_${view.period}`);
     if (button.dataset.basis === "lastYear") button.hidden = view.period === "year";
   }
+  // Only a running period has days still to come, and the choice of span.
+  const today = dayKey(Date.now(), zone);
+  const running = today >= range[0] && today < range[1];
+  byId("diarySpan").hidden = !running;
+  for (const button of byId("diarySpan").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.span === view.span));
   const pick = byId("diaryBasisPick");
   pick.hidden = basis !== "pick";
   if (basis === "pick") {
@@ -141,8 +148,7 @@ function renderControls(range) {
   byId("diaryCalendarTitle").textContent = periodTitle(range);
   renderJump(range);
   // Back to today only from another period.
-  const today = dayKey(Date.now(), zone);
-  byId("diaryToday").hidden = today >= range[0] && today < range[1];
+  byId("diaryToday").hidden = running;
 }
 
 // The period's totals, each beside the change from the period before.
@@ -408,7 +414,7 @@ function renderLegend() {
 
 function render() {
   if (byId("diaryView").hidden) return;
-  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis } });
+  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span } });
   view.day ??= dayKey(Date.now(), zone);
   const range = periodRange(view.period, view.day);
   const entries = shown();
@@ -416,7 +422,7 @@ function render() {
   const today = dayKey(Date.now(), zone);
   const basis = basisFor(view.period);
   const picked = basis === "pick" ? pickedStart(range) : null;
-  const before = previousRange(view.period, view.day, today, basis, picked);
+  const before = previousRange(view.period, view.day, view.span === "same" ? today : "", basis, picked);
   const previous = inPeriod(entries, before, zone);
   // With no day of the period gone by, the range before is never cut.
   const whole = previousRange(view.period, view.day, "", basis, picked);
@@ -456,6 +462,12 @@ export function setupDiary({ onOpen }) {
     const basis = event.target.closest("button")?.dataset.basis;
     if (!basis) return;
     view.basis = basis;
+    render();
+  });
+  byId("diarySpan").addEventListener("click", (event) => {
+    const span = event.target.closest("button")?.dataset.span;
+    if (!span) return;
+    view.span = span;
     render();
   });
   byId("diaryBasisPick").addEventListener("change", (event) => {
