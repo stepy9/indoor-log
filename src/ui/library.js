@@ -159,7 +159,8 @@ async function renderList() {
     const cells = [
       shortDate(entry.startMs),
       "",
-      t(`librarySource_${entry.source}`),
+      // A conversion saved as a FIT is the same file an import of that FIT would give.
+      t(`librarySource_${entry.exported ? "export" : entry.source}`),
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
       value(entry.summary.avgPower, "W"),
