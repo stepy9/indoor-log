@@ -292,8 +292,9 @@ function renderTable(id, rows, picked) {
     const th = document.createElement("th");
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
     swatch.style.background = `var(--compare-${view.slots.get(entry.id)})`;
-    th.append(swatch, shortDate(entry.startMs));
-    th.title = entry.name;
+    // The date alone keeps six columns narrow; the time and name are in the tooltip.
+    th.append(swatch, dayDate(entry.startMs));
+    th.title = `${entry.name} · ${shortDate(entry.startMs)}`;
     return th;
   }));
   byId(id).replaceChildren(head, ...rows.map(([label, cell]) => {
@@ -519,6 +520,8 @@ function showCompare(on) {
     byId(previousView).hidden = false;
   }
   byId("compareView").hidden = !on;
+  // The comparison may use a wider window than the converter, so six activities fit side by side.
+  document.body.classList.toggle("is-comparing", on);
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String((button.dataset.appView === "compare") === on));
   }

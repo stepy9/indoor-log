@@ -507,3 +507,5 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .name-input { width: 100%; min-width: 220px; height: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; color: var(--ink); background: transparent; font: inherit; }
 .name-input:hover { border-color: var(--line-strong); }
 .name-input:focus { border-color: var(--accent); outline: none; background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
+.is-comparing .shell, .is-comparing .topbar-inner { max-width: 1600px; }
+.compare-table th, .compare-table td { padding-left: 8px; padding-right: 8px; }
