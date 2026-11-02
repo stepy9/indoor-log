@@ -21,6 +21,10 @@
           </span>
           <span class="brand-name">Kinomap FIT <span class="brand-light">Studio</span></span>
         </a>
+        <nav class="app-nav" aria-label="Sekce" data-i18n-aria="sections">
+          <button type="button" data-app-view="converter" aria-pressed="true" data-i18n="navConverter">Převodník</button>
+          <button type="button" data-app-view="compare" aria-pressed="false" data-i18n="navCompare">Porovnání</button>
+        </nav>
         <div class="topbar-actions">
           <button class="library-button" id="libraryButton" type="button"><span data-i18n="library">Knihovna</span></button>
           <div class="privacy"><span class="privacy-dot"></span><span data-i18n="privacy">Soukromé zpracování v prohlížeči</span></div>
@@ -331,6 +335,58 @@
           <button class="export-button" id="intervalsSave" type="button" data-i18n="save">Uložit</button>
         </div>
       </dialog>
+      <section class="compare-view" id="compareView" hidden>
+        <aside class="card compare-picker">
+          <div class="panel-title-row">
+            <span class="field-label" data-i18n="compareActivities">Aktivity</span>
+            <select id="compareSport" aria-label="Sport" data-i18n-aria="librarySport"></select>
+          </div>
+          <p class="field-note" id="compareEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná. Stáhněte aktivitu v převodníku nebo přidejte soubory do knihovny.</p>
+          <div class="compare-list" id="compareList"></div>
+          <p class="field-note" id="compareLimit" data-i18n="compareLimit" hidden>Porovnat lze nejvýš 6 aktivit najednou.</p>
+          <button class="outline-button" id="compareLibraryButton" type="button" data-i18n="compareManage">Spravovat knihovnu</button>
+        </aside>
+        <div class="compare-main">
+          <section class="card compare-chart-card">
+            <div class="compare-controls">
+              <div class="segmented" role="group" aria-label="Veličina" data-i18n-aria="compareMetric">
+                <button type="button" data-compare-metric="power">Výkon</button>
+                <button type="button" data-compare-metric="pace">Tempo</button>
+                <button type="button" data-compare-metric="heartRate">Tep</button>
+                <button type="button" data-compare-metric="cadence">Kadence</button>
+              </div>
+              <div class="segmented" role="group" aria-label="Osa X" data-i18n-aria="compareAxis">
+                <button type="button" data-compare-axis="distance" data-i18n="compareByDistance">Vzdálenost</button>
+                <button type="button" data-compare-axis="time" data-i18n="compareByTime">Čas</button>
+              </div>
+              <label class="compare-smooth"><span data-i18n="compareSmooth">Vyhlazení</span>
+                <select id="compareSmooth">
+                  <option value="0" data-i18n="compareSmoothOff">vypnuto</option>
+                  <option value="5">5 s</option>
+                  <option value="10" selected>10 s</option>
+                  <option value="30">30 s</option>
+                  <option value="60">60 s</option>
+                </select>
+              </label>
+            </div>
+            <div class="compare-chart-wrap">
+              <svg class="compare-chart" id="compareChart" role="img" aria-label="Porovnání aktivit" data-i18n-aria="navCompare"></svg>
+              <div class="compare-tooltip" id="compareTooltip" hidden></div>
+              <p class="field-note compare-chart-empty" id="compareChartEmpty" data-i18n="compareChartEmpty">Vyberte vlevo jednu nebo více aktivit.</p>
+            </div>
+          </section>
+          <div class="compare-tables" id="compareTables" hidden>
+            <section class="card">
+              <span class="field-label" data-i18n="compareSummary">Souhrn</span>
+              <div class="laps-scroll"><table class="laps-table compare-table" id="compareSummary"></table></div>
+            </section>
+            <section class="card">
+              <span class="field-label" data-i18n="compareBest">Nejlepší úseky</span>
+              <div class="laps-scroll"><table class="laps-table compare-table" id="compareBest"></table></div>
+            </section>
+          </div>
+        </div>
+      </section>
       <dialog class="intervals-dialog library-dialog" id="libraryDialog" aria-labelledby="libraryTitle">
         <input id="libraryFilesInput" class="visually-hidden" type="file" multiple accept=".tcx,.pwx,.fit,application/xml,text/xml,application/octet-stream" />
         <input id="libraryBackupInput" class="visually-hidden" type="file" accept=".json,application/json" />

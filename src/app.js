@@ -6,6 +6,7 @@ import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapF
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
 import { rememberWorkout, setupLibrary } from "./ui/library.js";
+import { rerenderCompare, setupCompare } from "./ui/compare.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
@@ -115,6 +116,7 @@ function setLanguage(language, persist = true) {
   }
   renderBatch();
   render();
+  rerenderCompare();
 }
 
 // Garmin's own label for each perceived effort value, 1 very light to 10 maximum.
@@ -871,6 +873,7 @@ for (const button of document.querySelectorAll(".mode-button")) {
 setupChartTrim(render);
 setupChartLegend();
 setupLibrary();
+setupCompare({ onConverter: drawChart });
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);
 setTheme(savedTheme(), false);
