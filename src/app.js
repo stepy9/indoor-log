@@ -5,6 +5,7 @@ import { checkWorkout } from "./checks.js";
 import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapFileName } from "./files.js";
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
+import { rememberWorkout, setupLibrary } from "./ui/library.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
@@ -377,6 +378,7 @@ async function exportBatch(targetDirectory = null) {
       const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
       counts[saved ? "saved" : "downloaded"] += 1;
       rememberExport(kinomapExportKey(item.kinomapFile.name));
+      await rememberWorkout(workout);
       Object.assign(item, { status: null, failure: null, exported: true, selected: false });
     } catch (error) {
       counts.failed += 1;
@@ -868,6 +870,7 @@ for (const button of document.querySelectorAll(".mode-button")) {
 
 setupChartTrim(render);
 setupChartLegend();
+setupLibrary();
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);
 setTheme(savedTheme(), false);
