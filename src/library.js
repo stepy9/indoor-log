@@ -1,3 +1,4 @@
+import { cleanTitle } from "./files.js";
 import { isExportedFit } from "./fit.js";
 
 // Saved activities for later analysis, kept in this browser's IndexedDB; nothing leaves the device.
@@ -46,6 +47,9 @@ const finite = (list) => list.filter(Number.isFinite);
 const average = (list) => (list.length ? Math.round(list.reduce((sum, value) => sum + value, 0) / list.length) : null);
 const highest = (list) => (list.length ? Math.max(...list) : null);
 
+// An export's name, tidied like a new conversion's: "Kinomap - _ Easy" becomes "Kinomap - Easy".
+const exportName = (name) => name && name.replace(/^(Kinomap - )?(.*)$/s, (_, prefix = "", title) => `${prefix}${cleanTitle(title)}`);
+
 // A FIT as decodeGarminFit returns it: from the watch, or exported here with the laps and their types as they were set.
 // The session fills what the records lack.
 export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
@@ -82,7 +86,7 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
   };
   return {
     id: entryId(sport, fit.startMs),
-    name: (exported && fit.workoutName) || name || "Garmin",
+    name: (exported && exportName(fit.workoutName)) || name || "Garmin",
     sport,
     source: exported ? "export" : "fit",
     // An export carries one workout step per interval lap; a plain export has a single step.

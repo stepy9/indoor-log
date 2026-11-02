@@ -24,6 +24,8 @@ const fixtureFile = (sport, name, folder = sport) => folderFile(`week/${folder}/
 test("strips emoji, Kinomap ids and full-width punctuation from titles", () => {
   assert.equal(titleFromKinomapFileName("⏱10 Min 24spm Stroke Rate Stripes--26409951.tcx"), "10 Min 24spm Stroke Rate Stripes");
   assert.equal(titleFromKinomapFileName("🌅🚣🗻Fuji San - Rowing Lake Motosu--19072939.pwx"), "Fuji San - Rowing Lake Motosu");
+  assert.equal(titleFromKinomapFileName("_ Easy Comeback, Beautiful Scenery!--1.tcx"), "Easy Comeback, Beautiful Scenery!");
+  assert.equal(titleFromKinomapFileName("- Morning row _--2.tcx"), "Morning row");
   assert.equal(titleFromKinomapFileName("Workout ｜ Build Fitness--1.tcx"), "Workout | Build Fitness");
   assert.equal(titleFromKinomapFileName("Rame Avec Pascal 2K19 - Départ--26388581.tcx"), "Rame Avec Pascal 2K19 - Départ");
 });
