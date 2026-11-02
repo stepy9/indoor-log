@@ -126,18 +126,18 @@ export function encodeFit(records, summary, laps, startMs, endMs, timeZone = "Eu
   encoder.writeMesg({ mesgNum: Profile.MesgNum.DEVICE_INFO, timestamp: startTime, deviceIndex: "creator", ...device, softwareVersion: 21 });
   // Points at the workout followed, which also lets Connect take the activity name from it.
   encoder.writeMesg({ mesgNum: Profile.MesgNum.TRAINING_FILE, timestamp: startTime, type: "workout", ...device, timeCreated: startTime });
-  if (steps?.length) {
-    encoder.writeMesg({ mesgNum: Profile.MesgNum.WORKOUT, wktName: activityName, sport, subSport, numValidSteps: steps.length });
-    steps.forEach((step, index) => encoder.writeMesg({
-      mesgNum: Profile.MesgNum.WORKOUT_STEP,
-      messageIndex: index,
-      durationType: "time",
-      durationValue: Math.round(step.durationSeconds * 1000),
-      // Garmin Connect lists an "active" step as Other; its own workouts call the work steps "interval".
-      intensity: step.intensity === "active" ? "interval" : step.intensity,
-      ...stepTarget(step),
-    }));
-  }
+  // Without intervals the workout is one open step over the whole activity, so Connect still takes the name from it.
+  const workoutSteps = steps?.length ? steps : [{ durationSeconds: Math.max(1, elapsedSeconds), intensity: "active" }];
+  encoder.writeMesg({ mesgNum: Profile.MesgNum.WORKOUT, wktName: activityName, sport, subSport, numValidSteps: workoutSteps.length });
+  workoutSteps.forEach((step, index) => encoder.writeMesg({
+    mesgNum: Profile.MesgNum.WORKOUT_STEP,
+    messageIndex: index,
+    durationType: "time",
+    durationValue: Math.round(step.durationSeconds * 1000),
+    // Garmin Connect lists an "active" step as Other; its own workouts call the work steps "interval".
+    intensity: step.intensity === "active" ? "interval" : step.intensity,
+    ...stepTarget(step),
+  }));
   encoder.writeMesg({
     mesgNum: Profile.MesgNum.EVENT,
     timestamp: startTime,
@@ -186,7 +186,7 @@ export function encodeFit(records, summary, laps, startMs, endMs, timeZone = "Eu
       eventType: "stop",
       intensity: lap.intensity ?? "active",
       lapTrigger: index === laps.length - 1 ? "sessionEnd" : lap.trigger ?? "distance",
-      wktStepIndex: lap.stepIndex,
+      wktStepIndex: lap.stepIndex ?? 0,
     });
   });
   encoder.writeMesg({
