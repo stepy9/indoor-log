@@ -1,5 +1,5 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
-import { addDays, calendarDays, dayKey, inPeriod, periodBuckets, periodRange, previousRange, shiftPeriod, totals } from "../diary.js";
+import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
@@ -31,7 +31,7 @@ const hours = (seconds) => (seconds >= 3600 ? `${displayNumber(seconds / 3600, 1
 function periodTitle([from, to]) {
   if (view.period === "year") return from.slice(0, 4);
   if (view.period === "month") return format(from, { month: "long", year: "numeric" });
-  return `${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
+  return `${t("diaryWeekNumber", { week: weekNumber(from) })} · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
 }
 
 const shown = () => view.entries.filter((entry) => view.sport === "all" || entry.sport === view.sport);
@@ -45,6 +45,7 @@ function renderControls(range) {
   for (const button of byId("diaryPeriod").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.period === view.period));
   for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
   byId("diaryTitle").textContent = periodTitle(range);
+  byId("diaryCalendarTitle").textContent = periodTitle(range);
   // Back to today only from another period.
   const today = dayKey(Date.now(), zone);
   byId("diaryToday").hidden = today >= range[0] && today < range[1];
@@ -222,7 +223,8 @@ export function setupDiary({ onOpen }) {
     view.barMetric = metric;
     render();
   });
-  for (const [id, by] of [["diaryBack", -1], ["diaryForward", 1]]) {
+  // The calendar has its own arrows, so a long month need not be scrolled back up to move on.
+  for (const [id, by] of [["diaryBack", -1], ["diaryForward", 1], ["diaryCalendarBack", -1], ["diaryCalendarForward", 1]]) {
     byId(id).addEventListener("click", () => {
       view.day = shiftPeriod(view.period, view.day, by);
       render();

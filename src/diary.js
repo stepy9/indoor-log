@@ -49,6 +49,13 @@ export function previousRange(period, key, today) {
   return [previousFrom, cut < previousTo ? cut : previousTo];
 }
 
+// The ISO week number: weeks start on Monday and the first is the one holding the year's first Thursday.
+export function weekNumber(key) {
+  const thursday = addDays(weekStart(key), 3);
+  const first = weekStart(`${thursday.slice(0, 4)}-01-04`);
+  return Math.round((toDate(weekStart(key)) - toDate(first)) / (7 * 86_400_000)) + 1;
+}
+
 export const inPeriod = (entries, [from, to], timeZone) => entries.filter((entry) => {
   const day = dayKey(entry.startMs, timeZone);
   return day >= from && day < to;

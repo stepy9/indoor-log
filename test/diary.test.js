@@ -43,3 +43,12 @@ test("a running period is set against as many days of the one before", async () 
   assert.deepEqual(previousRange("month", "2026-03-31", "2026-03-31"), ["2026-02-01", "2026-03-01"]);
   assert.deepEqual(previousRange("week", "2026-11-04", "2026-11-04"), ["2026-10-26", "2026-10-29"]);
 });
+
+test("weeks are numbered as ISO weeks", async () => {
+  const { weekNumber } = await import("../src/diary.js");
+  assert.equal(weekNumber("2026-10-28"), 44);
+  assert.equal(weekNumber("2026-01-01"), 1);
+  // 1 January 2027 is a Friday, so it still belongs to the last week of 2026.
+  assert.equal(weekNumber("2027-01-01"), 53);
+  assert.equal(weekNumber("2027-01-04"), 1);
+});
