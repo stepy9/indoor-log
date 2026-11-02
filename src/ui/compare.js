@@ -374,8 +374,13 @@ function renderTable(id, rows, picked) {
   }));
 }
 
-// The split lengths offered for each sport, shortest first.
-const splitDistances = { rowing: [250, 500], running: [500, 1000], cycling: [1000, 5000] };
+// The split lengths offered for each sport, shortest first, each with the distance the longest activity needs for it:
+// the shortest always, a longer one once it makes at least a few splits.
+const splitDistances = {
+  rowing: [[250, 0], [500, 0], [1000, 5000]],
+  running: [[1000, 0], [5000, 10000], [10000, 20000]],
+  cycling: [[1000, 0], [5000, 10000], [10000, 20000]],
+};
 
 // Every split of the given length: the metric over it, under the distance it covers.
 function renderSplits(picked, length) {
@@ -402,7 +407,10 @@ function renderLapTable(picked) {
   card.hidden = !picked.length;
   if (!picked.length) return;
   const hasLevels = withLaps.some((entry) => entry.resistance || entry.laps.some((lap) => lap.resistance));
-  const splits = splitDistances[view.sport] ?? splitDistances.rowing;
+  const longest = Math.max(...picked.map((entry) => entry.summary.distance ?? 0));
+  const splits = (splitDistances[view.sport] ?? splitDistances.rowing).filter(([, needs]) => longest >= needs).map(([length]) => length);
+  // The longest split that still makes at least four, or the shortest: 500 m on a 2 km row, 1 km on a 10 km run.
+  const usualSplit = splits.findLast((length) => longest / length >= 4) ?? splits[0];
   // Laps line up only between runs of the same interval plan; a steady row's laps are just the watch's
   // automatic splits, and different plans have different laps.
   const steady = picked.every((entry) => workoutKind(entry) !== "intervals");
@@ -414,7 +422,7 @@ function renderLapTable(picked) {
     ...splits.map((length) => [`split-${length}`, t("compareBySplit", { length: distanceText(length) })]),
   ];
   // Steady rows meet split by split, runs of the same intervals lap by lap, other intervals on the resistance they share.
-  const fallback = byLap ? "lap" : hasLevels && !steady ? "level" : `split-${splits.at(-1)}`;
+  const fallback = byLap ? "lap" : hasLevels && !steady ? "level" : `split-${usualSplit}`;
   const grouping = options.some(([value]) => value === view.lapGrouping) ? view.lapGrouping : fallback;
   byId("compareLapsGrouping").replaceChildren(...options.map(([value, label]) => {
     const button = Object.assign(document.createElement("button"), { type: "button", textContent: label });
