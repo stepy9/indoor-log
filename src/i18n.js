@@ -1,6 +1,8 @@
 export const translations = {
   cs: {
     compareMode: "Režim",
+    zoomReset: "Zrušit přiblížení",
+    zoomHint: "Tažením v grafu přiblížíte úsek, dvojklikem nebo tlačítkem vrátíte celý průběh.",
     modeOverlay: "Porovnat",
     modeTrend: "Vývoj",
     trendEfficiency: "Výkon na tep",
@@ -313,6 +315,8 @@ export const translations = {
   },
   en: {
     compareMode: "Mode",
+    zoomReset: "Reset zoom",
+    zoomHint: "Drag across the chart to zoom into a stretch; double-click or the button shows it all again.",
     modeOverlay: "Compare",
     modeTrend: "Progress",
     trendEfficiency: "Power per heartbeat",

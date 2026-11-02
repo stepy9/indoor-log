@@ -22,6 +22,10 @@ const view = {
   axis: "distance",
   smoothSeconds: 10,
   hoverX: null,
+  // The stretch of the x axis zoomed into by dragging over the chart, as [from, to]; null shows it all.
+  zoom: null,
+  // Where a drag over the chart started, in chart pixels.
+  dragFrom: null,
   layout: null,
 };
 
@@ -59,10 +63,13 @@ function niceTicks(low, high, count, steps = null) {
 }
 
 // Time ticks fall on whole minutes and distance ticks on round meters.
-function xTicks(high) {
-  if (view.axis === "distance") return niceTicks(0, high, 6);
-  const step = 60 * ([1, 2, 5, 10, 15, 20, 30, 60].find((minutes) => high / (minutes * 60) <= 7) ?? 60);
-  return Array.from({ length: Math.floor(high / step) + 1 }, (_, index) => index * step);
+function xTicks(low, high) {
+  if (view.axis === "distance") return niceTicks(low, high, 6);
+  const span = high - low;
+  const step = [1, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1200, 1800, 3600].find((seconds) => span / seconds <= 7) ?? 3600;
+  const ticks = [];
+  for (let tick = Math.ceil(low / step) * step; tick <= high; tick += step) ticks.push(tick);
+  return ticks;
 }
 
 function svg(tag, attributes = {}) {
@@ -180,11 +187,18 @@ function renderChart() {
   byId("compareChartEmpty").hidden = picked.length > 0;
   chart.replaceChildren();
   view.layout = null;
+  byId("compareZoomReset").hidden = true;
+  byId("compareZoomHint").hidden = true;
   if (!picked.length) return;
+  const zoom = view.zoom;
   const lines = picked.map((entry) => ({
     entry, slot: view.slots.get(entry.id),
-    points: downsample(series(entry, view.metric, { axis: view.axis, smoothSeconds: view.smoothSeconds })),
+    // Thinning comes after the zoom, so a zoomed stretch keeps its detail.
+    points: downsample(series(entry, view.metric, { axis: view.axis, smoothSeconds: view.smoothSeconds })
+      .filter((point) => !zoom || (point.x >= zoom[0] && point.x <= zoom[1]))),
   })).filter((line) => line.points.length);
+  byId("compareZoomReset").hidden = !zoom;
+  byId("compareZoomHint").hidden = !lines.length;
   if (!lines.length) {
     byId("compareChartEmpty").hidden = false;
     return;
@@ -193,7 +207,8 @@ function renderChart() {
   const height = 320;
   const margin = { top: 12, right: 16, bottom: 30, left: 64 };
   const all = lines.flatMap((line) => line.points);
-  const maxX = Math.max(...all.map((point) => point.x)) || 1;
+  const minX = zoom ? zoom[0] : 0;
+  const maxX = zoom ? zoom[1] : Math.max(...all.map((point) => point.x)) || 1;
   // The middle 98 % of values set the scale, so a single spike does not flatten the rest.
   const ys = all.map((point) => point.y).sort((a, b) => a - b);
   const low = ys[Math.floor(ys.length * 0.01)];
@@ -206,7 +221,7 @@ function renderChart() {
   const yHigh = Math.max(yTicks.at(-1), high + pad);
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const xFor = (x) => margin.left + (x / maxX) * plotWidth;
+  const xFor = (x) => margin.left + ((x - minX) / (maxX - minX)) * plotWidth;
   const yFor = (y) => {
     const share = (Math.min(yHigh, Math.max(yLow, y)) - yLow) / (yHigh - yLow || 1);
     return margin.top + (inverted ? share : 1 - share) * plotHeight;
@@ -220,7 +235,7 @@ function renderChart() {
     label.textContent = view.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, view.metric === "pace" ? 1 : 0);
     chart.append(label);
   }
-  for (const tick of xTicks(maxX)) {
+  for (const tick of xTicks(minX, maxX)) {
     const label = svg("text", { class: "compare-tick", x: xFor(tick), y: height - 10, "text-anchor": "middle" });
     label.textContent = axisText(tick);
     chart.append(label);
@@ -232,7 +247,7 @@ function renderChart() {
   }
   const guide = svg("g", { class: "compare-hover" });
   chart.append(guide);
-  view.layout = { lines, margin, plotWidth, plotHeight, minX: 0, maxX, xFor, yFor, guide };
+  view.layout = { lines, margin, plotWidth, plotHeight, minX, maxX, xFor, yFor, guide };
   renderHover();
 }
 
@@ -254,6 +269,7 @@ function renderHover() {
     renderTrendHover();
     return;
   }
+  if (view.dragFrom != null) return;
   const tooltip = byId("compareTooltip");
   const layout = view.layout;
   if (!layout || view.hoverX == null) {
@@ -479,6 +495,8 @@ function renderMode() {
   const trend = view.mode === "trend";
   for (const button of document.querySelectorAll("[data-compare-mode]")) button.setAttribute("aria-pressed", String((button.dataset.compareMode === "trend") === trend));
   byId("overlayControls").hidden = trend;
+  // Zooming belongs to the overlay; the trend shows every workout.
+  if (trend) byId("compareZoomReset").hidden = byId("compareZoomHint").hidden = true;
   byId("trendControls").hidden = !trend;
   byId("compareList").classList.toggle("is-trend", trend);
   byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
@@ -579,6 +597,7 @@ export function setupCompare({ onConverter }) {
     button.addEventListener("click", () => {
       view.axis = button.dataset.compareAxis;
       view.hoverX = null;
+      view.zoom = null;
       render();
     });
   }
@@ -591,14 +610,59 @@ export function setupCompare({ onConverter }) {
     if (!byId("compareView").hidden) refresh();
   });
   const chart = byId("compareChart");
+  // Pointer position in chart pixels, kept inside the plot.
+  const plotX = (event) => {
+    const layout = view.layout;
+    const box = chart.getBoundingClientRect();
+    const x = (event.clientX - box.left) * ((layout.margin.left + layout.plotWidth + layout.margin.right) / box.width);
+    return Math.min(layout.margin.left + layout.plotWidth, Math.max(layout.margin.left, x));
+  };
+  const valueAtPixel = (x) => {
+    const layout = view.layout;
+    return layout.minX + ((x - layout.margin.left) / layout.plotWidth) * (layout.maxX - layout.minX);
+  };
+  // Dragging across the overlay chart marks a stretch to zoom into.
+  chart.addEventListener("pointerdown", (event) => {
+    if (!view.layout || view.layout.trend || event.button !== 0) return;
+    view.dragFrom = plotX(event);
+    chart.setPointerCapture(event.pointerId);
+    byId("compareTooltip").hidden = true;
+  });
+  chart.addEventListener("pointerup", (event) => {
+    if (view.dragFrom == null) return;
+    const [from, to] = [view.dragFrom, plotX(event)].sort((a, b) => a - b);
+    view.dragFrom = null;
+    // A click or a tiny drag is not a zoom.
+    if (to - from >= 8) {
+      view.zoom = [valueAtPixel(from), valueAtPixel(to)];
+      view.hoverX = null;
+      renderChart();
+    } else renderHover();
+  });
+  chart.addEventListener("dblclick", () => {
+    if (!view.zoom) return;
+    view.zoom = null;
+    renderChart();
+  });
   chart.addEventListener("pointermove", (event) => {
     const layout = view.layout;
     if (!layout) return;
+    if (view.dragFrom != null) {
+      const x = plotX(event);
+      layout.guide.replaceChildren(svg("rect", {
+        class: "compare-brush", x: Math.min(x, view.dragFrom), y: layout.margin.top, width: Math.abs(x - view.dragFrom), height: layout.plotHeight,
+      }));
+      return;
+    }
     const box = chart.getBoundingClientRect();
     const scale = (layout.margin.left + layout.plotWidth + layout.margin.right) / box.width;
     const x = (event.clientX - box.left) * scale;
     view.hoverX = x < layout.margin.left || x > layout.margin.left + layout.plotWidth ? null : layout.minX + ((x - layout.margin.left) / layout.plotWidth) * (layout.maxX - layout.minX);
     renderHover();
+  });
+  byId("compareZoomReset").addEventListener("click", () => {
+    view.zoom = null;
+    renderChart();
   });
   chart.addEventListener("pointerleave", () => {
     view.hoverX = null;
