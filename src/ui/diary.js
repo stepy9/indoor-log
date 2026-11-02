@@ -178,7 +178,7 @@ const axisText = (value, metric) => (metric === "distance"
   : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
 
 // The bar's day or month, its total and what it is made of (the sessions are in the calendar), beside the bar under the pointer.
-function showTooltip(bar, { when, total, parts }) {
+function showTooltip(bar, { when, total, parts, hint }) {
   const tooltip = byId("diaryTooltip");
   const line = (className, text) => Object.assign(document.createElement("div"), { className, textContent: text });
   const rows = parts.length > 1 ? parts.map(({ label, color, value }) => {
@@ -188,7 +188,7 @@ function showTooltip(bar, { when, total, parts }) {
     row.append(swatch, Object.assign(document.createElement("span"), { textContent: label }), Object.assign(document.createElement("strong"), { textContent: value }));
     return row;
   }) : [];
-  tooltip.replaceChildren(line("diary-tooltip-when", when), line("diary-tooltip-total", total), ...rows);
+  tooltip.replaceChildren(line("diary-tooltip-when", when), line("diary-tooltip-total", total), ...rows, ...(hint ? [line("diary-tooltip-hint", hint)] : []));
   tooltip.hidden = false;
   // Beside the bar, flipped to its left near the right edge, and kept inside the card.
   const card = tooltip.offsetParent.getBoundingClientRect();
@@ -250,8 +250,18 @@ function drawBars(buckets, groups, metric, height) {
     }
     const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
     const parts = groups.map(({ has, label, color }) => ({ label, color, value: barValue(bucket.entries.filter(has), metric) })).filter(({ value }) => value);
-    group.addEventListener("pointerenter", () => showTooltip(group, { when, total: barText(total, metric), parts: parts.map((part) => ({ ...part, value: barText(part.value, metric) })) }));
+    group.addEventListener("pointerenter", () => showTooltip(group, { when, total: barText(total, metric), parts: parts.map((part) => ({ ...part, value: barText(part.value, metric) })), hint: view.period === "year" ? t("diaryOpenMonth") : "" }));
     group.addEventListener("pointerleave", hideTooltip);
+    // A month of the year's chart opens that month.
+    if (view.period === "year") {
+      group.classList.add("is-link");
+      group.addEventListener("click", () => {
+        hideTooltip();
+        view.period = "month";
+        view.day = `${bucket.key}-01`;
+        render();
+      });
+    }
     // A hit target the whole height of the column, wider than the bar.
     group.prepend(svgNode("rect", { x: left + slot * index, y: top, width: slot, height: plotHeight, fill: "transparent" }));
     children.push(group);
@@ -321,7 +331,22 @@ function renderCalendar(range, entries) {
     cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map(activityButton));
     return cell;
   });
-  byId("diaryCalendar").replaceChildren(...head, ...cells);
+  // Each row opens with its week number, which opens that week.
+  const weekCell = (day) => {
+    const button = Object.assign(document.createElement("button"), { type: "button", className: "diary-week-number", textContent: String(weekNumber(day)) });
+    button.title = t("diaryOpenWeek", { week: weekNumber(day) });
+    button.setAttribute("aria-pressed", String(view.period === "week"));
+    button.addEventListener("click", () => {
+      view.period = "week";
+      view.day = day;
+      render();
+    });
+    return button;
+  };
+  const rows = [];
+  for (let index = 0; index < cells.length; index += 7) rows.push(weekCell(days[index]), ...cells.slice(index, index + 7));
+  const corner = Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: t("diaryWeekShort") });
+  byId("diaryCalendar").replaceChildren(corner, ...head, ...rows);
 }
 
 // Each legend entry turns its sport or kind on and off in the chart; the last one shown stays on.
