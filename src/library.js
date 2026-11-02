@@ -1,5 +1,5 @@
 import { cleanTitle } from "./files.js";
-import { isExportedFit } from "./fit.js";
+import { isExportedFit, levelFromFit } from "./fit.js";
 
 // Saved activities for later analysis, kept in this browser's IndexedDB; nothing leaves the device.
 // Each entry holds the summary, laps and the records as columns of numbers measured from the start.
@@ -52,7 +52,8 @@ const exportName = (name) => name && name.replace(/^(Kinomap - )?(.*)$/s, (_, pr
 
 // A FIT as decodeGarminFit returns it: from the watch, or exported here with the laps and their types as they were set.
 // The session fills what the records lack.
-export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
+// trainerFor(sport) gives the trainer ({ name, levels }) whose levels a FIT's recorded resistance is read back in.
+export function entryFromFit(fit, { name, savedAt = Date.now(), trainerFor = () => null } = {}) {
   const session = fit.sessions[0] ?? {};
   const sport = fitSports[session.sport] ?? "rowing";
   const exported = isExportedFit(fit.fileId);
@@ -84,7 +85,7 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
     maxCadence: scaled(session.maxCadence) ?? highest(pick("cadence")),
     avgSpeed: timerSeconds > 0 ? distance / timerSeconds : null,
   };
-  return {
+  const entry = {
     id: entryId(sport, fit.startMs),
     name: (exported && exportName(fit.workoutName)) || name || "Garmin",
     sport,
@@ -97,6 +98,27 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
     summary,
     laps: fit.laps.map((lap) => ({ ...lap, avgCadence: scaled(lap.avgCadence), intensity: lap.intensity === "interval" ? "active" : lap.intensity ?? "active" })),
     records: columns(records),
+  };
+  const { lapResistance, ...resistance } = resistanceFromFit(fit, trainerFor(sport));
+  return lapResistance
+    ? { ...entry, ...resistance, laps: entry.laps.map((lap, index) => (lapResistance[index] ? { ...lap, resistance: lapResistance[index] } : lap)) }
+    : entry;
+}
+
+// The level most of the activity, and of each lap, was rowed on, from the resistance the FIT recorded.
+function resistanceFromFit(fit, trainer) {
+  const level = (records) => {
+    const counts = new Map();
+    for (const { resistance } of records) if (resistance) counts.set(resistance, (counts.get(resistance) ?? 0) + 1);
+    const [value] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
+    return value ? levelFromFit(value, trainer.levels) : null;
+  };
+  if (!trainer?.levels || !fit.records.some((record) => record.resistance)) return {};
+  const laps = fit.laps.map((lap) => level(fit.records.filter((record) => record.timeMs >= lap.startMs && record.timeMs < lap.endMs)));
+  return {
+    trainer: trainer.name,
+    resistance: level(fit.records),
+    lapResistance: laps,
   };
 }
 

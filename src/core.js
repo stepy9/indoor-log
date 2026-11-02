@@ -596,7 +596,14 @@ export function buildWorkout(kinomap, fit = null, options = {}) {
       ...(options.cadenceAsPower ? cadenceTargetAsPower(records, segment, list[index + 1]?.startMs ?? endMs) : {}),
     }))
     : null;
-  const fitBytes = encodeFit(records, summary, laps, startMs, endMs, timeZone, activityName, kinomap.sport, kinomap.subSport, steps, options.asWatch ?? true);
+  // On a trainer with known levels each second carries its resistance: the segment's own, or the activity's.
+  const resistanceLevels = Number(options.resistanceLevels) || null;
+  const levelSegments = segments ? [...segments].sort((a, b) => a.startMs - b.startMs) : [];
+  const resistanceRecords = resistanceLevels ? records.map((record) => {
+    const level = levelSegments.filter((segment) => segment.startMs <= record.timeMs).at(-1)?.resistance ?? Number(options.resistance);
+    return level > 0 ? { ...record, resistance: level } : record;
+  }) : records;
+  const fitBytes = encodeFit(resistanceRecords, summary, laps, startMs, endMs, timeZone, activityName, kinomap.sport, kinomap.subSport, steps, options.asWatch ?? true, resistanceLevels);
   return {
     mode: fit ? "merge" : "convert", records, startMs, endMs, summary, laps, lapDistance, activityName,
     segments, intervalSignal: byIntervals ? detected?.field ?? intervalSignal(records) : null,

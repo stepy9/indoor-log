@@ -104,5 +104,7 @@ export function buildBatchWorkout(item, settings = {}) {
     activityName: settings.activityName ?? `Kinomap - ${item.title}`,
     asWatch: settings.asWatch,
     cadenceAsPower: settings.cadenceAsPower,
+    resistance: settings.resistance,
+    resistanceLevels: settings.resistanceLevels,
   });
 }

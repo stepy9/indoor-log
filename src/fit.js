@@ -34,6 +34,7 @@ export function decodeGarminFit(input) {
     heartRate: Number.isFinite(record.heartRate) ? record.heartRate : null,
     cadence: Number.isFinite(record.cadence) ? record.cadence : null,
     power: Number.isFinite(record.power) ? record.power : null,
+    resistance: Number.isFinite(record.resistance) && record.resistance > 0 ? record.resistance : null,
   })).filter((record) => Number.isFinite(record.timeMs)).sort((a, b) => a.timeMs - b.timeMs);
   if (records.length < 2) throw new Error("FIT: potřebuji alespoň dva časové záznamy.");
   // The watch stores its local time as raw seconds since the FIT epoch; the difference is its UTC offset.
@@ -122,8 +123,13 @@ const exportDevice = { manufacturer: "garmin", product: 4375, serialNumber: expo
 const developmentDevice = { manufacturer: "development", product: 0, serialNumber: exportSerialNumber };
 export const isExportedFit = (fileId) => fileId?.manufacturer === "development" || fileId?.serialNumber === exportSerialNumber;
 
+// FIT keeps a trainer's resistance relative, from 1 to 254 at its hardest; levels turn it back and forth.
+export const fitResistance = (level, levels) => Math.max(1, Math.round((Math.min(level, levels) / levels) * 254));
+export const levelFromFit = (value, levels) => Math.max(1, Math.round((value / 254) * levels));
+
 // steps, when given, describe the workout behind interval laps: each step's duration, intensity and target.
-export function encodeFit(records, summary, laps, startMs, endMs, timeZone = "Europe/Prague", activityName = "Kinomap - Rowing Workout", sport = "rowing", subSport = "indoorRowing", steps = null, asWatch = true) {
+// resistanceLevels is the trainer's number of levels, for records that carry the level they were rowed on.
+export function encodeFit(records, summary, laps, startMs, endMs, timeZone = "Europe/Prague", activityName = "Kinomap - Rowing Workout", sport = "rowing", subSport = "indoorRowing", steps = null, asWatch = true, resistanceLevels = null) {
   const device = asWatch ? exportDevice : developmentDevice;
   const encoder = new Encoder();
   const startTime = fitTime(startMs);
@@ -179,6 +185,7 @@ export function encodeFit(records, summary, laps, startMs, endMs, timeZone = "Eu
       if (fractional != null) message.fractionalCadence = fractional;
     }
     if (record.power != null) message.power = Math.round(record.power);
+    if (record.resistance > 0 && resistanceLevels > 0) message.resistance = fitResistance(record.resistance, resistanceLevels);
     if (record.speed != null) {
       message.speed = record.speed;
       message.enhancedSpeed = record.speed;

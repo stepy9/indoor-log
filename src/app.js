@@ -415,16 +415,18 @@ async function exportBatch(targetDirectory = null) {
     item.status = "saving";
     renderBatch();
     try {
-      const workout = buildBatchWorkout(item, { ...(item.settings ?? rememberedSettings(item.sport)), ...item.overrides, asWatch: elements.asWatch.checked, cadenceAsPower: elements.cadenceAsPower.checked });
-      const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
-      counts[saved ? "saved" : "downloaded"] += 1;
-      rememberExport(kinomapExportKey(item.kinomapFile.name));
       // A folder activity never opened goes out on its sport's usual trainer and resistance.
       const settings = item.settings ?? {};
       const trainer = trainerFor(settings.trainerId ?? lastTrainerId(item.sport));
-      await rememberWorkout(workout, settings.workoutKind, {
-        trainer: trainer?.name, resistance: Number(settings.resistance ?? trainer?.defaultLevel) || null,
+      const resistance = Number(settings.resistance ?? trainer?.defaultLevel) || null;
+      const workout = buildBatchWorkout(item, {
+        ...(item.settings ?? rememberedSettings(item.sport)), ...item.overrides, asWatch: elements.asWatch.checked, cadenceAsPower: elements.cadenceAsPower.checked,
+        resistance, resistanceLevels: trainer?.levels,
       });
+      const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
+      counts[saved ? "saved" : "downloaded"] += 1;
+      rememberExport(kinomapExportKey(item.kinomapFile.name));
+      await rememberWorkout(workout, settings.workoutKind, { trainer: trainer?.name, resistance });
       Object.assign(item, { status: null, failure: null, exported: true, selected: false });
     } catch (error) {
       counts.failed += 1;
@@ -737,6 +739,8 @@ function render() {
           activityName: elements.activityName.value,
           asWatch: elements.asWatch.checked,
           cadenceAsPower: elements.cadenceAsPower.checked,
+          resistance: elements.resistance.value,
+          resistanceLevels: trainerFor(elements.trainer.value)?.levels,
         },
       );
       const { segments } = state.result;

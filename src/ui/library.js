@@ -4,7 +4,7 @@ import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
 import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { levelFromPercent, trainers } from "./trainers.js";
+import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
 const toggle = byId("librarySaveToggle");
@@ -278,7 +278,8 @@ async function renderList() {
 // TCX or PWX goes in as a plain conversion, a FIT from the watch as it was recorded.
 async function entryFromFile(file) {
   if (/\.fit$/i.test(file.name)) {
-    return entryFromFit(decodeGarminFit(await file.arrayBuffer()), { name: file.name.replace(/\.fit$/i, "") });
+    // Resistance recorded in the FIT is read in the levels of the sport's usual trainer.
+    return entryFromFit(decodeGarminFit(await file.arrayBuffer()), { name: file.name.replace(/\.fit$/i, ""), trainerFor: (sport) => trainerFor(lastTrainerId(sport)) });
   }
   const kinomap = parseKinomap(await file.text(), { fallbackStartMs: file.lastModified || Date.now(), timeZone: zone });
   if (kinomap.needsManualStart) throw new Error(t("libraryNeedsDate"));

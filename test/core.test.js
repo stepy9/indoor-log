@@ -536,3 +536,20 @@ test("a pasted plan keeps Kinomap's resistance percentage and interval laps carr
   });
   assert.deepEqual(workout.laps.map((lap) => lap.resistance), [11, 13]);
 });
+
+test("a trainer's resistance goes into every record of the FIT and comes back as its levels", async () => {
+  const { entryFromFit } = await import("../src/library.js");
+  const kinomap = parseKinomap(fs.readFileSync(path.join(fixturesRoot, "rowing", "activity.tcx"), "utf8"));
+  const start = kinomap.records[0].timeMs;
+  const segments = [{ startMs: start, intensity: "active", resistance: 11 }, { startMs: start + 120_000, intensity: "active" }];
+  const workout = buildWorkout(kinomap, null, { lapDistanceMeters: "intervals", segments, resistance: 6, resistanceLevels: 15 });
+  const fit = decodeGarminFit(workout.fitBytes);
+  assert.equal(fit.records[0].resistance, 186);
+  assert.equal(fit.records.at(-1).resistance, 102);
+  const entry = entryFromFit(fit, { trainerFor: () => ({ name: "Woodrower", levels: 15 }) });
+  assert.equal(entry.trainer, "Woodrower");
+  assert.equal(entry.resistance, 6);
+  assert.deepEqual(entry.laps.map((lap) => lap.resistance), [11, 6]);
+  // Without a trainer the FIT carries no resistance.
+  assert.ok(decodeGarminFit(buildWorkout(kinomap, null, { resistance: 6 }).fitBytes).records.every((record) => record.resistance == null));
+});
