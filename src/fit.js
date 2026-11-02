@@ -47,6 +47,20 @@ export function decodeGarminFit(input) {
     startMs: records[0].timeMs,
     endMs: records.at(-1).timeMs,
     sessions: messages.sessionMesgs ?? [],
+    laps: (messages.lapMesgs ?? []).map((lap) => ({
+      startMs: lap.startTime instanceof Date ? lap.startTime.getTime() : null,
+      endMs: lap.timestamp instanceof Date ? lap.timestamp.getTime() : null,
+      timerSeconds: lap.totalTimerTime ?? null,
+      distance: lap.totalDistance ?? null,
+      avgHeartRate: lap.avgHeartRate ?? null,
+      maxHeartRate: lap.maxHeartRate ?? null,
+      avgPower: lap.avgPower ?? null,
+      maxPower: lap.maxPower ?? null,
+      avgCadence: lap.avgCadence ?? null,
+      avgSpeed: lap.enhancedAvgSpeed ?? lap.avgSpeed ?? null,
+      intensity: lap.intensity ?? null,
+    })),
+    workoutName: messages.workoutMesgs?.[0]?.wktName ?? null,
     fileId: messages.fileIdMesgs?.[0] ?? null,
   };
 }

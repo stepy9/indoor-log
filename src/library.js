@@ -1,3 +1,5 @@
+import { isExportedFit } from "./fit.js";
+
 // Saved activities for later analysis, kept in this browser's IndexedDB; nothing leaves the device.
 // Each entry holds the summary, laps and the records as columns of numbers measured from the start.
 
@@ -40,16 +42,21 @@ const finite = (list) => list.filter(Number.isFinite);
 const average = (list) => (list.length ? Math.round(list.reduce((sum, value) => sum + value, 0) / list.length) : null);
 const highest = (list) => (list.length ? Math.max(...list) : null);
 
-// A watch FIT on its own, as decodeGarminFit returns it; the session fills what the records lack.
+// A FIT as decodeGarminFit returns it: from the watch, or exported here with the laps and their types as they were set.
+// The session fills what the records lack.
 export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
   const session = fit.sessions[0] ?? {};
   const sport = fitSports[session.sport] ?? "rowing";
+  const exported = isExportedFit(fit.fileId);
+  // FIT counts running cadence per leg; the library keeps steps/min like the converter.
+  const cadenceScale = sport === "running" ? 2 : 1;
+  const scaled = (value) => (value == null ? null : value * cadenceScale);
   const first = fit.records[0].distance ?? 0;
   const records = fit.records.map((record, index, list) => {
     const previous = list[index - 1];
     const speed = previous && record.distance != null && previous.distance != null && record.timeMs > previous.timeMs
       ? (record.distance - previous.distance) / ((record.timeMs - previous.timeMs) / 1000) : null;
-    return { ...record, distance: record.distance == null ? null : record.distance - first, speed };
+    return { ...record, cadence: scaled(record.cadence), distance: record.distance == null ? null : record.distance - first, speed };
   });
   const pick = (field) => finite(records.map((record) => record[field]));
   const distance = session.totalDistance ?? highest(pick("distance")) ?? 0;
@@ -65,20 +72,20 @@ export function entryFromFit(fit, { name, savedAt = Date.now() } = {}) {
     maxHeartRate: session.maxHeartRate ?? highest(pick("heartRate")),
     avgPower: session.avgPower ?? average(pick("power")),
     maxPower: session.maxPower ?? highest(pick("power")),
-    avgCadence: session.avgCadence ?? average(pick("cadence")),
-    maxCadence: session.maxCadence ?? highest(pick("cadence")),
+    avgCadence: scaled(session.avgCadence) ?? average(pick("cadence")),
+    maxCadence: scaled(session.maxCadence) ?? highest(pick("cadence")),
     avgSpeed: timerSeconds > 0 ? distance / timerSeconds : null,
   };
   return {
     id: entryId(sport, fit.startMs),
-    name: name ?? "Garmin",
+    name: (exported && fit.workoutName) || name || "Garmin",
     sport,
-    source: "fit",
+    source: exported ? "export" : "fit",
     startMs: fit.startMs,
     endMs: fit.endMs,
     savedAt,
     summary,
-    laps: [],
+    laps: fit.laps.map((lap) => ({ ...lap, avgCadence: scaled(lap.avgCadence), intensity: lap.intensity === "interval" ? "active" : lap.intensity ?? "active" })),
     records: columns(records),
   };
 }
@@ -93,8 +100,9 @@ export function sameWorkout(a, b) {
   return overlap >= 0.5 * Math.min(a.endMs - a.startMs, b.endMs - b.startMs);
 }
 
-// The fuller recording wins: Kinomap with the watch, then Kinomap alone, then the watch alone.
-const sourceRank = { merge: 3, convert: 2, fit: 1 };
+// The fuller recording wins: a FIT exported here, which holds the laps as they were set, then Kinomap with the watch,
+// then Kinomap alone, then the watch alone.
+const sourceRank = { export: 4, merge: 3, convert: 2, fit: 1 };
 
 // Adds entries to the library's, one per workout; on a tie the later entry wins. Returns what to write and what to delete.
 export function mergeDuplicates(existing, incoming) {

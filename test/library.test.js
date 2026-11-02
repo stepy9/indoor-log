@@ -51,3 +51,24 @@ test("the same workout saved twice keeps the fuller recording and a hand-picked 
   assert.ok(!sameWorkout(kinomap, other));
   assert.ok(!sameWorkout(kinomap, { ...kinomap, sport: "cycling" }));
 });
+
+test("a FIT exported here keeps its name and lap types and outranks the Kinomap file", () => {
+  const kinomap = parseKinomap(fs.readFileSync(path.join(folder, "activity.tcx"), "utf8"));
+  const workout = buildWorkout(kinomap, null, {
+    activityName: "Stripes", lapDistanceMeters: "intervals",
+    segments: [
+      { startMs: kinomap.records[0].timeMs, intensity: "warmup" },
+      { startMs: kinomap.records[0].timeMs + 60_000, intensity: "active" },
+      { startMs: kinomap.records[0].timeMs + 120_000, intensity: "recovery" },
+      { startMs: kinomap.records[0].timeMs + 180_000, intensity: "active" },
+      { startMs: kinomap.records[0].timeMs + 240_000, intensity: "recovery" },
+    ],
+  });
+  const exported = entryFromFit(decodeGarminFit(workout.fitBytes), { name: "file name" });
+  assert.equal(exported.source, "export");
+  assert.equal(exported.name, "Stripes");
+  assert.deepEqual(exported.laps.map((lap) => lap.intensity).slice(0, 5), ["warmup", "active", "recovery", "active", "recovery"]);
+  const converted = entryFromWorkout(buildWorkout(kinomap, null, {}));
+  assert.deepEqual(mergeDuplicates([converted], [exported]).save.map((entry) => entry.source), ["export"]);
+  assert.deepEqual(mergeDuplicates([exported], [converted]).save, []);
+});
