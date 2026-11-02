@@ -68,13 +68,13 @@ export async function exportFit() {
         throw error;
       }
       rememberExport(kinomapExportKey(state.kinomapFile?.name));
-      await rememberWorkout(state.result);
+      await rememberWorkout(state.result, elements.workoutKind.value);
       setNotice(t("savedAs", { filename: savedName }), "success");
       return;
     }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
-    await rememberWorkout(state.result);
+    await rememberWorkout(state.result, elements.workoutKind.value);
     if (saved) setNotice(t("savedBesideFiles"), "success");
     else if (fallbackMessage) setNotice(t("saveFallbackStarted", { message: fallbackMessage }));
     else setNotice(t("downloadStarted", { filename }), "success");

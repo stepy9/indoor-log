@@ -141,8 +141,10 @@ function clearRests(entry) {
 const finiteValues = (list) => list.filter(Number.isFinite);
 const average = (list) => (list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : null);
 
-export function workoutKind(entry) {
-  if (entry.kind) return entry.kind;
+export const workoutKind = (entry) => entry.kind || detectedKind(entry);
+
+// The kind the data and laps give, ignoring any hand-picked one.
+export function detectedKind(entry) {
   if (!kinds.has(entry)) {
     const restLaps = entry.laps.filter((lap) => lap.intensity === "recovery" || lap.intensity === "rest").length;
     // Interval laps, even when every one is work, as in a stroke-rate fartlek; older entries show them by their targets.

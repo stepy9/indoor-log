@@ -1,6 +1,6 @@
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { workoutKind } from "../analysis.js";
+import { detectedKind, workoutKind } from "../analysis.js";
 import { addEntries, backupText, clearEntries, deleteEntry, entryFromFit, entryFromWorkout, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -20,13 +20,39 @@ const libraryNote = (text, type = "") => {
 export const savesToLibrary = () => savedDefaults().saveToLibrary !== false;
 
 // Called after each export; a failure here never stops the export itself.
-export async function rememberWorkout(workout) {
+// kind is the workout type picked in the converter; empty leaves it to the data.
+export async function rememberWorkout(workout, kind = "") {
   if (!savesToLibrary() || !workout) return;
   try {
-    await addEntries([entryFromWorkout(workout, { exported: true })]);
+    const entry = entryFromWorkout(workout, { exported: true });
+    if (kind) entry.kind = kind;
+    await addEntries([entry]);
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
   }
+}
+
+// Automatic, interval or steady; the automatic option names the kind the data gives.
+export function renderKindOptions(select, detected, value = select.value) {
+  select.replaceChildren(
+    new Option(t("kindAuto", { kind: t(detected === "intervals" ? "kindIntervals" : "kindSteady") }), ""),
+    new Option(t("kindIntervals"), "intervals"),
+    new Option(t("kindSteady"), "steady"),
+  );
+  select.value = value ?? "";
+}
+
+function kindSelect(entry, onChange) {
+  const select = Object.assign(document.createElement("select"), { className: "kind-select" });
+  select.setAttribute("aria-label", t("workoutKindLabel"));
+  renderKindOptions(select, detectedKind(entry), entry.kind ?? "");
+  select.addEventListener("change", async () => {
+    if (select.value) entry.kind = select.value;
+    else delete entry.kind;
+    await saveEntries([entry]).catch(() => {});
+    onChange();
+  });
+  return select;
 }
 
 // The kind tag switches an activity between interval and steady and keeps the choice in the library.
@@ -82,7 +108,7 @@ async function renderList() {
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     row.children[1].title = entry.name;
     const kind = document.createElement("td");
-    kind.append(kindTag(entry, renderList));
+    kind.append(kindSelect(entry, renderList));
     row.children[3].after(kind);
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {

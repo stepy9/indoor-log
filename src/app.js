@@ -5,7 +5,9 @@ import { checkWorkout } from "./checks.js";
 import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapFileName } from "./files.js";
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
-import { rememberWorkout, setupLibrary } from "./ui/library.js";
+import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
+import { detectedKind } from "./analysis.js";
+import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
@@ -228,6 +230,7 @@ function currentSettings() {
     lapIntensities: state.lapIntensities,
     segments: state.segments,
     zoneChoice: state.zoneChoice,
+    workoutKind: elements.workoutKind.value,
     activityName: elements.activityName.value,
     manualStart: elements.manualStart.value || undefined,
   };
@@ -246,6 +249,7 @@ function applySettings(settings) {
   state.lapIntensities = settings.lapIntensities ?? [];
   state.segments = settings.segments ?? null;
   state.zoneChoice = settings.zoneChoice ?? null;
+  elements.workoutKind.value = settings.workoutKind ?? "";
   if (settings.manualStart) {
     elements.manualStart.value = settings.manualStart;
     parseCurrentKinomap(true);
@@ -314,6 +318,7 @@ async function selectBatchItem(item) {
   setMetricSources();
   setFeel();
   state.zoneChoice = null;
+  elements.workoutKind.value = "";
   state.fit = null;
   state.fitFile = null;
   state.estimate = null;
@@ -384,7 +389,7 @@ async function exportBatch(targetDirectory = null) {
       const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
       counts[saved ? "saved" : "downloaded"] += 1;
       rememberExport(kinomapExportKey(item.kinomapFile.name));
-      await rememberWorkout(workout);
+      await rememberWorkout(workout, (item.settings ?? {}).workoutKind);
       Object.assign(item, { status: null, failure: null, exported: true, selected: false });
     } catch (error) {
       counts.failed += 1;
@@ -476,6 +481,7 @@ async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = fal
   }
   if (!keepBatch) {
     state.zoneChoice = null;
+    elements.workoutKind.value = "";
     resetTrim();
     setMetricSources();
     setFeel();
@@ -704,6 +710,8 @@ function render() {
         : state.result.lapDistance > 0 ? t("lapCount", { count: state.result.laps.length }) : "";
       renderSummary(state.result.summary, state.result.startMs, state.result.endMs, state.result.sport);
       renderLaps(state.result.laps, state.result.sport);
+      // The automatic option shows the kind the library would give this workout.
+      renderKindOptions(elements.workoutKind, detectedKind(entryFromWorkout(state.result)));
       renderChecks();
       elements.export.disabled = false;
       elements.liveState.classList.add("is-ready");
