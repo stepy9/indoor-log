@@ -37,13 +37,14 @@ export async function rememberWorkout(workout, kind = "") {
 export const kindLabel = (kind, sport) => t(kind === "recovery" && sport === "running" ? "kindJog"
   : `kind${kind[0].toUpperCase()}${kind.slice(1)}`);
 
-// compact names the automatic option by its kind alone, for the narrow comparison list.
+// compact leaves out the automatic option, for the narrow comparison list: it shows the kind in force,
+// and going back to automatic is left to the library and the converter.
 export function renderKindOptions(select, detected, value = select.value, sport = null, compact = false) {
   select.replaceChildren(
-    new Option(compact ? kindLabel(detected, sport) : t("kindAuto", { kind: kindLabel(detected, sport) }), ""),
+    ...(compact ? [] : [new Option(t("kindAuto", { kind: kindLabel(detected, sport) }), "")]),
     ...workoutKinds.map((kind) => new Option(kindLabel(kind, sport), kind)),
   );
-  select.value = value ?? "";
+  select.value = (compact ? value || detected : value) ?? "";
 }
 
 // The type of a saved activity, changed in place; className lets the comparison list show it as a tag.
