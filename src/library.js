@@ -123,8 +123,10 @@ export function mergeDuplicates(existing, incoming) {
     const other = kept[index];
     const winner = rank(entry) >= rank(other) ? entry : other;
     const loser = winner === entry ? other : entry;
-    // A kind picked by hand outlives the recording it was picked on.
-    kept[index] = winner.kind || !loser.kind ? winner : { ...winner, kind: loser.kind };
+    // A kind picked or a name typed by hand outlives the recording it was set on.
+    const kind = !winner.kind && loser.kind ? { kind: loser.kind } : null;
+    const name = !winner.renamed && loser.renamed ? { name: loser.name, renamed: true } : null;
+    kept[index] = kind || name ? { ...winner, ...kind, ...name } : winner;
   }
   const keptIds = new Set(kept.map((entry) => entry.id));
   const existingById = new Map(existing.map((entry) => [entry.id, entry]));

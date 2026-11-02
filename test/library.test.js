@@ -88,3 +88,11 @@ test("interval laps make an interval workout even when every lap is work, and th
   // Converting again after the FIT was added replaces it.
   assert.deepEqual(mergeDuplicates([fromFit], [saved]).save, [saved]);
 });
+
+test("a name typed by hand outlives the recording it was typed on", () => {
+  const entry = (id, source, extra = {}) => ({ id, source, sport: "rowing", startMs: 0, endMs: 600_000, name: "Kinomap - _ Easy", ...extra });
+  const renamed = entry("old", "convert", { name: "Kinomap - Easy", renamed: true });
+  const { save } = mergeDuplicates([renamed], [entry("new", "export")]);
+  assert.equal(save[0].name, "Kinomap - Easy");
+  assert.equal(save[0].source, "export");
+});

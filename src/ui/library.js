@@ -48,6 +48,35 @@ export function renderKindOptions(select, detected, value = select.value, sport 
 }
 
 // The type of a saved activity, changed in place; className lets the comparison list show it as a tag.
+// The name, edited in place: Enter or leaving the field saves it, Escape puts it back.
+// The "Kinomap - " every conversion starts with stays hidden and is kept.
+function nameInput(entry) {
+  const prefix = entry.name.startsWith("Kinomap - ") ? "Kinomap - " : "";
+  const shown = entry.name.slice(prefix.length);
+  const input = Object.assign(document.createElement("input"), { type: "text", className: "name-input", value: shown, title: entry.name });
+  input.setAttribute("aria-label", t("libraryName"));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") input.blur();
+    if (event.key === "Escape") {
+      // Escape would otherwise close the whole dialog.
+      event.preventDefault();
+      input.value = shown;
+      input.blur();
+    }
+  });
+  input.addEventListener("change", async () => {
+    const name = input.value.trim();
+    if (!name || name === shown) {
+      input.value = shown;
+      return;
+    }
+    Object.assign(entry, { name: prefix + name, renamed: true });
+    await saveEntries([entry]).catch(() => {});
+    renderList();
+  });
+  return input;
+}
+
 export function kindSelect(entry, onChange, className = "kind-select") {
   const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
@@ -111,7 +140,7 @@ async function renderList() {
     const row = document.createElement("tr");
     const cells = [
       shortDate(entry.startMs),
-      entry.name.replace(/^Kinomap - /, ""),
+      "",
       t(`librarySource_${entry.source}`),
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
@@ -119,7 +148,7 @@ async function renderList() {
       value(entry.summary.avgHeartRate, "bpm"),
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
-    row.children[1].title = entry.name;
+    row.children[1].append(nameInput(entry));
     const kind = document.createElement("td");
     kind.append(kindSelect(entry, renderList));
     row.children[2].after(kind);
