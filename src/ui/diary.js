@@ -1,23 +1,27 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
+import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
 
+// The sport, period and chart measure picked last come back with the page.
+const remembered = savedDefaults().diary ?? {};
+
 const view = {
   entries: [],
   // "all" or one sport.
-  sport: "all",
-  period: "month",
+  sport: remembered.sport ?? "all",
+  period: ["week", "month", "year"].includes(remembered.period) ? remembered.period : "month",
   // Any day inside the period shown.
   day: null,
   // Sports or kinds turned off in the chart's legend.
   hidden: new Set(),
   // What the chart's bars add up: "distance" or "seconds".
-  barMetric: "distance",
+  barMetric: remembered.barMetric === "seconds" ? "seconds" : "distance",
 };
 
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
@@ -341,6 +345,7 @@ function renderLegend() {
 
 function render() {
   if (byId("diaryView").hidden) return;
+  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric } });
   view.day ??= dayKey(Date.now(), zone);
   const range = periodRange(view.period, view.day);
   const entries = shown();

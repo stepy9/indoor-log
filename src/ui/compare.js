@@ -3,6 +3,7 @@ import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
+import { saveDefaults, savedDefaults } from "./preferences.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -700,6 +701,7 @@ function showView(name) {
   }
   if (name === "converter") byId(previousView).hidden = false;
   currentView = name;
+  saveDefaults({ appView: name });
   byId("compareView").hidden = name !== "compare";
   byId("diaryView").hidden = name !== "diary";
   // The comparison and the diary may use a wider window than the converter, so six activities fit side by side.
@@ -731,6 +733,9 @@ export function setupCompare({ onConverter }) {
     });
   }
   setupDiary({ onOpen: openInCompare });
+  // A reload opens the comparison or the diary again when one was open; the converter is where the page starts anyway.
+  const remembered = savedDefaults().appView;
+  if (remembered === "compare" || remembered === "diary") queueMicrotask(() => showView(remembered));
   for (const button of document.querySelectorAll("[data-compare-mode]")) {
     button.addEventListener("click", () => {
       view.mode = button.dataset.compareMode;
