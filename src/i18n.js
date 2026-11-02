@@ -1,6 +1,5 @@
 export const translations = {
   cs: {
-    compareMode: "Režim",
     trainer: "Trenažér",
     noTrainer: "bez trenažéru",
     resistance: "Odpor",
@@ -29,8 +28,6 @@ export const translations = {
     zoomRightBy: "Posunout doprava o {step}",
     zoomLeft: "Posunout doleva",
     zoomRight: "Posunout doprava",
-    modeOverlay: "Porovnat",
-    modeTrend: "Vývoj",
     trendEfficiency: "Výkon na tep",
     trendEmpty: "Filtru neodpovídá žádná aktivita s touto hodnotou.",
     trendCount: "{count} tréninků podle filtru",
@@ -58,6 +55,7 @@ export const translations = {
     navConverter: "Převodník",
     navCompare: "Porovnání",
     navDiary: "Deník",
+    navTrend: "Vývoj",
     diaryBack: "Předchozí",
     diaryForward: "Další",
     diaryToday: "Dnes",
@@ -389,7 +387,6 @@ export const translations = {
     unknownSportWarning: "Sport Kinomap nebyl rozpoznán; použije se veslování.",
   },
   en: {
-    compareMode: "Mode",
     trainer: "Trainer",
     noTrainer: "no trainer",
     resistance: "Resistance",
@@ -418,8 +415,6 @@ export const translations = {
     zoomRightBy: "Move right by {step}",
     zoomLeft: "Move left",
     zoomRight: "Move right",
-    modeOverlay: "Compare",
-    modeTrend: "Progress",
     trendEfficiency: "Power per heartbeat",
     trendEmpty: "No activity matching the filter has this value.",
     trendCount: "{count} workouts in the filter",
@@ -447,6 +442,7 @@ export const translations = {
     navConverter: "Converter",
     navCompare: "Compare",
     navDiary: "Diary",
+    navTrend: "Progress",
     diaryBack: "Previous",
     diaryForward: "Next",
     diaryToday: "Today",

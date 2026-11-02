@@ -25,6 +25,7 @@
           <button type="button" data-app-view="converter" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14m-4-4 4 4-4 4M20 16H6m4-4-4 4 4 4"/></svg><span data-i18n="navConverter">Převodník</span></button>
           <button type="button" data-app-view="compare" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10m7 10V4m7 16v-7"/></svg><span data-i18n="navCompare">Porovnání</span></button>
           <button type="button" data-app-view="diary" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/></svg><span data-i18n="navDiary">Deník</span></button>
+          <button type="button" data-app-view="trend" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8m-5 0h5v5"/></svg><span data-i18n="navTrend">Vývoj</span></button>
         </nav>
         <div class="topbar-actions">
           <button class="library-button" id="libraryButton" type="button"><span data-i18n="library">Knihovna</span></button>
@@ -431,10 +432,6 @@
         <div class="compare-main">
           <section class="card compare-chart-card">
             <div class="compare-controls">
-              <div class="segmented" role="group" aria-label="Režim" data-i18n-aria="compareMode">
-                <button type="button" data-compare-mode="overlay" data-i18n="modeOverlay">Porovnat</button>
-                <button type="button" data-compare-mode="trend" data-i18n="modeTrend">Vývoj</button>
-              </div>
               <div class="compare-controls" id="trendControls" hidden>
                 <select id="trendMetric" aria-label="Veličina" data-i18n-aria="compareMetric"></select>
                 <span class="estimate-note" id="trendNote"></span>

@@ -17,7 +17,7 @@ const view = {
   search: "",
   length: "all",
   kind: "all",
-  // "overlay" lays the selected activities over each other; "trend" follows every filtered one over time.
+  // "overlay" lays the selected activities over each other; "trend", the Progress tab, follows every filtered one over time.
   mode: "overlay",
   trendMetric: "avgPower",
   metric: "power",
@@ -644,7 +644,6 @@ function renderTrendTable() {
 
 function renderMode() {
   const trend = view.mode === "trend";
-  for (const button of document.querySelectorAll("[data-compare-mode]")) button.setAttribute("aria-pressed", String((button.dataset.compareMode === "trend") === trend));
   byId("overlayControls").hidden = trend;
   // Zooming belongs to the overlay; the trend shows every workout.
   if (trend) byId("compareZoomBar").hidden = byId("compareZoomHint").hidden = true;
@@ -690,7 +689,8 @@ export function rerenderCompare() {
   rerenderDiary();
 }
 
-// The view shown: "converter" (its setup or workspace, whichever was open), "compare" or "diary".
+// The view shown: "converter" (its setup or workspace, whichever was open), "compare", "diary" or "trend".
+// The trend is the comparison's page in its own mode, with the same activity list and filters.
 let currentView = "converter";
 
 function showView(name) {
@@ -702,22 +702,24 @@ function showView(name) {
   if (name === "converter") byId(previousView).hidden = false;
   currentView = name;
   saveDefaults({ appView: name });
-  byId("compareView").hidden = name !== "compare";
+  byId("compareView").hidden = name !== "compare" && name !== "trend";
+  if (name === "compare" || name === "trend") {
+    view.mode = name === "trend" ? "trend" : "overlay";
+    view.hoverX = null;
+  }
   byId("diaryView").hidden = name !== "diary";
-  // The comparison and the diary may use a wider window than the converter, so six activities fit side by side.
   document.body.classList.toggle("is-comparing", name !== "converter");
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.appView === name));
   }
   window.scrollTo({ top: 0 });
-  if (name === "compare") refresh();
+  if (name === "compare" || name === "trend") refresh();
   if (name === "diary") showDiary();
 }
 
 // One activity on its own in the comparison, as the diary opens it.
 function openInCompare(entry) {
   view.sport = entry.sport;
-  view.mode = "overlay";
   view.zoom = null;
   view.slots = new Map([[entry.id, 1]]);
   showView("compare");
@@ -733,16 +735,9 @@ export function setupCompare({ onConverter }) {
     });
   }
   setupDiary({ onOpen: openInCompare });
-  // A reload opens the comparison or the diary again when one was open; the converter is where the page starts anyway.
+  // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
   const remembered = savedDefaults().appView;
-  if (remembered === "compare" || remembered === "diary") queueMicrotask(() => showView(remembered));
-  for (const button of document.querySelectorAll("[data-compare-mode]")) {
-    button.addEventListener("click", () => {
-      view.mode = button.dataset.compareMode;
-      view.hoverX = null;
-      render();
-    });
-  }
+  if (["compare", "diary", "trend"].includes(remembered)) queueMicrotask(() => showView(remembered));
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;
