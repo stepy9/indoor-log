@@ -368,7 +368,16 @@
         </div>
         <p class="field-note" id="diaryEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná. Stáhněte aktivitu v převodníku nebo přidejte soubory do knihovny.</p>
         <section class="card">
-          <div class="panel-title-row"><span class="field-label" data-i18n="diarySummary">Souhrn</span><span class="estimate-note" id="diaryPrevious"></span></div>
+          <div class="panel-title-row">
+            <span class="field-label" data-i18n="diarySummary">Souhrn</span>
+            <span class="estimate-note" id="diaryPrevious"></span>
+            <div class="segmented diary-basis" id="diaryBasis" role="group" aria-label="Srovnat s" data-i18n-aria="diaryBasis">
+              <button type="button" data-basis="previous" aria-pressed="true">Minulý měsíc</button>
+              <button type="button" data-basis="lastYear" aria-pressed="false" data-i18n="diaryBasisLastYear">Loni</button>
+              <button type="button" data-basis="pick" aria-pressed="false" data-i18n="diaryBasisPick">Vybrat…</button>
+            </div>
+            <select class="diary-basis-pick" id="diaryBasisPick" aria-label="Období ke srovnání" data-i18n-aria="diaryBasisPickLabel" hidden></select>
+          </div>
           <div class="diary-tiles" id="diaryTiles"></div>
         </section>
         <section class="card">

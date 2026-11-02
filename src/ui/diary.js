@@ -1,5 +1,5 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
-import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, previousRange, shiftPeriod, totals } from "../diary.js";
+import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
@@ -22,7 +22,24 @@ const view = {
   hidden: new Set(),
   // What the chart's bars add up: "distance" or "seconds".
   barMetric: remembered.barMetric === "seconds" ? "seconds" : "distance",
+  // What the period is set against: "previous", "lastYear" (a week or a month only) or "pick", the period picked by hand.
+  basis: ["lastYear", "pick"].includes(remembered.basis) ? remembered.basis : "previous",
+  // A day of the period picked by hand, kept per period type.
+  picked: {},
 };
+
+const basisFor = (period) => (period === "year" && view.basis === "lastYear" ? "previous" : view.basis);
+
+// The periods to pick from: those with activities, other than the one shown.
+const pickable = (range) => periodsWith(view.period, shown(), zone).filter((start) => start !== range[0]);
+
+// The period picked by hand, or else the latest before the one shown that has activities.
+function pickedStart(range) {
+  const options = pickable(range);
+  const kept = view.picked[view.period];
+  if (kept && options.includes(kept)) return kept;
+  return options.find((start) => start < range[0]) ?? options[0] ?? null;
+}
 
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
 let openActivity = () => {};
@@ -55,6 +72,9 @@ function periodTitle([from, to]) {
   if (view.period === "month") return format(from, { month: "long", year: "numeric" });
   return `${t("diaryWeekNumber", { week: weekNumber(from) })} · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
 }
+
+// The period's name without its dates, for a note that gives them anyway.
+const shortTitle = (start) => (view.period === "week" ? t("diaryWeekNumber", { week: weekNumber(start) }) : periodTitle(periodRange(view.period, start)));
 
 // The years to jump to: from the first activity, or this year, up to this year.
 function jumpYears() {
@@ -105,6 +125,18 @@ function renderControls(range) {
   view.sport = sport.value;
   for (const button of byId("diaryPeriod").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.period === view.period));
   for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
+  const basis = basisFor(view.period);
+  for (const button of byId("diaryBasis").querySelectorAll("button")) {
+    button.setAttribute("aria-pressed", String(button.dataset.basis === basis));
+    if (button.dataset.basis === "previous") button.textContent = t(`diaryBasisPrevious_${view.period}`);
+    if (button.dataset.basis === "lastYear") button.hidden = view.period === "year";
+  }
+  const pick = byId("diaryBasisPick");
+  pick.hidden = basis !== "pick";
+  if (basis === "pick") {
+    pick.replaceChildren(...pickable(range).map((start) => new Option(periodTitle(periodRange(view.period, start)), start)));
+    pick.value = pickedStart(range) ?? "";
+  }
   byId("diaryTitle").textContent = periodTitle(range);
   byId("diaryCalendarTitle").textContent = periodTitle(range);
   renderJump(range);
@@ -122,26 +154,32 @@ function distanceBySport(entries) {
 }
 
 function renderTiles(current, previous, entries) {
-  // A change that rounds away in its own units reads as none.
-  const change = (now, before, text) => {
+  // A change that rounds away in its own units reads as none; amounts also show it in percent of what was before.
+  const change = (now, before, text, percent = false) => {
     if (now == null || before == null) return "";
     const difference = now - before;
     const shown = text(Math.abs(difference));
     if (!/[1-9]/.test(shown)) return t("diarySame");
-    return `${difference > 0 ? "+" : "−"}${shown}`;
+    const sign = difference > 0 ? "+" : "−";
+    const share = percent && before > 0 ? ` (${sign}${displayNumber(Math.round((Math.abs(difference) / before) * 100))} %)` : "";
+    return `${sign}${shown}${share}`;
   };
   const tiles = [
-    [t("diarySessions"), String(current.count), change(current.count, previous.count, (value) => String(value))],
+    [t("diarySessions"), String(current.count), change(current.count, previous.count, (value) => String(value), true)],
     mixedSports()
       ? [t("diaryDistance"), distanceBySport(entries).join("\n") || "0 km", "", "is-split"]
-      : [t("diaryDistance"), km(current.distance), change(current.distance, previous.distance, (value) => km(value))],
-    [t("diaryTime"), hours(current.seconds), change(current.seconds, previous.seconds, hours)],
+      : [t("diaryDistance"), km(current.distance), change(current.distance, previous.distance, (value) => km(value), true)],
+    [t("diaryTime"), hours(current.seconds), change(current.seconds, previous.seconds, hours, true)],
     [t("lapPower"), current.avgPower == null ? "—" : `${displayNumber(current.avgPower)} W`, change(current.avgPower, previous.avgPower, (value) => `${displayNumber(value)} W`)],
     [t("lapHeartRate"), current.avgHeartRate == null ? "—" : `${displayNumber(current.avgHeartRate)} bpm`, change(current.avgHeartRate, previous.avgHeartRate, (value) => `${displayNumber(value)} bpm`)],
   ];
-  byId("diaryPrevious").textContent = previous.partial
+  byId("diaryPrevious").textContent = previous.partial && basisFor(view.period) !== "previous"
+    ? t("diaryVersusPartOf", { name: shortTitle(previous.range[0]), from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
+    : previous.partial
     ? t("diaryVersusPart", { from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
-    : t(`diaryVersus_${view.period}`);
+    : basisFor(view.period) === "pick"
+      ? (previous.range ? t("diaryVersusPick", { name: periodTitle(previous.range) }) : t("diaryNothingToPick"))
+      : t(basisFor(view.period) === "lastYear" ? `diaryVersusLastYear_${view.period}` : `diaryVersus_${view.period}`);
   byId("diaryTiles").replaceChildren(...tiles.map(([label, value, delta, modifier]) => {
     const tile = Object.assign(document.createElement("div"), { className: `diary-tile${modifier ? ` ${modifier}` : ""}` });
     tile.append(
@@ -370,18 +408,26 @@ function renderLegend() {
 
 function render() {
   if (byId("diaryView").hidden) return;
-  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric } });
+  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis } });
   view.day ??= dayKey(Date.now(), zone);
   const range = periodRange(view.period, view.day);
   const entries = shown();
   const current = inPeriod(entries, range, zone);
   const today = dayKey(Date.now(), zone);
-  const before = previousRange(view.period, view.day, today);
+  const basis = basisFor(view.period);
+  const picked = basis === "pick" ? pickedStart(range) : null;
+  const before = previousRange(view.period, view.day, today, basis, picked);
   const previous = inPeriod(entries, before, zone);
-  const whole = periodRange(view.period, shiftPeriod(view.period, view.day, -1));
+  // With no day of the period gone by, the range before is never cut.
+  const whole = previousRange(view.period, view.day, "", basis, picked);
   byId("diaryEmpty").hidden = view.entries.length > 0;
   renderControls(range);
-  renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
+  if (basis === "pick" && !picked) {
+    // Nothing else to set the period against: values without a change.
+    renderTiles(totals(current), { count: null, distance: null, seconds: null, avgPower: null, avgHeartRate: null, range: null, partial: false }, current);
+  } else {
+    renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
+  }
   renderBars(range, current);
   renderLegend();
   renderCalendar(range, current);
@@ -404,6 +450,16 @@ export function setupDiary({ onOpen }) {
     const period = event.target.closest("button")?.dataset.period;
     if (!period) return;
     view.period = period;
+    render();
+  });
+  byId("diaryBasis").addEventListener("click", (event) => {
+    const basis = event.target.closest("button")?.dataset.basis;
+    if (!basis) return;
+    view.basis = basis;
+    render();
+  });
+  byId("diaryBasisPick").addEventListener("change", (event) => {
+    view.picked[view.period] = event.target.value;
     render();
   });
   byId("diaryBarMetric").addEventListener("click", (event) => {

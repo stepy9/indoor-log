@@ -42,6 +42,13 @@ test("a running period is set against as many days of the one before", async () 
   // 31 days of March run past the end of February, which then counts whole.
   assert.deepEqual(previousRange("month", "2026-03-31", "2026-03-31"), ["2026-02-01", "2026-03-01"]);
   assert.deepEqual(previousRange("week", "2026-11-04", "2026-11-04"), ["2026-10-26", "2026-10-29"]);
+  // A year back: the same month, or the week 52 weeks earlier, cut alike.
+  assert.deepEqual(previousRange("month", "2026-11-02", "2026-11-02", "lastYear"), ["2025-11-01", "2025-11-03"]);
+  assert.deepEqual(previousRange("month", "2026-02-10", "2026-11-02", "lastYear"), ["2025-02-01", "2025-03-01"]);
+  assert.deepEqual(previousRange("week", "2026-11-04", "2026-11-04", "lastYear"), ["2025-11-03", "2025-11-06"]);
+  // A period picked by hand counts whole for a past period and is cut alike for a running one.
+  assert.deepEqual(previousRange("month", "2026-10-15", "2026-11-02", "pick", "2026-06-01"), ["2026-06-01", "2026-07-01"]);
+  assert.deepEqual(previousRange("week", "2026-11-04", "2026-11-04", "pick", "2026-09-14"), ["2026-09-14", "2026-09-17"]);
 });
 
 test("weeks are numbered as ISO weeks", async () => {

@@ -565,6 +565,9 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .diary-nav .diary-today { margin-left: 4px; color: var(--ink); font-size: 13px; }
 .diary-nav .diary-today[hidden] { display: none; }
 .diary-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* The summary's title row: the note takes the room left, the basis switch and the picked period follow. */
+#diaryPrevious { flex: 1; }
+.diary-basis-pick { height: 30px; max-width: 260px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 12px; }
 .diary-filters select { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 13px; }
 .diary-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .diary-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }

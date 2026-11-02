@@ -37,11 +37,22 @@ export function shiftPeriod(period, key, by) {
   return period === "month" ? monthKey(year, month - 1 + by) : `${year + by}-01-01`;
 }
 
-// The period before, cut to as many days as have gone by of the current one when it is still running,
-// so a month two days old is set against the first two days of the month before.
-export function previousRange(period, key, today) {
+// The same period a year back: the month of the year before, or the week 52 weeks back, so it starts on a Monday too.
+function lastYearStart(period, from) {
+  if (period === "week") return addDays(from, -364);
+  const [year, month] = from.split("-").map(Number);
+  return period === "month" ? monthKey(year - 1, month - 1) : `${year - 1}-01-01`;
+}
+
+// The period before, with basis "lastYear" the same one a year back, or with "pick" the one holding the day picked,
+// cut to as many days as have gone by of the current one when it is still running,
+// so a month two days old is set against the first two days of the other.
+export function previousRange(period, key, today, basis = "previous", picked = null) {
   const [from, to] = periodRange(period, key);
-  const [previousFrom, previousTo] = periodRange(period, shiftPeriod(period, key, -1));
+  const start = basis === "lastYear" ? lastYearStart(period, from)
+    : basis === "pick" && picked ? picked
+      : shiftPeriod(period, key, -1);
+  const [previousFrom, previousTo] = periodRange(period, start);
   if (today < from || today >= to) return [previousFrom, previousTo];
   let elapsed = 0;
   for (let day = from; day <= today; day = addDays(day, 1)) elapsed += 1;
@@ -54,6 +65,12 @@ export function weekNumber(key) {
   const thursday = addDays(weekStart(key), 3);
   const first = weekStart(`${thursday.slice(0, 4)}-01-04`);
   return Math.round((toDate(weekStart(key)) - toDate(first)) / (7 * 86_400_000)) + 1;
+}
+
+// The first days of the periods the activities fall in, newest first.
+export function periodsWith(period, entries, timeZone) {
+  const starts = new Set(entries.map((entry) => periodRange(period, dayKey(entry.startMs, timeZone))[0]));
+  return [...starts].sort().reverse();
 }
 
 export const inPeriod = (entries, [from, to], timeZone) => entries.filter((entry) => {
