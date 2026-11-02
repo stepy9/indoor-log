@@ -31,7 +31,9 @@ test("a watch FIT becomes a library entry measured from its first distance", () 
 
 test("a backup reads back its entries and refuses other files", () => {
   const entry = { id: "rowing-1", records: { seconds: [0, 1] } };
-  assert.deepEqual(parseBackup(backupText([entry])), [entry]);
+  const settings = { defaults: { trainers: [{ id: "t1", name: "Concept2", sport: "rowing", levels: 10, defaultLevel: 5 }] }, exports: ["a"] };
+  assert.deepEqual(parseBackup(backupText([entry], settings)), { entries: [entry], settings });
+  assert.deepEqual(parseBackup(JSON.stringify({ format: "kinomap-fit-library", version: 1, entries: [entry] })), { entries: [entry], settings: null });
   assert.throws(() => parseBackup(JSON.stringify({ entries: [] })));
 });
 

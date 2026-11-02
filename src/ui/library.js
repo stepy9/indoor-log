@@ -3,7 +3,7 @@ import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
 import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
-import { saveDefaults, savedDefaults } from "./preferences.js";
+import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
@@ -236,7 +236,7 @@ async function renderList() {
   shown = entries;
   byId("libraryCount").textContent = t("libraryCount", { count: all.length });
   byId("libraryEmpty").hidden = entries.length > 0;
-  byId("libraryBackupButton").disabled = !all.length;
+  byId("libraryBackupButton").disabled = !all.length && !trainers().length;
   byId("libraryClearButton").disabled = !entries.length;
   byId("libraryRows").replaceChildren(...entries.map((entry) => {
     const row = document.createElement("tr");
@@ -310,9 +310,9 @@ async function addFiles(files) {
 }
 
 async function downloadBackup() {
-  const blob = new Blob([backupText(await listEntries())], { type: "application/json" });
+  const blob = new Blob([backupText(await listEntries(), settingsSnapshot())], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const link = Object.assign(document.createElement("a"), { href: url, download: `kinomap-fit-library-${new Date().toISOString().slice(0, 10)}.json` });
+  const link = Object.assign(document.createElement("a"), { href: url, download: `indoor-log-backup-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(link);
   link.click();
   window.setTimeout(() => {
@@ -323,9 +323,18 @@ async function downloadBackup() {
 
 async function restoreBackup(file) {
   try {
-    const entries = parseBackup(await file.text());
+    const { entries, settings } = parseBackup(await file.text());
     const { skipped } = await addEntries(entries);
-    libraryNote([t("libraryRestored", { count: entries.length - skipped }), ...(skipped ? [t("libraryDuplicates", { count: skipped })] : [])].join(" · "), "success");
+    if (settings) {
+      restoreSettings(settings);
+      toggle.checked = savesToLibrary();
+      onSettingsRestored();
+    }
+    libraryNote([
+      t("libraryRestored", { count: entries.length - skipped }),
+      ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []),
+      ...(settings ? [t("librarySettingsRestored")] : []),
+    ].join(" · "), "success");
   } catch (error) {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
   }
@@ -339,7 +348,11 @@ export function openLibrary() {
   dialog.showModal();
 }
 
-export function setupLibrary() {
+let onSettingsRestored = () => {};
+
+// onRestore lets the converter pick up trainers and defaults that a backup brought in.
+export function setupLibrary({ onRestore } = {}) {
+  if (onRestore) onSettingsRestored = onRestore;
   byId("libraryButton").addEventListener("click", openLibrary);
   byId("libraryClose").addEventListener("click", () => dialog.close());
   toggle.addEventListener("change", () => saveDefaults({ saveToLibrary: toggle.checked }));

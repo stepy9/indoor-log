@@ -179,15 +179,17 @@ export function lapLevelsFromPlan(laps, steps, toLevel) {
   });
 }
 
-// A backup is one JSON file with every entry, read back by parseBackup.
-export function backupText(entries) {
-  return JSON.stringify({ format: backupFormat, version: 1, entries });
+// A backup is one JSON file with every entry and the remembered settings (trainers among them), read back by parseBackup.
+// Version 1 backups carry no settings.
+export function backupText(entries, settings = null) {
+  return JSON.stringify({ format: backupFormat, version: 2, entries, settings });
 }
 
 export function parseBackup(text) {
   const data = JSON.parse(text);
   if (data?.format !== backupFormat || !Array.isArray(data.entries)) throw new Error("Soubor není záloha knihovny.");
-  return data.entries.filter((entry) => entry?.id && entry.records?.seconds?.length);
+  const settings = data.settings && typeof data.settings === "object" ? data.settings : null;
+  return { entries: data.entries.filter((entry) => entry?.id && entry.records?.seconds?.length), settings };
 }
 
 // IndexedDB: one object store keyed by entry id.

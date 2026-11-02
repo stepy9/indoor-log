@@ -954,7 +954,11 @@ for (const button of document.querySelectorAll(".mode-button")) {
 
 setupChartTrim(render);
 setupChartLegend();
-setupLibrary();
+setupLibrary({ onRestore: () => {
+  const sport = state.kinomap?.sport;
+  renderTrainerOptions(sport, lastTrainerId(sport));
+  if (elements.resistance.dataset.fromDefault) useDefaultResistance();
+} });
 setupCompare({ onConverter: drawChart });
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);

@@ -60,6 +60,27 @@ export function rememberExport(key) {
   } catch {}
 }
 
+// Remembered settings as a backup carries them to another browser.
+export const settingsSnapshot = () => ({ defaults: savedDefaults(), exports: [...exportedKeys()] });
+
+// The backup's settings win, except that trainers and exported recordings set up here are kept beside the backup's.
+export function restoreSettings({ defaults = {}, exports = [] } = {}) {
+  const current = savedDefaults();
+  const backupTrainers = Array.isArray(defaults.trainers) ? defaults.trainers : [];
+  const localOnly = (current.trainers ?? []).filter((trainer) => !backupTrainers.some((item) => item.id === trainer.id));
+  saveDefaults({
+    ...defaults,
+    trainers: [...backupTrainers, ...localOnly],
+    trainerBySport: { ...current.trainerBySport, ...defaults.trainerBySport },
+  });
+  if (Array.isArray(exports)) {
+    const keys = [...new Set([...exportedKeys(), ...exports])].slice(-exportsLimit);
+    try {
+      localStorage.setItem(exportsKey, JSON.stringify(keys));
+    } catch {}
+  }
+}
+
 export function savedLanguage() {
   try {
     return localStorage.getItem("kinomap-fit-language") === "en" ? "en" : "cs";
