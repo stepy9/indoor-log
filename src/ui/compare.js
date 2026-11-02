@@ -403,16 +403,18 @@ function renderLapTable(picked) {
   if (!picked.length) return;
   const hasLevels = withLaps.some((entry) => entry.resistance || entry.laps.some((lap) => lap.resistance));
   const splits = splitDistances[view.sport] ?? splitDistances.rowing;
-  // A steady row's laps are only the watch's automatic splits, which the distance splits say better.
+  // Laps line up only between runs of the same interval plan; a steady row's laps are just the watch's
+  // automatic splits, and different plans have different laps.
   const steady = picked.every((entry) => workoutKind(entry) !== "intervals");
+  const sameWorkout = new Set(picked.map((entry) => entry.name)).size === 1;
+  const byLap = withLaps.length > 0 && !steady && sameWorkout;
   const options = [
     ...(hasLevels ? [["level", t("compareByLevel")]] : []),
-    ...(withLaps.length && !steady ? [["lap", t("compareByLap")]] : []),
+    ...(byLap ? [["lap", t("compareByLap")]] : []),
     ...splits.map((length) => [`split-${length}`, t("compareBySplit", { length: distanceText(length) })]),
   ];
   // Steady rows meet split by split, runs of the same intervals lap by lap, other intervals on the resistance they share.
-  const sameWorkout = new Set(picked.map((entry) => entry.name)).size === 1;
-  const fallback = steady ? `split-${splits.at(-1)}` : sameWorkout || !hasLevels ? "lap" : "level";
+  const fallback = byLap ? "lap" : hasLevels && !steady ? "level" : `split-${splits.at(-1)}`;
   const grouping = options.some(([value]) => value === view.lapGrouping) ? view.lapGrouping : fallback;
   byId("compareLapsGrouping").replaceChildren(...options.map(([value, label]) => {
     const button = Object.assign(document.createElement("button"), { type: "button", textContent: label });
