@@ -779,8 +779,10 @@ export function setupCompare({ onConverter }) {
     render();
   });
   byId("compareLibraryButton").addEventListener("click", openLibrary);
+  // Activities added, renamed or removed in the library show at once in the view open behind it.
   byId("libraryDialog").addEventListener("close", () => {
     if (!byId("compareView").hidden) refresh();
+    if (!byId("diaryView").hidden) showDiary();
   });
   const chart = byId("compareChart");
   // Pointer position in chart pixels, kept inside the plot.
