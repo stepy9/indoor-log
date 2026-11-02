@@ -45,6 +45,9 @@ function renderControls(range) {
   for (const button of byId("diaryPeriod").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.period === view.period));
   for (const button of byId("diaryBarMetric").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.metric === view.barMetric));
   byId("diaryTitle").textContent = periodTitle(range);
+  // Back to today only from another period.
+  const today = dayKey(Date.now(), zone);
+  byId("diaryToday").hidden = today >= range[0] && today < range[1];
 }
 
 // The period's totals, each beside the change from the period before.

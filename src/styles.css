@@ -545,6 +545,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .diary-nav { display: flex; align-items: center; gap: 8px; }
 .diary-nav h2 { min-width: 220px; margin: 0; font-size: 20px; text-align: center; }
 .diary-nav .outline-button { margin: 0; padding: 4px 12px; }
+.diary-nav .diary-today { margin-left: 4px; color: var(--ink); font-size: 13px; }
+.diary-nav .diary-today[hidden] { display: none; }
 .diary-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .diary-filters select { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 13px; }
 .diary-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
