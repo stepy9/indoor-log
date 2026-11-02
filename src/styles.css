@@ -98,12 +98,12 @@ button { cursor: pointer; }
 
 /* Top bar */
 .topbar { position: sticky; top: 0; z-index: 30; background: var(--topbar); color: var(--topbar-ink); border-bottom: 1px solid var(--topbar-line); }
-.topbar-inner { max-width: 1600px; min-height: 60px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.topbar-inner { max-width: 1600px; min-height: 60px; margin: 0 auto; padding: 0 24px; display: flex; align-items: stretch; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-self: center; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
 .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #2563eb, #4d8dff); box-shadow: 0 0 0 1px rgba(255, 255, 255, .08) inset; }
 .brand-mark svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .brand-light { color: var(--topbar-muted); font-weight: 500; }
-.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.topbar-actions { display: flex; align-self: center; align-items: center; gap: 12px; }
 .library-button { padding: 6px 12px; border: 1px solid var(--topbar-line); border-radius: 999px; color: var(--topbar-muted); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
 .library-button:hover { color: #fff; border-color: var(--topbar-muted); }
 /* The library keeps one size whatever the sport holds, so switching tabs does not resize it. */
@@ -412,6 +412,10 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .topbar-inner, .shell { padding-inline: 16px; }
   .privacy { padding: 6px; font-size: 0; gap: 0; }
   .brand-light { display: none; }
+  /* The tabs take their own row under the brand and the actions. */
+  .topbar-inner { flex-wrap: wrap; row-gap: 0; }
+  .app-nav { order: 1; flex: 1 0 100%; height: 44px; margin: 0 -16px; padding: 0 4px; border-top: 1px solid var(--topbar-line); }
+  .app-nav button { flex: 1; justify-content: center; }
   .card { padding: 16px; }
   .source-grid { grid-template-columns: 1fr; gap: 8px; }
   .source-tile { min-height: 0; padding: 14px; }
@@ -435,11 +439,11 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 }
 
 /* Top-level switch between the converter and the comparison. */
-/* Sits beside the brand; the actions keep the right edge. */
-.app-nav { display: flex; gap: 2px; margin-left: 8px; margin-right: auto; padding: 3px; border: 1px solid var(--topbar-line); border-radius: 999px; }
-.app-nav button { display: inline-flex; align-items: center; gap: 7px; padding: 5px 14px 5px 11px; border: 0; border-radius: 999px; color: var(--topbar-muted); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
-.app-nav button[aria-pressed="true"] { color: var(--topbar); background: var(--topbar-ink); }
-.app-nav button:not([aria-pressed="true"]):hover { color: var(--topbar-ink); }
+/* Tabs beside the brand, the current one underlined on the header's bottom edge; the actions keep the right edge. */
+.app-nav { display: flex; align-self: stretch; gap: 4px; margin-left: 20px; margin-right: auto; }
+.app-nav button { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 0; color: var(--topbar-muted); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
+.app-nav button[aria-pressed="true"], .app-nav button:hover { color: var(--topbar-ink); }
+.app-nav button[aria-pressed="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: #4d8dff; }
 .app-nav svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .compare-view { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 18px; align-items: start; }
