@@ -495,8 +495,25 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 #overlayControls, #trendControls { flex: 1; margin: 0; }
 #overlayControls[hidden], #trendControls[hidden] { display: none; }
 #trendMetric { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 13px; }
-.compare-list.is-trend input[type="checkbox"], .compare-list.is-trend .compare-swatch { visibility: hidden; }
+/* The trend's filters make a bar over the full-width chart, without the activity list. */
+.compare-view.is-trend { grid-template-columns: minmax(0, 1fr); }
+.compare-view.is-trend .compare-picker { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; }
+.compare-view.is-trend .compare-picker > .panel-title-row { margin: 0; }
+.compare-view.is-trend .compare-picker > .panel-title-row .field-label,
+.compare-view.is-trend #compareList, .compare-view.is-trend #compareLimit, .compare-view.is-trend #compareLibraryButton { display: none; }
+.compare-view.is-trend .compare-picker .panel-title-row select { max-width: none; }
+.compare-view.is-trend .compare-filters { flex: 1; grid-template-columns: minmax(160px, 1.5fr) repeat(2, minmax(140px, 1fr)); }
+.compare-view.is-trend .compare-filters input { grid-column: auto; }
+#trendControls { flex-wrap: wrap; }
+:root { --trend-record: #f59e0b; }
 .trend-line { stroke-width: 1.5; opacity: .6; }
+.trend-line.is-faint { opacity: .3; }
+.trend-average { stroke-width: 2.5; fill: none; }
+.trend-record { stroke: var(--surface); stroke-width: 1.5; }
+.trend-record-note { color: var(--trend-record); font-weight: 600; }
+.trend-table td.is-record { color: var(--trend-record); font-weight: 600; }
+.trend-table tr.is-link { cursor: pointer; }
+.trend-table tr.is-link:hover td { background: var(--surface-2, rgba(127, 127, 127, .08)); }
 .trend-ring { fill: none; stroke: var(--ink); stroke-width: 1.5; }
 .trend-table td:nth-child(2) { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trend-table td.is-better { color: var(--success); }

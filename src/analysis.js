@@ -1,4 +1,5 @@
 import { detectIntervals } from "./core.js";
+import { dayKey, periodRange } from "./diary.js";
 
 // Comparing saved activities: series for the overlay chart and best efforts, from library entries.
 
@@ -279,4 +280,55 @@ export function levelValues(entry, metric, sport) {
       ? (group.distance > 0 ? lapValue({ distance: group.distance, timerSeconds: group.seconds }, metric, sport) : null)
       : (group.weight > 0 ? group.weighted / group.weight : null),
   }]));
+}
+
+// Which way the trend improves: up, down for times and paces other than cycling's speed, or neither for heart rate.
+export const trendDirection = (metric, sport) => (metric === "avgHeartRate" ? 0 : trendIsTime(metric, sport) ? -1 : 1);
+
+// Best efforts take the period's best; averages weigh each activity by its moving time, and a pace comes from the totals.
+const bestMetrics = new Set(["bestShort", "bestLong", "bestPower"]);
+
+// The trend's points put together by week or month, each at its period's first day, with the activities in it.
+export function groupTrend(points, period, metric, sport, timeZone) {
+  const groups = new Map();
+  for (const point of points) {
+    const [from] = periodRange(period, dayKey(point.x, timeZone));
+    if (!groups.has(from)) groups.set(from, []);
+    groups.get(from).push(point);
+  }
+  return [...groups.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([from, list]) => {
+    const entries = list.map((point) => point.entry);
+    let y;
+    if (bestMetrics.has(metric)) {
+      const values = list.map((point) => point.y);
+      y = trendDirection(metric, sport) < 0 ? Math.min(...values) : Math.max(...values);
+    } else if (metric === "pace") {
+      const seconds = entries.reduce((sum, entry) => sum + (entry.summary.timerSeconds ?? 0), 0);
+      const distance = entries.reduce((sum, entry) => sum + (entry.summary.distance ?? 0), 0);
+      y = seconds > 0 ? paceFrom(distance / seconds, sport) : null;
+    } else {
+      const weights = list.map((point) => point.entry.summary.timerSeconds || 1);
+      const total = weights.reduce((sum, weight) => sum + weight, 0);
+      y = list.reduce((sum, point, index) => sum + point.y * weights[index], 0) / total;
+    }
+    return { x: Date.parse(`${from}T12:00:00Z`), y, from, entries };
+  }).filter((group) => Number.isFinite(group.y));
+}
+
+// The mean of each value with the ones before it, as many as the window holds.
+export function movingAverage(values, size) {
+  return values.map((_, index) => {
+    const window = values.slice(Math.max(0, index + 1 - size), index + 1);
+    return window.reduce((sum, value) => sum + value, 0) / window.length;
+  });
+}
+
+// The values that beat every one before them; the first sets the mark but is no record yet.
+export function recordFlags(values, direction) {
+  let best = null;
+  return values.map((value) => {
+    const record = best != null && direction !== 0 && (direction > 0 ? value > best : value < best);
+    if (best == null || record) best = value;
+    return record;
+  });
 }

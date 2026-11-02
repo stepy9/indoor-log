@@ -434,6 +434,16 @@
             <div class="compare-controls">
               <div class="compare-controls" id="trendControls" hidden>
                 <select id="trendMetric" aria-label="Veličina" data-i18n-aria="compareMetric"></select>
+                <div class="segmented" role="group" aria-label="Rozsah" data-i18n-aria="trendRange">
+                  <button type="button" data-trend-range="quarter" data-i18n="trendRangeQuarter">3 měsíce</button>
+                  <button type="button" data-trend-range="year" data-i18n="trendRangeYear">Rok</button>
+                  <button type="button" data-trend-range="all" data-i18n="trendRangeAll">Vše</button>
+                </div>
+                <div class="segmented" role="group" aria-label="Seskupit" data-i18n-aria="trendGroup">
+                  <button type="button" data-trend-group="activity" data-i18n="trendGroupActivity">Tréninky</button>
+                  <button type="button" data-trend-group="week" data-i18n="trendGroupWeek">Týdny</button>
+                  <button type="button" data-trend-group="month" data-i18n="trendGroupMonth">Měsíce</button>
+                </div>
                 <span class="estimate-note" id="trendNote"></span>
               </div>
               <div class="compare-controls" id="overlayControls">

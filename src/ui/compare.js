@@ -1,4 +1,5 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
+import { weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
@@ -19,7 +20,10 @@ const view = {
   kind: "all",
   // "overlay" lays the selected activities over each other; "trend", the Progress tab, follows every filtered one over time.
   mode: "overlay",
-  trendMetric: "avgPower",
+  trendMetric: trendMetrics.includes(savedDefaults().trend?.metric) ? savedDefaults().trend.metric : "avgPower",
+  // How far back the trend reaches ("quarter", "year" or "all") and whether it shows each activity or a week's or month's value.
+  trendRange: ["quarter", "all"].includes(savedDefaults().trend?.range) ? savedDefaults().trend.range : "year",
+  trendGroup: ["week", "month"].includes(savedDefaults().trend?.group) ? savedDefaults().trend.group : "activity",
   metric: "power",
   axis: "distance",
   smoothSeconds: 10,
@@ -502,8 +506,39 @@ function renderTables() {
 }
 
 
-// Trend: one point per activity that passes the filters, oldest to newest.
-const trendEntries = () => view.entries.filter((entry) => entry.sport === view.sport && matches(entry)).sort((a, b) => a.startMs - b.startMs);
+// Trend: one point per activity that passes the filters and falls in the range, oldest to newest.
+const trendSince = () => {
+  const now = new Date();
+  if (view.trendRange === "quarter") return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).getTime();
+  if (view.trendRange === "year") return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).getTime();
+  return -Infinity;
+};
+const trendEntries = () => {
+  const since = trendSince();
+  return view.entries.filter((entry) => entry.sport === view.sport && entry.startMs >= since && matches(entry)).sort((a, b) => a.startMs - b.startMs);
+};
+
+// The activities averaged by the line drawn over each activity's point.
+const averageSize = 5;
+
+// The week or month a grouped point stands for.
+function groupTitle(from) {
+  if (view.trendGroup === "week") return `${t("diaryWeekNumber", { week: weekNumber(from) })} ${from.slice(0, 4)}`;
+  return new Intl.DateTimeFormat(locale(), { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${from}T12:00:00Z`));
+}
+
+// The trend's points: one per activity, or per week or month put together; each marked when it beat every one before.
+function trendPoints() {
+  const metric = view.trendMetric;
+  const perActivity = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric) })).filter((point) => Number.isFinite(point.y));
+  const points = view.trendGroup === "activity" ? perActivity : groupTrend(perActivity, view.trendGroup, metric, view.sport, zone);
+  const records = recordFlags(points.map((point) => point.y), trendDirection(metric, view.sport));
+  return points.map((point, index) => ({ ...point, record: records[index] }));
+}
+
+function saveTrend() {
+  saveDefaults({ trend: { metric: view.trendMetric, range: view.trendRange, group: view.trendGroup } });
+}
 
 function trendLabel(metric, sport) {
   const { short, long } = trendDistances(sport);
@@ -529,25 +564,35 @@ function renderTrendControls() {
   const select = byId("trendMetric");
   select.replaceChildren(...trendMetrics.map((metric) => new Option(trendLabel(metric, view.sport), metric)));
   select.value = view.trendMetric;
+  for (const button of document.querySelectorAll("[data-trend-range]")) button.setAttribute("aria-pressed", String(button.dataset.trendRange === view.trendRange));
+  for (const button of document.querySelectorAll("[data-trend-group]")) button.setAttribute("aria-pressed", String(button.dataset.trendGroup === view.trendGroup));
 }
 
 function renderTrendChart() {
   const chart = byId("compareChart");
   const metric = view.trendMetric;
-  const points = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric) })).filter((point) => Number.isFinite(point.y));
+  const points = trendPoints();
   chart.replaceChildren();
   view.layout = null;
   const empty = byId("compareChartEmpty");
   empty.hidden = points.length > 0;
   empty.textContent = t("trendEmpty");
-  byId("trendNote").textContent = t("trendCount", { count: points.length });
+  const count = view.trendGroup === "activity" ? points.length : points.reduce((sum, point) => sum + point.entries.length, 0);
+  const average = view.trendGroup === "activity" && points.length >= 3;
+  byId("trendNote").textContent = [
+    t("trendCount", { count }),
+    ...(average ? [t("trendAverage", { count: averageSize })] : []),
+    ...(points.some((point) => point.record) ? [t("trendRecords")] : []),
+  ].join(" · ");
   if (!points.length) return;
   const width = chart.clientWidth || 800;
   const height = 320;
   const margin = { top: 16, right: 24, bottom: 30, left: 72 };
   const day = 86_400_000;
+  // A grouped point sits at its period's first day, so the axis reaches to the last period's end.
+  const tail = { activity: day, week: 7 * day, month: 31 * day }[view.trendGroup];
   const minX = points[0].x - day;
-  const maxX = points.at(-1).x + day;
+  const maxX = points.at(-1).x + tail;
   const ys = points.map((point) => point.y);
   const low = Math.min(...ys);
   const high = Math.max(...ys);
@@ -580,9 +625,16 @@ function renderTrendChart() {
     chart.append(label);
   }
   chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
-  const d = points.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
-  chart.append(svg("path", { class: "compare-line trend-line", d, stroke: "var(--compare-1)" }));
-  for (const point of points) chart.append(svg("circle", { class: "compare-dot", cx: xFor(point.x), cy: yFor(point.y), r: 4.5, fill: "var(--compare-1)" }));
+  const path = (list) => list.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
+  // Each activity is a faint line under its moving average; a week's or a month's values make the line themselves.
+  chart.append(svg("path", { class: `compare-line trend-line${average ? " is-faint" : ""}`, d: path(points), stroke: "var(--compare-1)" }));
+  if (average) {
+    const means = movingAverage(points.map((point) => point.y), averageSize);
+    chart.append(svg("path", { class: "compare-line trend-average", d: path(points.map((point, index) => ({ x: point.x, y: means[index] }))), stroke: "var(--compare-1)" }));
+  }
+  for (const point of points) {
+    chart.append(svg("circle", { class: `compare-dot${point.record ? " trend-record" : ""}`, cx: xFor(point.x), cy: yFor(point.y), r: point.record ? 6 : 4.5, fill: point.record ? "var(--trend-record)" : "var(--compare-1)" }));
+  }
   const guide = svg("g", { class: "compare-hover" });
   chart.append(guide);
   view.layout = { trend: true, points, margin, plotWidth, plotHeight, minX, maxX, xFor, yFor, guide };
@@ -601,10 +653,13 @@ function renderTrendHover() {
   }
   const x = layout.xFor(point.x);
   layout.guide.replaceChildren(svg("circle", { class: "trend-ring", cx: x, cy: layout.yFor(point.y), r: 8 }));
+  const lines = point.entries
+    ? [groupTitle(point.from), t("trendSessions", { count: point.entries.length })]
+    : [shortDate(point.entry.startMs), point.entry.name];
   tooltip.replaceChildren(
     Object.assign(document.createElement("strong"), { textContent: trendText(point.y, view.trendMetric, view.sport) }),
-    Object.assign(document.createElement("span"), { textContent: shortDate(point.entry.startMs) }),
-    Object.assign(document.createElement("span"), { textContent: point.entry.name }),
+    ...lines.map((text) => Object.assign(document.createElement("span"), { textContent: text })),
+    ...(point.record ? [Object.assign(document.createElement("span"), { className: "trend-record-note", textContent: `★ ${t("trendRecord")}` })] : []),
   );
   tooltip.hidden = false;
   const chartBox = byId("compareChart").getBoundingClientRect();
@@ -612,18 +667,20 @@ function renderTrendHover() {
   tooltip.style.left = `${left > chartBox.width / 2 ? left - tooltip.offsetWidth - 12 : left + 12}px`;
 }
 
-// Every activity in the trend, newest first, with the change against the one before it.
+// Every point of the trend, newest first, with the change against the one before it.
+// An activity's row opens it in the comparison; a week's or a month's row adds up its activities.
 function renderTrendTable() {
-  const entries = trendEntries();
+  const points = trendPoints();
   const metric = view.trendMetric;
   const sport = view.sport;
   const isTime = trendIsTime(metric, sport);
+  const grouped = view.trendGroup !== "activity";
   const head = document.createElement("tr");
-  head.append(...[t("libraryDate"), t("libraryName"), t("lapTime"), t("lapDistanceColumn"), trendLabel(metric, sport), t("trendChange")]
+  head.append(...[grouped ? t("trendPeriod") : t("libraryDate"), grouped ? t("diarySessions") : t("libraryName"), t("lapTime"), t("lapDistanceColumn"), trendLabel(metric, sport), t("trendChange")]
     .map((title) => Object.assign(document.createElement("th"), { textContent: title })));
   let previous = null;
-  const rows = entries.map((entry) => {
-    const value = trendValue(entry, metric);
+  const rows = points.map((point) => {
+    const value = point.y;
     let change = "";
     let tone = "";
     if (Number.isFinite(value) && Number.isFinite(previous)) {
@@ -634,12 +691,23 @@ function renderTrendTable() {
     }
     if (Number.isFinite(value)) previous = value;
     const row = document.createElement("tr");
-    const cells = [shortDate(entry.startMs), entry.name, formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`, trendText(value, metric, sport), change];
-    row.append(...cells.map((text, index) => Object.assign(document.createElement("td"), { textContent: text, className: index === 5 ? tone : "" })));
+    const entries = point.entries ?? [point.entry];
+    const seconds = entries.reduce((sum, entry) => sum + (entry.summary.timerSeconds ?? 0), 0);
+    const meters = entries.reduce((sum, entry) => sum + (entry.summary.distance ?? 0), 0);
+    const shown = `${trendText(value, metric, sport)}${point.record ? " ★" : ""}`;
+    const cells = grouped
+      ? [groupTitle(point.from), String(entries.length), formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change]
+      : [shortDate(point.entry.startMs), point.entry.name, formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change];
+    row.append(...cells.map((text, index) => Object.assign(document.createElement("td"), { textContent: text, className: index === 5 ? tone : index === 4 && point.record ? "is-record" : "" })));
+    if (point.record) row.cells[4].title = t("trendRecord");
+    if (!grouped) {
+      row.className = "is-link";
+      row.addEventListener("click", () => openInCompare(point.entry));
+    }
     return row;
   }).reverse();
   byId("trendTable").replaceChildren(head, ...rows);
-  byId("trendTableCard").hidden = !entries.length;
+  byId("trendTableCard").hidden = !points.length;
 }
 
 function renderMode() {
@@ -648,7 +716,8 @@ function renderMode() {
   // Zooming belongs to the overlay; the trend shows every workout.
   if (trend) byId("compareZoomBar").hidden = byId("compareZoomHint").hidden = true;
   byId("trendControls").hidden = !trend;
-  byId("compareList").classList.toggle("is-trend", trend);
+  // The trend has no list to pick from: its filters sit in a bar over the chart.
+  byId("compareView").classList.toggle("is-trend", trend);
   byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
 }
 
@@ -741,8 +810,19 @@ export function setupCompare({ onConverter }) {
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;
+    saveTrend();
     render();
   });
+  for (const [attribute, key] of [["trendRange", "trendRange"], ["trendGroup", "trendGroup"]]) {
+    for (const button of document.querySelectorAll(`[data-${attribute.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}]`)) {
+      button.addEventListener("click", () => {
+        view[key] = button.dataset[attribute];
+        view.hoverX = null;
+        saveTrend();
+        render();
+      });
+    }
+  }
   // The trend follows the filters, so they redraw it; the overlay only narrows the list.
   const filtered = () => (view.mode === "trend" ? render() : renderList());
   byId("compareSearch").addEventListener("input", (event) => {
