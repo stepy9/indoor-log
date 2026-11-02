@@ -56,6 +56,7 @@ function metricText(value, metric, sport) {
 }
 
 const axisText = (x) => (view.axis === "distance" ? (x >= 1000 ? `${displayNumber(x / 1000, 2)} km` : `${displayNumber(x)} m`) : formatDuration(x));
+const distanceText = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000)} km` : `${displayNumber(meters)} m`);
 
 // Steps of 1, 2 or 5 times a power of ten, or the given steps, that give about the asked number of ticks.
 function niceTicks(low, high, count, steps = null) {
@@ -373,20 +374,56 @@ function renderTable(id, rows, picked) {
   }));
 }
 
-// Lap by lap for the activities with laps: the metric the chart shows, under the lap number and the type of the first.
+// The split lengths offered for each sport, shortest first.
+const splitDistances = { rowing: [250, 500], running: [500, 1000], cycling: [1000, 5000] };
+
+// Every split of the given length: the metric over it, under the distance it covers.
+function renderSplits(picked, length) {
+  byId("compareLapsTitle").textContent = t("compareSplits", { length: distanceText(length), metric: metricLabel(view.metric, view.sport) });
+  const longest = Math.max(...picked.map((entry) => entry.summary.distance ?? 0));
+  const count = Math.ceil(longest / length);
+  const rows = Array.from({ length: count }, (_, index) => {
+    const from = index * length;
+    const to = from + length;
+    return [`${displayNumber(from)}–${displayNumber(to)} m`, (entry) => {
+      // A split cut short by the end of the activity is left out rather than compared with whole ones.
+      if ((entry.summary.distance ?? 0) < to - length * 0.1) return "—";
+      const { summary } = sliceEntry(entry, "distance", from, to);
+      return metricText(summary.timerSeconds > 0 ? lapValue(summary, view.metric, view.sport) : null, view.metric, view.sport);
+    }];
+  });
+  renderTable("compareLapsTable", rows, picked);
+}
+
+// Laps, resistance levels or distance splits for the selected activities, in the metric the chart shows.
 function renderLapTable(picked) {
   const withLaps = picked.filter((entry) => entry.laps?.length >= 2);
   const card = byId("compareLapsCard");
-  card.hidden = !withLaps.length;
-  if (!withLaps.length) return;
-  // With resistance set, laps on the same level can be compared together; without it, lap by lap.
+  card.hidden = !picked.length;
+  if (!picked.length) return;
   const hasLevels = withLaps.some((entry) => entry.resistance || entry.laps.some((lap) => lap.resistance));
-  byId("compareLapsGrouping").hidden = !hasLevels;
-  // Runs of the same workout line up lap for lap; different workouts meet on the resistance they share.
-  const sameWorkout = new Set(withLaps.map((entry) => entry.name)).size === 1;
-  const grouping = view.lapGrouping ?? (sameWorkout ? "lap" : "level");
-  for (const button of byId("compareLapsGrouping").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.grouping === grouping));
-  if (hasLevels && grouping === "level") {
+  const splits = splitDistances[view.sport] ?? splitDistances.rowing;
+  const options = [
+    ...(hasLevels ? [["level", t("compareByLevel")]] : []),
+    ...(withLaps.length ? [["lap", t("compareByLap")]] : []),
+    ...splits.map((length) => [`split-${length}`, t("compareBySplit", { length: distanceText(length) })]),
+  ];
+  // Steady rows meet split by split, runs of the same intervals lap by lap, other intervals on the resistance they share.
+  const steady = picked.every((entry) => workoutKind(entry) !== "intervals");
+  const sameWorkout = new Set(picked.map((entry) => entry.name)).size === 1;
+  const fallback = steady ? `split-${splits.at(-1)}` : sameWorkout || !hasLevels ? "lap" : "level";
+  const grouping = options.some(([value]) => value === view.lapGrouping) ? view.lapGrouping : fallback;
+  byId("compareLapsGrouping").replaceChildren(...options.map(([value, label]) => {
+    const button = Object.assign(document.createElement("button"), { type: "button", textContent: label });
+    button.dataset.grouping = value;
+    button.setAttribute("aria-pressed", String(value === grouping));
+    return button;
+  }));
+  if (grouping.startsWith("split-")) {
+    renderSplits(picked, Number(grouping.slice(6)));
+    return;
+  }
+  if (grouping === "level") {
     byId("compareLapsTitle").textContent = t("compareLevels", { metric: metricLabel(view.metric, view.sport) });
     const perEntry = new Map(withLaps.map((entry) => [entry.id, levelValues(entry, view.metric, view.sport)]));
     const levels = [...new Set([...perEntry.values()].flatMap((levelMap) => [...levelMap.keys()]))].sort((a, b) => a - b);
