@@ -62,11 +62,14 @@ test("tells interval workouts from steady ones, and a hand-picked kind wins", ()
   assert.equal(workoutKind({ ...intervals, kind: "steady" }), "steady");
 });
 
-test("sorts activities into length ranges by moving time", () => {
-  const minutes = (value) => ({ summary: { timerSeconds: value * 60 } });
-  assert.ok(inLengthRange(minutes(10), "short"));
-  assert.ok(inLengthRange(minutes(20), "medium"));
-  assert.ok(!inLengthRange(minutes(20), "long"));
-  assert.ok(inLengthRange(minutes(90), "longer"));
-  assert.ok(inLengthRange(minutes(90), "all"));
+test("sorts activities into time and sport-specific distance ranges", () => {
+  const activity = (minutes, km, sport = "rowing") => ({ sport, summary: { timerSeconds: minutes * 60, distance: km * 1000 } });
+  assert.ok(inLengthRange(activity(10, 2), "time:0"));
+  assert.ok(inLengthRange(activity(20, 4), "time:1"));
+  assert.ok(!inLengthRange(activity(20, 4), "time:2"));
+  assert.ok(inLengthRange(activity(90, 20), "time:3"));
+  assert.ok(inLengthRange(activity(20, 4), "distance:1"));
+  assert.ok(!inLengthRange(activity(20, 4, "cycling"), "distance:1"));
+  assert.ok(inLengthRange(activity(90, 30, "cycling"), "distance:1"));
+  assert.ok(inLengthRange(activity(90, 20), "all"));
 });

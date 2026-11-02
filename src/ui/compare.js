@@ -1,4 +1,4 @@
-import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
+import { bestAverage, bestTime, downsample, effortDistances, inLengthRange, invertedMetric, rangesFor, paceFrom, powerDurations, series, workoutKind } from "../analysis.js";
 import { listEntries, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { openLibrary } from "./library.js";
@@ -75,6 +75,22 @@ async function refresh() {
   const sports = [...new Set(view.entries.map((entry) => entry.sport))];
   if (!sports.includes(view.sport)) view.sport = sports[0] ?? null;
   render();
+}
+
+// Time ranges, then the sport's distance ranges; a choice the new options lack falls back to any length.
+function renderLengths() {
+  const select = byId("compareLength");
+  const label = ([from, to], unit) => (from === 0 ? t("rangeUpTo", { to: `${displayNumber(to, 1)} ${unit}` })
+    : to === Infinity ? t("rangeOver", { from: `${displayNumber(from, 1)} ${unit}` })
+    : `${displayNumber(from, 1)}–${displayNumber(to, 1)} ${unit}`);
+  const group = (by, key, unit) => {
+    const optgroup = Object.assign(document.createElement("optgroup"), { label: t(key) });
+    optgroup.append(...rangesFor(by, view.sport).map((range, index) => new Option(label(range, unit), `${by}:${index}`)));
+    return optgroup;
+  };
+  select.replaceChildren(new Option(t("compareLengthAll"), "all"), group("time", "compareByTimeGroup", "min"), group("distance", "compareByDistanceGroup", "km"));
+  select.value = view.length;
+  if (select.value !== view.length) view.length = select.value = "all";
 }
 
 function renderSports() {
@@ -310,6 +326,7 @@ function renderTables() {
 function render() {
   if (byId("compareView").hidden) return;
   renderSports();
+  renderLengths();
   renderList();
   renderControls();
   renderChart();

@@ -150,12 +150,23 @@ export function workoutKind(entry) {
   return kinds.get(entry);
 }
 
-// Length filters by moving time, in minutes.
-export const lengthRanges = { short: [0, 15], medium: [15, 30], long: [30, 60], longer: [60, Infinity] };
+// Length filters by moving time in minutes or by distance in km, which depends on the sport.
+export const lengthRanges = {
+  time: [[0, 15], [15, 30], [30, 60], [60, Infinity]],
+  distance: {
+    rowing: [[0, 2], [2, 5], [5, 10], [10, Infinity]],
+    running: [[0, 5], [5, 10], [10, 21.1], [21.1, Infinity]],
+    cycling: [[0, 20], [20, 40], [40, 80], [80, Infinity]],
+  },
+};
 
-export function inLengthRange(entry, range) {
-  if (!lengthRanges[range]) return true;
-  const [from, to] = lengthRanges[range];
-  const minutes = entry.summary.timerSeconds / 60;
-  return minutes >= from && minutes < to;
+export const rangesFor = (by, sport) => (by === "time" ? lengthRanges.time : lengthRanges.distance[sport] ?? lengthRanges.distance.rowing);
+
+// The filter reads "time:1" or "distance:0", the range's place in its list; anything else lets every activity through.
+export function inLengthRange(entry, filter) {
+  const [by, index] = String(filter).split(":");
+  const range = by === "time" || by === "distance" ? rangesFor(by, entry.sport)[Number(index)] : null;
+  if (!range) return true;
+  const amount = by === "time" ? entry.summary.timerSeconds / 60 : entry.summary.distance / 1000;
+  return amount >= range[0] && amount < range[1];
 }
