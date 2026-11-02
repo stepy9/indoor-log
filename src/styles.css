@@ -576,7 +576,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .diary-tooltip-total { font-size: 18px; font-weight: 700; }
 .diary-tooltip-row { display: flex; align-items: center; gap: 6px; }
 .diary-tooltip-row strong { margin-left: auto; padding-left: 12px; }
-.diary-tooltip-sessions { margin-top: 2px; color: var(--muted); }
 .diary-bar { cursor: default; }
 .diary-charts { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .diary-chart { display: block; width: 100%; }
