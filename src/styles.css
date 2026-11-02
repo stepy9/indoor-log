@@ -105,9 +105,10 @@ button { cursor: pointer; }
 .topbar-actions { display: flex; align-items: center; gap: 12px; }
 .library-button { padding: 6px 12px; border: 1px solid var(--topbar-line); border-radius: 999px; color: var(--topbar-muted); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
 .library-button:hover { color: #fff; border-color: var(--topbar-muted); }
-.library-dialog { width: min(980px, calc(100vw - 32px)); }
+.intervals-dialog.library-dialog { width: min(1200px, calc(100vw - 48px)); max-height: calc(100vh - 32px); }
+.intervals-dialog.library-dialog .laps-scroll { max-height: calc(100vh - 300px); }
 .library-dialog .check-field { margin: 4px 0 12px; }
-.library-table td:nth-child(2) { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-table td:nth-child(2) { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #libraryNote.is-error { color: var(--danger); }
 #libraryNote.is-success { color: var(--success); }
 .privacy { display: flex; align-items: center; gap: 8px; padding: 6px 11px; border: 1px solid var(--topbar-line); border-radius: 999px; color: var(--topbar-muted); font-size: 12px; }

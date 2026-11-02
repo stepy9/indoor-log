@@ -55,7 +55,7 @@ async function renderList() {
     const row = document.createElement("tr");
     const cells = [
       shortDate(entry.startMs),
-      entry.name,
+      entry.name.replace(/^Kinomap - /, ""),
       sportLabel(entry.sport),
       t(`librarySource_${entry.source}`),
       formatDuration(entry.summary.timerSeconds),
@@ -64,6 +64,7 @@ async function renderList() {
       value(entry.summary.avgHeartRate, "bpm"),
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
+    row.children[1].title = entry.name;
     const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
