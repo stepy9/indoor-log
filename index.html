@@ -393,10 +393,14 @@
             <div class="compare-chart-wrap">
               <svg class="compare-chart" id="compareChart" role="img" aria-label="Porovnání aktivit" data-i18n-aria="navCompare"></svg>
               <div class="compare-tooltip" id="compareTooltip" hidden></div>
-              <button class="outline-button compare-zoom-reset" id="compareZoomReset" type="button" hidden data-i18n="zoomReset">Zrušit přiblížení</button>
+              <div class="compare-zoom-bar" id="compareZoomBar" hidden>
+                <button class="outline-button" id="compareZoomLeft" type="button" aria-label="Posunout doleva" data-i18n-aria="zoomLeft" title="Posunout doleva" data-i18n-title="zoomLeft">‹</button>
+                <button class="outline-button" id="compareZoomReset" type="button" data-i18n="zoomReset">Zrušit přiblížení</button>
+                <button class="outline-button" id="compareZoomRight" type="button" aria-label="Posunout doprava" data-i18n-aria="zoomRight" title="Posunout doprava" data-i18n-title="zoomRight">›</button>
+              </div>
               <p class="field-note compare-chart-empty" id="compareChartEmpty" data-i18n="compareChartEmpty">Vyberte vlevo jednu nebo více aktivit.</p>
             </div>
-            <p class="field-note" id="compareZoomHint" data-i18n="zoomHint" hidden>Tažením v grafu přiblížíte úsek, dvojklikem nebo tlačítkem vrátíte celý průběh.</p>
+            <p class="field-note" id="compareZoomHint" data-i18n="zoomHint" hidden>Tažením v grafu přiblížíte úsek, se Shiftem nebo šipkami ho posunete, dvojklikem vrátíte celý průběh.</p>
           </section>
           <section class="card" id="trendTableCard" hidden>
             <span class="field-label" data-i18n="trendTable">Tréninky ve vývoji</span>

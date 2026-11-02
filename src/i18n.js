@@ -2,7 +2,10 @@ export const translations = {
   cs: {
     compareMode: "Režim",
     zoomReset: "Zrušit přiblížení",
-    zoomHint: "Tažením v grafu přiblížíte úsek, dvojklikem nebo tlačítkem vrátíte celý průběh.",
+    zoomEmpty: "V přiblíženém úseku nejsou data.",
+    zoomHint: "Tažením v grafu přiblížíte úsek, se Shiftem nebo šipkami ho posunete, dvojklikem vrátíte celý průběh.",
+    zoomLeft: "Posunout doleva",
+    zoomRight: "Posunout doprava",
     modeOverlay: "Porovnat",
     modeTrend: "Vývoj",
     trendEfficiency: "Výkon na tep",
@@ -316,7 +319,10 @@ export const translations = {
   en: {
     compareMode: "Mode",
     zoomReset: "Reset zoom",
-    zoomHint: "Drag across the chart to zoom into a stretch; double-click or the button shows it all again.",
+    zoomEmpty: "The zoomed stretch holds no data.",
+    zoomHint: "Drag across the chart to zoom into a stretch, Shift-drag or the arrows to move it, double-click to show it all again.",
+    zoomLeft: "Move left",
+    zoomRight: "Move right",
     modeOverlay: "Compare",
     modeTrend: "Progress",
     trendEfficiency: "Power per heartbeat",

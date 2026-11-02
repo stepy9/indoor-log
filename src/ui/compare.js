@@ -26,6 +26,10 @@ const view = {
   zoom: null,
   // Where a drag over the chart started, in chart pixels.
   dragFrom: null,
+  // A Shift-drag moving the zoomed stretch: where it started, in chart pixels, and the stretch at that moment.
+  panFrom: null,
+  // Where the longest selected activity ends on the x axis, so panning stops there.
+  fullMaxX: 0,
   layout: null,
 };
 
@@ -181,28 +185,61 @@ function renderControls() {
   }
 }
 
+// The points inside a zoomed stretch and the nearest one on each side, so the lines run to its edges.
+function zoomed(points, zoom) {
+  if (!zoom) return points;
+  const first = points.findIndex((point) => point.x >= zoom[0]);
+  if (first < 0) return [];
+  let last = first;
+  while (last + 1 < points.length && points[last + 1].x <= zoom[1]) last += 1;
+  return points.slice(Math.max(0, first - 1), last + 2);
+}
+
+// Zooming stops at 20 m or 10 s, around the middle of what was dragged.
+function widened([from, to]) {
+  const shortest = view.axis === "distance" ? 20 : 10;
+  if (to - from >= shortest) return [from, to];
+  const middle = (from + to) / 2;
+  const start = Math.max(0, middle - shortest / 2);
+  return [start, start + shortest];
+}
+
+// Moves the zoomed stretch by the given amount on the x axis, keeping it within the activities.
+function pan(by) {
+  if (!view.zoom) return;
+  const span = view.zoom[1] - view.zoom[0];
+  const from = Math.min(Math.max(0, view.zoom[0] + by), Math.max(0, view.fullMaxX - span));
+  view.zoom = [from, from + span];
+  view.hoverX = null;
+  renderChart();
+}
+
 function renderChart() {
   const chart = byId("compareChart");
   const picked = selected();
   byId("compareChartEmpty").hidden = picked.length > 0;
   chart.replaceChildren();
   view.layout = null;
-  byId("compareZoomReset").hidden = true;
+  byId("compareZoomBar").hidden = true;
   byId("compareZoomHint").hidden = true;
   if (!picked.length) return;
   const zoom = view.zoom;
-  const lines = picked.map((entry) => ({
+  const full = picked.map((entry) => ({ entry, points: series(entry, view.metric, { axis: view.axis, smoothSeconds: view.smoothSeconds }) }));
+  view.fullMaxX = Math.max(0, ...full.map(({ points }) => points.at(-1)?.x ?? 0));
+  const lines = full.map(({ entry, points }) => ({
     entry, slot: view.slots.get(entry.id),
     // Thinning comes after the zoom, so a zoomed stretch keeps its detail.
-    points: downsample(series(entry, view.metric, { axis: view.axis, smoothSeconds: view.smoothSeconds })
-      .filter((point) => !zoom || (point.x >= zoom[0] && point.x <= zoom[1]))),
+    points: downsample(zoomed(points, zoom)),
   })).filter((line) => line.points.length);
-  byId("compareZoomReset").hidden = !zoom;
+  byId("compareZoomBar").hidden = !zoom;
   byId("compareZoomHint").hidden = !lines.length;
   if (!lines.length) {
-    byId("compareChartEmpty").hidden = false;
+    const empty = byId("compareChartEmpty");
+    empty.textContent = t(zoom ? "zoomEmpty" : "compareChartEmpty");
+    empty.hidden = false;
     return;
   }
+  byId("compareChartEmpty").textContent = t("compareChartEmpty");
   const width = chart.clientWidth || 800;
   const height = 320;
   const margin = { top: 12, right: 16, bottom: 30, left: 64 };
@@ -228,6 +265,10 @@ function renderChart() {
   };
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.setAttribute("height", String(height));
+  // Lines reaching past a zoomed stretch are cut at the edges of the plot.
+  const clip = svg("clipPath", { id: "comparePlot" });
+  clip.append(svg("rect", { x: margin.left, y: 0, width: plotWidth, height }));
+  chart.append(clip);
 
   for (const tick of yTicks) {
     chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
@@ -243,7 +284,7 @@ function renderChart() {
   chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
   for (const line of lines) {
     const d = line.points.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
-    chart.append(svg("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})` }));
+    chart.append(svg("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})`, "clip-path": "url(#comparePlot)" }));
   }
   const guide = svg("g", { class: "compare-hover" });
   chart.append(guide);
@@ -496,7 +537,7 @@ function renderMode() {
   for (const button of document.querySelectorAll("[data-compare-mode]")) button.setAttribute("aria-pressed", String((button.dataset.compareMode === "trend") === trend));
   byId("overlayControls").hidden = trend;
   // Zooming belongs to the overlay; the trend shows every workout.
-  if (trend) byId("compareZoomReset").hidden = byId("compareZoomHint").hidden = true;
+  if (trend) byId("compareZoomBar").hidden = byId("compareZoomHint").hidden = true;
   byId("trendControls").hidden = !trend;
   byId("compareList").classList.toggle("is-trend", trend);
   byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
@@ -624,17 +665,30 @@ export function setupCompare({ onConverter }) {
   // Dragging across the overlay chart marks a stretch to zoom into.
   chart.addEventListener("pointerdown", (event) => {
     if (!view.layout || view.layout.trend || event.button !== 0) return;
+    // Shift-dragging a zoomed chart moves the stretch instead of zooming further.
+    if (event.shiftKey && view.zoom) {
+      view.panFrom = { x: plotX(event), zoom: view.zoom };
+      chart.setPointerCapture(event.pointerId);
+      chart.classList.add("is-panning");
+      byId("compareTooltip").hidden = true;
+      return;
+    }
     view.dragFrom = plotX(event);
     chart.setPointerCapture(event.pointerId);
     byId("compareTooltip").hidden = true;
   });
   chart.addEventListener("pointerup", (event) => {
+    if (view.panFrom) {
+      view.panFrom = null;
+      chart.classList.remove("is-panning");
+      return;
+    }
     if (view.dragFrom == null) return;
     const [from, to] = [view.dragFrom, plotX(event)].sort((a, b) => a - b);
     view.dragFrom = null;
     // A click or a tiny drag is not a zoom.
     if (to - from >= 8) {
-      view.zoom = [valueAtPixel(from), valueAtPixel(to)];
+      view.zoom = widened([valueAtPixel(from), valueAtPixel(to)]);
       view.hoverX = null;
       renderChart();
     } else renderHover();
@@ -647,6 +701,13 @@ export function setupCompare({ onConverter }) {
   chart.addEventListener("pointermove", (event) => {
     const layout = view.layout;
     if (!layout) return;
+    if (view.panFrom) {
+      const { x, zoom } = view.panFrom;
+      const perPixel = (zoom[1] - zoom[0]) / layout.plotWidth;
+      view.zoom = zoom;
+      pan((x - plotX(event)) * perPixel);
+      return;
+    }
     if (view.dragFrom != null) {
       const x = plotX(event);
       layout.guide.replaceChildren(svg("rect", {
@@ -660,6 +721,8 @@ export function setupCompare({ onConverter }) {
     view.hoverX = x < layout.margin.left || x > layout.margin.left + layout.plotWidth ? null : layout.minX + ((x - layout.margin.left) / layout.plotWidth) * (layout.maxX - layout.minX);
     renderHover();
   });
+  byId("compareZoomLeft").addEventListener("click", () => view.zoom && pan(-(view.zoom[1] - view.zoom[0]) / 2));
+  byId("compareZoomRight").addEventListener("click", () => view.zoom && pan((view.zoom[1] - view.zoom[0]) / 2));
   byId("compareZoomReset").addEventListener("click", () => {
     view.zoom = null;
     renderChart();
