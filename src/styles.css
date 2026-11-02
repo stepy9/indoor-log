@@ -89,7 +89,8 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+/* The scrollbar's room is kept on short pages too, so switching views never shifts the layout. */
+html { background: var(--bg); scrollbar-gutter: stable; }
 body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; min-width: 320px; color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.45; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
