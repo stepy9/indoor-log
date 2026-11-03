@@ -364,9 +364,26 @@ function render() {
   renderZones(current, settings);
   renderCurve(current, inRange(shown, 1));
   renderDecoupling(current, settings);
-  renderSettings(settings);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
+
+// The thresholds live in the Settings dialog; its estimates come from the whole library.
+export function showSettingsPane(name) {
+  for (const button of document.querySelectorAll("[data-settings-pane]")) button.setAttribute("aria-pressed", String(button.dataset.settingsPane === name));
+  for (const pane of document.querySelectorAll("#settingsDialog [data-pane]")) pane.hidden = pane.dataset.pane !== name;
+}
+
+async function openSettings(pane) {
+  if (typeof pane === "string") showSettingsPane(pane);
+  view.entries = await listEntries().catch(() => []);
+  renderSettings(settingsFor(view.entries));
+  byId("settingsDialog").showModal();
+}
+
+const settingsChanged = () => {
+  renderSettings(settingsFor(view.entries));
+  if (!byId("fitnessView").hidden) render();
+};
 
 export async function showFitness() {
   view.entries = await listEntries().catch(() => []);
@@ -379,6 +396,10 @@ export const rerenderFitness = () => {
 
 export function setupFitness({ onOpen }) {
   openActivity = onOpen;
+  byId("settingsButton").addEventListener("click", openSettings);
+  byId("fitnessSettingsLink").addEventListener("click", () => openSettings("thresholds"));
+  for (const button of document.querySelectorAll("[data-settings-pane]")) button.addEventListener("click", () => showSettingsPane(button.dataset.settingsPane));
+  byId("settingsClose").addEventListener("click", () => byId("settingsDialog").close());
   byId("fitnessSport").addEventListener("change", (event) => {
     view.sport = event.target.value;
     save({ sport: view.sport });
@@ -404,16 +425,16 @@ export function setupFitness({ onOpen }) {
   };
   byId("fitnessMaxHr").addEventListener("change", (event) => {
     save({ maxHeartRate: number(event.target) });
-    render();
+    settingsChanged();
   });
   byId("fitnessRestHr").addEventListener("change", (event) => {
     save({ restHeartRate: number(event.target) });
-    render();
+    settingsChanged();
   });
   for (const sport of sports) {
     byId(`fitnessFtp-${sport}`).addEventListener("change", (event) => {
       save({ ftp: { ...remembered().ftp, [sport]: number(event.target) } });
-      render();
+      settingsChanged();
     });
   }
   const chart = byId("fitnessLoadChart");

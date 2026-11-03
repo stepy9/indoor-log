@@ -75,16 +75,14 @@ function renderRows(onChange) {
   }));
 }
 
+// The trainers' part of the Settings dialog, filled as it opens; a new trainer takes the open activity's sport.
 // onChange runs after every edit, so the converter's trainer list stays current.
-export function openTrainersDialog(sport, onChange) {
-  const dialog = byId("trainersDialog");
+export function renderTrainersSettings(sport, onChange) {
   byId("trainerAdd").onclick = () => {
     const id = `trainer-${Date.now().toString(36)}`;
     saveTrainers([...trainers(), { id, name: t("newTrainer"), sport: sport ?? "rowing", levels: 10, defaultLevel: 5 }]);
     onChange();
     renderRows(onChange);
   };
-  byId("trainersClose").onclick = () => dialog.close();
   renderRows(onChange);
-  dialog.showModal();
 }

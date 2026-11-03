@@ -30,7 +30,7 @@
         </nav>
         <div class="topbar-actions">
           <button class="library-button" id="libraryButton" type="button"><span data-i18n="library">Knihovna</span></button>
-          <button class="library-button" id="manageTrainersButton" type="button"><span data-i18n="trainersTitle">Trenažéry</span></button>
+          <button class="library-button" id="settingsButton" type="button"><span data-i18n="settingsTitle">Nastavení</span></button>
           <div class="language-control" id="languageControl">
             <span class="visually-hidden" data-i18n="language">Jazyk</span>
             <button id="languageButton" class="language-button" type="button" aria-label="Jazyk" data-i18n-aria="language" aria-haspopup="listbox" aria-expanded="false" aria-controls="languageMenu">
@@ -440,6 +440,7 @@
             <div class="diary-tooltip" id="fitnessTooltip" role="tooltip" hidden></div>
             <p class="field-note" id="fitnessLoadEmpty" data-i18n="fitnessLoadEmpty" hidden>Žádná aktivita s tepem nebo výkonem.</p>
             <p class="field-note" id="fitnessLoadNote"></p>
+            <button class="link-button fitness-settings-link" id="fitnessSettingsLink" type="button" data-i18n="fitnessEditThresholds">Upravit prahové hodnoty (max. tep, FTP)…</button>
           </section>
           <div class="fitness-grid">
             <section class="card">
@@ -471,17 +472,6 @@
             <p class="field-note" data-i18n="fitnessDecouplingNote"></p>
             <div class="laps-scroll"><table class="laps-table compare-table fitness-table" id="fitnessDecoupling"></table></div>
             <p class="field-note" id="fitnessDecouplingEmpty" data-i18n="fitnessDecouplingEmpty" hidden></p>
-          </section>
-          <section class="card">
-            <span class="field-label" data-i18n="fitnessSettings">Prahové hodnoty</span>
-            <p class="field-note" data-i18n="fitnessSettingsNote"></p>
-            <div class="fitness-settings">
-              <label><span data-i18n="fitnessMaxHrLabel">Maximální tep (bpm)</span><input id="fitnessMaxHr" type="number" min="100" max="230" inputmode="numeric" /></label>
-              <label><span data-i18n="fitnessRestHrLabel">Klidový tep (bpm)</span><input id="fitnessRestHr" type="number" min="30" max="100" inputmode="numeric" /></label>
-              <label><span id="fitnessFtpLabel-rowing">FTP</span><input id="fitnessFtp-rowing" type="number" min="30" max="600" inputmode="numeric" /></label>
-              <label><span id="fitnessFtpLabel-cycling">FTP</span><input id="fitnessFtp-cycling" type="number" min="30" max="600" inputmode="numeric" /></label>
-              <label><span id="fitnessFtpLabel-running">FTP</span><input id="fitnessFtp-running" type="number" min="30" max="600" inputmode="numeric" /></label>
-            </div>
           </section>
         </div>
       </section>
@@ -628,20 +618,43 @@
           <button class="export-button" id="lapResistanceSave" type="button" data-i18n="save">Uložit</button>
         </div>
       </dialog>
-      <dialog class="intervals-dialog" id="trainersDialog" aria-labelledby="trainersTitle">
-        <div class="dialog-head"><h2 id="trainersTitle" data-i18n="trainersTitle">Trenažéry</h2></div>
-        <p class="field-note" data-i18n="trainersHint">Počet úrovní odporu a výchozí odpor, který převodník předvyplní. Procenta odporu z plánu Kinomapu se převedou na úrovně trenažéru.</p>
-        <div class="laps-scroll">
-          <table class="laps-table trainers-table">
-            <thead><tr><th data-i18n="trainerName">Název</th><th data-i18n="librarySport">Sport</th><th data-i18n="trainerLevels">Úrovně</th><th data-i18n="trainerDefault">Výchozí odpor</th><th></th></tr></thead>
-            <tbody id="trainersRows"></tbody>
-          </table>
-          <p class="field-note" id="trainersEmpty" data-i18n="trainersEmpty">Zatím žádný trenažér.</p>
+      <dialog class="intervals-dialog settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+        <div class="settings-head">
+          <h2 id="settingsTitle" data-i18n="settingsTitle">Nastavení</h2>
+          <button class="settings-close" id="settingsClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
         </div>
-        <div class="dialog-actions">
-          <button class="outline-button" id="trainerAdd" type="button" data-i18n="trainerAdd">Přidat trenažér</button>
-          <span class="dialog-spacer"></span>
-          <button class="export-button" id="trainersClose" type="button" data-i18n="libraryCloseLabel">Zavřít</button>
+        <div class="settings-body">
+        <nav class="settings-nav" aria-label="Sekce nastavení" data-i18n-aria="settingsTitle">
+          <button type="button" data-settings-pane="trainers" aria-pressed="true" data-i18n="trainersTitle">Trenažéry</button>
+          <button type="button" data-settings-pane="thresholds" aria-pressed="false" data-i18n="fitnessSettings">Prahové hodnoty</button>
+        </nav>
+        <div class="settings-panes">
+        <section class="settings-section" data-pane="trainers">
+          <div class="panel-title-row">
+            <h3 data-i18n="trainersTitle">Trenažéry</h3>
+            <button class="outline-button" id="trainerAdd" type="button" data-i18n="trainerAdd">Přidat trenažér</button>
+          </div>
+          <p class="field-note" data-i18n="trainersHint">Počet úrovní odporu a výchozí odpor, který převodník předvyplní. Procenta odporu z plánu Kinomapu se převedou na úrovně trenažéru.</p>
+          <div class="laps-scroll">
+            <table class="laps-table trainers-table">
+              <thead><tr><th data-i18n="trainerName">Název</th><th data-i18n="librarySport">Sport</th><th data-i18n="trainerLevels">Úrovně</th><th data-i18n="trainerDefault">Výchozí odpor</th><th></th></tr></thead>
+              <tbody id="trainersRows"></tbody>
+            </table>
+            <p class="field-note" id="trainersEmpty" data-i18n="trainersEmpty">Zatím žádný trenažér.</p>
+          </div>
+        </section>
+        <section class="settings-section" data-pane="thresholds" hidden>
+        <h3 data-i18n="fitnessSettings">Prahové hodnoty</h3>
+            <p class="field-note" data-i18n="fitnessSettingsNote"></p>
+            <div class="fitness-settings">
+              <label><span data-i18n="fitnessMaxHrLabel">Maximální tep (bpm)</span><input id="fitnessMaxHr" type="number" min="100" max="230" inputmode="numeric" /></label>
+              <label><span data-i18n="fitnessRestHrLabel">Klidový tep (bpm)</span><input id="fitnessRestHr" type="number" min="30" max="100" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-rowing">FTP</span><input id="fitnessFtp-rowing" type="number" min="30" max="600" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-cycling">FTP</span><input id="fitnessFtp-cycling" type="number" min="30" max="600" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-running">FTP</span><input id="fitnessFtp-running" type="number" min="30" max="600" inputmode="numeric" /></label>
+            </div>
+        </section>
+        </div>
         </div>
       </dialog>
       <div class="update-toast" id="updateToast" role="status" hidden>
