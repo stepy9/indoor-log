@@ -580,6 +580,7 @@
         <div class="dialog-head">
           <h2 id="libraryTitle" data-i18n="library">Knihovna</h2>
           <span class="estimate-note" id="libraryCount"></span>
+          <button class="settings-close library-close" id="libraryClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
         </div>
         <p class="field-note" data-i18n="libraryHint">Aktivity uložené jen v tomto prohlížeči, pro pozdější porovnání. Nikam se neodesílají.</p>
         <div class="segmented library-sports" id="librarySports" role="group" aria-label="Sport" data-i18n-aria="librarySport"></div>
@@ -598,7 +599,8 @@
           <button class="link-button" id="libraryRestoreButton" type="button" data-i18n="libraryRestore">Importovat zálohu</button>
           <span class="dialog-spacer"></span>
           <button class="link-button danger-link" id="libraryClearButton" type="button" data-i18n="libraryClear">Smazat vše</button>
-          <button class="export-button" id="libraryClose" type="button" data-i18n="libraryCloseLabel">Zavřít</button>
+          <button class="outline-button" id="libraryCancel" type="button" data-i18n="cancel">Zrušit</button>
+          <button class="export-button library-save" id="librarySave" type="button" data-i18n="save" disabled>Uložit</button>
         </div>
       </dialog>
       <dialog class="intervals-dialog" id="lapResistanceDialog" aria-labelledby="lapResistanceTitle">

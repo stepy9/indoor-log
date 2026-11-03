@@ -11,6 +11,15 @@ const toggle = byId("librarySaveToggle");
 const filesInput = byId("libraryFilesInput");
 const backupInput = byId("libraryBackupInput");
 
+// Edits in the library wait here, by entry id, until Save writes them; Cancel, the cross or Escape drop them.
+// Adding, deleting and backups are actions of their own and happen at once, the edits waiting kept across them.
+const pending = new Map();
+
+function edited(entry) {
+  pending.set(entry.id, entry);
+  byId("librarySave").disabled = false;
+}
+
 const libraryNote = (text, type = "") => {
   const note = byId("libraryNote");
   note.textContent = text;
@@ -75,8 +84,8 @@ function nameInput(entry) {
       return;
     }
     Object.assign(entry, { name: prefix + name, renamed: true });
-    await saveEntries([entry]).catch(() => {});
-    renderList();
+    edited(entry);
+    renderRows();
   });
   return input;
 }
@@ -87,11 +96,11 @@ function resistanceInput(entry) {
     type: "number", className: "level-input", min: "1", value: entry.resistance ?? "", placeholder: "—", title: entry.trainer ?? "",
   });
   input.setAttribute("aria-label", t("resistance"));
-  input.addEventListener("change", async () => {
+  input.addEventListener("change", () => {
     const level = Math.round(Number(input.value));
     if (level > 0) entry.resistance = level;
     else delete entry.resistance;
-    await saveEntries([entry]).catch(() => {});
+    edited(entry);
   });
   return input;
 }
@@ -104,10 +113,10 @@ function trainerSelect(entry) {
   if (entry.trainer && !names.includes(entry.trainer)) names.push(entry.trainer);
   select.append(new Option("—", ""), ...names.map((name) => new Option(name, name)));
   select.value = entry.trainer ?? "";
-  select.addEventListener("change", async () => {
+  select.addEventListener("change", () => {
     if (select.value) entry.trainer = select.value;
     else delete entry.trainer;
-    await saveEntries([entry]).catch(() => {});
+    edited(entry);
   });
   return select;
 }
@@ -167,19 +176,22 @@ function openLapResistance(entry) {
   };
   activityLevel.oninput = renderRows;
   byId("lapResistanceCancel").onclick = () => lapsDialog.close();
-  byId("lapResistanceSave").onclick = async () => {
+  // The laps join the library's other edits, written with them by its Save.
+  byId("lapResistanceSave").onclick = () => {
     entry.laps = laps;
     const level = Math.round(Number(activityLevel.value));
     if (level > 0) entry.resistance = level;
     else delete entry.resistance;
-    await saveEntries([entry]).catch(() => {});
+    edited(entry);
     lapsDialog.close();
+    renderRows();
   };
   renderRows();
   lapsDialog.showModal();
 }
 
-export function kindSelect(entry, onChange, className = "kind-select") {
+// deferred holds the change for the library's Save instead of writing it at once.
+export function kindSelect(entry, onChange, className = "kind-select", deferred = false) {
   const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
   renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport, className === "kind-tag");
@@ -187,7 +199,8 @@ export function kindSelect(entry, onChange, className = "kind-select") {
   select.addEventListener("change", async () => {
     if (select.value) entry.kind = select.value;
     else delete entry.kind;
-    await saveEntries([entry]).catch(() => {});
+    if (deferred) edited(entry);
+    else await saveEntries([entry]).catch(() => {});
     onChange();
   });
   return select;
@@ -205,6 +218,7 @@ const value = (number, unit) => (number == null ? "—" : `${displayNumber(numbe
 const sports = ["rowing", "cycling", "running"];
 let librarySport = null;
 let shown = [];
+let allEntries = [];
 
 function renderSportTabs(all) {
   const counts = Object.fromEntries(sports.map((sport) => [sport, all.filter((entry) => entry.sport === sport).length]));
@@ -215,7 +229,7 @@ function renderSportTabs(all) {
     button.addEventListener("click", () => {
       librarySport = sport;
       saveDefaults({ librarySport: sport });
-      renderList();
+      renderRows();
     });
     return button;
   }));
@@ -231,6 +245,14 @@ async function renderList() {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
     return;
   }
+  // Edits not saved yet stay on the activities they were made on.
+  allEntries = all.map((entry) => pending.get(entry.id) ?? entry);
+  for (const id of pending.keys()) if (!all.some((entry) => entry.id === id)) pending.delete(id);
+  renderRows();
+}
+
+function renderRows() {
+  const all = allEntries;
   renderSportTabs(all);
   const entries = all.filter((entry) => entry.sport === librarySport);
   shown = entries;
@@ -253,7 +275,7 @@ async function renderList() {
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     row.children[1].append(nameInput(entry));
     const kind = document.createElement("td");
-    kind.append(kindSelect(entry, renderList));
+    kind.append(kindSelect(entry, renderRows, "kind-select", true));
     row.children[2].after(kind);
     const trainerCell = document.createElement("td");
     trainerCell.append(trainerSelect(entry));
@@ -342,6 +364,8 @@ async function restoreBackup(file) {
 }
 
 export function openLibrary() {
+  pending.clear();
+  byId("librarySave").disabled = true;
   toggle.checked = savesToLibrary();
   libraryNote("");
   renderList();
@@ -355,6 +379,19 @@ export function setupLibrary({ onRestore } = {}) {
   if (onRestore) onSettingsRestored = onRestore;
   byId("libraryButton").addEventListener("click", openLibrary);
   byId("libraryClose").addEventListener("click", () => dialog.close());
+  byId("libraryCancel").addEventListener("click", () => dialog.close());
+  byId("librarySave").addEventListener("click", async () => {
+    try {
+      await saveEntries([...pending.values()]);
+    } catch (error) {
+      libraryNote(t("libraryFailed", { message: error.message }), "error");
+      return;
+    }
+    pending.clear();
+    dialog.close();
+  });
+  // Closing without Save drops the edits; the entries are read again when the library next opens.
+  dialog.addEventListener("close", () => pending.clear());
   toggle.addEventListener("change", () => saveDefaults({ saveToLibrary: toggle.checked }));
   byId("libraryAddButton").addEventListener("click", () => filesInput.click());
   filesInput.addEventListener("change", () => {
