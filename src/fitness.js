@@ -65,18 +65,52 @@ export function heartRateLoad(entry, { maxHeartRate, restHeartRate }) {
   return (trimp / (60 * trimpWeight(thresholdReserve))) * 100;
 }
 
-// One sport's thresholds: settings.sports[sport] holds them, older settings kept one maximum heart rate and an FTP per sport.
-export function forSport(settings, sport) {
+// One sport's thresholds on the given moment (now by default): settings.sports[sport] holds them,
+// older settings kept one maximum heart rate and an FTP per sport.
+export function forSport(settings, sport, atMs = Date.now()) {
   const own = settings.sports?.[sport] ?? {};
   return {
     restHeartRate: settings.restHeartRate,
     maxHeartRate: own.maxHeartRate ?? settings.maxHeartRate ?? null,
-    ftp: own.ftp ?? settings.ftp?.[sport] ?? null,
+    ftp: ftpOn(settings, sport, atMs),
     heartRateZones: validZones(own.heartRateZones, heartRateZones),
     // "max": zones as a share of the maximum; "reserve": of the reserve above the resting heart rate (Karvonen).
     heartRateBasis: own.heartRateBasis === "reserve" ? "reserve" : "max",
     powerZones: validZones(own.powerZones, powerZones),
   };
+}
+
+// The FTP in force on the moment: the latest record of the sport's history up to that day, then a single FTP
+// as older settings kept it, then the estimate from the activities up to then (settings.estimatedFtp, from ftpTimeline).
+// A record without a date holds from the start.
+export function ftpOn(settings, sport, atMs) {
+  const own = settings.sports?.[sport] ?? {};
+  const day = dayKey(atMs, settings.timeZone ?? "UTC");
+  const history = (own.ftpHistory ?? []).filter((record) => record.ftp > 0 && (!record.from || record.from <= day));
+  if (history.length) return history.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest)).ftp;
+  if (own.ftp ?? settings.ftp?.[sport]) return own.ftp ?? settings.ftp[sport];
+  const estimate = (settings.estimatedFtp?.[sport] ?? []).filter((point) => point.ms <= atMs).at(-1);
+  return estimate?.ftp ?? null;
+}
+
+// How the FTP estimate went: at each activity with 20 minutes of power, 95 % of the best 20 minutes
+// of the half year up to and including it. Per sport, oldest first: [{ ms, ftp, best, entry }].
+export const ftpWindowDays = 180;
+const best20 = new WeakMap();
+
+export function ftpTimeline(entries) {
+  const bySport = {};
+  const sorted = [...entries].sort((a, b) => a.startMs - b.startMs);
+  for (const entry of sorted) {
+    if (!best20.has(entry)) best20.set(entry, coverage(entry, "power") >= 0.5 ? bestAverage(entry, "power", 1200) : null);
+    const value = best20.get(entry);
+    if (value == null) continue;
+    const list = (bySport[entry.sport] ??= []);
+    const since = entry.startMs - ftpWindowDays * 86_400_000;
+    const window = [...list.filter((point) => point.ms > since).map((point) => point.best), value];
+    list.push({ ms: entry.startMs, best: value, ftp: Math.round(Math.max(...window) * 0.95), entry });
+  }
+  return bySport;
 }
 
 // Zone bounds as typed: as many as the defaults, starting at 0 and rising, or else the defaults.
@@ -88,7 +122,7 @@ function validZones(bounds, fallback) {
 // The activity's load: TSS from power when the sport's FTP is known and most of it has power, else from the heart rate.
 // Returns { load, by: "power" | "heartRate", intensity } or null.
 export function activityLoad(entry, allSettings) {
-  const settings = forSport(allSettings, entry.sport);
+  const settings = forSport(allSettings, entry.sport, entry.startMs);
   const ftp = settings.ftp;
   const seconds = entry.summary.timerSeconds ?? 0;
   if (ftp > 0 && coverage(entry, "power") >= 0.5) {
@@ -150,7 +184,7 @@ export const powerZones = [0, 0.55, 0.75, 0.9, 1.05, 1.2];
 export function timeInZones(entries, by, allSettings) {
   const totals = (by === "power" ? powerZones : heartRateZones).map(() => 0);
   for (const entry of entries) {
-    const settings = forSport(allSettings, entry.sport);
+    const settings = forSport(allSettings, entry.sport, entry.startMs);
     const bounds = by === "power" ? settings.powerZones : settings.heartRateZones;
     const reference = by === "power" ? settings.ftp : settings.maxHeartRate;
     if (!(reference > 0)) continue;

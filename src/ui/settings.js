@@ -1,16 +1,15 @@
-import { estimateFtp, estimateMaxHeartRate, forSport, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
+import { estimateMaxHeartRate, forSport, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
-import { byId, displayNumber, sportLabel, t } from "./context.js";
+import { byId, displayNumber, sportLabel, t, zone } from "./context.js";
+import { dayKey } from "../diary.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
 
 const sports = ["rowing", "cycling", "running"];
 const defaultRestHeartRate = 60;
-// The FTP is estimated from the best 20 minutes of this many days back, so an old peak does not hold it up.
-const ftpDays = 180;
 
 const remembered = () => savedDefaults().fitness ?? {};
 const saveFitness = (patch) => saveDefaults({ fitness: { ...remembered(), ...patch } });
@@ -21,6 +20,9 @@ function savedSport(sport) {
   const own = { ftp: saved.ftp?.[sport] ?? null, ...saved.sports?.[sport] };
   // A sport's own maximum overrides the general one; a copy of the general one, as earlier versions saved, is none.
   if (own.maxHeartRate === saved.maxHeartRate) own.maxHeartRate = null;
+  // A single FTP, as earlier versions kept it, is a history holding from the start.
+  if (!own.ftpHistory && own.ftp) own.ftpHistory = [{ from: null, ftp: own.ftp }];
+  delete own.ftp;
   return own;
 }
 
@@ -31,30 +33,30 @@ function saveSport(sport, patch) {
 
 // What the user typed, the estimate from the library in its place; estimates kept apart to show as hints.
 export function settingsFor(entries) {
-  const since = Date.now() - ftpDays * 86_400_000;
-  const estimates = Object.fromEntries(sports.map((sport) => {
-    const own = entries.filter((entry) => entry.sport === sport);
-    return [sport, { ftp: estimateFtp(own.filter((entry) => entry.startMs >= since)) }];
-  }));
+  const estimatedFtp = ftpTimeline(entries);
+  const estimates = Object.fromEntries(sports.map((sport) => [sport, { ftp: ftpOn({ estimatedFtp }, sport, Date.now()) }]));
   // The maximum heart rate is the athlete's, so one serves every sport unless a sport sets its own.
   const generalMax = remembered().maxHeartRate || estimateMaxHeartRate(entries);
   return {
     estimates: { ...estimates, maxHeartRate: estimateMaxHeartRate(entries), generalMax },
+    estimatedFtp,
+    timeZone: zone,
     maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
-      return [sport, {
-        ...saved,
-        maxHeartRate: saved.maxHeartRate || generalMax,
-        ftp: saved.ftp || estimates[sport].ftp,
-      }];
+      return [sport, { ...saved, maxHeartRate: saved.maxHeartRate || generalMax }];
     })),
   };
 }
 
-// Whether the sport's value was typed rather than estimated.
-export const setByHand = (sport, field) => Boolean(savedSport(sport)[field]);
+// The sport's FTP now, with the history and the estimate it comes from.
+export const currentFtp = (settings, sport) => ftpOn(settings, sport, Date.now());
+
+// Whether the sport's value was typed rather than estimated; the FTP by a record in force today.
+export const setByHand = (sport, field) => (field === "ftp"
+  ? (savedSport(sport).ftpHistory ?? []).some((record) => record.ftp > 0 && (!record.from || record.from <= dayKey(Date.now(), zone)))
+  : Boolean(savedSport(sport)[field]));
 
 const state = { pane: "general", entries: [], onTrainers: () => {}, sport: () => null };
 
@@ -277,6 +279,56 @@ function zonesBlock(sport, by, settings) {
   return block;
 }
 
+// The FTP over time: each record holds from its day until the next; without one in force the estimate counts.
+function ftpBlock(sport, settings, estimate) {
+  const block = node("div", { class: "settings-ftp" });
+  const title = node("div", { class: "panel-title-row" });
+  const add = node("button", { type: "button", class: "outline-button" }, t("settingsFtpAdd"));
+  const history = savedSport(sport).ftpHistory ?? [];
+  const write = (list) => {
+    saveSport(sport, { ftpHistory: list });
+    changed();
+  };
+  add.addEventListener("click", () => write([...history, { from: dayKey(Date.now(), zone), ftp: currentFtp(settings, sport) || 200 }]));
+  title.append(node("span", { class: "settings-label" }, t("settingsFtpHistory")), add);
+  block.append(title, node("p", { class: "field-note" }, t("settingsFtpNote", { estimate: estimate ? `${estimate} W` : "—" })));
+  if (!history.length) return block;
+  const table = node("table", { class: "laps-table settings-ftp-table" });
+  const head = node("tr");
+  head.append(...[t("settingsFtpFrom"), "FTP (W)", ""].map((label) => node("th", {}, label)));
+  table.append(node("thead"), node("tbody"));
+  table.tHead.append(head);
+  // Newest first; the order typed does not matter, as each record counts from its own day.
+  const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
+  for (const { record, index } of order) {
+    const update = (patch) => write(history.map((item, at) => (at === index ? { ...item, ...patch } : item)));
+    const from = node("input", { type: "date", "data-key": `ftp-from-${index}`, "aria-label": t("settingsFtpFrom") });
+    from.value = record.from ?? "";
+    from.addEventListener("change", () => update({ from: from.value || null }));
+    const watts = node("input", { type: "number", min: "30", max: "600", inputmode: "numeric", class: "level-input", "data-key": `ftp-value-${index}`, "aria-label": "FTP" });
+    watts.value = String(record.ftp);
+    watts.addEventListener("change", () => {
+      const value = Math.round(Number(watts.value));
+      if (value >= 30) update({ ftp: value });
+      else watts.value = String(record.ftp);
+    });
+    const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
+    remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
+    const row = node("tr");
+    const fromCell = node("td");
+    fromCell.append(from);
+    if (!record.from) fromCell.append(node("span", { class: "settings-ftp-start" }, t("settingsFtpStart")));
+    row.append(fromCell, ...[watts, remove].map((control) => {
+      const cell = node("td");
+      cell.append(control);
+      return cell;
+    }));
+    table.tBodies[0].append(row);
+  }
+  block.append(table);
+  return block;
+}
+
 function sportPane(sport) {
   const settings = settingsFor(state.entries);
   const own = settings.sports[sport];
@@ -291,12 +343,8 @@ function sportPane(sport) {
       saveSport(sport, { maxHeartRate: value });
       changed();
     }, { min: 100, max: 230 }),
-    numberField("FTP (W)", savedSport(sport).ftp, autoHint(estimate.ftp), (value) => {
-      saveSport(sport, { ftp: value });
-      changed();
-    }, { min: 30, max: 600 }),
   );
-  thresholds.append(grid);
+  thresholds.append(grid, ftpBlock(sport, settings, estimate.ftp));
   const zones = node("div", { class: "settings-zone-grid" });
   zones.append(zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
   pane.append(thresholds, zones);

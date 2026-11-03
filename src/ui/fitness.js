@@ -1,5 +1,5 @@
-import { activityLoad, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
-import { openSettings, setByHand, settingsFor } from "./settings.js";
+import { activityLoad, ftpOn, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { currentFtp, openSettings, setByHand, settingsFor } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -71,7 +71,7 @@ function renderTiles(history, settings) {
   ] : [];
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {
-    const ftp = settings.sports[sport].ftp;
+    const ftp = currentFtp(settings, sport);
     if (ftp) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(ftp)} W`, setByHand(sport, "ftp") ? t("fitnessSetByHand") : t("fitnessEstimated")));
   }
   byId("fitnessTiles").replaceChildren(...tiles);
@@ -188,7 +188,8 @@ function zoneGroup(entries, settings, by) {
   const totals = timeInZones(entries, by, settings);
   const sum = totals.reduce((total, value) => total + value, 0);
   const field = by === "power" ? "ftp" : "maxHeartRate";
-  const missing = view.sport === "all" ? !sports.some((sport) => settings.sports[sport][field]) : !settings.sports[view.sport][field];
+  const has = (sport) => (field === "ftp" ? currentFtp(settings, sport) : settings.sports[sport][field]);
+  const missing = view.sport === "all" ? !sports.some(has) : !has(view.sport);
   const note = missing ? t(by === "power" ? "fitnessNeedFtp" : "fitnessNeedMaxHr") : !sum ? t("fitnessNoData") : "";
   if (note) {
     group.append(node("p", { class: "field-note" }, note));
@@ -270,6 +271,81 @@ function renderCurve(current, previous) {
   chart.replaceChildren(...children);
 }
 
+// The FTP each day of the range as a step line per sport, the 20-minute efforts it is estimated from as dots.
+function renderFtpChart(settings) {
+  const chart = byId("fitnessFtpChart");
+  const shownSports = (view.sport === "all" ? sports : [view.sport]).filter((sport) => view.entries.some((entry) => entry.sport === sport));
+  const end = Date.now();
+  const days = ranges[view.range];
+  const firstMs = Math.min(...view.entries.map((entry) => entry.startMs));
+  const start = Number.isFinite(days) ? Math.max(firstMs, end - days * 86_400_000) : firstMs;
+  const step = Math.max(86_400_000, Math.ceil((end - start) / 400 / 86_400_000) * 86_400_000);
+  const lines = shownSports.map((sport, index) => {
+    const points = [];
+    for (let ms = start; ms <= end + 1; ms += step) points.push({ ms, ftp: ftpOn(settings, sport, Math.min(ms, end)) });
+    const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start).map((point) => ({ ms: point.ms, ftp: point.best * 0.95, entry: point.entry }));
+    return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts };
+  }).filter((line) => line.points.length || line.efforts.length);
+  const has = lines.length > 0;
+  byId("fitnessFtpEmpty").hidden = has;
+  chart.hidden = !has;
+  byId("fitnessFtpLegend").replaceChildren(...(lines.length > 1 ? lines.map((line) => {
+    const key = node("span", { class: "fitness-key" });
+    const swatch = node("span", { class: "fitness-swatch" });
+    swatch.style.background = line.color;
+    key.append(swatch, node("span", {}, sportLabel(line.sport)));
+    return key;
+  }) : []));
+  if (!has) return;
+  const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
+  const height = 220;
+  const margin = { left: 48, right: 14, top: 14, bottom: 26 };
+  const values = lines.flatMap((line) => [...line.points, ...line.efforts].map((point) => point.ftp));
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const yStep = [10, 20, 25, 50, 100].find((size) => (high - low) / size <= 4) ?? 100;
+  const minY = Math.max(0, Math.floor(low / yStep) * yStep - yStep);
+  const maxY = Math.ceil(high / yStep) * yStep + yStep;
+  const xFor = (ms) => margin.left + ((ms - start) / Math.max(1, end - start)) * (width - margin.left - margin.right);
+  const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
+  const children = [];
+  for (let value = minY; value <= maxY + 1e-9; value += yStep) {
+    children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
+    children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
+  }
+  // Month ticks, at least 56 px apart.
+  let lastTick = -Infinity;
+  for (let month = dayKey(start, zone).slice(0, 7); ;) {
+    const ms = Date.parse(`${month}-01T12:00:00Z`);
+    if (ms > end) break;
+    if (ms >= start && xFor(ms) - lastTick >= 56) {
+      lastTick = xFor(ms);
+      children.push(node("text", { x: lastTick, y: height - 8, class: "diary-tick" }, dayText(`${month}-01`, { month: "short", ...(month.endsWith("-01") ? { year: "numeric" } : {}) })));
+    }
+    const [year, number] = month.split("-").map(Number);
+    month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
+  }
+  for (const line of lines) {
+    // A step line: the FTP holds until the next change.
+    let d = "";
+    line.points.forEach((point, index) => {
+      const x = xFor(point.ms).toFixed(1);
+      const y = yFor(point.ftp).toFixed(1);
+      d += index ? `H${x}V${y}` : `M${x},${y}`;
+    });
+    if (d) children.push(node("path", { class: "fitness-line", d, style: `stroke: ${line.color}` }));
+    for (const effort of line.efforts) {
+      const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `fill: ${line.color}` });
+      dot.append(node("title", {}, `${dayText(dayKey(effort.ms, zone))} · ${effort.entry.name ?? ""}: 95 % ${t("fitnessBest20")} = ${Math.round(effort.ftp)} W`));
+      dot.addEventListener("click", () => openActivity(effort.entry));
+      children.push(dot);
+    }
+  }
+  chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  chart.style.height = `${height}px`;
+  chart.replaceChildren(...children);
+}
+
 function renderCurveTable(curve, before) {
   const table = byId("fitnessCurveTable");
   const shown = curve.filter((point) => point.value != null);
@@ -342,6 +418,7 @@ function render() {
   renderZones(current, settings);
   renderCurve(current, inRange(shown, 1));
   renderDecoupling(current, settings);
+  renderFtpChart(settings);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
 

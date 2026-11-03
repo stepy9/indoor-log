@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
+import { ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -104,4 +104,21 @@ test("heart rate zones count from the maximum or from the reserve above the rest
   assert.deepEqual(timeInZones([ride], "heartRate", byMax), [0, 0, 600, 0, 0]);
   const byReserve = { restHeartRate: 60, sports: { cycling: { maxHeartRate: 200, heartRateBasis: "reserve" } } };
   assert.deepEqual(timeInZones([ride], "heartRate", byReserve), [600, 0, 0, 0, 0]);
+});
+
+test("each activity counts with the FTP of its day, from the history or else the estimate up to then", () => {
+  const day = (date) => Date.UTC(2026, 9, date, 8);
+  const settings = { sports: { cycling: { ftpHistory: [{ from: "2026-10-10", ftp: 250 }, { from: null, ftp: 200 }] } } };
+  const early = entry({ startMs: day(5), power: () => 200 });
+  const late = entry({ startMs: day(12), power: () => 250 });
+  assert.ok(Math.abs(activityLoad(early, settings).load - 100) < 1);
+  assert.ok(Math.abs(activityLoad(late, settings).load - 100) < 1);
+
+  const tests = [entry({ startMs: day(1), minutes: 25, power: () => 200 }), entry({ startMs: day(20), minutes: 25, power: () => 240 }), entry({ startMs: day(25), minutes: 25, power: () => 100 })];
+  const timeline = ftpTimeline(tests).cycling;
+  assert.deepEqual(timeline.map((point) => point.ftp), [190, 228, 228]);
+  const estimated = { estimatedFtp: { cycling: timeline } };
+  assert.equal(forSport(estimated, "cycling", day(10)).ftp, 190);
+  assert.equal(forSport(estimated, "cycling", day(22)).ftp, 228);
+  assert.equal(forSport(estimated, "cycling", Date.UTC(2026, 8, 1)).ftp, null);
 });
