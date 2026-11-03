@@ -230,7 +230,8 @@ function zonesBlock(sport, by, settings) {
       const value = by === "power" ? (own.ftp ? fraction * own.ftp : null) : heartRateAt(fraction, own);
       return value == null ? "—" : displayNumber(value);
     };
-    const span = next ? `${amount(bound)}–${amount(next)} ${unit}` : `> ${amount(bound)} ${unit}`;
+    // Without the maximum or the FTP the bounds come to nothing yet.
+    const span = amount(bound) === "—" ? "—" : next ? `${amount(bound)}–${amount(next)} ${unit}` : `> ${amount(bound)} ${unit}`;
     row.append(swatch, node("span", { class: "settings-zone-name" }, `Z${index + 1}`));
     if (index === 0) {
       row.append(node("span", { class: "settings-zone-from" }, "0 %"));
@@ -280,7 +281,9 @@ function sportPane(sport) {
     }, { min: 30, max: 600 }),
   );
   thresholds.append(grid);
-  pane.append(thresholds, zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
+  const zones = node("div", { class: "settings-zone-grid" });
+  zones.append(zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
+  pane.append(thresholds, zones);
   return pane;
 }
 
