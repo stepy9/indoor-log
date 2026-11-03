@@ -289,7 +289,18 @@ function sportPane(sport) {
 
 function render() {
   renderNav();
+  fitHeight();
   byId("settingsPanes").replaceChildren(state.pane === "general" ? generalPane() : sportPane(state.pane));
+}
+
+// The dialog keeps one height whichever section is open: the rowing section's, the fullest one, as it now stands.
+function fitHeight() {
+  const dialog = byId("settingsDialog");
+  if (!dialog.open) return;
+  const panes = byId("settingsPanes");
+  dialog.style.height = "";
+  panes.replaceChildren(sportPane("rowing"));
+  dialog.style.height = `${dialog.offsetHeight}px`;
 }
 
 // Opens on the pane given, or on the sport of the open activity or analysis, or where it was left.
@@ -297,8 +308,8 @@ export async function openSettings(pane) {
   const sport = typeof pane === "string" ? pane : state.sport();
   if (sports.includes(sport) || sport === "general") state.pane = sport;
   state.entries = await listEntries().catch(() => []);
-  render();
   byId("settingsDialog").showModal();
+  render();
 }
 
 // onTrainers runs after every trainer edit, so the converter's trainer list stays current;
