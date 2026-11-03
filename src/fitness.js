@@ -93,24 +93,75 @@ export function ftpOn(settings, sport, atMs) {
   return estimate?.ftp ?? null;
 }
 
-// How the FTP estimate went: at each activity with 20 minutes of power, 95 % of the best 20 minutes
-// of the half year up to and including it. Per sport, oldest first: [{ ms, ftp, best, entry }].
+// How the FTP estimate went, per sport and oldest first: at each activity with power, from the best efforts
+// of the half year up to and including it. With hard efforts of 3 to 20 minutes the critical power model gives it;
+// otherwise 95 % of the best 20 minutes. [{ ms, ftp, best, method: "cp" | "20min", entry }], best being the activity's own 20 minutes.
 export const ftpWindowDays = 180;
-const best20 = new WeakMap();
+export const cpDurations = [180, 300, 600, 1200];
+const bests = new WeakMap();
+
+function effortsOf(entry) {
+  if (!bests.has(entry)) {
+    bests.set(entry, coverage(entry, "power") >= 0.5
+      ? Object.fromEntries(cpDurations.map((duration) => [duration, bestAverage(entry, "power", duration)]))
+      : {});
+  }
+  return bests.get(entry);
+}
+
+// Critical power from the best mean powers by duration: the work done grows by CP each second beyond a fixed reserve
+// (W'), so a straight line through work against time has CP as its slope. It needs three durations up to at least
+// 10 minutes, or the line says little; returns { cp, wPrime } or null.
+export function criticalPower(byDuration) {
+  const points = cpDurations.filter((duration) => byDuration[duration] > 0).map((duration) => ({ t: duration, work: byDuration[duration] * duration }));
+  if (points.length < 3 || points.at(-1).t < 600) return null;
+  const meanT = points.reduce((sum, point) => sum + point.t, 0) / points.length;
+  const meanWork = points.reduce((sum, point) => sum + point.work, 0) / points.length;
+  const slope = points.reduce((sum, point) => sum + (point.t - meanT) * (point.work - meanWork), 0)
+    / points.reduce((sum, point) => sum + (point.t - meanT) ** 2, 0);
+  const wPrime = meanWork - slope * meanT;
+  // A reserve below zero or a slope above the 20 minutes means the efforts were not all-out; the model is no use then.
+  if (!(slope > 0) || !(wPrime > 0) || (byDuration[1200] && slope > byDuration[1200])) return null;
+  return { cp: slope, wPrime };
+}
 
 export function ftpTimeline(entries) {
   const bySport = {};
   const sorted = [...entries].sort((a, b) => a.startMs - b.startMs);
+  const seen = {};
   for (const entry of sorted) {
-    if (!best20.has(entry)) best20.set(entry, coverage(entry, "power") >= 0.5 ? bestAverage(entry, "power", 1200) : null);
-    const value = best20.get(entry);
-    if (value == null) continue;
-    const list = (bySport[entry.sport] ??= []);
+    const own = effortsOf(entry);
+    if (!cpDurations.some((duration) => own[duration] > 0)) continue;
+    const kept = (seen[entry.sport] ??= []);
+    kept.push(entry);
     const since = entry.startMs - ftpWindowDays * 86_400_000;
-    const window = [...list.filter((point) => point.ms > since).map((point) => point.best), value];
-    list.push({ ms: entry.startMs, best: value, ftp: Math.round(Math.max(...window) * 0.95), entry });
+    const window = {};
+    for (const other of kept) {
+      if (other.startMs <= since) continue;
+      for (const duration of cpDurations) {
+        const value = effortsOf(other)[duration];
+        if (value > (window[duration] ?? 0)) window[duration] = value;
+      }
+    }
+    const model = criticalPower(window);
+    const ftp = model ? model.cp : window[1200] ? window[1200] * 0.95 : null;
+    if (!ftp) continue;
+    (bySport[entry.sport] ??= []).push({ ms: entry.startMs, best: own[1200] ?? null, ftp: Math.round(ftp), method: model ? "cp" : "20min", entry });
   }
   return bySport;
+}
+
+// A new FTP to offer when one typed by hand is in force: the highest estimate since that record began, when it is
+// at least 2 % above it, with the day of the activity that gave it. Returns { ftp, from, entry } or null.
+export function ftpSuggestion(settings, sport, nowMs = Date.now()) {
+  const timeZone = settings.timeZone ?? "UTC";
+  const today = dayKey(nowMs, timeZone);
+  const records = (settings.sports?.[sport]?.ftpHistory ?? []).filter((record) => record.ftp > 0 && (!record.from || record.from <= today));
+  if (!records.length) return null;
+  const current = records.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest));
+  const later = (settings.estimatedFtp?.[sport] ?? []).filter((point) => !current.from || dayKey(point.ms, timeZone) > current.from);
+  const best = later.reduce((top, point) => (!top || point.ftp > top.ftp ? point : top), null);
+  return best && best.ftp >= current.ftp * 1.02 ? { ftp: best.ftp, from: dayKey(best.ms, timeZone), entry: best.entry } : null;
 }
 
 // Zone bounds as typed: as many as the defaults, starting at 0 and rising, or else the defaults.

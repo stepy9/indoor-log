@@ -1,5 +1,5 @@
-import { activityLoad, ftpOn, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
-import { currentFtp, openSettings, setByHand, settingsFor } from "./settings.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -56,6 +56,69 @@ function tile(label, value, note = "", className = "") {
   element.append(node("span", { class: "diary-tile-label" }, label), node("span", { class: "diary-tile-value" }, value));
   if (note) element.append(node("span", { class: "diary-tile-change" }, note));
   return element;
+}
+
+// What the library says the thresholds typed by hand have fallen behind: a higher FTP since the record in force,
+// or a heart rate above the maximum. Each can be taken into the settings or turned down for good.
+function renderSuggestions(settings) {
+  const turnedDown = dismissed();
+  const items = [];
+  const present = sports.filter((sport) => view.entries.some((entry) => entry.sport === sport));
+  for (const sport of present) {
+    const ftp = ftpSuggestion(settings, sport);
+    if (ftp && !turnedDown.has(`ftp-${sport}-${ftp.from}-${ftp.ftp}`)) {
+      items.push({
+        key: `ftp-${sport}-${ftp.from}-${ftp.ftp}`,
+        text: t("suggestFtp", { sport: sportLabel(sport), ftp: ftp.ftp, current: currentFtp(settings, sport), date: dayText(ftp.from), name: ftp.entry.name ?? "" }),
+        apply: () => addFtpRecord(sport, { from: ftp.from, ftp: ftp.ftp }),
+        entry: ftp.entry,
+      });
+    }
+  }
+  // A sport's own maximum, then the general one against every sport without its own.
+  const maxFor = (sport) => {
+    const typed = typedMaxHeartRate(sport);
+    if (!typed) return;
+    const own = view.entries.filter((entry) => (sport ? entry.sport === sport : !typedMaxHeartRate(entry.sport)));
+    const recorded = estimateMaxHeartRate(own);
+    if (!(recorded > typed)) return;
+    const key = `max-${sport ?? "general"}-${recorded}`;
+    if (turnedDown.has(key)) return;
+    const entry = own.find((item) => item.summary.maxHeartRate === recorded);
+    items.push({
+      key,
+      text: t(sport ? "suggestSportMax" : "suggestMax", { sport: sport ? sportLabel(sport) : "", recorded, typed, date: entry ? dayText(dayKey(entry.startMs, zone)) : "" }),
+      apply: () => setMaxHeartRate(sport, recorded),
+      entry,
+    });
+  };
+  maxFor(null);
+  for (const sport of present) maxFor(sport);
+  const box = byId("fitnessSuggestions");
+  box.hidden = !items.length;
+  box.replaceChildren(...items.map((item) => {
+    const row = node("div", { class: "fitness-suggestion" });
+    const text = node("span", { class: "fitness-suggestion-text" }, item.text);
+    const actions = node("div", { class: "fitness-suggestion-actions" });
+    if (item.entry) {
+      const open = node("button", { type: "button", class: "link-button" }, t("suggestOpen"));
+      open.addEventListener("click", () => openActivity(item.entry));
+      actions.append(open);
+    }
+    const ignore = node("button", { type: "button", class: "outline-button" }, t("suggestIgnore"));
+    ignore.addEventListener("click", () => {
+      dismiss(item.key);
+      render();
+    });
+    const apply = node("button", { type: "button", class: "export-button" }, t("suggestApply"));
+    apply.addEventListener("click", () => {
+      item.apply();
+      window.dispatchEvent(new Event("settings-change"));
+    });
+    actions.append(ignore, apply);
+    row.append(text, actions);
+    return row;
+  }));
 }
 
 function renderTiles(history, settings) {
@@ -283,7 +346,7 @@ function renderFtpChart(settings) {
   const lines = shownSports.map((sport, index) => {
     const points = [];
     for (let ms = start; ms <= end + 1; ms += step) points.push({ ms, ftp: ftpOn(settings, sport, Math.min(ms, end)) });
-    const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start).map((point) => ({ ms: point.ms, ftp: point.best * 0.95, entry: point.entry }));
+    const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start && point.best).map((point) => ({ ms: point.ms, ftp: point.best * 0.95, entry: point.entry }));
     return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts };
   }).filter((line) => line.points.length || line.efforts.length);
   const has = lines.length > 0;
@@ -412,6 +475,7 @@ function render() {
   const settings = settingsFor(view.entries);
   const shown = ofSport(view.entries);
   const history = loadHistory(shown, settings, zone, today());
+  renderSuggestions(settings);
   renderTiles(history, settings);
   renderLoadChart(history);
   const current = inRange(shown);

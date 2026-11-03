@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -121,4 +121,24 @@ test("each activity counts with the FTP of its day, from the history or else the
   assert.equal(forSport(estimated, "cycling", day(10)).ftp, 190);
   assert.equal(forSport(estimated, "cycling", day(22)).ftp, 228);
   assert.equal(forSport(estimated, "cycling", Date.UTC(2026, 8, 1)).ftp, null);
+});
+
+test("critical power comes from three or more all-out efforts up to 20 minutes", () => {
+  // 300 W for 20 minutes and a reserve of 20 kJ: P(t) = 300 + 20000 / t.
+  const efforts = Object.fromEntries([180, 300, 600, 1200].map((t) => [t, 300 + 20000 / t]));
+  const model = criticalPower(efforts);
+  assert.ok(Math.abs(model.cp - 300) < 0.5);
+  assert.ok(Math.abs(model.wPrime - 20000) < 50);
+  assert.equal(criticalPower({ 180: 400, 300: 350 }), null);
+  assert.equal(criticalPower({ 180: 300, 300: 300, 600: 300 }), null);
+});
+
+test("a typed FTP gets a suggestion once a later estimate beats it", () => {
+  const day = (date) => Date.UTC(2026, 9, date, 8);
+  const ride = entry({ startMs: day(20), minutes: 25, power: () => 240 });
+  const settings = { timeZone: "UTC", sports: { cycling: { ftpHistory: [{ from: "2026-10-01", ftp: 200 }] } }, estimatedFtp: ftpTimeline([ride]) };
+  assert.deepEqual({ ...ftpSuggestion(settings, "cycling", day(25)), entry: null }, { ftp: 228, from: "2026-10-20", entry: null });
+  const higher = { ...settings, sports: { cycling: { ftpHistory: [{ from: "2026-10-01", ftp: 230 }] } } };
+  assert.equal(ftpSuggestion(higher, "cycling", day(25)), null);
+  assert.equal(ftpSuggestion({ ...settings, sports: {} }, "cycling", day(25)), null);
 });

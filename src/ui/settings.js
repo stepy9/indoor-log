@@ -50,6 +50,26 @@ export function settingsFor(entries) {
   };
 }
 
+// Suggestions the Analysis tab offers and the user takes or turns down; each turned down is not offered again.
+export const dismissed = () => new Set(remembered().dismissed ?? []);
+
+export function dismiss(key) {
+  saveFitness({ dismissed: [...dismissed(), key].slice(-200) });
+}
+
+export function addFtpRecord(sport, record) {
+  const history = savedSport(sport).ftpHistory ?? [];
+  saveSport(sport, { ftpHistory: [...history.filter((item) => item.from !== record.from), record] });
+}
+
+export function setMaxHeartRate(sport, value) {
+  if (sport) saveSport(sport, { maxHeartRate: value });
+  else saveFitness({ maxHeartRate: value });
+}
+
+// The maximum typed by hand: the sport's own, or with no sport the general one.
+export const typedMaxHeartRate = (sport) => (sport ? savedSport(sport).maxHeartRate : remembered().maxHeartRate) || null;
+
 // The sport's FTP now, with the history and the estimate it comes from.
 export const currentFtp = (settings, sport) => ftpOn(settings, sport, Date.now());
 
