@@ -637,3 +637,62 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .diary-activity-name { display: none; }
   .diary-nav h2 { min-width: 0; font-size: 16px; }
 }
+
+/* Analysis: load and form, zones, power curve, decoupling. */
+:root { --zone-1: #94a3b8; --zone-2: #2a78d6; --zone-3: #1baf7a; --zone-4: #eda100; --zone-5: #eb6834; --zone-6: #c2410c; }
+:root[data-theme="dark"] { --zone-1: #64748b; --zone-2: #3987e5; --zone-3: #199e70; --zone-4: #c98500; --zone-5: #d95926; --zone-6: #e5484d; }
+.fitness-view, .fitness-content { display: flex; flex-direction: column; gap: 18px; }
+.fitness-view[hidden], .fitness-content[hidden] { display: none; }
+.fitness-title { margin: 0; font-size: 20px; }
+.fitness-load-card { position: relative; }
+.fitness-chart { touch-action: pan-y; }
+.fitness-line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.fitness-line.is-fitness { stroke: var(--compare-1); stroke-width: 2.8; }
+.fitness-line.is-fatigue { stroke: var(--compare-5); }
+.fitness-line.is-form { stroke: var(--compare-4); stroke-dasharray: 5 4; }
+.fitness-line.is-curve { stroke: var(--compare-1); stroke-width: 2.8; }
+.fitness-line.is-previous { stroke: var(--chart-subtle); stroke-dasharray: 5 4; }
+.fitness-load-bar { fill: var(--line-strong); }
+.fitness-band-fresh { fill: var(--success); opacity: .07; }
+.fitness-band-over { fill: var(--danger); opacity: .07; }
+.fitness-guide { stroke: var(--chart-subtle); stroke-width: 1; }
+.fitness-curve-dot { fill: var(--compare-1); stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+.fitness-key { display: inline-flex; align-items: center; gap: 6px; }
+.fitness-swatch { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--line-strong); }
+.fitness-swatch.is-fitness, .fitness-swatch.is-curve { background: var(--compare-1); }
+.fitness-swatch.is-fatigue { background: var(--compare-5); }
+.fitness-swatch.is-form { background: var(--compare-4); }
+.fitness-swatch.is-load { height: 10px; width: 8px; }
+.fitness-swatch.is-previous { background: var(--chart-subtle); }
+.diary-legend[hidden] { display: none; }
+.fitness-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.fitness-zones { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.fitness-zone { display: grid; grid-template-columns: 30px 120px minmax(0, 1fr) 64px 48px; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.fitness-zone-name { font-weight: 700; }
+.fitness-zone-range { color: var(--muted); font-size: 12px; }
+.fitness-zone-track { height: 14px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.fitness-zone-fill { height: 100%; border-radius: 4px; }
+.fitness-zone-time, .fitness-zone-share { text-align: right; }
+.fitness-zone-share { color: var(--muted); }
+.fitness-table { margin-top: 10px; }
+.fitness-table[hidden] { display: none; }
+.fitness-table td.is-better { color: var(--success); font-weight: 600; }
+.fitness-table td.is-worse { color: var(--danger-ink); font-weight: 600; }
+.fitness-table td.is-middle { color: var(--warning); font-weight: 600; }
+.fitness-table .link-button { color: var(--ink); text-align: left; }
+.fitness-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 10px; }
+.fitness-settings label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.fitness-settings input { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 14px; }
+.fitness-tile-state { font-weight: 600; }
+@media (max-width: 900px) {
+  .fitness-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .fitness-zone { grid-template-columns: 26px minmax(0, 1fr) 56px 40px; }
+  .fitness-zone-range { display: none; }
+}
+@media (max-width: 480px) {
+  .app-nav { gap: 0; }
+  .app-nav button { min-width: 0; gap: 3px; padding: 0 2px; font-size: 11px; }
+  .app-nav svg { display: none; }
+}

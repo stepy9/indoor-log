@@ -1,3 +1,4 @@
+import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
 import { weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -756,6 +757,7 @@ function render() {
 export function rerenderCompare() {
   render();
   rerenderDiary();
+  rerenderFitness();
 }
 
 // The view shown: "converter" (its setup or workspace, whichever was open), "compare", "diary" or "trend".
@@ -777,6 +779,7 @@ function showView(name) {
     view.hoverX = null;
   }
   byId("diaryView").hidden = name !== "diary";
+  byId("fitnessView").hidden = name !== "fitness";
   document.body.classList.toggle("is-comparing", name !== "converter");
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.appView === name));
@@ -784,6 +787,7 @@ function showView(name) {
   window.scrollTo({ top: 0 });
   if (name === "compare" || name === "trend") refresh();
   if (name === "diary") showDiary();
+  if (name === "fitness") showFitness();
 }
 
 // One activity on its own in the comparison, as the diary opens it.
@@ -804,9 +808,10 @@ export function setupCompare({ onConverter }) {
     });
   }
   setupDiary({ onOpen: openInCompare });
+  setupFitness({ onOpen: openInCompare });
   // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
   const remembered = savedDefaults().appView;
-  if (["compare", "diary", "trend"].includes(remembered)) queueMicrotask(() => showView(remembered));
+  if (["compare", "diary", "trend", "fitness"].includes(remembered)) queueMicrotask(() => showView(remembered));
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;

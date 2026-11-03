@@ -26,6 +26,7 @@
           <button type="button" data-app-view="compare" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10m7 10V4m7 16v-7"/></svg><span data-i18n="navCompare">Porovnání</span></button>
           <button type="button" data-app-view="diary" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/></svg><span data-i18n="navDiary">Deník</span></button>
           <button type="button" data-app-view="trend" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8m-5 0h5v5"/></svg><span data-i18n="navTrend">Vývoj</span></button>
+          <button type="button" data-app-view="fitness" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span data-i18n="navFitness">Analýza</span></button>
         </nav>
         <div class="topbar-actions">
           <button class="library-button" id="libraryButton" type="button"><span data-i18n="library">Knihovna</span></button>
@@ -408,6 +409,81 @@
           </div>
           <div class="diary-calendar" id="diaryCalendar"></div>
         </section>
+      </section>
+      <section class="fitness-view" id="fitnessView" hidden>
+        <div class="card diary-head">
+          <h2 class="fitness-title" data-i18n="navFitness">Analýza</h2>
+          <div class="diary-filters">
+            <select id="fitnessSport" aria-label="Sport" data-i18n-aria="librarySport"></select>
+            <div class="segmented" role="group" aria-label="Rozsah" data-i18n-aria="trendRange">
+              <button type="button" data-fitness-range="six" data-i18n="fitnessRangeSix">6 týdnů</button>
+              <button type="button" data-fitness-range="quarter" data-i18n="trendRangeQuarter">3 měsíce</button>
+              <button type="button" data-fitness-range="year" data-i18n="trendRangeYear">Rok</button>
+              <button type="button" data-fitness-range="all" data-i18n="trendRangeAll">Vše</button>
+            </div>
+          </div>
+        </div>
+        <p class="field-note" id="fitnessEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná.</p>
+        <div class="fitness-content" id="fitnessContent">
+          <div class="diary-tiles" id="fitnessTiles"></div>
+          <section class="card fitness-load-card">
+            <div class="panel-title-row">
+              <span class="field-label" data-i18n="fitnessLoadTitle">Zátěž a forma</span>
+              <div class="diary-legend">
+                <span class="fitness-key"><span class="fitness-swatch is-fitness"></span><span data-i18n="fitnessFitness">Kondice</span></span>
+                <span class="fitness-key"><span class="fitness-swatch is-fatigue"></span><span data-i18n="fitnessFatigue">Únava</span></span>
+                <span class="fitness-key"><span class="fitness-swatch is-form"></span><span data-i18n="fitnessForm">Forma</span></span>
+                <span class="fitness-key"><span class="fitness-swatch is-load"></span><span data-i18n="fitnessLoad">Zátěž</span></span>
+              </div>
+            </div>
+            <svg class="diary-chart fitness-chart" id="fitnessLoadChart" role="img" aria-label="Zátěž a forma" data-i18n-aria="fitnessLoadTitle"></svg>
+            <div class="diary-tooltip" id="fitnessTooltip" role="tooltip" hidden></div>
+            <p class="field-note" id="fitnessLoadEmpty" data-i18n="fitnessLoadEmpty" hidden>Žádná aktivita s tepem nebo výkonem.</p>
+            <p class="field-note" id="fitnessLoadNote"></p>
+          </section>
+          <div class="fitness-grid">
+            <section class="card">
+              <div class="panel-title-row">
+                <span class="field-label" data-i18n="fitnessZonesTitle">Čas v zónách</span>
+                <div class="segmented" role="group" aria-label="Zóny" data-i18n-aria="fitnessZonesTitle">
+                  <button type="button" data-zones-by="heartRate" data-i18n="fitnessByHeartRate">Tep</button>
+                  <button type="button" data-zones-by="power" data-i18n="fitnessByPower">Výkon</button>
+                </div>
+              </div>
+              <div class="fitness-zones" id="fitnessZones"></div>
+              <p class="field-note" id="fitnessZonesNote" hidden></p>
+            </section>
+            <section class="card">
+              <div class="panel-title-row">
+                <span class="field-label" data-i18n="fitnessCurveTitle">Křivka výkonu</span>
+                <div class="diary-legend" id="fitnessCurveLegend">
+                  <span class="fitness-key"><span class="fitness-swatch is-curve"></span><span data-i18n="fitnessCurrent">Toto období</span></span>
+                  <span class="fitness-key"><span class="fitness-swatch is-previous"></span><span data-i18n="fitnessPrevious">Období před</span></span>
+                </div>
+              </div>
+              <svg class="diary-chart" id="fitnessCurve" role="img" aria-label="Křivka výkonu" data-i18n-aria="fitnessCurveTitle"></svg>
+              <p class="field-note" id="fitnessCurveEmpty" data-i18n="fitnessCurveEmpty" hidden>V tomto období žádná aktivita s výkonem.</p>
+              <div class="laps-scroll"><table class="laps-table compare-table fitness-table" id="fitnessCurveTable"></table></div>
+            </section>
+          </div>
+          <section class="card">
+            <span class="field-label" data-i18n="fitnessDecouplingTitle">Aerobní decoupling</span>
+            <p class="field-note" data-i18n="fitnessDecouplingNote"></p>
+            <div class="laps-scroll"><table class="laps-table compare-table fitness-table" id="fitnessDecoupling"></table></div>
+            <p class="field-note" id="fitnessDecouplingEmpty" data-i18n="fitnessDecouplingEmpty" hidden></p>
+          </section>
+          <section class="card">
+            <span class="field-label" data-i18n="fitnessSettings">Prahové hodnoty</span>
+            <p class="field-note" data-i18n="fitnessSettingsNote"></p>
+            <div class="fitness-settings">
+              <label><span data-i18n="fitnessMaxHrLabel">Maximální tep (bpm)</span><input id="fitnessMaxHr" type="number" min="100" max="230" inputmode="numeric" /></label>
+              <label><span data-i18n="fitnessRestHrLabel">Klidový tep (bpm)</span><input id="fitnessRestHr" type="number" min="30" max="100" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-rowing">FTP</span><input id="fitnessFtp-rowing" type="number" min="30" max="600" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-cycling">FTP</span><input id="fitnessFtp-cycling" type="number" min="30" max="600" inputmode="numeric" /></label>
+              <label><span id="fitnessFtpLabel-running">FTP</span><input id="fitnessFtp-running" type="number" min="30" max="600" inputmode="numeric" /></label>
+            </div>
+          </section>
+        </div>
       </section>
       <section class="compare-view" id="compareView" hidden>
         <aside class="card compare-picker">
