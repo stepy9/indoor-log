@@ -65,10 +65,29 @@ export function heartRateLoad(entry, { maxHeartRate, restHeartRate }) {
   return (trimp / (60 * trimpWeight(thresholdReserve))) * 100;
 }
 
+// One sport's thresholds: settings.sports[sport] holds them, older settings kept one maximum heart rate and an FTP per sport.
+export function forSport(settings, sport) {
+  const own = settings.sports?.[sport] ?? {};
+  return {
+    restHeartRate: settings.restHeartRate,
+    maxHeartRate: own.maxHeartRate ?? settings.maxHeartRate ?? null,
+    ftp: own.ftp ?? settings.ftp?.[sport] ?? null,
+    heartRateZones: validZones(own.heartRateZones, heartRateZones),
+    powerZones: validZones(own.powerZones, powerZones),
+  };
+}
+
+// Zone bounds as typed: as many as the defaults, starting at 0 and rising, or else the defaults.
+function validZones(bounds, fallback) {
+  return Array.isArray(bounds) && bounds.length === fallback.length && bounds[0] === 0
+    && bounds.every((value, index) => !index || value > bounds[index - 1]) ? bounds : fallback;
+}
+
 // The activity's load: TSS from power when the sport's FTP is known and most of it has power, else from the heart rate.
 // Returns { load, by: "power" | "heartRate", intensity } or null.
-export function activityLoad(entry, settings) {
-  const ftp = settings.ftp?.[entry.sport];
+export function activityLoad(entry, allSettings) {
+  const settings = forSport(allSettings, entry.sport);
+  const ftp = settings.ftp;
   const seconds = entry.summary.timerSeconds ?? 0;
   if (ftp > 0 && coverage(entry, "power") >= 0.5) {
     const np = normalizedPower(entry);
@@ -120,16 +139,18 @@ export function formState(form) {
   return "overreaching";
 }
 
-// Zones as fractions of the maximum heart rate or of the FTP; each zone runs from its bound up to the next one.
+// Default zones as fractions of the maximum heart rate or of the FTP; each zone runs from its bound up to the next one.
 export const heartRateZones = [0, 0.6, 0.7, 0.8, 0.9];
 export const powerZones = [0, 0.55, 0.75, 0.9, 1.05, 1.2];
 
 // Seconds spent in each zone over the activities; by "heartRate" against the maximum, by "power" against each sport's FTP.
-export function timeInZones(entries, by, settings) {
-  const bounds = by === "power" ? powerZones : heartRateZones;
-  const totals = bounds.map(() => 0);
+// Each sport counts against its own zones.
+export function timeInZones(entries, by, allSettings) {
+  const totals = (by === "power" ? powerZones : heartRateZones).map(() => 0);
   for (const entry of entries) {
-    const reference = by === "power" ? settings.ftp?.[entry.sport] : settings.maxHeartRate;
+    const settings = forSport(allSettings, entry.sport);
+    const bounds = by === "power" ? settings.powerZones : settings.heartRateZones;
+    const reference = by === "power" ? settings.ftp : settings.maxHeartRate;
     if (!(reference > 0)) continue;
     const { seconds } = entry.records;
     const values = entry.records[by] ?? [];

@@ -666,7 +666,10 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .fitness-swatch.is-previous { background: var(--chart-subtle); }
 .diary-legend[hidden] { display: none; }
 .fitness-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.fitness-zones { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.fitness-zones { display: flex; flex-direction: column; gap: 18px; margin-top: 12px; }
+.fitness-zone-group { display: flex; flex-direction: column; gap: 8px; }
+.fitness-zone-group + .fitness-zone-group { padding-top: 14px; border-top: 1px solid var(--line); }
+.fitness-zone-title { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
 .fitness-zone { display: grid; grid-template-columns: 30px 120px minmax(0, 1fr) 64px 48px; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .fitness-zone-name { font-weight: 700; }
 .fitness-zone-range { color: var(--muted); font-size: 12px; }
@@ -698,9 +701,29 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .settings-panes { min-width: 0; padding: 16px 20px 20px; }
 .settings-section[hidden] { display: none; }
 .settings-section h3 { margin: 0 0 6px; font-size: 16px; }
+.settings-section h4 { margin: 0; font-size: 14px; }
+.settings-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.settings-block .panel-title-row { margin-bottom: 4px; }
+.settings-block .outline-button { margin: 0; }
+.settings-nav-group { margin: 12px 10px 4px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.settings-panes { max-height: min(70vh, 640px); overflow-y: auto; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.settings-field input { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 14px; }
+.settings-zones { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.settings-zone { display: grid; grid-template-columns: 10px 28px 90px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.settings-zone-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.settings-zone-name { font-weight: 700; }
+.settings-zone-from { color: var(--muted); }
+.settings-zone-from input { width: 58px; height: 28px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; text-align: right; }
+.settings-zone-span { color: var(--muted); }
+.settings-zones-error { color: var(--danger-ink); }
+.settings-zones-error[hidden], .settings-block .link-button[hidden] { display: none; }
 @media (max-width: 640px) {
   .settings-body { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .settings-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .settings-nav button { flex: none; }
+  .settings-nav-group { display: none; }
+  .settings-panes { max-height: none; }
 }
 .settings-section .panel-title-row .outline-button { margin: 0; }
 .fitness-settings-link { margin-top: 4px; font-size: 13px; }

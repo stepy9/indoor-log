@@ -85,3 +85,15 @@ test("decoupling compares output per heartbeat of a steady workout's halves afte
   assert.ok(Math.abs(decoupling(entry()).percent) < 0.01);
   assert.equal(decoupling(entry({ minutes: 25 })), null);
 });
+
+test("each sport keeps its own thresholds and zones, falling back to older settings", () => {
+  const settings = { restHeartRate: 50, maxHeartRate: 190, ftp: { rowing: 180 }, sports: { cycling: { maxHeartRate: 200, ftp: 220, heartRateZones: [0, 0.5, 0.65, 0.8, 0.95] } } };
+  const ride = entry({ minutes: 10, heartRate: () => 120 });
+  assert.deepEqual(timeInZones([ride], "heartRate", settings), [0, 600, 0, 0, 0]);
+  const row = { ...ride, sport: "rowing" };
+  assert.deepEqual(timeInZones([row], "heartRate", settings), [0, 0, 0, 0, 0].map((_, index) => (index === 1 ? 600 : 0)));
+  assert.equal(activityLoad(entry({ power: () => 220 }), settings).by, "power");
+  assert.ok(Math.abs(activityLoad(entry({ power: () => 220 }), settings).load - 100) < 1);
+  const broken = { sports: { cycling: { maxHeartRate: 200, heartRateZones: [0, 0.9, 0.5, 0.8, 0.95] } } };
+  assert.deepEqual(timeInZones([ride], "heartRate", broken), [0, 600, 0, 0, 0]);
+});

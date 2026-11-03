@@ -6,7 +6,8 @@ import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapF
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
 import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
-import { lastTrainerId, renderTrainersSettings, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
+import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
+import { setupSettings } from "./ui/settings.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
@@ -843,11 +844,11 @@ elements.trainer.addEventListener("change", () => {
   useDefaultResistance();
 });
 elements.resistance.addEventListener("input", () => delete elements.resistance.dataset.fromDefault);
-byId("settingsButton").addEventListener("click", () => renderTrainersSettings(state.kinomap?.sport, () => {
+setupSettings({ currentSport: () => state.kinomap?.sport, onTrainers: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, elements.trainer.value || lastTrainerId(sport));
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();
-}));
+} });
 byId("editIntervalsButton").addEventListener("click", () => {
   if (!state.result) return;
   openIntervalsDialog(state.result, state.result.segments, (segments) => {

@@ -1,4 +1,5 @@
-import { activityLoad, curveDurations, decoupling, estimateFtp, estimateMaxHeartRate, fatigueDays, fitnessDays, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { openSettings, setByHand, settingsFor } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -9,9 +10,6 @@ import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
 const ranges = { six: 42, quarter: 91, year: 365, all: Infinity };
-const defaultRestHeartRate = 60;
-// The FTP is estimated from the best 20 minutes of this many days back, so an old peak does not hold it up.
-const ftpDays = 180;
 
 const remembered = () => savedDefaults().fitness ?? {};
 
@@ -19,7 +17,6 @@ const view = {
   entries: [],
   sport: remembered().sport ?? "all",
   range: Object.hasOwn(ranges, remembered().range) ? remembered().range : "quarter",
-  zonesBy: remembered().zonesBy === "power" ? "power" : "heartRate",
   layout: null,
 };
 
@@ -36,22 +33,6 @@ function node(tag, attributes = {}, text = "") {
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const dayText = (key, options = { day: "numeric", month: "numeric", year: "numeric" }) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(`${key}T12:00:00Z`));
 const today = () => dayKey(Date.now(), zone);
-
-// What the user typed, the estimate in its place.
-function settingsFor(entries) {
-  const saved = remembered();
-  const since = Date.now() - ftpDays * 86_400_000;
-  const estimates = {
-    maxHeartRate: estimateMaxHeartRate(entries),
-    ftp: Object.fromEntries(sports.map((sport) => [sport, estimateFtp(entries.filter((entry) => entry.sport === sport && entry.startMs >= since))])),
-  };
-  return {
-    estimates,
-    maxHeartRate: saved.maxHeartRate || estimates.maxHeartRate,
-    restHeartRate: saved.restHeartRate || defaultRestHeartRate,
-    ftp: Object.fromEntries(sports.map((sport) => [sport, saved.ftp?.[sport] || estimates.ftp[sport]])),
-  };
-}
 
 const ofSport = (entries) => (view.sport === "all" ? entries : entries.filter((entry) => entry.sport === view.sport));
 
@@ -90,7 +71,8 @@ function renderTiles(history, settings) {
   ] : [];
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {
-    if (settings.ftp[sport]) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(settings.ftp[sport])} W`, remembered().ftp?.[sport] ? t("fitnessSetByHand") : t("fitnessEstimated")));
+    const ftp = settings.sports[sport].ftp;
+    if (ftp) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(ftp)} W`, setByHand(sport, "ftp") ? t("fitnessSetByHand") : t("fitnessEstimated")));
   }
   byId("fitnessTiles").replaceChildren(...tiles);
 }
@@ -192,23 +174,28 @@ function hideLoadTooltip() {
   view.layout?.guide.replaceChildren();
 }
 
+// Heart rate and power zones one below the other, each with its note when the threshold or the data is missing.
 function renderZones(entries, settings) {
-  for (const button of document.querySelectorAll("[data-zones-by]")) button.setAttribute("aria-pressed", String(button.dataset.zonesBy === view.zonesBy));
-  const by = view.zonesBy;
-  const bounds = by === "power" ? powerZones : heartRateZones;
+  byId("fitnessZones").replaceChildren(...["heartRate", "power"].map((by) => zoneGroup(entries, settings, by)));
+}
+
+function zoneGroup(entries, settings, by) {
+  const group = node("div", { class: "fitness-zone-group" });
+  group.append(node("h4", { class: "fitness-zone-title" }, t(by === "power" ? "settingsPowerZones" : "settingsHeartRateZones")));
+  // One sport shows its own bounds; several show the defaults as a guide.
+  const own = view.sport === "all" ? null : forSport(settings, view.sport);
+  const bounds = own ? own[by === "power" ? "powerZones" : "heartRateZones"] : by === "power" ? powerZones : heartRateZones;
   const totals = timeInZones(entries, by, settings);
   const sum = totals.reduce((total, value) => total + value, 0);
-  const list = byId("fitnessZones");
-  const note = byId("fitnessZonesNote");
-  const missing = by === "power" ? (view.sport === "all" ? !sports.some((sport) => settings.ftp[sport]) : !settings.ftp[view.sport]) : !settings.maxHeartRate;
-  note.textContent = missing ? t(by === "power" ? "fitnessNeedFtp" : "fitnessNeedMaxHr") : !sum ? t("fitnessNoData") : "";
-  note.hidden = !note.textContent;
-  if (missing || !sum) {
-    list.replaceChildren();
-    return;
+  const field = by === "power" ? "ftp" : "maxHeartRate";
+  const missing = view.sport === "all" ? !sports.some((sport) => settings.sports[sport][field]) : !settings.sports[view.sport][field];
+  const note = missing ? t(by === "power" ? "fitnessNeedFtp" : "fitnessNeedMaxHr") : !sum ? t("fitnessNoData") : "";
+  if (note) {
+    group.append(node("p", { class: "field-note" }, note));
+    return group;
   }
   const highest = Math.max(...totals);
-  list.replaceChildren(...totals.map((seconds, index) => {
+  group.append(...totals.map((seconds, index) => {
     const from = Math.round(bounds[index] * 100);
     const to = bounds[index + 1] ? Math.round(bounds[index + 1] * 100) : null;
     const reference = by === "power" ? "FTP" : "HRmax";
@@ -228,6 +215,7 @@ function renderZones(entries, settings) {
     );
     return row;
   }));
+  return group;
 }
 
 const durationText = (seconds) => (seconds < 60 ? `${seconds} s` : seconds < 3600 ? `${seconds / 60} min` : `${seconds / 3600} h`);
@@ -259,8 +247,13 @@ function renderCurve(current, previous) {
     children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, `${displayNumber(value)}`));
   }
-  const narrow = width < 520;
-  for (const duration of curveDurations.filter((item) => !narrow || [5, 30, 120, 600, 3600].includes(item))) children.push(node("text", { x: xFor(duration), y: height - 8, class: "diary-tick" }, durationText(duration)));
+  // Labels at least 44 px apart, the hour always shown: the log scale crowds the long durations.
+  let lastTick = Infinity;
+  for (const duration of [...curveDurations].reverse()) {
+    if (lastTick - xFor(duration) < 44) continue;
+    lastTick = xFor(duration);
+    children.push(node("text", { x: lastTick, y: height - 8, class: "diary-tick" }, durationText(duration)));
+  }
   const path = (points) => points.filter((point) => point.value != null).map((point, index) => `${index ? "L" : "M"}${xFor(point.duration).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
   if (before.some((point) => point.value != null)) children.push(node("path", { class: "fitness-line is-previous", d: path(before) }));
   children.push(node("path", { class: "fitness-line is-curve", d: path(curve) }));
@@ -330,21 +323,6 @@ function renderDecoupling(entries, settings) {
   table.tBodies[0].append(...body);
 }
 
-function renderSettings(settings) {
-  const saved = remembered();
-  const field = (id, value, estimate) => {
-    const input = byId(id);
-    if (document.activeElement !== input) input.value = value ?? "";
-    input.placeholder = estimate ? `${t("fitnessAuto")} ${estimate}` : "—";
-  };
-  field("fitnessMaxHr", saved.maxHeartRate, settings.estimates.maxHeartRate);
-  field("fitnessRestHr", saved.restHeartRate, defaultRestHeartRate);
-  for (const sport of sports) {
-    field(`fitnessFtp-${sport}`, saved.ftp?.[sport], settings.estimates.ftp[sport]);
-    byId(`fitnessFtpLabel-${sport}`).textContent = `FTP · ${sportLabel(sport)} (W)`;
-  }
-}
-
 function render() {
   const select = byId("fitnessSport");
   const present = sports.filter((sport) => view.entries.some((entry) => entry.sport === sport));
@@ -367,24 +345,6 @@ function render() {
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
 
-// The thresholds live in the Settings dialog; its estimates come from the whole library.
-export function showSettingsPane(name) {
-  for (const button of document.querySelectorAll("[data-settings-pane]")) button.setAttribute("aria-pressed", String(button.dataset.settingsPane === name));
-  for (const pane of document.querySelectorAll("#settingsDialog [data-pane]")) pane.hidden = pane.dataset.pane !== name;
-}
-
-async function openSettings(pane) {
-  if (typeof pane === "string") showSettingsPane(pane);
-  view.entries = await listEntries().catch(() => []);
-  renderSettings(settingsFor(view.entries));
-  byId("settingsDialog").showModal();
-}
-
-const settingsChanged = () => {
-  renderSettings(settingsFor(view.entries));
-  if (!byId("fitnessView").hidden) render();
-};
-
 export async function showFitness() {
   view.entries = await listEntries().catch(() => []);
   render();
@@ -396,10 +356,8 @@ export const rerenderFitness = () => {
 
 export function setupFitness({ onOpen }) {
   openActivity = onOpen;
-  byId("settingsButton").addEventListener("click", openSettings);
-  byId("fitnessSettingsLink").addEventListener("click", () => openSettings("thresholds"));
-  for (const button of document.querySelectorAll("[data-settings-pane]")) button.addEventListener("click", () => showSettingsPane(button.dataset.settingsPane));
-  byId("settingsClose").addEventListener("click", () => byId("settingsDialog").close());
+  byId("fitnessSettingsLink").addEventListener("click", () => openSettings(view.sport === "all" ? undefined : view.sport));
+  window.addEventListener("settings-change", rerenderFitness);
   byId("fitnessSport").addEventListener("change", (event) => {
     view.sport = event.target.value;
     save({ sport: view.sport });
@@ -410,31 +368,6 @@ export function setupFitness({ onOpen }) {
       view.range = button.dataset.fitnessRange;
       save({ range: view.range });
       render();
-    });
-  }
-  for (const button of document.querySelectorAll("[data-zones-by]")) {
-    button.addEventListener("click", () => {
-      view.zonesBy = button.dataset.zonesBy;
-      save({ zonesBy: view.zonesBy });
-      render();
-    });
-  }
-  const number = (input) => {
-    const value = Number(input.value);
-    return input.value.trim() && value > 0 ? Math.round(value) : null;
-  };
-  byId("fitnessMaxHr").addEventListener("change", (event) => {
-    save({ maxHeartRate: number(event.target) });
-    settingsChanged();
-  });
-  byId("fitnessRestHr").addEventListener("change", (event) => {
-    save({ restHeartRate: number(event.target) });
-    settingsChanged();
-  });
-  for (const sport of sports) {
-    byId(`fitnessFtp-${sport}`).addEventListener("change", (event) => {
-      save({ ftp: { ...remembered().ftp, [sport]: number(event.target) } });
-      settingsChanged();
     });
   }
   const chart = byId("fitnessLoadChart");
