@@ -65,10 +65,25 @@ function node(tag, attributes = {}, text = "") {
   return element;
 }
 
+// Edits are written as they are made, so the panes show them, but count only once saved:
+// cancelling, the cross or Escape put back what was there when the dialog opened.
 const changed = () => {
-  window.dispatchEvent(new Event("settings-change"));
+  state.dirty = true;
   render();
 };
+
+const snapshot = () => {
+  const { fitness, trainers: list } = savedDefaults();
+  return { fitness, trainers: list };
+};
+
+function save() {
+  state.saved = true;
+  byId("settingsDialog").close();
+  if (!state.dirty) return;
+  window.dispatchEvent(new Event("settings-change"));
+  state.onTrainers();
+}
 
 const typedNumber = (input) => {
   const value = Number(input.value);
@@ -77,7 +92,7 @@ const typedNumber = (input) => {
 
 function numberField(label, value, placeholder, apply, { min, max } = {}) {
   const field = node("label", { class: "settings-field" });
-  const input = node("input", { type: "number", inputmode: "numeric", ...(min ? { min } : {}), ...(max ? { max } : {}) });
+  const input = node("input", { type: "number", inputmode: "numeric", "data-key": label, ...(min ? { min } : {}), ...(max ? { max } : {}) });
   input.value = value ?? "";
   input.placeholder = placeholder;
   input.addEventListener("change", () => apply(typedNumber(input)));
@@ -88,6 +103,7 @@ function numberField(label, value, placeholder, apply, { min, max } = {}) {
 const autoHint = (value) => (value ? `${t("fitnessAuto")} ${value}` : "—");
 
 function renderNav() {
+  byId("settingsSave").disabled = !state.dirty;
   const nav = byId("settingsNav");
   const button = (pane, label) => {
     const element = node("button", { type: "button", "aria-pressed": String(state.pane === pane) }, label);
@@ -130,7 +146,7 @@ function trainersBlock(sport) {
   const add = node("button", { type: "button", class: "outline-button" }, t("trainerAdd"));
   add.addEventListener("click", () => {
     saveTrainers([...trainers(), { id: `trainer-${Date.now().toString(36)}`, name: t("newTrainer"), sport, levels: 10, defaultLevel: 5 }]);
-    state.onTrainers();
+    state.dirty = true;
     render();
   });
   title.append(node("h4", {}, t("trainersTitle")), add);
@@ -148,14 +164,14 @@ function trainersBlock(sport) {
   for (const trainer of list) {
     const update = (patch) => {
       saveTrainers(trainers().map((item) => (item.id === trainer.id ? { ...item, ...patch } : item)));
-      state.onTrainers();
+      state.dirty = true;
       render();
     };
-    const name = node("input", { type: "text", class: "name-input", "aria-label": t("trainerName") });
+    const name = node("input", { type: "text", class: "name-input", "aria-label": t("trainerName"), "data-key": `${trainer.id}-name` });
     name.value = trainer.name;
     name.addEventListener("change", () => update({ name: name.value.trim() || trainer.name }));
     const level = (value, label, apply) => {
-      const input = node("input", { type: "number", class: "level-input", min: "1", "aria-label": label });
+      const input = node("input", { type: "number", class: "level-input", min: "1", "aria-label": label, "data-key": `${trainer.id}-${label}` });
       input.value = String(value);
       input.addEventListener("change", () => {
         const next = Math.round(Number(input.value));
@@ -170,7 +186,7 @@ function trainersBlock(sport) {
     remove.addEventListener("click", () => {
       if (!window.confirm(t("trainerDeleteConfirm", { name: trainer.name }))) return;
       saveTrainers(trainers().filter((item) => item.id !== trainer.id));
-      state.onTrainers();
+      state.dirty = true;
       render();
     });
     const row = node("tr");
@@ -236,7 +252,7 @@ function zonesBlock(sport, by, settings) {
     if (index === 0) {
       row.append(node("span", { class: "settings-zone-from" }, "0 %"));
     } else {
-      const input = node("input", { type: "number", min: "1", max: "300", inputmode: "numeric", "aria-label": `Z${index + 1} %` });
+      const input = node("input", { type: "number", min: "1", max: "300", inputmode: "numeric", "aria-label": `Z${index + 1} %`, "data-key": `${by}-${index}` });
       input.value = String(Math.round(bound * 100));
       input.addEventListener("change", () => {
         const typed = bounds.map((value, at) => (at === index ? Number(input.value) / 100 : value));
@@ -287,10 +303,17 @@ function sportPane(sport) {
   return pane;
 }
 
+// A redraw after an edit keeps the field being edited focused, so arrow keys go on stepping it
+// rather than scrolling the page behind the dialog.
 function render() {
+  const focused = byId("settingsPanes").contains(document.activeElement) ? document.activeElement.dataset.key : null;
+  const panes = byId("settingsPanes");
+  const scroll = panes.scrollTop;
   renderNav();
   fitHeight();
-  byId("settingsPanes").replaceChildren(state.pane === "general" ? generalPane() : sportPane(state.pane));
+  panes.replaceChildren(state.pane === "general" ? generalPane() : sportPane(state.pane));
+  panes.scrollTop = scroll;
+  if (focused) panes.querySelector(`[data-key="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
 }
 
 // The dialog keeps one height whichever section is open: the rowing section's, the fullest one, as it now stands.
@@ -308,15 +331,24 @@ export async function openSettings(pane) {
   const sport = typeof pane === "string" ? pane : state.sport();
   if (sports.includes(sport) || sport === "general") state.pane = sport;
   state.entries = await listEntries().catch(() => []);
+  state.before = snapshot();
+  state.dirty = false;
+  state.saved = false;
   byId("settingsDialog").showModal();
   render();
 }
 
-// onTrainers runs after every trainer edit, so the converter's trainer list stays current;
+// onTrainers runs after a save, so the converter's trainer list stays current;
 // currentSport gives the sport to open on.
 export function setupSettings({ onTrainers, currentSport }) {
   state.onTrainers = onTrainers;
   state.sport = currentSport;
   byId("settingsButton").addEventListener("click", () => openSettings());
-  byId("settingsClose").addEventListener("click", () => byId("settingsDialog").close());
+  const dialog = byId("settingsDialog");
+  byId("settingsClose").addEventListener("click", () => dialog.close());
+  byId("settingsCancel").addEventListener("click", () => dialog.close());
+  byId("settingsSave").addEventListener("click", save);
+  dialog.addEventListener("close", () => {
+    if (!state.saved && state.dirty) saveDefaults(state.before);
+  });
 }
