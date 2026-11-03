@@ -690,12 +690,12 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .settings-dialog { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: 0; }
 .settings-zone-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
 @media (max-width: 860px) { .settings-zone-grid { grid-template-columns: minmax(0, 1fr); } }
-.settings-dialog[open] { display: flex; flex-direction: column; }
+.settings-dialog[open] { display: flex; flex-direction: column; height: min(720px, calc(100vh - 32px)); max-height: none; }
 .settings-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
 .settings-head h2 { margin: 0; font-size: 18px; }
 .settings-close { width: 32px; height: 32px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font-size: 14px; cursor: pointer; }
 .settings-close:hover { border-color: var(--accent); color: var(--accent); }
-.settings-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: 420px; }
+.settings-body { display: grid; flex: 1; grid-template-columns: 200px minmax(0, 1fr); min-height: 0; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-right: 1px solid var(--line); }
 .settings-nav button { padding: 8px 10px; border: 0; border-radius: 8px; color: var(--ink); background: transparent; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
 .settings-nav button:hover { background: var(--surface-2); }
@@ -708,7 +708,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .settings-block .panel-title-row { margin-bottom: 4px; }
 .settings-block .outline-button { margin: 0; }
 .settings-nav-group { margin: 12px 10px 4px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.settings-panes { max-height: min(80vh, 760px); overflow-y: auto; }
+.settings-panes { min-height: 0; overflow-y: auto; }
 .settings-field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .settings-field input { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 14px; }
 .settings-basis { margin: 6px 0 2px; }
@@ -727,7 +727,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .settings-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .settings-nav button { flex: none; }
   .settings-nav-group { display: none; }
-  .settings-panes { max-height: none; }
+  .settings-body { grid-template-rows: auto minmax(0, 1fr); }
 }
 .settings-section .panel-title-row .outline-button { margin: 0; }
 .fitness-settings-link { margin-top: 4px; font-size: 13px; }
