@@ -1,4 +1,4 @@
-import { estimateFtp, estimateMaxHeartRate, forSport, heartRateZones, powerZones } from "../fitness.js";
+import { estimateFtp, estimateMaxHeartRate, forSport, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
@@ -18,7 +18,10 @@ const saveFitness = (patch) => saveDefaults({ fitness: { ...remembered(), ...pat
 // One sport's typed values, with what older settings kept for every sport folded in.
 function savedSport(sport) {
   const saved = remembered();
-  return { maxHeartRate: saved.maxHeartRate ?? null, ftp: saved.ftp?.[sport] ?? null, ...saved.sports?.[sport] };
+  const own = { ftp: saved.ftp?.[sport] ?? null, ...saved.sports?.[sport] };
+  // A sport's own maximum overrides the general one; a copy of the general one, as earlier versions saved, is none.
+  if (own.maxHeartRate === saved.maxHeartRate) own.maxHeartRate = null;
+  return own;
 }
 
 function saveSport(sport, patch) {
@@ -31,16 +34,19 @@ export function settingsFor(entries) {
   const since = Date.now() - ftpDays * 86_400_000;
   const estimates = Object.fromEntries(sports.map((sport) => {
     const own = entries.filter((entry) => entry.sport === sport);
-    return [sport, { maxHeartRate: estimateMaxHeartRate(own), ftp: estimateFtp(own.filter((entry) => entry.startMs >= since)) }];
+    return [sport, { ftp: estimateFtp(own.filter((entry) => entry.startMs >= since)) }];
   }));
+  // The maximum heart rate is the athlete's, so one serves every sport unless a sport sets its own.
+  const generalMax = remembered().maxHeartRate || estimateMaxHeartRate(entries);
   return {
-    estimates,
+    estimates: { ...estimates, maxHeartRate: estimateMaxHeartRate(entries), generalMax },
+    maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
       return [sport, {
         ...saved,
-        maxHeartRate: saved.maxHeartRate || estimates[sport].maxHeartRate,
+        maxHeartRate: saved.maxHeartRate || generalMax,
         ftp: saved.ftp || estimates[sport].ftp,
       }];
     })),
@@ -105,6 +111,11 @@ function generalPane() {
     node("p", { class: "field-note" }, t("settingsGeneralNote")),
   );
   const grid = node("div", { class: "fitness-settings" });
+  const estimate = estimateMaxHeartRate(state.entries);
+  grid.append(numberField(t("fitnessMaxHrLabel"), remembered().maxHeartRate, autoHint(estimate), (value) => {
+    saveFitness({ maxHeartRate: value });
+    changed();
+  }, { min: 100, max: 230 }));
   grid.append(numberField(t("fitnessRestHrLabel"), remembered().restHeartRate, autoHint(defaultRestHeartRate), (value) => {
     saveFitness({ restHeartRate: value });
     changed();
@@ -177,7 +188,8 @@ function trainersBlock(sport) {
 }
 
 // The zones' lower bounds in percent, each with the beats or watts it comes to; Z1 always starts at 0.
-function zonesBlock(sport, by, reference) {
+function zonesBlock(sport, by, settings) {
+  const own = forSport(settings, sport);
   const defaults = by === "power" ? powerZones : heartRateZones;
   const bounds = forSport({ sports: { [sport]: savedSport(sport) } }, sport)[by === "power" ? "powerZones" : "heartRateZones"];
   const field = by === "power" ? "powerZones" : "heartRateZones";
@@ -191,7 +203,22 @@ function zonesBlock(sport, by, reference) {
     changed();
   });
   title.append(node("h4", {}, t(by === "power" ? "settingsPowerZones" : "settingsHeartRateZones")), reset);
-  block.append(title, node("p", { class: "field-note" }, t(by === "power" ? "settingsPowerZonesNote" : "settingsHeartRateZonesNote")));
+  block.append(title);
+  // Heart rate zones count from the maximum or from the reserve above the resting heart rate.
+  if (by === "heartRate") {
+    const basis = node("div", { class: "segmented settings-basis", role: "group", "aria-label": t("settingsZonesBasis") });
+    for (const value of ["max", "reserve"]) {
+      const button = node("button", { type: "button", "aria-pressed": String(own.heartRateBasis === value) }, t(value === "max" ? "settingsBasisMax" : "settingsBasisReserve"));
+      button.addEventListener("click", () => {
+        saveSport(sport, { heartRateBasis: value });
+        changed();
+      });
+      basis.append(button);
+    }
+    block.append(basis);
+  }
+  block.append(node("p", { class: "field-note" }, by === "power" ? t("settingsPowerZonesNote")
+    : own.heartRateBasis === "reserve" ? t("settingsReserveNote", { rest: displayNumber(own.restHeartRate) }) : t("settingsHeartRateZonesNote")));
   const note = node("p", { class: "field-note settings-zones-error", hidden: "" });
   const list = node("div", { class: "settings-zones" });
   bounds.forEach((bound, index) => {
@@ -199,7 +226,10 @@ function zonesBlock(sport, by, reference) {
     const swatch = node("span", { class: "settings-zone-swatch" });
     swatch.style.background = `var(--zone-${index + 1})`;
     const next = bounds[index + 1];
-    const amount = (fraction) => (reference ? displayNumber(fraction * reference) : "—");
+    const amount = (fraction) => {
+      const value = by === "power" ? (own.ftp ? fraction * own.ftp : null) : heartRateAt(fraction, own);
+      return value == null ? "—" : displayNumber(value);
+    };
     const span = next ? `${amount(bound)}–${amount(next)} ${unit}` : `> ${amount(bound)} ${unit}`;
     row.append(swatch, node("span", { class: "settings-zone-name" }, `Z${index + 1}`));
     if (index === 0) {
@@ -240,7 +270,7 @@ function sportPane(sport) {
   thresholds.append(node("h4", {}, t("fitnessSettings")), node("p", { class: "field-note" }, t("settingsThresholdsNote")));
   const grid = node("div", { class: "fitness-settings" });
   grid.append(
-    numberField(t("fitnessMaxHrLabel"), savedSport(sport).maxHeartRate, autoHint(estimate.maxHeartRate), (value) => {
+    numberField(t("settingsSportMaxHr"), savedSport(sport).maxHeartRate, settings.estimates.generalMax ? `${t("settingsFromGeneral")} ${settings.estimates.generalMax}` : "—", (value) => {
       saveSport(sport, { maxHeartRate: value });
       changed();
     }, { min: 100, max: 230 }),
@@ -250,7 +280,7 @@ function sportPane(sport) {
     }, { min: 30, max: 600 }),
   );
   thresholds.append(grid);
-  pane.append(thresholds, zonesBlock(sport, "heartRate", own.maxHeartRate), zonesBlock(sport, "power", own.ftp));
+  pane.append(thresholds, zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
   return pane;
 }
 

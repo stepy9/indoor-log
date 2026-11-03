@@ -97,3 +97,11 @@ test("each sport keeps its own thresholds and zones, falling back to older setti
   const broken = { sports: { cycling: { maxHeartRate: 200, heartRateZones: [0, 0.9, 0.5, 0.8, 0.95] } } };
   assert.deepEqual(timeInZones([ride], "heartRate", broken), [0, 600, 0, 0, 0]);
 });
+
+test("heart rate zones count from the maximum or from the reserve above the resting heart rate", () => {
+  const ride = entry({ minutes: 10, heartRate: () => 140 });
+  const byMax = { restHeartRate: 60, sports: { cycling: { maxHeartRate: 200 } } };
+  assert.deepEqual(timeInZones([ride], "heartRate", byMax), [0, 0, 600, 0, 0]);
+  const byReserve = { restHeartRate: 60, sports: { cycling: { maxHeartRate: 200, heartRateBasis: "reserve" } } };
+  assert.deepEqual(timeInZones([ride], "heartRate", byReserve), [600, 0, 0, 0, 0]);
+});

@@ -709,6 +709,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .settings-panes { max-height: min(70vh, 640px); overflow-y: auto; }
 .settings-field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .settings-field input { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 14px; }
+.settings-basis { margin: 6px 0 2px; }
+.settings-basis button { padding: 4px 10px; font-size: 12px; }
 .settings-zones { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .settings-zone { display: grid; grid-template-columns: 10px 28px 90px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .settings-zone-swatch { width: 10px; height: 10px; border-radius: 3px; }

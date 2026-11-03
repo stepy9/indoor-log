@@ -73,6 +73,8 @@ export function forSport(settings, sport) {
     maxHeartRate: own.maxHeartRate ?? settings.maxHeartRate ?? null,
     ftp: own.ftp ?? settings.ftp?.[sport] ?? null,
     heartRateZones: validZones(own.heartRateZones, heartRateZones),
+    // "max": zones as a share of the maximum; "reserve": of the reserve above the resting heart rate (Karvonen).
+    heartRateBasis: own.heartRateBasis === "reserve" ? "reserve" : "max",
     powerZones: validZones(own.powerZones, powerZones),
   };
 }
@@ -139,7 +141,7 @@ export function formState(form) {
   return "overreaching";
 }
 
-// Default zones as fractions of the maximum heart rate or of the FTP; each zone runs from its bound up to the next one.
+// Default zones as fractions of the maximum heart rate (or its reserve) or of the FTP; each zone runs from its bound up to the next one.
 export const heartRateZones = [0, 0.6, 0.7, 0.8, 0.9];
 export const powerZones = [0, 0.55, 0.75, 0.9, 1.05, 1.2];
 
@@ -158,13 +160,31 @@ export function timeInZones(entries, by, allSettings) {
     for (let index = 0; index < seconds.length; index += 1) {
       const value = values[index];
       if (!Number.isFinite(value) || (by === "heartRate" && value <= 0)) continue;
-      const fraction = value / reference;
+      const fraction = zoneFraction(value, by, settings);
       let zone = 0;
       while (zone + 1 < bounds.length && fraction >= bounds[zone + 1]) zone += 1;
       totals[zone] += dts[index];
     }
   }
   return totals;
+}
+
+// Where a value falls against the sport's reference: a share of the FTP, of the maximum heart rate,
+// or of the reserve between the resting and the maximum heart rate.
+function zoneFraction(value, by, settings) {
+  if (by === "power") return value / settings.ftp;
+  if (settings.heartRateBasis === "reserve" && settings.maxHeartRate > settings.restHeartRate) {
+    return (value - settings.restHeartRate) / (settings.maxHeartRate - settings.restHeartRate);
+  }
+  return value / settings.maxHeartRate;
+}
+
+// The beats a zone bound comes to, the inverse of zoneFraction for heart rate.
+export function heartRateAt(fraction, settings) {
+  if (!settings.maxHeartRate) return null;
+  return settings.heartRateBasis === "reserve" && settings.maxHeartRate > settings.restHeartRate
+    ? settings.restHeartRate + fraction * (settings.maxHeartRate - settings.restHeartRate)
+    : fraction * settings.maxHeartRate;
 }
 
 // The power curve's durations, in seconds.

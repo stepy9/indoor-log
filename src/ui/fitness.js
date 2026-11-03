@@ -198,7 +198,7 @@ function zoneGroup(entries, settings, by) {
   group.append(...totals.map((seconds, index) => {
     const from = Math.round(bounds[index] * 100);
     const to = bounds[index + 1] ? Math.round(bounds[index + 1] * 100) : null;
-    const reference = by === "power" ? "FTP" : "HRmax";
+    const reference = by === "power" ? "FTP" : own?.heartRateBasis === "reserve" ? "HRR" : "HRmax";
     const range = to ? (from ? `${from}–${to} %` : `< ${to} %`) : `> ${from} %`;
     const row = node("div", { class: "fitness-zone" });
     const bar = node("div", { class: "fitness-zone-track" });
