@@ -37,6 +37,29 @@ export function savedDefaults() {
 export function saveDefaults(patch) {
   try {
     localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...patch }));
+    if (syncedKeys.some((key) => key in patch)) localStorage.setItem(syncedChangedKey, String(Date.now()));
+  } catch {}
+}
+
+// The settings kept the same on every device: thresholds, weight, goals and trainers. What a page shows last
+// (a sport, a period, a range) stays with each device, so browsing on one does not undo a change on another.
+export const syncedKeys = ["fitness", "trainers", "trainerBySport"];
+const syncedChangedKey = "kinomap-settings-changed";
+
+export function syncedSettings() {
+  const defaults = savedDefaults();
+  let changedAt = 0;
+  try {
+    changedAt = Number(localStorage.getItem(syncedChangedKey)) || 0;
+  } catch {}
+  return { defaults: Object.fromEntries(syncedKeys.filter((key) => key in defaults).map((key) => [key, defaults[key]])), changedAt };
+}
+
+// Settings that came from another device, written with their own time so they do not count as a change here.
+export function applySyncedSettings({ defaults, changedAt }) {
+  try {
+    localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...defaults }));
+    localStorage.setItem(syncedChangedKey, String(changedAt));
   } catch {}
 }
 

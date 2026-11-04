@@ -229,17 +229,58 @@ async function run(mode, action) {
   });
 }
 
+// For keeping devices in step (sync.js): each activity saved here carries when, and each deletion is kept with
+// when, so a merge knows which change came last.
+const deletedKey = "kinomap-sync-deleted";
+const stamp = (entry) => ({ ...entry, changedAt: Date.now() });
+
+export function deletedIds() {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(deletedKey)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function recordDeleted(ids) {
+  const deleted = deletedIds();
+  for (const id of ids) deleted[id] = Date.now();
+  try {
+    globalThis.localStorage?.setItem(deletedKey, JSON.stringify(deleted));
+  } catch {}
+}
+
 export const saveEntries = (entries) => run("readwrite", (store) => {
-  for (const entry of entries) store.put(entry);
+  for (const entry of entries) store.put(stamp(entry));
 });
 
-export const deleteEntry = (id) => run("readwrite", (store) => store.delete(id));
+export const deleteEntry = (id) => {
+  recordDeleted([id]);
+  return run("readwrite", (store) => store.delete(id));
+};
 
-export const clearEntries = () => run("readwrite", (store) => store.clear());
+export const deleteEntries = (ids) => {
+  recordDeleted(ids);
+  return run("readwrite", (store) => {
+    for (const id of ids) store.delete(id);
+  });
+};
 
-export const deleteEntries = (ids) => run("readwrite", (store) => {
-  for (const id of ids) store.delete(id);
-});
+// What a sync brings: activities written as they came, with their own times, and ids deleted on another device,
+// with the deletions merged into the ones kept here.
+export async function applySynced({ write = [], remove = [], deleted = {} }) {
+  if (write.length || remove.length) {
+    await run("readwrite", (store) => {
+      for (const id of remove) store.delete(id);
+      for (const entry of write) store.put(entry);
+    });
+  }
+  const kept = deletedIds();
+  for (const [id, at] of Object.entries(deleted)) kept[id] = Math.max(kept[id] ?? 0, at);
+  try {
+    globalThis.localStorage?.setItem(deletedKey, JSON.stringify(kept));
+  } catch {}
+}
 
 // Saves entries, dropping duplicates already in the library or among themselves; with none it only tidies the library.
 // Returns how many of the given entries were left out as duplicates of a fuller recording.
@@ -247,9 +288,10 @@ export async function addEntries(entries) {
   const existing = await run("readonly", (store) => store.getAll());
   const { save, remove } = mergeDuplicates(existing, entries);
   if (save.length || remove.length) {
+    recordDeleted(remove);
     await run("readwrite", (store) => {
       for (const id of remove) store.delete(id);
-      for (const entry of save) store.put(entry);
+      for (const entry of save) store.put(stamp(entry));
     });
   }
   const saved = new Set(save.map((entry) => entry.id));
