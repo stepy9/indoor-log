@@ -61,6 +61,8 @@ export async function connectCloud() {
     code_challenge_method: "S256",
     redirect_uri: redirectUri(),
     token_access_type: "offline",
+    // Asked for by name, so a token never comes without them (Dropbox refuses here if the app lacks them).
+    scope: "files.content.read files.content.write",
   });
   location.assign(`https://www.dropbox.com/oauth2/authorize?${params}`);
 }
