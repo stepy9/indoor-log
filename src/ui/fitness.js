@@ -652,6 +652,9 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
+// The activity a best came from: its name without the "Kinomap - " every conversion starts with, and its date kept on one line.
+const fromText = (entry) => `${(entry.name ?? sportLabel(entry.sport)).replace(/^Kinomap - /, "")} · ${dayText(dayKey(entry.startMs, zone)).replaceAll(" ", " ")}`;
+
 // Each cell carries its column's name, which a phone shows over the value when the table turns into cards.
 function labelCells(table) {
   const labels = [...(table.tHead?.rows[0]?.cells ?? [])].map((cell) => cell.textContent);
@@ -672,7 +675,7 @@ function renderCurveTable(curve, before, settings) {
     const old = before.find((item) => item.duration === point.duration)?.value;
     const change = old ? ((point.value - old) / old) * 100 : null;
     const changeCell = node("td", { class: change > 0 ? "is-better" : change < 0 ? "is-worse" : "" }, change == null ? "—" : `${change >= 0 ? "+" : ""}${displayNumber(change, 1)} %`);
-    const link = node("button", { type: "button", class: "link-button" }, `${point.entry.name ?? ""} · ${dayText(dayKey(point.entry.startMs, zone))}`);
+    const link = node("button", { type: "button", class: "link-button" }, fromText(point.entry));
     link.addEventListener("click", () => openActivity(point.entry));
     const from = node("td");
     from.append(link);
@@ -838,9 +841,9 @@ function renderRecords(entries) {
   };
   const fromCell = (entry) => {
     const cell = node("td");
-    const link = node("button", { type: "button", class: "link-button" }, `${entry.name ?? sportLabel(entry.sport)} · ${dayText(dayKey(entry.startMs, zone))}`);
+    const link = node("button", { type: "button", class: "link-button" }, fromText(entry));
     link.addEventListener("click", () => openActivity(entry));
-    cell.append(link, node("span", { class: "field-note" }, ` · ${ago(entry.startMs)}`));
+    cell.append(link, node("span", { class: "field-note" }, ` · ${ago(entry.startMs).replaceAll(" ", " ")}`));
     return cell;
   };
   const valueCell = (text, ms) => {
