@@ -1,5 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
-import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
+import { bestTime, effortDistances } from "../analysis.js";
+import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -698,6 +699,60 @@ function renderEfficiency(entries) {
   chart.replaceChildren(...children);
 }
 
+// Personal records over the whole library of the sport shown, whatever the range: the best power for each
+// duration and, for one sport, the fastest time for each distance; each with its workout, how long ago,
+// and the W/kg by the weight on that day. A record from the last 30 days is marked new.
+function renderRecords(entries) {
+  const recent = Date.now() - 30 * 86_400_000;
+  const ago = (ms) => {
+    const days = Math.floor((Date.now() - ms) / 86_400_000);
+    return days < 1 ? t("fitnessToday") : days === 1 ? t("fitnessYesterday") : t("fitnessDaysAgo", { days });
+  };
+  const fromCell = (entry) => {
+    const cell = node("td");
+    const link = node("button", { type: "button", class: "link-button" }, `${entry.name ?? sportLabel(entry.sport)} · ${dayText(dayKey(entry.startMs, zone))}`);
+    link.addEventListener("click", () => openActivity(entry));
+    cell.append(link, node("span", { class: "field-note" }, ` · ${ago(entry.startMs)}`));
+    return cell;
+  };
+  const valueCell = (text, ms) => {
+    const cell = node("td", {}, text);
+    if (ms >= recent) cell.append(" ", node("span", { class: "fitness-record" }, t("fitnessRecordNew")));
+    return cell;
+  };
+  const fill = (table, head, rows) => {
+    table.hidden = !rows.length;
+    const header = node("tr");
+    header.append(...head.map((label) => node("th", {}, label)));
+    table.replaceChildren(node("thead"), node("tbody"));
+    table.tHead.append(header);
+    table.tBodies[0].append(...rows);
+  };
+  const power = powerCurve(entries).filter((point) => point.value != null);
+  const weighed = power.some((point) => perKgText(point.value, point.entry.startMs));
+  fill(byId("fitnessRecords"), [t("fitnessDuration"), t("fitnessBestPower"), ...(weighed ? ["W/kg"] : []), t("fitnessFrom")], power.map((point) => {
+    const row = node("tr");
+    row.append(node("td", {}, durationText(point.duration)), valueCell(`${point.value} W`, point.entry.startMs), ...(weighed ? [node("td", {}, perKgText(point.value, point.entry.startMs).replace(" W/kg", "") || "—")] : []), fromCell(point.entry));
+    return row;
+  }));
+  // Times only for one sport: a kilometre rowed and one ridden are not the same record.
+  const times = view.sport === "all" ? [] : (effortDistances[view.sport] ?? []).map((meters) => {
+    let best = null;
+    for (const entry of entries) {
+      const seconds = bestTime(entry, meters);
+      if (seconds != null && (!best || seconds < best.seconds)) best = { seconds, entry };
+    }
+    return best && { meters, ...best };
+  }).filter(Boolean);
+  const distanceLabel = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000, meters % 1000 ? 1 : 0)} km` : `${meters} m`);
+  fill(byId("fitnessRecordTimes"), [t("fitnessDistance"), t("fitnessBestTime"), t("fitnessFrom")], times.map((item) => {
+    const row = node("tr");
+    row.append(node("td", {}, distanceLabel(item.meters)), valueCell(formatDuration(item.seconds), item.entry.startMs), fromCell(item.entry));
+    return row;
+  }));
+  byId("fitnessRecordsEmpty").hidden = power.length > 0 || times.length > 0;
+}
+
 function renderDecoupling(entries, settings) {
   const table = byId("fitnessDecoupling");
   const rows = entries.map((entry) => ({ entry, result: decoupling(entry), load: activityLoad(entry, settings) })).filter((item) => item.result);
@@ -748,6 +803,7 @@ function render() {
   renderZones(current, settings);
   const currentSet = new Set(current);
   renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)), settings);
+  renderRecords(shown);
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
