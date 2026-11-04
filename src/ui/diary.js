@@ -485,6 +485,8 @@ function renderCalendar(range, entries) {
     }
     cell.classList.toggle("is-today", day === today);
     cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: format(day, { day: "numeric" }) }));
+    // A phone lists a week's days one under another, each named by its weekday and date.
+    cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: format(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
     cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map(activityButton));
     return cell;
   });
@@ -504,6 +506,7 @@ function renderCalendar(range, entries) {
   for (let index = 0; index < cells.length; index += 7) rows.push(weekCell(days[index]), ...cells.slice(index, index + 7));
   const corner = Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: t("diaryWeekShort") });
   byId("diaryCalendar").replaceChildren(corner, ...head, ...rows);
+  byId("diaryCalendar").classList.toggle("is-week", view.period === "week");
 }
 
 // Each legend entry turns its sport or kind on and off in the chart; the last one shown stays on.
