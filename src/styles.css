@@ -1115,3 +1115,12 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .panel-title-row:has(> .segmented) > .field-label { flex: 1 1 100%; }
   .compare-laps-grouping button { flex: 1; padding: 6px 4px; white-space: nowrap; }
 }
+
+/* Phones: the comparison's metric switch spans the card; the axis and the smoothing share the row under it. */
+@media (max-width: 640px) {
+  #overlayControls { gap: 8px; }
+  #overlayControls > .segmented:first-child { flex: 1 1 100%; display: flex; }
+  #overlayControls > .segmented { display: flex; flex: 1 1 auto; }
+  #overlayControls > .segmented button { flex: 1; padding-inline: 6px; }
+  #overlayControls .compare-smooth { margin-left: auto; }
+}
