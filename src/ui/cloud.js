@@ -9,7 +9,7 @@ import { applySyncedSettings, syncedSettings } from "./preferences.js";
 // either side. Nothing goes anywhere but between this browser and the user's Dropbox.
 
 // The app's key from the Dropbox App Console; not a secret, as PKCE needs none.
-export const dropboxAppKey = "";
+export const dropboxAppKey = "yp3m2oa7u1h8qww";
 
 const tokenKey = "kinomap-dropbox";
 const verifierKey = "kinomap-dropbox-verifier";
