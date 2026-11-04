@@ -850,15 +850,19 @@ function showView(name) {
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.appView === name));
   }
-  // A phone names the open tab in the header; the key keeps it translated on a language switch.
-  const label = document.querySelector(`[data-app-view="${name}"] span`);
-  const title = byId("topbarTitle");
-  title.dataset.i18n = label.dataset.i18n;
-  title.textContent = label.textContent;
+  nameTab(name);
   window.scrollTo({ top: 0 });
   if (name === "compare" || name === "trend") refresh();
   if (name === "diary") showDiary();
   if (name === "fitness") showFitness();
+}
+
+// A phone names the open tab in the header; the key keeps it translated on a language switch.
+function nameTab(name) {
+  const label = document.querySelector(`[data-app-view="${name}"] span`);
+  const title = byId("topbarTitle");
+  title.dataset.i18n = label.dataset.i18n;
+  title.textContent = label.textContent;
 }
 
 // One activity on its own in the comparison, as the diary opens it.
@@ -885,6 +889,8 @@ export function setupCompare({ onConverter }) {
     view.pickerOpen = !view.pickerOpen;
     renderList();
   });
+  // The page opens on the converter, named until another tab is shown.
+  nameTab("converter");
   setupDiary({ onOpen: openInCompare });
   setupFitness({ onOpen: openInCompare });
   // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.

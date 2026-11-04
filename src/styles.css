@@ -957,7 +957,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 }
 
 /* Phones: the footer describing the app is left out, the bottom bar sits there. */
-@media (max-width: 640px) { footer { display: none; } }
+@media (max-width: 640px) { footer.footer-line { display: none; } }
 
 /* The header: on a desktop the buttons keep their words. On a phone it names the open tab, shows the library
    and a gear, and the gear opens a menu with the settings, the language and the appearance. */
