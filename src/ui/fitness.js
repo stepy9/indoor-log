@@ -507,6 +507,21 @@ function showFtpTooltip(event) {
   tooltip.style.top = `${box.top - card.top + 12}px`;
 }
 
+// A chart's tooltip by mouse or by touch: a tap shows the day, a sideways drag moves along the days
+// (the page still scrolls up and down), and the tooltip stays after the finger lifts until a tap elsewhere.
+function hoverable(chart, show, hide) {
+  chart.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse") show(event);
+  });
+  chart.addEventListener("pointermove", show);
+  chart.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "mouse") hide();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" && !chart.contains(event.target)) hide();
+  });
+}
+
 // Where a new FTP comes from, as words.
 function ftpChangeSource(change) {
   if (change.method === "manual") return t("fitnessFtpManual");
@@ -624,11 +639,8 @@ export function setupFitness({ onOpen }) {
     });
   }
   const chart = byId("fitnessLoadChart");
-  chart.addEventListener("pointermove", showLoadTooltip);
-  chart.addEventListener("pointerleave", hideLoadTooltip);
-  const ftpChart = byId("fitnessFtpChart");
-  ftpChart.addEventListener("pointermove", showFtpTooltip);
-  ftpChart.addEventListener("pointerleave", hideFtpTooltip);
+  hoverable(chart, showLoadTooltip, hideLoadTooltip);
+  hoverable(byId("fitnessFtpChart"), showFtpTooltip, hideFtpTooltip);
   let width = 0;
   new ResizeObserver(([item]) => {
     const next = Math.round(item.contentRect.width);
