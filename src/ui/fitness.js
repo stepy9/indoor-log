@@ -140,7 +140,8 @@ function renderTiles(history, settings) {
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {
     const ftp = currentFtp(settings, sport);
-    if (ftp) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(ftp)} W`, setByHand(sport, "ftp") ? t("fitnessSetByHand") : t("fitnessEstimated")));
+    const perKg = settings.weight ? ` · ${displayNumber(ftp / settings.weight, 2)} W/kg` : "";
+    if (ftp) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(ftp)} W`, `${setByHand(sport, "ftp") ? t("fitnessSetByHand") : t("fitnessEstimated")}${perKg}`));
   }
   byId("fitnessTiles").replaceChildren(...tiles);
 }
@@ -324,7 +325,7 @@ function zoneGroup(entries, settings, by) {
 const durationText = (seconds) => (seconds < 60 ? `${seconds} s` : seconds < 3600 ? `${seconds / 60} min` : `${seconds / 3600} h`);
 
 // The best power for each duration on a log scale, the range before as a dashed line.
-function renderCurve(current, previous, earlier) {
+function renderCurve(current, previous, earlier, settings) {
   const chart = byId("fitnessCurve");
   const curve = powerCurve(current);
   const before = Number.isFinite(ranges[view.range]) ? powerCurve(previous) : [];
@@ -338,7 +339,7 @@ function renderCurve(current, previous, earlier) {
   byId("fitnessCurveEmpty").hidden = has;
   chart.hidden = !has;
   byId("fitnessCurveLegend").hidden = !has || !before.some((point) => point.value != null);
-  renderCurveTable(curve, before);
+  renderCurveTable(curve, before, settings.weight);
   if (!has) return;
   const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
   const height = 260;
@@ -547,13 +548,13 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
-function renderCurveTable(curve, before) {
+function renderCurveTable(curve, before, weight) {
   const table = byId("fitnessCurveTable");
   const shown = curve.filter((point) => point.value != null);
   table.hidden = !shown.length;
   const head = node("tr");
   const hasBefore = before.some((point) => point.value != null);
-  head.append(...[t("fitnessDuration"), t("fitnessBestPower"), ...(hasBefore ? [t("fitnessPrevious"), t("trendChange")] : []), t("fitnessFrom")].map((label) => node("th", {}, label)));
+  head.append(...[t("fitnessDuration"), t("fitnessBestPower"), ...(weight ? ["W/kg"] : []), ...(hasBefore ? [t("fitnessPrevious"), t("trendChange")] : []), t("fitnessFrom")].map((label) => node("th", {}, label)));
   const rows = shown.map((point) => {
     const row = node("tr");
     const old = before.find((item) => item.duration === point.duration)?.value;
@@ -565,7 +566,7 @@ function renderCurveTable(curve, before) {
     from.append(link);
     const best = node("td", {}, `${point.value} W`);
     if (point.record) best.append(" ", node("span", { class: "fitness-record" }, t("fitnessRecord")));
-    row.append(node("td", {}, durationText(point.duration)), best, ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
+    row.append(node("td", {}, durationText(point.duration)), best, ...(weight ? [node("td", {}, displayNumber(point.value / weight, 2))] : []), ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
     return row;
   });
   table.replaceChildren(node("thead"), node("tbody"));
@@ -743,7 +744,7 @@ function render() {
   renderWeeks(history, current);
   renderZones(current, settings);
   const currentSet = new Set(current);
-  renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)));
+  renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)), settings);
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);

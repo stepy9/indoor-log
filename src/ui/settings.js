@@ -43,6 +43,7 @@ export function settingsFor(entries) {
     timeZone: zone,
     maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
+    weight: remembered().weight || null,
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
       return [sport, { ...saved, maxHeartRate: saved.maxHeartRate || generalMax }];
@@ -158,6 +159,17 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
+  // The body weight, to the tenth of a kilogram, for the power per kilogram.
+  const weight = numberField(t("settingsWeightLabel"), remembered().weight, "—", () => {}, { min: 30, max: 200 });
+  const weightInput = weight.querySelector("input");
+  weightInput.step = "0.1";
+  weightInput.inputMode = "decimal";
+  weightInput.addEventListener("change", () => {
+    const value = Number(weightInput.value.replace(",", "."));
+    saveFitness({ weight: weightInput.value.trim() && value > 0 ? Math.round(value * 10) / 10 : null });
+    changed();
+  });
+  grid.append(weight);
   pane.append(grid);
   return pane;
 }
