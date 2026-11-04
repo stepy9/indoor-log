@@ -1,4 +1,6 @@
-import { applySynced, deletedIds, listEntries } from "../library.js";
+import { applySynced, backupFitName, deletedIds, entryFromFit, findWorkout, fitCoverage, listEntries, saveEntries, workoutFromEntry } from "../library.js";
+import { decodeGarminFit, encodeFit } from "../fit.js";
+import { fitFileName } from "../files.js";
 import { changesFor, mergeStates, parseSync, syncText } from "../sync.js";
 import { applySyncedSettings, syncedSettings } from "./preferences.js";
 
@@ -164,11 +166,68 @@ async function uploadFit(filename, bytes) {
   if (!response.ok) throw await dropboxError(response);
 }
 
+// Activities whose FIT went up, marked in the library (and so synced) once the library has them: an export's
+// activity is saved a moment after its FIT. A mark waits two minutes for it, then gives up.
+const marks = [];
+let marking = null;
+async function applyMarks() {
+  if (marking || !marks.length) return;
+  marking = (async () => {
+    const entries = await listEntries();
+    const save = [];
+    for (const mark of [...marks]) {
+      const entry = findWorkout(entries, mark.probe);
+      const settled = entry && (entry.fitBackup === "export" || entry.fitBackup === mark.kind);
+      if (entry && !settled) save.push({ ...entry, fitBackup: mark.kind });
+      if (settled || Date.now() - mark.at > 120_000) marks.splice(marks.indexOf(mark), 1);
+    }
+    if (save.length) await saveEntries(save);
+  })().finally(() => (marking = null));
+  return marking;
+}
+const markFit = (probe, kind) => {
+  marks.push({ probe, kind, at: Date.now() });
+  return applyMarks();
+};
+
+// A FIT goes up under a name starting with its date, and its activity is marked. One that is not a readable FIT
+// goes up under its own name, unmarked.
+async function backupFitBytes(bytes, filename, kind = "export") {
+  let probe = null;
+  try {
+    probe = entryFromFit(decodeGarminFit(bytes), { name: filename });
+  } catch {}
+  await uploadFit(probe ? backupFitName(probe.startMs, filename) : filename, bytes);
+  if (probe) await markFit(probe, kind);
+}
+
 async function sendWaitingFits() {
   for (const [filename, bytes] of fitWaiting) {
-    await uploadFit(filename, bytes);
+    await backupFitBytes(bytes, filename);
     fitWaiting.delete(filename);
   }
+}
+
+export async function fitBackupCoverage() {
+  return fitCoverage(await listEntries());
+}
+
+// The activities without a FIT in Dropbox get one put together from what the library keeps.
+export async function rebuildMissingFits(onProgress = () => {}) {
+  const { missing } = await fitBackupCoverage();
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let done = 0;
+  onProgress(done, missing.length);
+  for (const entry of missing) {
+    const workout = workoutFromEntry(entry);
+    if (workout.records.length >= 2) {
+      const bytes = encodeFit(workout.records, workout.summary, workout.laps, workout.startMs, workout.endMs, zone, workout.activityName, workout.sport, workout.subSport);
+      await uploadFit(backupFitName(entry.startMs, fitFileName(entry.name, "Activity")), bytes);
+      await markFit(entry, "rebuilt");
+    }
+    onProgress(++done, missing.length);
+  }
+  return done;
 }
 
 // FIT files exported before, picked from the disk, go up one by one; the count gone up so far is reported.
@@ -177,7 +236,7 @@ export async function uploadFitFiles(files, onProgress = () => {}) {
   let done = 0;
   onProgress(done, fits.length);
   for (const file of fits) {
-    await uploadFit(file.name, await file.arrayBuffer());
+    await backupFitBytes(await file.arrayBuffer(), file.name);
     onProgress(++done, fits.length);
   }
   return done;
@@ -239,6 +298,7 @@ export async function setupCloud() {
     setStatus("error", error.message);
   }
   window.addEventListener("library-change", syncSoon);
+  window.addEventListener("library-change", () => applyMarks());
   window.addEventListener("synced-settings-change", syncSoon);
   // Coming back to the window picks up what another device did meanwhile.
   document.addEventListener("visibilitychange", () => {

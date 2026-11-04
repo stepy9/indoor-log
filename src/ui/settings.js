@@ -5,7 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
-import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles } from "./cloud.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -342,6 +342,37 @@ function zonesBlock(sport, by, settings) {
 // The FTP over time: each record holds from its day until the next; without one in force the estimate counts.
 // The weight history as the FTP's: each record holds from its day, so a new weight leaves the past W/kg as it was.
 // Syncing through Dropbox: connect, its state, sync now, disconnect. Only once the app has its Dropbox key.
+// How many activities have their FIT in Dropbox, which do not, and a way to put theirs together from the library.
+async function fitCoverageInto(container) {
+  const { total, done, rebuilt, missing } = await fitBackupCoverage();
+  const line = node("p", { class: `settings-cloud-state is-${missing.length ? "off" : "ok"}` });
+  line.append(node("span", { class: "settings-cloud-icon", "aria-hidden": "true" }, missing.length ? "!" : "✓"),
+    document.createTextNode(t("cloudFitCoverage", { done, total }) + (rebuilt ? " " + t("cloudFitRebuiltCount", { count: rebuilt }) : "")));
+  const parts = [line];
+  if (missing.length) {
+    const details = node("details", { class: "settings-cloud-missing" });
+    const list = node("ul");
+    for (const entry of missing) list.append(node("li", {}, `${new Date(entry.startMs).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ")} · ${entry.name}`));
+    details.append(node("summary", {}, t("cloudFitMissing", { count: missing.length })), list);
+    const rebuild = node("button", { type: "button", class: "outline-button" }, t("cloudFitRebuild", { count: missing.length }));
+    const progress = node("span", { class: "field-note" });
+    rebuild.addEventListener("click", async () => {
+      rebuild.disabled = true;
+      try {
+        await rebuildMissingFits((doneCount, all) => (progress.textContent = t("cloudFitUploading", { done: doneCount, total: all })));
+        fitCoverageInto(container);
+      } catch (error) {
+        progress.textContent = t("cloudError", { message: error.message });
+        rebuild.disabled = false;
+      }
+    });
+    const row = node("div", { class: "settings-cloud-actions" });
+    row.append(rebuild, progress);
+    parts.push(details, node("p", { class: "field-note" }, t("cloudFitRebuildNote")), row);
+  }
+  container.replaceChildren(...parts);
+}
+
 function cloudBlock() {
   const block = node("div", { class: "settings-block" });
   if (!cloudAvailable()) return block;
@@ -375,6 +406,8 @@ function cloudBlock() {
         try {
           const count = await uploadFitFiles(pick.files, (done, total) => (progress.textContent = t("cloudFitUploading", { done, total })));
           progress.textContent = t("cloudFitUploaded", { count });
+          const coverage = block.querySelector(".settings-cloud-coverage");
+          if (coverage) fitCoverageInto(coverage);
         } catch (error) {
           progress.textContent = t("cloudError", { message: error.message });
         } finally {
@@ -385,7 +418,9 @@ function cloudBlock() {
       const uploadRow = node("div", { class: "settings-cloud-actions" });
       uploadRow.append(upload, pick, progress);
       const fitGroup = node("div", { class: "settings-cloud-group" });
-      fitGroup.append(fitLabel, node("p", { class: "field-note settings-cloud-indent" }, t("cloudFitNote")), uploadRow);
+      const coverage = node("div", { class: "settings-cloud-indent settings-cloud-coverage" });
+      fitCoverageInto(coverage);
+      fitGroup.append(fitLabel, node("p", { class: "field-note settings-cloud-indent" }, t("cloudFitNote")), uploadRow, coverage);
       uploadRow.classList.add("settings-cloud-indent");
       extra = [fitGroup];
     } else {

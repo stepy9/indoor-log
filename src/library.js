@@ -154,10 +154,12 @@ export function mergeDuplicates(existing, incoming) {
     const name = !winner.renamed && loser.renamed ? { name: loser.name, renamed: true } : null;
     const trainer = !winner.trainer && loser.trainer ? { trainer: loser.trainer } : null;
     const resistance = !winner.resistance && loser.resistance ? { resistance: loser.resistance } : null;
+    // Knowing its FIT is in Dropbox outlives the recording too.
+    const backup = !winner.fitBackup && loser.fitBackup ? { fitBackup: loser.fitBackup } : null;
     const lapLevels = loser.laps?.some((lap) => lap.resistance) && !winner.laps?.some((lap) => lap.resistance) && winner.laps?.length === loser.laps.length
       ? { laps: winner.laps.map((lap, lapIndex) => (loser.laps[lapIndex].resistance ? { ...lap, resistance: loser.laps[lapIndex].resistance } : lap)) }
       : null;
-    kept[index] = kind || name || trainer || resistance || lapLevels ? { ...winner, ...kind, ...name, ...trainer, ...resistance, ...lapLevels } : winner;
+    kept[index] = kind || name || trainer || resistance || lapLevels || backup ? { ...winner, ...kind, ...name, ...trainer, ...resistance, ...lapLevels, ...backup } : winner;
   }
   const keptIds = new Set(kept.map((entry) => entry.id));
   const existingById = new Map(existing.map((entry) => [entry.id, entry]));
@@ -165,6 +167,39 @@ export function mergeDuplicates(existing, incoming) {
     save: kept.filter((entry) => existingById.get(entry.id) !== entry),
     remove: existing.filter((entry) => !keptIds.has(entry.id)).map((entry) => entry.id),
     count: kept.length,
+  };
+}
+
+// FIT backups in Dropbox: each activity marked "export" (its own FIT went up) or "rebuilt" (put together
+// from the library). How many have one and which do not.
+export function fitCoverage(entries) {
+  const missing = entries.filter((entry) => !entry.fitBackup);
+  return { total: entries.length, done: entries.length - missing.length, rebuilt: entries.filter((entry) => entry.fitBackup === "rebuilt").length, missing };
+}
+
+// The library's activity a FIT belongs to: same sport, overlapping in time.
+export const findWorkout = (entries, probe) => entries.find((entry) => sameWorkout(entry, probe)) ?? null;
+
+// A backup's name starts with the day and time, so two activities of one name do not overwrite each other.
+export function backupFitName(startMs, filename) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(filename)) return filename;
+  const date = new Date(startMs);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}${pad(date.getMinutes())} ${filename}`;
+}
+
+const subSports = { rowing: "indoorRowing", cycling: "indoorCycling", running: "treadmill" };
+
+// What encodeFit needs, from a library entry: the records back from columns, the laps and the summary as kept.
+export function workoutFromEntry(entry) {
+  const { seconds = [] } = entry.records ?? {};
+  const records = seconds.map((second, index) => ({
+    timeMs: entry.startMs + second * 1000,
+    ...Object.fromEntries(fields.map((field) => [field, entry.records[field]?.[index] ?? null])),
+  }));
+  return {
+    records, summary: entry.summary ?? {}, laps: entry.laps ?? [], startMs: entry.startMs, endMs: entry.endMs,
+    sport: entry.sport, subSport: subSports[entry.sport] ?? "indoorRowing", activityName: entry.name,
   };
 }
 

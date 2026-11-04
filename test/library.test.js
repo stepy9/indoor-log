@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../src/core.js";
-import { backupDue, backupText, entryFromFit, entryFromWorkout, entryId, mergeDuplicates, parseBackup, sameWorkout } from "../src/library.js";
+import { encodeFit as encodeFitBytes } from "../src/fit.js";
+import { backupDue, backupFitName, findWorkout, fitCoverage, workoutFromEntry, backupText, entryFromFit, entryFromWorkout, entryId, mergeDuplicates, parseBackup, sameWorkout } from "../src/library.js";
 
 const folder = path.resolve("test", "fixtures", "rowing");
 
@@ -126,4 +127,31 @@ test("a backup is due with activities and none made, or with new ones since one 
   assert.equal(backupDue(20, { at: now - 40 * day, count: 20 }, now), false);
   assert.equal(backupDue(21, { at: now - 40 * day, count: 20 }, now), true);
   assert.equal(backupDue(21, { at: now - 10 * day, count: 20 }, now), false);
+});
+
+test("a FIT rebuilt from a library entry reads back as the same activity", () => {
+  const workout = buildWorkout(parseKinomap(fs.readFileSync(path.join(folder, "activity.tcx"), "utf8")), null, { activityName: "Row" });
+  const entry = entryFromWorkout(workout);
+  const rebuilt = workoutFromEntry(entry);
+  assert.equal(rebuilt.records.length, workout.records.length);
+  const bytes = encodeFitBytes(rebuilt.records, rebuilt.summary, rebuilt.laps, rebuilt.startMs, rebuilt.endMs, "Europe/Prague", rebuilt.activityName, rebuilt.sport, rebuilt.subSport);
+  const back = entryFromFit(decodeGarminFit(bytes), { name: "Row" });
+  assert.ok(sameWorkout(back, entry));
+  assert.equal(back.laps.length, entry.laps.length);
+  assert.ok(Math.abs(back.summary.distance - entry.summary.distance) < 1);
+});
+
+test("FIT backup coverage, matching and names", () => {
+  const a = { id: "a", sport: "rowing", startMs: 0, endMs: 600_000, fitBackup: "export" };
+  const b = { id: "b", sport: "rowing", startMs: 86_400_000, endMs: 86_400_000 + 600_000, fitBackup: "rebuilt" };
+  const c = { id: "c", sport: "cycling", startMs: 0, endMs: 600_000 };
+  const coverage = fitCoverage([a, b, c]);
+  assert.deepEqual([coverage.total, coverage.done, coverage.rebuilt, coverage.missing.map((e) => e.id)], [3, 2, 1, ["c"]]);
+  assert.equal(findWorkout([a, b, c], { sport: "cycling", startMs: 30_000, endMs: 590_000 }), c);
+  assert.equal(findWorkout([a, b, c], { sport: "running", startMs: 0, endMs: 600_000 }), null);
+  assert.match(backupFitName(new Date(2026, 10, 4, 7, 5).getTime(), "Row.fit"), /^2026-11-04 0705 Row\.fit$/);
+  assert.equal(backupFitName(0, "2026-11-04 0705 Row.fit"), "2026-11-04 0705 Row.fit");
+  // A re-recording keeps the mark of the one it replaces.
+  const { save } = mergeDuplicates([{ ...a, source: "convert" }], [{ ...a, id: "a2", source: "merge", fitBackup: undefined }]);
+  assert.equal(save[0].fitBackup, "export");
 });
