@@ -417,9 +417,58 @@ function renderFtpChart(settings) {
       children.push(dot);
     }
   }
+  const guide = node("g");
+  children.push(guide);
+  view.ftpLayout = { lines, settings, start, end, xFor, margin, width, height, guide };
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.style.height = `${height}px`;
   chart.replaceChildren(...children);
+}
+
+// The day under the pointer: the FTP of each sport then, and the effort nearest within a few pixels.
+function showFtpTooltip(event) {
+  const layout = view.ftpLayout;
+  const tooltip = byId("fitnessFtpTooltip");
+  if (!layout) return;
+  const box = byId("fitnessFtpChart").getBoundingClientRect();
+  const x = ((event.clientX - box.left) / box.width) * layout.width;
+  const plotWidth = layout.width - layout.margin.left - layout.margin.right;
+  const ms = Math.min(layout.end, Math.max(layout.start, layout.start + ((x - layout.margin.left) / plotWidth) * (layout.end - layout.start)));
+  const at = layout.xFor(ms);
+  layout.guide.replaceChildren(node("line", { x1: at, x2: at, y1: layout.margin.top, y2: layout.height - layout.margin.bottom, class: "fitness-guide" }));
+  const rows = [node("div", { class: "diary-tooltip-when" }, dayText(dayKey(ms, zone), { weekday: "long", day: "numeric", month: "numeric", year: "numeric" }))];
+  const several = layout.lines.length > 1;
+  for (const line of layout.lines) {
+    const swatch = () => {
+      const element = node("span", { class: "fitness-swatch" });
+      element.style.background = line.color;
+      return element;
+    };
+    const ftp = ftpOn(layout.settings, line.sport, ms);
+    if (ftp) {
+      const row = node("div", { class: "diary-tooltip-row" });
+      row.append(swatch(), node("span", {}, several ? `FTP · ${sportLabel(line.sport)}` : "FTP"), node("strong", {}, `${Math.round(ftp)} W`));
+      rows.push(row);
+    }
+    const near = line.efforts.filter((effort) => Math.abs(layout.xFor(effort.ms) - x) <= 8).sort((a, b) => Math.abs(a.ms - ms) - Math.abs(b.ms - ms))[0];
+    if (near) {
+      const row = node("div", { class: "diary-tooltip-row" });
+      row.append(swatch(), node("span", {}, `${near.entry.name ?? ""} ${dayText(dayKey(near.ms, zone))} · 95 % ${t("fitnessBest20")}`), node("strong", {}, `${Math.round(near.ftp)} W`));
+      rows.push(row);
+    }
+  }
+  tooltip.replaceChildren(...rows);
+  tooltip.hidden = false;
+  const card = tooltip.offsetParent.getBoundingClientRect();
+  const left = (at / layout.width) * box.width + box.left - card.left;
+  const right = left + 14;
+  tooltip.style.left = `${Math.max(8, right + tooltip.offsetWidth > card.width - 8 ? left - tooltip.offsetWidth - 14 : right)}px`;
+  tooltip.style.top = `${box.top - card.top + 12}px`;
+}
+
+function hideFtpTooltip() {
+  byId("fitnessFtpTooltip").hidden = true;
+  view.ftpLayout?.guide.replaceChildren();
 }
 
 function renderCurveTable(curve, before) {
@@ -527,6 +576,9 @@ export function setupFitness({ onOpen }) {
   const chart = byId("fitnessLoadChart");
   chart.addEventListener("pointermove", showLoadTooltip);
   chart.addEventListener("pointerleave", hideLoadTooltip);
+  const ftpChart = byId("fitnessFtpChart");
+  ftpChart.addEventListener("pointermove", showFtpTooltip);
+  ftpChart.addEventListener("pointerleave", hideFtpTooltip);
   let width = 0;
   new ResizeObserver(([item]) => {
     const next = Math.round(item.contentRect.width);
