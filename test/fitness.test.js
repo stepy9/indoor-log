@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -141,4 +141,14 @@ test("a typed FTP gets a suggestion once a later estimate beats it", () => {
   const higher = { ...settings, sports: { cycling: { ftpHistory: [{ from: "2026-10-01", ftp: 230 }] } } };
   assert.equal(ftpSuggestion(higher, "cycling", day(25)), null);
   assert.equal(ftpSuggestion({ ...settings, sports: {} }, "cycling", day(25)), null);
+});
+
+test("freshInDays counts the days of rest until the form is above +15", () => {
+  assert.equal(freshInDays([]), null);
+  assert.equal(freshInDays([{ day: "2026-11-04", fitness: 40, fatigue: 20 }]), 1);
+  const days = freshInDays([{ day: "2026-11-04", fitness: 50, fatigue: 70 }]);
+  assert.ok(days > 1 && days < 20);
+  assert.equal(freshInDays([{ day: "2026-11-04", fitness: 0, fatigue: 0 }]), null);
+  assert.equal(freshInDays([{ day: "2026-11-04", fitness: 7, fatigue: 17 }]), null);
+  assert.ok(freshInDays([{ day: "2026-11-04", fitness: 7, fatigue: 17 }], 0) > 1);
 });

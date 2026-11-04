@@ -227,6 +227,20 @@ export function loadHistory(entries, settings, timeZone, lastDay) {
   return days;
 }
 
+// How many days of rest after the last day of the history until the form is above the level (fresh: +15):
+// 1 when it already is for tomorrow, null when not within 60 days or without history.
+export function freshInDays(history, level = 15) {
+  const last = history.at(-1);
+  if (!last) return null;
+  let { fitness, fatigue } = last;
+  for (let days = 1; days <= 60; days += 1) {
+    if (fitness - fatigue > level) return days;
+    fitness -= fitness / fitnessDays;
+    fatigue -= fatigue / fatigueDays;
+  }
+  return null;
+}
+
 // What the form says: fresh and ready, in balance, building fitness, or overreaching.
 export function formState(form) {
   if (form > 15) return "fresh";

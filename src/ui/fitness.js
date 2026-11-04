@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -132,6 +132,11 @@ function renderTiles(history, settings) {
     tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form"),
     tile(t("fitnessWeekLoad"), displayNumber(week)),
   ] : [];
+  // When a rest would make the form fresh, for planning a race or an FTP test.
+  // With little fitness the form cannot reach +15, so then the day it turns positive.
+  const level = freshInDays(history, 15) ? 15 : 0;
+  const freshIn = freshInDays(history, level);
+  if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {
     const ftp = currentFtp(settings, sport);
