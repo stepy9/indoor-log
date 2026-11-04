@@ -361,6 +361,7 @@
           </div>
           <div class="diary-filters">
             <select id="diarySport" aria-label="Sport" data-i18n-aria="librarySport"></select>
+            <label class="check-field diary-plan-toggle"><input id="diaryShowPlan" type="checkbox" /> <span data-i18n="diaryShowPlan">Plán</span></label>
             <div class="segmented" id="diaryPeriod" role="group" aria-label="Období" data-i18n-aria="diaryPeriod">
               <button type="button" data-period="week" aria-pressed="false" data-i18n="diaryWeek">Týden</button>
               <button type="button" data-period="month" aria-pressed="true" data-i18n="diaryMonth">Měsíc</button>
@@ -401,6 +402,7 @@
           <div class="diary-tooltip" id="diaryTooltip" role="tooltip" hidden></div>
           <p class="field-note" id="diaryChartEmpty" data-i18n="diaryNothing" hidden>V tomto období žádný trénink.</p>
         </section>
+        <section class="card diary-plan" id="diaryPlan" hidden></section>
         <section class="card" id="diaryCalendarCard">
           <div class="diary-nav diary-calendar-nav">
             <button class="outline-button" id="diaryCalendarBack" type="button" aria-label="Předchozí" data-i18n-aria="diaryBack" title="Předchozí" data-i18n-title="diaryBack">‹</button>

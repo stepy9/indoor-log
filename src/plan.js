@@ -89,3 +89,83 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today }) {
     steadyWatts: ftp ? [Math.round(ftp * 0.56), Math.round(ftp * 0.75)] : null,
   };
 }
+
+// The weekdays trained on, Monday 0 to Sunday 6: those set by hand, or else the ones trained on at least twice
+// in the last four weeks, or else the commonest ones, as many as the usual workouts a week.
+export function trainingDays(workouts, today, chosen = null) {
+  if (chosen?.length) return [...chosen].sort((a, b) => a - b);
+  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
+  const recent = workouts.filter((workout) => workout.day > addDays(today, -28) && workout.day <= today);
+  if (!recent.length) return [];
+  const counts = Array(7).fill(0);
+  for (const day of new Set(recent.map((workout) => workout.day))) counts[weekday(day)] += 1;
+  const often = counts.map((count, day) => ({ count, day })).filter(({ count }) => count >= 2).map(({ day }) => day);
+  if (often.length) return often;
+  // Per week trained in, so a fresh start does not count the weeks before it.
+  const weeksTrained = new Set(recent.map((workout) => mondayOf(workout.day))).size;
+  const perWeek = Math.max(1, Math.round(new Set(recent.map((workout) => workout.day)).size / weeksTrained));
+  return counts.map((count, day) => ({ count, day })).sort((a, b) => b.count - a.count || a.day - b.day).slice(0, perWeek).map(({ day }) => day).sort((a, b) => a - b);
+}
+
+// The next seven days from today laid out by a plan of nextStep: on the training days not yet trained on, the
+// longer workout on the last of them (a weekend day first), intervals mid-way and never the day after the longer
+// one, the usual workout on the rest. A longer workout already done this week moves to the next week's days.
+// [{ day, type: "long" | "intervals" | "usual" }]
+export function weekPlan(plan, workouts, today, days) {
+  if (!plan || !days.length) return [];
+  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
+  const trained = new Set(workouts.map((workout) => workout.day));
+  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => days.includes(weekday(day)) && !trained.has(day));
+  if (!open.length) return [];
+  const nextMonday = addDays(mondayOf(today), 7);
+  const types = new Map(open.map((day) => [day, "usual"]));
+  // The longer workout: this week's if not done, on a weekend day if there is one, else the last open day.
+  // Within this week unless it is done; the next week's days otherwise, or when this week has none left.
+  const thisWeekOpen = open.filter((day) => day < nextMonday);
+  const longDays = plan.doneLong || !thisWeekOpen.length ? open.filter((day) => day >= nextMonday) : thisWeekOpen;
+  const longDay = [...longDays].reverse().find((day) => weekday(day) >= 5) ?? longDays.at(-1);
+  if (longDay) types.set(longDay, "long");
+  // Intervals: once a week, twice with five days or more to train on (once in a lighter week), never leaving the
+  // week without a usual workout, on open days away from the longer one.
+  const wanted = plan.intervals.due ? Math.max(0, (plan.lighter || open.length < 5 ? 1 : 2) - plan.intervals.done) : 0;
+  const room = open.length >= 3 ? open.length - 2 : open.length === 2 ? 1 : 0;
+  const free = open.filter((day) => types.get(day) === "usual" && day !== addDays(longDay ?? "", 1) && day !== addDays(longDay ?? "", -1));
+  const picks = [];
+  // Spread out: the middle open day first, then the one farthest from those taken.
+  for (let count = 0; count < Math.min(wanted, free.length, room); count += 1) {
+    const rest = free.filter((day) => !picks.includes(day));
+    const pick = picks.length ? rest.sort((a, b) => Math.min(...picks.map((day) => Math.abs(noon(day) - noon(b)))) - Math.min(...picks.map((day) => Math.abs(noon(day) - noon(a)))))[0] : rest[Math.floor((rest.length - 1) / 2)];
+    if (!pick) break;
+    picks.push(pick);
+  }
+  for (const day of picks) types.set(day, "intervals");
+  return open.map((day) => ({ day, type: types.get(day) }));
+}
+
+// This week, Monday to Sunday, as a checklist: each training day, and any other day trained on.
+// A day trained on is done, with its workouts; a training day gone by without one is missed; the days ahead
+// carry what weekPlan lays on them. [{ day, status: "done" | "missed" | "planned", type, workouts }]
+export function weekChecklist(plan, workouts, today, days) {
+  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
+  const monday = mondayOf(today);
+  const week = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+  const ahead = new Map(weekPlan(plan, workouts, today, days).map((item) => [item.day, item.type]));
+  return week.flatMap((day) => {
+    const done = workouts.filter((workout) => workout.day === day);
+    if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
+    if (!days.includes(weekday(day))) return [];
+    if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
+    return [{ day, status: "planned", type: ahead.get(day) ?? "usual", workouts: [] }];
+  });
+}
+
+// The longest steady workout of each of the last weeks, oldest first, this week last:
+// [{ monday, km }] with km 0 for a week without one.
+export function longestByWeek(workouts, today, weeks = 8) {
+  const thisMonday = mondayOf(today);
+  return Array.from({ length: weeks }, (_, index) => {
+    const monday = addDays(thisMonday, (index - weeks + 1) * 7);
+    const inWeek = workouts.filter((workout) => workout.kind === "steady" && workout.day >= monday && workout.day < addDays(monday, 7));
+    return { monday, km: inWeek.length ? Math.max(...inWeek.map((workout) => workout.km)) : 0 };
+  });
+}

@@ -4,6 +4,7 @@ import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
+import { trainingPlan } from "./fitness.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
@@ -28,7 +29,130 @@ const view = {
   span: remembered.span === "same" ? "same" : "whole",
   // A day of the period picked by hand, kept per period type.
   picked: {},
+  // The week's plan above the calendar, on unless turned off.
+  showPlan: remembered.showPlan !== false,
 };
+
+// Days ticked by hand in the week's plan, for a workout done but not in the library yet; kept per browser.
+const ticksKey = "kinomap-plan-ticks";
+const ticked = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(ticksKey)) ?? []);
+  } catch {
+    return new Set();
+  }
+};
+function setTicked(day, on) {
+  const days = ticked();
+  if (on) days.add(day);
+  else days.delete(day);
+  try {
+    // Only the last few weeks matter.
+    localStorage.setItem(ticksKey, JSON.stringify([...days].sort().slice(-60)));
+  } catch {}
+}
+
+// This week's plan as a checklist: each training day ticked when trained on (or by hand), what is planned ahead.
+function renderPlan() {
+  const card = byId("diaryPlan");
+  byId("diaryShowPlan").checked = view.showPlan;
+  const result = view.showPlan ? trainingPlan(view.entries, view.sport) : null;
+  card.hidden = !result?.checklist.length;
+  if (card.hidden) return;
+  const { plan, checklist, sport, chosenDays, longest } = result;
+  const today = dayKey(Date.now(), zone);
+  const hand = ticked();
+  const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
+  const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
+  const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })
+    : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts)
+    : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }));
+  const rows = checklist.map((item) => {
+    const row = Object.assign(document.createElement("label"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
+    const box = Object.assign(document.createElement("input"), { type: "checkbox" });
+    box.checked = item.status === "done" || hand.has(item.day);
+    // A day trained on is ticked by its workout; the others by hand.
+    box.disabled = item.status === "done";
+    box.addEventListener("change", () => {
+      setTicked(item.day, box.checked);
+      row.classList.toggle("is-ticked", box.checked);
+    });
+    row.classList.toggle("is-ticked", box.checked);
+    const when = Object.assign(document.createElement("span"), { className: "diary-plan-day", textContent: format(item.day, { weekday: "short", day: "numeric", month: "numeric" }) });
+    const text = item.status === "done"
+      ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${kindLabel(workout.kind, sport)}`).join(", ")
+      : item.status === "missed" ? (hand.has(item.day) ? t("planDoneByHand") : t("planMissed")) : planned(item.type);
+    row.append(box, when, Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+    return row;
+  });
+  const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
+  head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: `${t("planTitle")} · ${sportLabel(sport)}` }));
+  const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
+  // What the days ahead add, an interval workout counted as a usual one.
+  const ahead = checklist.filter((item) => item.status === "planned" && !hand.has(item.day)).reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : plan.usual.km), 0);
+  const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
+  list.append(...rows, Object.assign(document.createElement("p"), { className: "field-note", textContent: [...(plan.lighter ? [t("planLighter")] : []), t(chosenDays ? "planDaysChosen" : "planDaysAuto")].join(" · ") }));
+  const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
+  const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });
+  body.append(list, side);
+  card.replaceChildren(head, body);
+  // Drawn at the column's own width, so the text keeps its size.
+  const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
+  side.append(weekBar(done, ahead, plan.weekKm, km, width), longestChart(longest, plan.long.fromKm, km, width));
+}
+
+// The week's distance as a bar: done solid, planned dashed, the target marked.
+function weekBar(done, ahead, target, km, width) {
+  const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
+  const total = Math.max(target ?? 0, done + ahead, 0.1);
+  const at = (value) => (value / total) * width;
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} 18`, class: "diary-plan-bar", role: "img", "aria-label": t("planWeek", { done: km(done), target: km(target ?? done + ahead) }) });
+  svg.append(
+    svgNode("rect", { x: 0, y: 3, width, height: 12, rx: 6, class: "diary-plan-track" }),
+    svgNode("rect", { x: 0, y: 3, width: Math.max(0, at(done)), height: 12, rx: 6, class: "diary-plan-done" }),
+    svgNode("rect", { x: at(done), y: 3, width: Math.max(0, at(ahead)), height: 12, class: "diary-plan-ahead" }),
+  );
+  if (target) svg.append(svgNode("line", { x1: at(target), x2: at(target), y1: 0, y2: 18, class: "diary-plan-target" }));
+  const label = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
+  label.append(
+    Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planWeekTitle") }),
+    Object.assign(document.createElement("strong"), { textContent: target ? t("planWeek", { done: km(Math.round(done * 10) / 10), target: km(target) }) : `${km(Math.round(done * 10) / 10)} km` }),
+  );
+  const legend = Object.assign(document.createElement("div"), { className: "diary-plan-legend" });
+  legend.append(...[["is-done", t("planLegendDone")], ["is-ahead", t("planLegendAhead", { km: km(Math.round(ahead * 10) / 10) })], ...(target ? [["is-target", t("planLegendTarget")]] : [])].map(([className, text]) => {
+    const item = Object.assign(document.createElement("span"), { className: `diary-plan-key ${className}` });
+    item.append(Object.assign(document.createElement("i"), {}), text);
+    return item;
+  }));
+  box.append(label, svg, legend);
+  return box;
+}
+
+// The longest steady workout of each of the last weeks as bars, this week's aim dashed after them.
+function longestChart(weeks, aim, km, width) {
+  const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
+  const height = 130;
+  const bottom = 18;
+  const bars = [...weeks.slice(0, -1).map((week) => ({ ...week, aim: false })), { monday: weeks.at(-1).monday, km: Math.max(weeks.at(-1).km, 0), aim }];
+  const top = Math.max(aim, ...bars.map((bar) => bar.km), 0.5) * 1.15;
+  const slot = width / bars.length;
+  const yFor = (value) => height - bottom - (value / top) * (height - bottom - 14);
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, class: "diary-plan-chart", role: "img", "aria-label": t("planLongestTitle") });
+  bars.forEach((bar, index) => {
+    const x = index * slot + slot * 0.2;
+    const barWidth = slot * 0.6;
+    const isNow = index === bars.length - 1;
+    if (isNow) svg.append(svgNode("rect", { x, y: yFor(bar.aim), width: barWidth, height: yFor(0) - yFor(bar.aim), rx: 3, class: "diary-plan-aim" }));
+    if (bar.km > 0) svg.append(svgNode("rect", { x, y: yFor(bar.km), width: barWidth, height: yFor(0) - yFor(bar.km), rx: 3, class: isNow ? "diary-plan-done" : "diary-plan-past" }));
+    const value = isNow ? Math.max(bar.km, bar.aim) : bar.km;
+    if (value > 0) svg.append(svgNode("text", { x: x + barWidth / 2, y: yFor(value) - 3, class: "diary-plan-value" }, km(Math.round(value * 10) / 10)));
+    svg.append(svgNode("text", { x: x + barWidth / 2, y: height - 4, class: "diary-plan-week" }, isNow ? t("planThisWeek") : String(weekNumber(bar.monday))));
+  });
+  const label = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
+  label.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planLongestTitle") }), Object.assign(document.createElement("span"), { className: "field-note", textContent: t("planLongestNote") }));
+  box.append(label, svg);
+  return box;
+}
 
 const basisFor = (period) => (period === "year" && view.basis === "lastYear" ? "previous" : view.basis);
 
@@ -427,7 +551,7 @@ function renderLegend() {
 
 function render() {
   if (byId("diaryView").hidden) return;
-  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span } });
+  saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span, showPlan: view.showPlan } });
   view.day ??= dayKey(Date.now(), zone);
   const range = periodRange(view.period, view.day);
   const entries = shown();
@@ -445,6 +569,7 @@ function render() {
   renderBars(range, current);
   renderLegend();
   renderCalendar(range, current);
+  renderPlan();
 }
 
 export async function showDiary() {
@@ -455,6 +580,10 @@ export async function showDiary() {
 export const rerenderDiary = render;
 
 export function setupDiary({ onOpen }) {
+  byId("diaryShowPlan").addEventListener("change", (event) => {
+    view.showPlan = event.target.checked;
+    render();
+  });
   openActivity = onOpen;
   byId("diarySport").addEventListener("change", (event) => {
     view.sport = event.target.value;

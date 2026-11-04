@@ -387,6 +387,21 @@ function goalBlock(sport) {
   const both = node("div", { class: "settings-weekly-row" });
   both.append(weekly, distance);
   block.append(both);
+  // The days of the week trained on, for the week's plan; none picked lets the plan take the usual ones.
+  const chosen = new Set(savedSport(sport).trainingDays ?? []);
+  const daysRow = node("div", { class: "segmented settings-days", role: "group", "aria-label": t("settingsTrainingDays") });
+  for (let day = 0; day < 7; day += 1) {
+    const name = new Date(Date.UTC(2024, 0, 1 + day)).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ", { weekday: "short", timeZone: "UTC" });
+    const button = node("button", { type: "button", "aria-pressed": String(chosen.has(day)), "data-key": `training-day-${sport}-${day}` }, name);
+    button.addEventListener("click", () => {
+      if (chosen.has(day)) chosen.delete(day);
+      else chosen.add(day);
+      saveSport(sport, { trainingDays: chosen.size ? [...chosen].sort((a, b) => a - b) : null });
+      changed();
+    });
+    daysRow.append(button);
+  }
+  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsTrainingDays")), daysRow, node("p", { class: "field-note" }, t("settingsTrainingDaysNote")));
   return block;
 }
 

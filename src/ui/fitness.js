@@ -1,6 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
-import { nextStep } from "../plan.js";
+import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
@@ -139,14 +139,19 @@ function shownGoals(history, settings) {
 
 // The next step for one sport, the one shown or, with all of them, the one trained most in the last four weeks:
 // the distance of the longer workout to pick a video by, the usual one, the week's distance and the intervals.
-function renderNextStep(history, settings) {
-  const card = byId("fitnessNext");
+// The plan for one sport from the library: the one given or, with all, the one trained most in the last four
+// weeks; with the next seven days laid out on its training days. Shared with the diary's calendar.
+// { sport, plan, days: [{ day, type }] } or null without enough to go on.
+export function trainingPlan(entries, chosen = "all") {
   const since = Date.now() - 28 * 86_400_000;
   const counts = new Map();
-  for (const entry of view.entries) if (entry.startMs >= since) counts.set(entry.sport, (counts.get(entry.sport) ?? 0) + 1);
-  const sport = view.sport !== "all" ? view.sport : [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  for (const entry of entries) if (entry.startMs >= since) counts.set(entry.sport, (counts.get(entry.sport) ?? 0) + 1);
+  const sport = chosen !== "all" ? chosen : [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!sport) return null;
+  const settings = settingsFor(entries);
+  const history = loadHistory(entries.filter((entry) => chosen === "all" || entry.sport === chosen), settings, zone, today());
   const last = history.at(-1);
-  const workouts = view.entries.filter((entry) => entry.sport === sport).map((entry) => {
+  const workouts = entries.filter((entry) => entry.sport === sport).map((entry) => {
     const zones = timeInZones([entry], "heartRate", settings);
     const total = zones.reduce((sum, value) => sum + value, 0);
     return {
@@ -158,9 +163,18 @@ function renderNextStep(history, settings) {
       hardShare: total ? (zones[3] + zones[4]) / total : null,
     };
   });
-  const plan = sport && last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today() }) : null;
-  card.hidden = !plan;
-  if (!plan) return;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today() }) : null;
+  if (!plan) return null;
+  const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
+  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+}
+
+function renderNextStep() {
+  const card = byId("fitnessNext");
+  const result = trainingPlan(view.entries, view.sport);
+  card.hidden = !result;
+  if (!result) return;
+  const { sport, plan } = result;
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   const line = (title, text, className = "") => {
@@ -903,7 +917,7 @@ function render() {
   const history = loadHistory(shown, settings, zone, today());
   renderSuggestions(settings);
   renderTiles(history, settings);
-  renderNextStep(history, settings);
+  renderNextStep();
   renderLoadChart(history, settings);
   const current = inRange(shown);
   renderWeeks(history, current, settings);
