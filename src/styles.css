@@ -823,3 +823,12 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .fitness-goal-label.is-rest.is-left { text-anchor: end; }
 .settings-weekly-row { display: flex; flex-wrap: wrap; gap: 12px; }
 .settings-weekly-row .settings-weekly { flex: 1; min-width: 160px; }
+
+/* The next step: one row per kind of workout, notes on why it holds back. */
+.fitness-next { display: grid; gap: 8px; }
+.fitness-next[hidden] { display: none; }
+.fitness-next-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 14px; }
+.fitness-next-row strong { font-size: 13px; }
+.fitness-next-row.is-done span { color: var(--muted); }
+.fitness-next-note { margin: 0; padding: 6px 10px; border-left: 3px solid var(--warning); background: var(--surface-2); border-radius: 4px; color: var(--ink); }
+@media (max-width: 480px) { .fitness-next-row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }

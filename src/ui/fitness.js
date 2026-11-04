@@ -1,5 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
-import { bestTime, effortDistances } from "../analysis.js";
+import { bestTime, effortDistances, workoutKind } from "../analysis.js";
+import { nextStep } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
@@ -134,6 +135,58 @@ function shownGoals(history, settings) {
     const plan = goal?.day ? goalPlan(history, goal.day, level) : null;
     return plan && { sport, goal, plan, level };
   }).filter(Boolean).sort((a, b) => a.goal.day.localeCompare(b.goal.day));
+}
+
+// The next step for one sport, the one shown or, with all of them, the one trained most in the last four weeks:
+// the distance of the longer workout to pick a video by, the usual one, the week's distance and the intervals.
+function renderNextStep(history, settings) {
+  const card = byId("fitnessNext");
+  const since = Date.now() - 28 * 86_400_000;
+  const counts = new Map();
+  for (const entry of view.entries) if (entry.startMs >= since) counts.set(entry.sport, (counts.get(entry.sport) ?? 0) + 1);
+  const sport = view.sport !== "all" ? view.sport : [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const last = history.at(-1);
+  const workouts = view.entries.filter((entry) => entry.sport === sport).map((entry) => {
+    const zones = timeInZones([entry], "heartRate", settings);
+    const total = zones.reduce((sum, value) => sum + value, 0);
+    return {
+      day: dayKey(entry.startMs, zone),
+      km: (entry.summary?.distance ?? 0) / 1000,
+      seconds: entry.summary?.timerSeconds ?? 0,
+      kind: workoutKind(entry),
+      decoupling: decoupling(entry)?.percent ?? null,
+      hardShare: total ? (zones[3] + zones[4]) / total : null,
+    };
+  });
+  const plan = sport && last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today() }) : null;
+  card.hidden = !plan;
+  if (!plan) return;
+  const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
+  const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
+  const line = (title, text, className = "") => {
+    const row = node("div", { class: `fitness-next-row ${className}` });
+    row.append(node("strong", {}, title), node("span", {}, text));
+    return row;
+  };
+  const rows = [];
+  // The longer workout, or the note that this week's is done.
+  rows.push(plan.doneLong
+    ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
+    : line(t("nextLong"), t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
+  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts)));
+  if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
+  rows.push(plan.intervals.due
+    ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts))
+    : line(t("nextIntervals"), t(plan.holds.includes("tired") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
+  // Why it holds back, or that this is a lighter week.
+  const notes = [
+    ...(plan.lighter ? [t("nextLighter")] : []),
+    ...plan.holds.map((hold) => t(`nextHold_${hold}`)),
+    ...(plan.tooHard ? [t("nextTooHard")] : []),
+  ];
+  const head = node("div", { class: "panel-title-row" });
+  head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
+  card.replaceChildren(head, ...rows, ...notes.map((text) => node("p", { class: "field-note fitness-next-note" }, text)), node("p", { class: "field-note" }, t("nextNote")));
 }
 
 function renderTiles(history, settings) {
@@ -850,6 +903,7 @@ function render() {
   const history = loadHistory(shown, settings, zone, today());
   renderSuggestions(settings);
   renderTiles(history, settings);
+  renderNextStep(history, settings);
   renderLoadChart(history, settings);
   const current = inRange(shown);
   renderWeeks(history, current, settings);
