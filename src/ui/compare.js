@@ -872,6 +872,7 @@ export function setupCompare({ onConverter }) {
   byId("libraryDialog").addEventListener("close", () => {
     if (!byId("compareView").hidden) refresh();
     if (!byId("diaryView").hidden) showDiary();
+    if (!byId("fitnessView").hidden) showFitness();
   });
   const chart = byId("compareChart");
   // Pointer position in chart pixels, kept inside the plot.
