@@ -1195,3 +1195,10 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .info-dialog .dialog-head { justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .info-dialog-text { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.5; }
 }
+
+/* What the app does and that it stays in the browser: the phone's footer, at the end of the gear's menu. */
+.topbar-more-about { display: none; }
+@media (max-width: 640px) {
+  .topbar-more-about { display: block; grid-column: 1 / -1; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid var(--topbar-line); color: var(--topbar-muted); font-size: 12px; line-height: 1.45; }
+  .topbar-more-about span[data-i18n="privacy"] { display: block; margin-top: 4px; }
+}
