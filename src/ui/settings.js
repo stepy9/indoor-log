@@ -5,7 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
-import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, onCloudStatus, syncNow } from "./cloud.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -353,6 +353,7 @@ function cloudBlock() {
       : at ? t("cloudSynced", { when: new Date(at).toLocaleString(appState.language === "en" ? "en-GB" : "cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) })
       : t("cloudConnected");
     const actions = node("div", { class: "settings-cloud-actions" });
+    let extra = [];
     if (connected) {
       const now = node("button", { type: "button", class: "outline-button" }, t("cloudSyncNow"));
       now.addEventListener("click", () => syncNow());
@@ -361,12 +362,17 @@ function cloudBlock() {
         if (window.confirm(t("cloudDisconnectConfirm"))) disconnectCloud();
       });
       actions.append(now, off);
+      const fit = Object.assign(document.createElement("input"), { type: "checkbox", checked: fitBackupOn() });
+      fit.addEventListener("change", () => setFitBackup(fit.checked));
+      const fitLabel = node("label", { class: "settings-cloud-fit" });
+      fitLabel.append(fit, document.createTextNode(t("cloudFitBackup")));
+      extra = [fitLabel, node("p", { class: "field-note" }, t("cloudFitNote"))];
     } else {
       const on = node("button", { type: "button", class: "export-button" }, t("cloudConnect"));
       on.addEventListener("click", () => connectCloud());
       actions.append(on);
     }
-    block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), node("p", { class: `settings-cloud-state${state === "error" ? " is-error" : ""}` }, line), actions);
+    block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), node("p", { class: `settings-cloud-state${state === "error" ? " is-error" : ""}` }, line), actions, ...extra);
   };
   draw();
   // Kept current while the dialog is open; the listener goes with the block.

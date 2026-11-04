@@ -880,3 +880,4 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .settings-cloud-state { margin: 6px 0; font-size: 13px; }
 .settings-cloud-state.is-error { color: var(--danger-ink); }
 .settings-cloud-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.settings-cloud-fit { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }

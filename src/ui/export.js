@@ -6,6 +6,7 @@ import { trainerFor } from "./trainers.js";
 // The trainer and resistance picked in the converter, saved with the activity.
 const trainerSettings = () => ({ trainer: trainerFor(elements.trainer.value)?.name, resistance: Number(elements.resistance.value) || null });
 import { rememberExport } from "./preferences.js";
+import { backupFit } from "./cloud.js";
 
 function downloadFit(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -23,6 +24,7 @@ function downloadFit(blob, filename) {
 // Writes the FIT next to the source files when a writable folder handle is available, otherwise downloads it.
 export async function saveFit(fitBytes, filename, directoryHandle) {
   const blob = new Blob([fitBytes], { type: "application/octet-stream" });
+  backupFit(fitBytes, filename);
   let fallbackMessage = "";
   if (directoryHandle) {
     try {
@@ -55,6 +57,7 @@ async function saveFitAs(fitBytes, filename) {
   const writable = await handle.createWritable();
   await writable.write(new Blob([fitBytes], { type: "application/octet-stream" }));
   await writable.close();
+  backupFit(fitBytes, handle.name);
   return handle.name;
 }
 

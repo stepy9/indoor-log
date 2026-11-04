@@ -14,6 +14,7 @@ export const dropboxAppKey = "yp3m2oa7u1h8qww";
 const tokenKey = "kinomap-dropbox";
 const verifierKey = "kinomap-dropbox-verifier";
 const syncedKey = "kinomap-dropbox-synced";
+const fitBackupKey = "kinomap-dropbox-fit";
 const filePath = "/indoor-log.json";
 const redirectUri = () => `${location.origin}${location.pathname}`;
 
@@ -139,6 +140,44 @@ async function upload(state) {
   if (!response.ok) throw await dropboxError(response);
 }
 
+// Exported FIT files copied into /FIT in the app's Dropbox folder, beside the local download. Set per device,
+// as connecting is. One that fails to go up waits here (in memory) and goes with the next sync.
+export const fitBackupOn = () => read(fitBackupKey) === true;
+export const setFitBackup = (on) => write(fitBackupKey, on ? true : null);
+const fitWaiting = new Map();
+
+const asciiJson = (value) => [...JSON.stringify(value)]
+  .map((c) => (c.charCodeAt(0) > 126 ? String.fromCharCode(92) + "u" + c.charCodeAt(0).toString(16).padStart(4, "0") : c))
+  .join("");
+
+async function uploadFit(filename, bytes) {
+  const response = await fetch("https://content.dropboxapi.com/2/files/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await accessToken()}`,
+      "Content-Type": "application/octet-stream",
+      // Dropbox-API-Arg must be ASCII: a name with diacritics goes escaped.
+      "Dropbox-API-Arg": asciiJson({ path: `/FIT/${filename}`, mode: "overwrite", mute: true }),
+    },
+    body: bytes,
+  });
+  if (!response.ok) throw await dropboxError(response);
+}
+
+async function sendWaitingFits() {
+  for (const [filename, bytes] of fitWaiting) {
+    await uploadFit(filename, bytes);
+    fitWaiting.delete(filename);
+  }
+}
+
+// Called on every export; does nothing unless connected and switched on. Never holds up or fails the export.
+export function backupFit(bytes, filename) {
+  if (!cloudConnected() || !fitBackupOn()) return;
+  fitWaiting.set(filename, bytes);
+  sendWaitingFits().catch((error) => setStatus("error", error.message));
+}
+
 // One sync: read the file, merge, write here what came from there and there what is new here.
 let running = null;
 export function syncNow() {
@@ -155,6 +194,7 @@ export function syncNow() {
       if (here.write.length || here.remove.length || Object.keys(merged.deleted).length) await applySynced({ write: here.write, remove: here.remove, deleted: merged.deleted });
       if (here.settings) applySyncedSettings(merged.settings);
       const deletedChanged = JSON.stringify(Object.keys(merged.deleted).sort()) !== JSON.stringify(Object.keys(remote?.deleted ?? {}).sort());
+      if (fitWaiting.size) await sendWaitingFits();
       if (!remote || there.write.length || there.remove.length || there.settings || deletedChanged) await upload(merged);
       write(syncedKey, Date.now());
       setStatus("idle");
