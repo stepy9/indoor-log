@@ -1034,3 +1034,16 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   #lapResistanceDialog .dialog-spacer { display: none; }
   #lapResistanceDialog .dialog-actions > * { width: 100%; min-height: 42px; justify-content: center; }
 }
+
+/* The calendar: on a phone each activity is a coloured tag with its kilometres, the rest stays on the desktop. */
+.diary-activity-short { display: none; }
+@media (max-width: 640px) {
+  .diary-calendar { gap: 3px; }
+  .diary-weekday { font-size: 11px; }
+  .diary-day { min-height: 52px; gap: 3px; padding: 3px 2px; border-radius: 7px; }
+  .diary-date { padding-left: 2px; font-size: 11px; }
+  .diary-activity { align-items: center; padding: 3px 0; border-left: 0; border-radius: 5px; background: color-mix(in srgb, var(--kind) 22%, transparent); }
+  .diary-activity:hover { background: color-mix(in srgb, var(--kind) 32%, transparent); }
+  .diary-activity-meta { display: none; }
+  .diary-activity-short { display: block; color: var(--ink); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+}

@@ -460,6 +460,8 @@ function activityButton(entry) {
   button.append(
     name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
+    // A phone's narrow day shows only the kilometres, to one decimal.
+    Object.assign(document.createElement("span"), { className: "diary-activity-short", ariaHidden: "true", textContent: displayNumber((entry.summary.distance ?? 0) / 1000, 1) }),
   );
   button.title = `${entry.name}\n${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}\n${t("diaryOpen")}`;
   button.addEventListener("click", () => openActivity(entry));
