@@ -383,13 +383,15 @@ function drawBars(buckets, groups, metric, height) {
   }
   children.push(svgNode("line", { x1: left, x2: width - right, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" }));
   children.push(svgNode("text", { x: left - 8, y: top + plotHeight + 4, class: "diary-axis-label" }, "0"));
-  const labelWidth = { year: 30, week: 44 }[view.period] ?? 22;
+  // A week keeps all its days, by the weekday alone when the date does not fit.
+  const shortWeek = view.period === "week" && slot < 44;
+  const labelWidth = { year: 30, week: shortWeek ? 0 : 44 }[view.period] ?? 22;
   const labelStep = Math.max(1, Math.ceil(labelWidth / slot));
   buckets.forEach((bucket, index) => {
     const x = left + slot * index + (slot - barWidth) / 2;
     const total = barValue(drawn(bucket.entries), metric);
     const label = view.period === "year" ? format(`${bucket.key}-01`, { month: "short" })
-      : view.period === "week" ? format(bucket.key, { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
+      : view.period === "week" ? format(bucket.key, shortWeek ? { weekday: "short" } : { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
     // A narrow chart labels every few bars only, as many as fit side by side.
     if (index % labelStep === 0) children.push(svgNode("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
     if (!total || !max) return;
@@ -437,9 +439,10 @@ function renderBars(range, entries) {
   const metric = view.barMetric;
   const charts = [];
   const shownGroups = barGroups().filter(({ key }) => !view.hidden.has(key));
-  // A single sport left shown needs no rows of its own.
-  if (metric === "distance" && mixedSports() && shownGroups.length > 1) {
-    for (const group of shownGroups) {
+  // Only the sports the period has get rows of their own, and a single one needs none.
+  const present = shownGroups.filter(({ has }) => entries.some(has));
+  if (metric === "distance" && mixedSports() && present.length > 1) {
+    for (const group of present) {
       const row = Object.assign(document.createElement("div"), { className: "diary-chart-row" });
       row.append(Object.assign(document.createElement("span"), { className: "diary-chart-caption", textContent: `${sportIcon[group.key]} ${group.label}` }));
       row.append(drawBars(buckets, [group], metric, 130));
