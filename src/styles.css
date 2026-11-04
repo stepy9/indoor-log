@@ -836,9 +836,11 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 /* The week's plan in the diary: a row per day, ticked when trained on. */
 .diary-plan { display: grid; gap: 6px; }
 .diary-plan[hidden] { display: none; }
-.diary-plan-row { display: grid; grid-template-columns: auto 90px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px 8px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.diary-plan-row { display: grid; grid-template-columns: auto 90px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
 .diary-plan-row.is-today { background: var(--surface-2); }
-.diary-plan-row.is-ticked .diary-plan-text { color: var(--muted); text-decoration: line-through; }
+.diary-plan-mark { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1.5px solid var(--line-strong); border-radius: 50%; color: var(--muted); font-size: 12px; font-weight: 700; }
+.diary-plan-row.is-done .diary-plan-mark { border-color: var(--success); color: #fff; background: var(--success); }
+.diary-plan-row.is-missed .diary-plan-mark { border-style: dashed; }
 .diary-plan-row.is-done .diary-plan-text { text-decoration: none; }
 .diary-plan-row.is-missed .diary-plan-text { color: var(--muted); font-style: italic; }
 .diary-plan-day { color: var(--muted); font-size: 13px; }

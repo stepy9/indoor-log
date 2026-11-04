@@ -33,26 +33,7 @@ const view = {
   showPlan: remembered.showPlan !== false,
 };
 
-// Days ticked by hand in the week's plan, for a workout done but not in the library yet; kept per browser.
-const ticksKey = "kinomap-plan-ticks";
-const ticked = () => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(ticksKey)) ?? []);
-  } catch {
-    return new Set();
-  }
-};
-function setTicked(day, on) {
-  const days = ticked();
-  if (on) days.add(day);
-  else days.delete(day);
-  try {
-    // Only the last few weeks matter.
-    localStorage.setItem(ticksKey, JSON.stringify([...days].sort().slice(-60)));
-  } catch {}
-}
-
-// This week's plan as a checklist: each training day ticked when trained on (or by hand), what is planned ahead.
+// This week's plan as a checklist: each training day marked done by its workouts, missed, or what is planned.
 function renderPlan() {
   const card = byId("diaryPlan");
   byId("diaryShowPlan").checked = view.showPlan;
@@ -61,35 +42,28 @@ function renderPlan() {
   if (card.hidden) return;
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
-  const hand = ticked();
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })
     : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts)
     : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }));
   const rows = checklist.map((item) => {
-    const row = Object.assign(document.createElement("label"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
-    const box = Object.assign(document.createElement("input"), { type: "checkbox" });
-    box.checked = item.status === "done" || hand.has(item.day);
-    // A day trained on is ticked by its workout; the others by hand.
-    box.disabled = item.status === "done";
-    box.addEventListener("change", () => {
-      setTicked(item.day, box.checked);
-      row.classList.toggle("is-ticked", box.checked);
-    });
-    row.classList.toggle("is-ticked", box.checked);
+    const row = Object.assign(document.createElement("div"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
+    // A mark, not a checkbox: the app marks a day by the workouts in the library.
+    const mark = Object.assign(document.createElement("span"), { className: "diary-plan-mark", textContent: { done: "✓", missed: "–", planned: "" }[item.status] });
+    mark.setAttribute("aria-label", t(`planStatus_${item.status}`));
     const when = Object.assign(document.createElement("span"), { className: "diary-plan-day", textContent: format(item.day, { weekday: "short", day: "numeric", month: "numeric" }) });
     const text = item.status === "done"
       ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${kindLabel(workout.kind, sport)}`).join(", ")
-      : item.status === "missed" ? (hand.has(item.day) ? t("planDoneByHand") : t("planMissed")) : planned(item.type);
-    row.append(box, when, Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+      : item.status === "missed" ? t("planMissed") : planned(item.type);
+    row.append(mark, when, Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
     return row;
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
   head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: `${t("planTitle")} · ${sportLabel(sport)}` }));
   const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
   // What the days ahead add, an interval workout counted as a usual one.
-  const ahead = checklist.filter((item) => item.status === "planned" && !hand.has(item.day)).reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : plan.usual.km), 0);
+  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
   list.append(...rows, Object.assign(document.createElement("p"), { className: "field-note", textContent: [...(plan.lighter ? [t("planLighter")] : []), t(chosenDays ? "planDaysChosen" : "planDaysAuto")].join(" · ") }));
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
