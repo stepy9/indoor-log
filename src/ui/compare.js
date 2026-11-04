@@ -6,6 +6,7 @@ import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from 
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
+import { renderLimited } from "./more.js";
 import { perKgText } from "./settings.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
@@ -154,7 +155,7 @@ function renderList() {
   const entries = view.entries.filter((entry) => entry.sport === view.sport && (view.slots.has(entry.id) || matches(entry)));
   byId("compareEmpty").hidden = view.entries.length > 0;
   byId("compareNoMatch").hidden = !view.entries.length || entries.length > 0;
-  byId("compareList").replaceChildren(...entries.map((entry) => {
+  renderLimited(byId("compareList"), entries.map((entry) => {
     const slot = view.slots.get(entry.id);
     const row = document.createElement("label");
     row.className = `compare-item${slot ? " is-selected" : ""}`;
@@ -182,7 +183,7 @@ function renderList() {
     text.append(meta);
     row.append(checkbox, swatch, text);
     return row;
-  }));
+  }), `compare:${view.sport}`);
   byId("compareLimit").hidden = view.slots.size < slotCount;
 }
 
@@ -710,7 +711,7 @@ function renderTrendTable() {
     }
     return row;
   }).reverse();
-  byId("trendTable").replaceChildren(head, ...rows);
+  renderLimited(byId("trendTable"), rows, `trend:${view.sport}`, { before: [head] });
   byId("trendTableCard").hidden = !points.length;
 }
 

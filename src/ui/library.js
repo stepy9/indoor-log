@@ -4,6 +4,7 @@ import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
 import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
+import { renderLimited } from "./more.js";
 import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
@@ -260,7 +261,7 @@ function renderRows() {
   byId("libraryEmpty").hidden = entries.length > 0;
   byId("libraryBackupButton").disabled = !all.length && !trainers().length;
   byId("libraryClearButton").disabled = !entries.length;
-  byId("libraryRows").replaceChildren(...entries.map((entry) => {
+  renderLimited(byId("libraryRows"), entries.map((entry) => {
     const row = document.createElement("tr");
     const cells = [
       shortDate(entry.startMs),
@@ -301,7 +302,7 @@ function renderRows() {
     actions.append(remove);
     row.append(actions);
     return row;
-  }));
+  }), `library:${librarySport}`);
 }
 
 // TCX or PWX goes in as a plain conversion, a FIT from the watch as it was recorded.

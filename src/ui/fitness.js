@@ -3,6 +3,7 @@ import { bestTime, effortDistances } from "../analysis.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
+import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 
@@ -636,7 +637,7 @@ function renderWeeks(history, entries) {
   });
   table.replaceChildren(node("thead"), node("tbody"));
   table.tHead.append(head);
-  table.tBodies[0].append(...rows);
+  renderLimited(table.tBodies[0], rows, "fitness:weeks", { step: 12 });
 }
 
 // The efficiency factor of each steady workout over the range as dots, with a least-squares trend line.
@@ -779,7 +780,7 @@ function renderDecoupling(entries, settings) {
   });
   table.replaceChildren(node("thead"), node("tbody"));
   table.tHead.append(head);
-  table.tBodies[0].append(...body);
+  renderLimited(table.tBodies[0], body, "fitness:decoupling", { step: 15 });
 }
 
 function render() {
