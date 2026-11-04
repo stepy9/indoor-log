@@ -1159,3 +1159,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .card-table.is-compact td:has(> .link-button) { flex: 1 1 100%; padding-left: 68px; font-size: 12px; }
   .card-table.is-compact td:has(> .link-button) .link-button { color: var(--muted); font-size: 12px; font-weight: 500; }
 }
+@media (max-width: 640px) {
+  .card-table td:has(> .link-button), .card-table td:has(> .link-button) .link-button { overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+}
