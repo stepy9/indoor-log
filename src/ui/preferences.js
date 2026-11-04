@@ -37,7 +37,10 @@ export function savedDefaults() {
 export function saveDefaults(patch) {
   try {
     localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...patch }));
-    if (syncedKeys.some((key) => key in patch)) localStorage.setItem(syncedChangedKey, String(Date.now()));
+    if (syncedKeys.some((key) => key in patch)) {
+      localStorage.setItem(syncedChangedKey, String(Date.now()));
+      window.dispatchEvent(new Event("synced-settings-change"));
+    }
   } catch {}
 }
 

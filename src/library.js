@@ -233,6 +233,8 @@ async function run(mode, action) {
 // when, so a merge knows which change came last.
 const deletedKey = "kinomap-sync-deleted";
 const stamp = (entry) => ({ ...entry, changedAt: Date.now() });
+// Tells a sync there is something new to take up; a sync's own writes do not.
+const changed = () => globalThis.dispatchEvent?.(new Event("library-change"));
 
 export function deletedIds() {
   try {
@@ -252,18 +254,18 @@ function recordDeleted(ids) {
 
 export const saveEntries = (entries) => run("readwrite", (store) => {
   for (const entry of entries) store.put(stamp(entry));
-});
+}).then(changed);
 
 export const deleteEntry = (id) => {
   recordDeleted([id]);
-  return run("readwrite", (store) => store.delete(id));
+  return run("readwrite", (store) => store.delete(id)).then(changed);
 };
 
 export const deleteEntries = (ids) => {
   recordDeleted(ids);
   return run("readwrite", (store) => {
     for (const id of ids) store.delete(id);
-  });
+  }).then(changed);
 };
 
 // What a sync brings: activities written as they came, with their own times, and ids deleted on another device,
@@ -293,6 +295,7 @@ export async function addEntries(entries) {
       for (const id of remove) store.delete(id);
       for (const entry of save) store.put(stamp(entry));
     });
+    changed();
   }
   const saved = new Set(save.map((entry) => entry.id));
   return { skipped: entries.filter((entry) => !saved.has(entry.id)).length };

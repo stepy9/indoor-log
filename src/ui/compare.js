@@ -873,11 +873,14 @@ export function setupCompare({ onConverter }) {
   });
   byId("compareLibraryButton").addEventListener("click", openLibrary);
   // Activities added, renamed or removed in the library show at once in the view open behind it.
-  byId("libraryDialog").addEventListener("close", () => {
+  const refreshShown = () => {
     if (!byId("compareView").hidden) refresh();
     if (!byId("diaryView").hidden) showDiary();
     if (!byId("fitnessView").hidden) showFitness();
-  });
+  };
+  byId("libraryDialog").addEventListener("close", refreshShown);
+  // What a sync brought from another device shows at once too.
+  window.addEventListener("library-synced", refreshShown);
   const chart = byId("compareChart");
   // Pointer position in chart pixels, kept inside the plot.
   const plotX = (event) => {

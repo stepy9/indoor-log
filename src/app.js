@@ -8,6 +8,7 @@ import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } 
 import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
 import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
 import { perKgText, setupSettings } from "./ui/settings.js";
+import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
@@ -964,6 +965,7 @@ setupLibrary({ onRestore: () => {
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();
 } });
 setupCompare({ onConverter: drawChart });
+setupCloud();
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);
 setTheme(savedTheme(), false);

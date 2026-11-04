@@ -5,6 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, onCloudStatus, syncNow } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -197,7 +198,7 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
-  pane.append(grid, weightBlock());
+  pane.append(grid, weightBlock(), cloudBlock());
   return pane;
 }
 
@@ -340,6 +341,39 @@ function zonesBlock(sport, by, settings) {
 
 // The FTP over time: each record holds from its day until the next; without one in force the estimate counts.
 // The weight history as the FTP's: each record holds from its day, so a new weight leaves the past W/kg as it was.
+// Syncing through Dropbox: connect, its state, sync now, disconnect. Only once the app has its Dropbox key.
+function cloudBlock() {
+  const block = node("div", { class: "settings-block" });
+  if (!cloudAvailable()) return block;
+  const draw = () => {
+    const { connected, state, error, at } = cloudStatus();
+    const line = !connected ? t("cloudOff")
+      : state === "syncing" ? t("cloudSyncing")
+      : state === "error" ? t("cloudError", { message: error })
+      : at ? t("cloudSynced", { when: new Date(at).toLocaleString(appState.language === "en" ? "en-GB" : "cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) })
+      : t("cloudConnected");
+    const actions = node("div", { class: "settings-cloud-actions" });
+    if (connected) {
+      const now = node("button", { type: "button", class: "outline-button" }, t("cloudSyncNow"));
+      now.addEventListener("click", () => syncNow());
+      const off = node("button", { type: "button", class: "link-button" }, t("cloudDisconnect"));
+      off.addEventListener("click", () => {
+        if (window.confirm(t("cloudDisconnectConfirm"))) disconnectCloud();
+      });
+      actions.append(now, off);
+    } else {
+      const on = node("button", { type: "button", class: "export-button" }, t("cloudConnect"));
+      on.addEventListener("click", () => connectCloud());
+      actions.append(on);
+    }
+    block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), node("p", { class: `settings-cloud-state${state === "error" ? " is-error" : ""}` }, line), actions);
+  };
+  draw();
+  // Kept current while the dialog is open; the listener goes with the block.
+  const stop = onCloudStatus(() => (block.isConnected ? draw() : stop()));
+  return block;
+}
+
 // The sport's next race or FTP test: a day and an optional name, for the analysis to plan the rest before it
 // from that sport's workouts.
 function goalBlock(sport) {
