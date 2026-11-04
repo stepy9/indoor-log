@@ -631,7 +631,7 @@ function renderWeeks(history, entries) {
       node("td", {}, week.seconds ? formatDuration(week.seconds) : "—"),
       node("td", {}, week.meters ? `${displayNumber(week.meters / 1000, 1)} km` : "—"),
       loadCell,
-      node("td", { class: rampClass }, ramp == null ? "—" : `${ramp >= 0 ? "+" : ""}${displayNumber(ramp, 1)}`),
+      node("td", { class: rampClass }, ramp == null ? "—" : Math.abs(ramp) < 0.05 ? "±0" : `${ramp > 0 ? "+" : ""}${displayNumber(ramp, 1)}`),
     );
     return row;
   });
@@ -668,7 +668,8 @@ function renderEfficiency(entries) {
   const minY = Math.max(0, Math.min(...values) - spread * 0.25);
   const maxY = Math.max(...values) + spread * 0.25;
   const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
-  const digits = maxY < 10 ? 2 : 1;
+  // Enough decimals for the grid step, so no two labels read the same.
+  const digits = Math.min(3, Math.max(0, Math.ceil(-Math.log10((maxY - minY) / 4)) + 1));
   const children = [];
   for (let index = 0; index <= 4; index += 1) {
     const value = minY + ((maxY - minY) * index) / 4;

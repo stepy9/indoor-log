@@ -342,12 +342,13 @@ function weightBlock() {
     const from = node("input", { type: "date", "data-key": `weight-from-${index}`, "aria-label": t("settingsFtpFrom") });
     from.value = record.from ?? "";
     from.addEventListener("change", () => update({ from: from.value || null }));
-    const kg = node("input", { type: "number", min: "30", max: "200", step: "0.1", inputmode: "decimal", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
-    kg.value = String(record.kg);
+    // Text with a decimal keyboard, as a number field drops a comma under some browser languages.
+    const kg = node("input", { type: "text", inputmode: "decimal", pattern: "[0-9]+([.,][0-9])?", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
+    kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
     kg.addEventListener("change", () => {
       const value = Math.round(Number(kg.value.replace(",", ".")) * 10) / 10;
       if (value >= 30) update({ kg: value });
-      else kg.value = String(record.kg);
+      else kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
     });
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
