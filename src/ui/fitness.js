@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -352,8 +352,15 @@ function renderFtpChart(settings) {
     // The FTP a day ends with holds over the whole day, so a change steps at the day's edge, between two ticks.
     const points = [];
     for (let noon = noonOf(start); noon <= todayNoon; noon += step) points.push({ ms: noon - 43_200_000, ftp: ftpOn(settings, sport, Math.min(end, noon + 43_199_999)) });
+    // Each day the FTP changes on, with where the new value comes from.
+    const changes = [];
+    for (let noon = noonOf(start) + 86_400_000; noon <= todayNoon; noon += 86_400_000) {
+      const before = ftpOn(settings, sport, noon - 43_200_001);
+      const source = ftpSourceOn(settings, sport, Math.min(end, noon + 43_199_999));
+      if (source && before && Math.round(source.ftp) !== Math.round(before)) changes.push({ ms: noon, before, ...source });
+    }
     const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start && point.best).map((point) => ({ ms: noonOf(point.ms), ftp: point.best * 0.95, entry: point.entry }));
-    return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts };
+    return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts, changes };
   }).filter((line) => line.points.length || line.efforts.length);
   const has = lines.length > 0;
   byId("fitnessFtpEmpty").hidden = has;
@@ -423,10 +430,20 @@ function renderFtpChart(settings) {
     if (d) d += `H${xFor(axisEnd).toFixed(1)}`;
     if (d) children.push(node("path", { class: "fitness-line", d, style: `stroke: ${line.color}` }));
     for (const effort of line.efforts) {
-      const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `fill: ${line.color}` });
+      // A hollow ring: an effort to compare with, not a value of the line.
+      const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `stroke: ${line.color}` });
       dot.append(node("title", {}, `${dayText(dayKey(effort.ms, zone))} · ${effort.entry.name ?? ""}: 95 % ${t("fitnessBest20")} = ${Math.round(effort.ftp)} W`));
       dot.addEventListener("click", () => openActivity(effort.entry));
       children.push(dot);
+    }
+    // A filled diamond on the line where the FTP changes, under the day's tick.
+    for (const change of line.changes) {
+      const x = xFor(change.ms);
+      const y = yFor(change.ftp);
+      const mark = node("path", { d: `M${x.toFixed(1)},${(y - 5).toFixed(1)}l5,5l-5,5l-5,-5z`, class: `fitness-ftp-change${change.entry ? " is-link" : ""}`, style: `fill: ${line.color}` });
+      mark.append(node("title", {}, `${dayText(dayKey(change.ms, zone))}: ${ftpChangeText(change)}`));
+      if (change.entry) mark.addEventListener("click", () => openActivity(change.entry));
+      children.push(mark);
     }
   }
   const guide = node("g");
@@ -463,6 +480,12 @@ function showFtpTooltip(event) {
       row.append(swatch(), node("span", {}, several ? `FTP · ${sportLabel(line.sport)}` : "FTP"), node("strong", {}, `${Math.round(ftp)} W`));
       rows.push(row);
     }
+    const change = line.changes.find((item) => item.ms === ms);
+    if (change) {
+      const row = node("div", { class: "diary-tooltip-row" });
+      row.append(swatch(), node("span", {}, ftpChangeSource(change)), node("strong", {}, `${Math.round(change.before)} → ${Math.round(change.ftp)} W`));
+      rows.push(row);
+    }
     const near = line.efforts.filter((effort) => effort.ms === ms).at(-1);
     if (near) {
       const row = node("div", { class: "diary-tooltip-row" });
@@ -478,6 +501,15 @@ function showFtpTooltip(event) {
   tooltip.style.left = `${Math.max(8, right + tooltip.offsetWidth > card.width - 8 ? left - tooltip.offsetWidth - 14 : right)}px`;
   tooltip.style.top = `${box.top - card.top + 12}px`;
 }
+
+// Where a new FTP comes from, as words.
+function ftpChangeSource(change) {
+  if (change.method === "manual") return t("fitnessFtpManual");
+  const how = t(change.method === "cp" ? "fitnessFtpByCp" : "fitnessFtpBy20");
+  return change.entry?.name ? `${how} · ${change.entry.name}` : how;
+}
+
+const ftpChangeText = (change) => `${Math.round(change.before)} → ${Math.round(change.ftp)} W · ${ftpChangeSource(change)}`;
 
 function hideFtpTooltip() {
   byId("fitnessFtpTooltip").hidden = true;

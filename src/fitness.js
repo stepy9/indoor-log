@@ -84,13 +84,22 @@ export function forSport(settings, sport, atMs = Date.now()) {
 // as older settings kept it, then the estimate from the activities up to then (settings.estimatedFtp, from ftpTimeline).
 // A record without a date holds from the start.
 export function ftpOn(settings, sport, atMs) {
+  return ftpSourceOn(settings, sport, atMs)?.ftp ?? null;
+}
+
+// The same FTP with where it comes from: { ftp, method: "manual", from } for a record typed,
+// or { ftp, method: "cp" | "20min", entry } for the estimate; null without any.
+export function ftpSourceOn(settings, sport, atMs) {
   const own = settings.sports?.[sport] ?? {};
   const day = dayKey(atMs, settings.timeZone ?? "UTC");
   const history = (own.ftpHistory ?? []).filter((record) => record.ftp > 0 && (!record.from || record.from <= day));
-  if (history.length) return history.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest)).ftp;
-  if (own.ftp ?? settings.ftp?.[sport]) return own.ftp ?? settings.ftp[sport];
+  if (history.length) {
+    const record = history.reduce((latest, item) => ((item.from ?? "") >= (latest.from ?? "") ? item : latest));
+    return { ftp: record.ftp, method: "manual", from: record.from ?? null };
+  }
+  if (own.ftp ?? settings.ftp?.[sport]) return { ftp: own.ftp ?? settings.ftp[sport], method: "manual", from: null };
   const estimate = (settings.estimatedFtp?.[sport] ?? []).filter((point) => point.ms <= atMs).at(-1);
-  return estimate?.ftp ?? null;
+  return estimate?.ftp ? { ftp: estimate.ftp, method: estimate.method, entry: estimate.entry } : null;
 }
 
 // How the FTP estimate went, per sport and oldest first: at each activity with power, from the best efforts
