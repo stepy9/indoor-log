@@ -324,10 +324,16 @@ function zoneGroup(entries, settings, by) {
 const durationText = (seconds) => (seconds < 60 ? `${seconds} s` : seconds < 3600 ? `${seconds / 60} min` : `${seconds / 3600} h`);
 
 // The best power for each duration on a log scale, the range before as a dashed line.
-function renderCurve(current, previous) {
+function renderCurve(current, previous, earlier) {
   const chart = byId("fitnessCurve");
   const curve = powerCurve(current);
   const before = Number.isFinite(ranges[view.range]) ? powerCurve(previous) : [];
+  // Personal records: durations where the range beats everything before it (only when there is something before).
+  const allTime = Number.isFinite(ranges[view.range]) ? powerCurve(earlier) : [];
+  for (const point of curve) {
+    const old = allTime.find((item) => item.duration === point.duration)?.value;
+    point.record = point.value != null && old != null && point.value > old;
+  }
   const has = curve.some((point) => point.value != null);
   byId("fitnessCurveEmpty").hidden = has;
   chart.hidden = !has;
@@ -362,8 +368,8 @@ function renderCurve(current, previous) {
   children.push(node("path", { class: "fitness-line is-curve", d: path(curve) }));
   for (const point of curve) {
     if (point.value == null) continue;
-    const dot = node("circle", { cx: xFor(point.duration), cy: yFor(point.value), r: 4.5, class: "fitness-curve-dot" });
-    const title = node("title", {}, `${durationText(point.duration)}: ${point.value} W · ${point.entry.name ?? ""} ${dayText(dayKey(point.entry.startMs, zone))}`);
+    const dot = node("circle", { cx: xFor(point.duration), cy: yFor(point.value), r: point.record ? 6 : 4.5, class: `fitness-curve-dot${point.record ? " is-record" : ""}` });
+    const title = node("title", {}, `${durationText(point.duration)}: ${point.value} W${point.record ? ` · ${t("fitnessRecord")}` : ""} · ${point.entry.name ?? ""} ${dayText(dayKey(point.entry.startMs, zone))}`);
     dot.append(title);
     dot.addEventListener("click", () => openActivity(point.entry));
     children.push(dot);
@@ -557,7 +563,9 @@ function renderCurveTable(curve, before) {
     link.addEventListener("click", () => openActivity(point.entry));
     const from = node("td");
     from.append(link);
-    row.append(node("td", {}, durationText(point.duration)), node("td", {}, `${point.value} W`), ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
+    const best = node("td", {}, `${point.value} W`);
+    if (point.record) best.append(" ", node("span", { class: "fitness-record" }, t("fitnessRecord")));
+    row.append(node("td", {}, durationText(point.duration)), best, ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
     return row;
   });
   table.replaceChildren(node("thead"), node("tbody"));
@@ -734,7 +742,8 @@ function render() {
   const current = inRange(shown);
   renderWeeks(history, current);
   renderZones(current, settings);
-  renderCurve(current, inRange(shown, 1));
+  const currentSet = new Set(current);
+  renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)));
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
