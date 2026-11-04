@@ -396,11 +396,15 @@ function renderFtpChart(settings) {
       month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
     }
   }
+  // Today always closes the axis, right-aligned to the edge; a regular tick too close to it gives way.
+  while (ticks.length && xFor(end) - xFor(ticks.at(-1).ms) < 64) ticks.pop();
   for (const tick of ticks) {
     const x = xFor(tick.ms);
     children.push(node("line", { x1: x, x2: x, y1: margin.top, y2: height - margin.bottom, class: "diary-grid" }));
     children.push(node("text", { x, y: height - 8, class: "diary-tick" }, tick.label));
   }
+  const todayLabel = spacing <= 14 ? dayText(dayKey(end, zone), { day: "numeric", month: "short" }) : dayText(dayKey(end, zone), { day: "numeric", month: "short", year: "numeric" });
+  children.push(node("text", { x: xFor(end), y: height - 8, class: "diary-tick", style: "text-anchor: end" }, todayLabel));
   for (const line of lines) {
     // A step line: the FTP holds until the next change.
     let d = "";
