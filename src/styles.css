@@ -780,3 +780,9 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 /* The workout a best comes from reads from the left, long names cut short. */
 #fitnessCurveTable th:last-child, #fitnessCurveTable td:last-child, #fitnessRecords th:last-child, #fitnessRecords td:last-child, #fitnessRecordTimes th:last-child, #fitnessRecordTimes td:last-child { text-align: left; }
 #fitnessCurveTable td:last-child .link-button { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+/* A day typed in the app's language, the browser's calendar behind a button. */
+.date-field { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.date-field input[type="text"] { width: 110px; height: 30px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; }
+.date-field-button { color: var(--muted); height: 30px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); cursor: pointer; font-size: 13px; line-height: 1; }
+.date-field-picker { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }

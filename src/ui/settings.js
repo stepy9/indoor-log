@@ -2,7 +2,7 @@ import { estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRate
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
-import { byId, displayNumber, sportLabel, t, zone } from "./context.js";
+import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -136,6 +136,44 @@ function numberField(label, value, placeholder, apply, { min, max } = {}) {
   input.addEventListener("change", () => apply(typedNumber(input)));
   field.append(node("span", {}, label), input);
   return field;
+}
+
+// A day typed in the app's language (13. 10. 2026, or 13/10/2026 in English) rather than the browser's,
+// as a date field follows the browser; the calendar stays a click away. onChange gets "YYYY-MM-DD" or null.
+function dateField(key, value, onChange) {
+  const box = node("span", { class: "date-field" });
+  const text = node("input", { type: "text", inputmode: "numeric", "data-key": key, "aria-label": t("settingsFtpFrom") });
+  const picker = node("input", { type: "date", tabindex: "-1", "aria-hidden": "true", class: "date-field-picker" });
+  const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), title: t("settingsPickDate") });
+  button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
+  const shown = (key) => {
+    if (!key) return "";
+    const [year, month, day] = key.split("-").map(Number);
+    return appState.language === "en" ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}` : `${day}. ${month}. ${year}`;
+  };
+  // Day, month and year in that order, by any separators; an ISO day too.
+  const parsed = (input) => {
+    if (!input.trim()) return null;
+    const parts = input.trim().match(/\d+/g);
+    if (!parts) return undefined;
+    const [day, month, year] = parts[0].length === 4 ? [parts[2], parts[1], parts[0]].map(Number) : parts.map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return parts.length === 3 && date.getUTCDate() === day && date.getUTCMonth() === month - 1 && year > 1900 ? date.toISOString().slice(0, 10) : undefined;
+  };
+  text.value = shown(value);
+  picker.value = value ?? "";
+  text.placeholder = appState.language === "en" ? "dd/mm/yyyy" : "d. m. rrrr";
+  text.addEventListener("change", () => {
+    const day = parsed(text.value);
+    if (day === undefined) text.value = shown(value);
+    else onChange(day);
+  });
+  picker.addEventListener("change", () => onChange(picker.value || null));
+  button.addEventListener("click", () => {
+    try { picker.showPicker(); } catch { picker.focus(); }
+  });
+  box.append(text, button, picker);
+  return box;
 }
 
 const autoHint = (value) => (value ? `${t("fitnessAuto")} ${value}` : "—");
@@ -341,9 +379,7 @@ function weightBlock() {
   const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
   for (const { record, index } of order) {
     const update = (patch) => write(history.map((item, at) => (at === index ? { ...item, ...patch } : item)));
-    const from = node("input", { type: "date", "data-key": `weight-from-${index}`, "aria-label": t("settingsFtpFrom") });
-    from.value = record.from ?? "";
-    from.addEventListener("change", () => update({ from: from.value || null }));
+    const from = dateField(`weight-from-${index}`, record.from, (value) => update({ from: value }));
     // Text with a decimal keyboard, as a number field drops a comma under some browser languages.
     const kg = node("input", { type: "text", inputmode: "decimal", pattern: "[0-9]+([.,][0-9])?", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
     kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
@@ -391,9 +427,7 @@ function ftpBlock(sport, settings, estimate) {
   const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
   for (const { record, index } of order) {
     const update = (patch) => write(history.map((item, at) => (at === index ? { ...item, ...patch } : item)));
-    const from = node("input", { type: "date", "data-key": `ftp-from-${index}`, "aria-label": t("settingsFtpFrom") });
-    from.value = record.from ?? "";
-    from.addEventListener("change", () => update({ from: from.value || null }));
+    const from = dateField(`ftp-from-${index}`, record.from, (value) => update({ from: value }));
     const watts = node("input", { type: "number", min: "30", max: "600", inputmode: "numeric", class: "level-input", "data-key": `ftp-value-${index}`, "aria-label": "FTP" });
     watts.value = String(record.ftp);
     watts.addEventListener("change", () => {
