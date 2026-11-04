@@ -5,7 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
-import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow } from "./cloud.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -366,7 +366,25 @@ function cloudBlock() {
       fit.addEventListener("change", () => setFitBackup(fit.checked));
       const fitLabel = node("label", { class: "settings-cloud-fit" });
       fitLabel.append(fit, document.createTextNode(t("cloudFitBackup")));
-      extra = [fitLabel, node("p", { class: "field-note" }, t("cloudFitNote"))];
+      const pick = node("input", { type: "file", multiple: "", accept: ".fit", class: "visually-hidden" });
+      const upload = node("button", { type: "button", class: "outline-button" }, t("cloudFitUpload"));
+      const progress = node("span", { class: "field-note" });
+      upload.addEventListener("click", () => pick.click());
+      pick.addEventListener("change", async () => {
+        upload.disabled = true;
+        try {
+          const count = await uploadFitFiles(pick.files, (done, total) => (progress.textContent = t("cloudFitUploading", { done, total })));
+          progress.textContent = t("cloudFitUploaded", { count });
+        } catch (error) {
+          progress.textContent = t("cloudError", { message: error.message });
+        } finally {
+          upload.disabled = false;
+          pick.value = "";
+        }
+      });
+      const uploadRow = node("div", { class: "settings-cloud-actions" });
+      uploadRow.append(upload, pick, progress);
+      extra = [fitLabel, node("p", { class: "field-note" }, t("cloudFitNote")), uploadRow];
     } else {
       const on = node("button", { type: "button", class: "export-button" }, t("cloudConnect"));
       on.addEventListener("click", () => connectCloud());

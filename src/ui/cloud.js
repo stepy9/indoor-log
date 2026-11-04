@@ -171,6 +171,18 @@ async function sendWaitingFits() {
   }
 }
 
+// FIT files exported before, picked from the disk, go up one by one; the count gone up so far is reported.
+export async function uploadFitFiles(files, onProgress = () => {}) {
+  const fits = [...files].filter((file) => /\.fit$/i.test(file.name));
+  let done = 0;
+  onProgress(done, fits.length);
+  for (const file of fits) {
+    await uploadFit(file.name, await file.arrayBuffer());
+    onProgress(++done, fits.length);
+  }
+  return done;
+}
+
 // Called on every export; does nothing unless connected and switched on. Never holds up or fails the export.
 export function backupFit(bytes, filename) {
   if (!cloudConnected() || !fitBackupOn()) return;
