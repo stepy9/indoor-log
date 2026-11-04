@@ -349,9 +349,9 @@ function renderFtpChart(settings) {
   const axisStart = noonOf(start) - 43_200_000;
   const axisEnd = todayNoon + 43_200_000;
   const lines = shownSports.map((sport, index) => {
-    // The FTP a day ends with holds over the whole day, so a change steps at the day's edge, between two ticks.
+    // The FTP a day ends with, stepping at the day's noon so a change sits right under its tick, the diamond in the corner.
     const points = [];
-    for (let noon = noonOf(start); noon <= todayNoon; noon += step) points.push({ ms: noon - 43_200_000, ftp: ftpOn(settings, sport, Math.min(end, noon + 43_199_999)) });
+    for (let noon = noonOf(start); noon <= todayNoon; noon += step) points.push({ ms: noon, ftp: ftpOn(settings, sport, Math.min(end, noon + 43_199_999)) });
     // Each day the FTP changes on, with where the new value comes from.
     const changes = [];
     for (let noon = noonOf(start) + 86_400_000; noon <= todayNoon; noon += 86_400_000) {
