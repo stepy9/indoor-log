@@ -1,5 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances } from "../analysis.js";
+import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -153,30 +154,12 @@ function renderTiles(history, settings) {
 // from Monday, or months), the last day always closing it, each with a faint vertical grid line.
 // xForKey places a day ("YYYY-MM-DD") at its centre.
 function dateTicks(firstKey, lastKey, xForKey, { margin, width, height }) {
-  const first = Date.parse(`${firstKey}T12:00:00Z`);
-  const last = Date.parse(`${lastKey}T12:00:00Z`);
-  const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
-  const pxPerDay = first < last ? (xForKey(lastKey) - xForKey(firstKey)) / ((last - first) / 86_400_000) : width;
-  const spacing = [1, 2, 7, 14, 30, 61, 91, 182, 365].find((daysApart) => daysApart * pxPerDay >= 64) ?? 365;
-  const ticks = [];
-  if (spacing <= 14) {
-    for (let ms = first; ms <= last; ms += 86_400_000) {
-      const offset = Math.round((ms - Date.parse("2024-01-01T12:00:00Z")) / 86_400_000); // 2024-01-01 was a Monday.
-      if (((offset % spacing) + spacing) % spacing === 0) ticks.push({ key: keyOf(ms), label: dayText(keyOf(ms), { day: "numeric", month: "short" }) });
-    }
-  } else {
-    const every = Math.round(spacing / 30.4);
-    for (let month = firstKey.slice(0, 7); ;) {
-      const key = `${month}-01`;
-      if (key > lastKey) break;
-      const [year, number] = month.split("-").map(Number);
-      if (key >= firstKey && (number - 1) % every === 0) ticks.push({ key, label: dayText(key, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
-      month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
-    }
-  }
-  // The last day always closes the axis; a regular tick too close to it gives way.
-  while (ticks.length && (ticks.at(-1).key === lastKey || xForKey(lastKey) - xForKey(ticks.at(-1).key) < 64)) ticks.pop();
-  ticks.push({ key: lastKey, label: dayText(lastKey, { day: "numeric", month: "short", ...(spacing > 14 ? { year: "numeric" } : {}) }) });
+  const ticks = axisTicks(firstKey, lastKey, xForKey).map((tick, index) => ({
+    ...tick,
+    label: tick.kind === "month"
+      ? dayText(tick.key, { month: "short", ...(tick.key.slice(5, 7) === "01" || !index ? { year: "numeric" } : {}) })
+      : dayText(tick.key, { day: "numeric", month: "short", ...(tick.kind === "last" && tick.spacing > 14 ? { year: "numeric" } : {}) }),
+  }));
   return ticks.flatMap((tick) => {
     const x = xForKey(tick.key);
     // A label near the right edge is right-aligned so it is not cut off.

@@ -1,4 +1,5 @@
 import { state, t } from "./context.js";
+import { monthLayout } from "../dates.js";
 
 // A small month calendar of the app's own, as the browser's follows its language and starts weeks on Sunday:
 // weeks from Monday, names in the app's language, Today and Clear. It opens under the anchor, inside the
@@ -56,8 +57,7 @@ export function openDatePicker(anchor, value, onPick) {
       const name = new Date(Date.UTC(2024, 0, 1 + index)).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
       grid.append(Object.assign(document.createElement("span"), { className: "date-picker-weekday", textContent: name }));
     }
-    const offset = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
-    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const { offset, days } = monthLayout(year, month);
     for (let index = 0; index < offset; index += 1) grid.append(document.createElement("span"));
     for (let day = 1; day <= days; day += 1) {
       const key = keyOf(year, month, day);

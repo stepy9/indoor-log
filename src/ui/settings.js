@@ -5,6 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
+import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -147,24 +148,11 @@ function dateField(key, value, onChange) {
   const text = node("input", { type: "text", inputmode: "numeric", "data-key": key, "aria-label": t("settingsFtpFrom") });
   const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), title: t("settingsPickDate") });
   button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
-  const shown = (key) => {
-    if (!key) return "";
-    const [year, month, day] = key.split("-").map(Number);
-    return appState.language === "en" ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}` : `${day}. ${month}. ${year}`;
-  };
-  // Day, month and year in that order, by any separators; an ISO day too.
-  const parsed = (input) => {
-    if (!input.trim()) return null;
-    const parts = input.trim().match(/\d+/g);
-    if (!parts) return undefined;
-    const [day, month, year] = parts[0].length === 4 ? [parts[2], parts[1], parts[0]].map(Number) : parts.map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return parts.length === 3 && date.getUTCDate() === day && date.getUTCMonth() === month - 1 && year > 1900 ? date.toISOString().slice(0, 10) : undefined;
-  };
+  const shown = (key) => formatDay(key, appState.language);
   text.value = shown(value);
   text.placeholder = appState.language === "en" ? "dd/mm/yyyy" : "d. m. rrrr";
   text.addEventListener("change", () => {
-    const day = parsed(text.value);
+    const day = parseDay(text.value);
     if (day === undefined) text.value = shown(value);
     else onChange(day);
   });
