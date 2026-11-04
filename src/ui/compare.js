@@ -574,6 +574,57 @@ function trendText(value, metric, sport) {
 
 const dayDate = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
 
+// Calendar ticks between two instants: the finest of every week, every one, two, three or six months,
+// or every one, two or five years that gives no more than the asked count.
+// Weeks are named by their Monday's date, months by name (with the year on January and on the first), years by number.
+// Points grouped by week or month tick no finer than that, weeks named by their ISO week number.
+function dateTicks(low, high, maxCount, { group = "activity" } = {}) {
+  const weekNumbers = group === "week";
+  const monthName = (date, withYear) => {
+    const name = new Intl.DateTimeFormat(locale(), { month: "short" }).format(date);
+    return withYear ? `${name} ${date.getFullYear()}` : name;
+  };
+  const key = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const weeks = (step) => {
+    const start = new Date(low);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() + ((8 - start.getDay()) % 7));
+    const ticks = [];
+    for (const date = start; date.getTime() <= high; date.setDate(date.getDate() + 7 * step)) {
+      ticks.push({ x: date.getTime(), text: weekNumbers ? t("trendWeekTick", { week: weekNumber(key(date)) }) : new Intl.DateTimeFormat(locale(), { day: "numeric", month: "numeric" }).format(date) });
+    }
+    return ticks;
+  };
+  const months = (step) => {
+    const first = new Date(low);
+    const date = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+    while (date.getMonth() % step) date.setMonth(date.getMonth() + 1);
+    const ticks = [];
+    for (; date.getTime() <= high; date.setMonth(date.getMonth() + step)) {
+      ticks.push({ x: date.getTime(), text: step >= 12 ? String(date.getFullYear()) : monthName(date, !ticks.length || date.getMonth() === 0) });
+    }
+    return ticks;
+  };
+  // Under two weeks, days, as many as fit.
+  if (group === "activity" && high - low < 14 * 86_400_000) {
+    const start = new Date(low);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() + 1);
+    const step = Math.max(1, Math.ceil((high - low) / 86_400_000 / maxCount));
+    const ticks = [];
+    for (const date = start; date.getTime() <= high; date.setDate(date.getDate() + step)) {
+      ticks.push({ x: date.getTime(), text: new Intl.DateTimeFormat(locale(), { day: "numeric", month: "numeric" }).format(date) });
+    }
+    return ticks;
+  }
+  const candidates = [() => weeks(1), () => weeks(2), () => months(1), () => months(2), () => months(3), () => months(6), () => months(12), () => months(24), () => months(60)];
+  for (const candidate of group === "month" ? candidates.slice(2) : candidates) {
+    const ticks = candidate();
+    if (ticks.length <= maxCount) return ticks;
+  }
+  return months(120);
+}
+
 function renderTrendControls() {
   const select = byId("trendMetric");
   select.replaceChildren(...trendMetrics.map((metric) => new Option(trendLabel(metric, view.sport), metric)));
@@ -631,14 +682,13 @@ function renderTrendChart() {
     label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, twoDecimals(metric) ? 2 : 0);
     chart.append(label);
   }
-  // Date ticks spread evenly, one per 80px at most so they do not overlap; a short span shows fewer of them.
-  const tickCount = Math.min(6, Math.max(2, Math.floor(plotWidth / 80)), Math.max(2, Math.round((maxX - minX) / day)));
-  // The first and the last sit at the plot's edges, aligned inwards, the rest evenly between them.
-  for (let index = 0; index < tickCount; index += 1) {
-    const x = minX + ((maxX - minX) * index) / (tickCount - 1);
-    const anchor = index === 0 ? "start" : index === tickCount - 1 ? "end" : "middle";
-    const label = svg("text", { class: "compare-tick", x: xFor(x), y: height - 10, "text-anchor": anchor });
-    label.textContent = dayDate(x);
+  // Date ticks fall on calendar marks (Mondays, months, years), as many as fit at one per 70px.
+  for (const tick of dateTicks(minX, maxX, Math.max(2, Math.floor(plotWidth / 70)), { group: view.trendGroup })) {
+    const x = xFor(tick.x);
+    // A label too near an edge is pulled inside the plot.
+    const anchor = x - margin.left < 24 ? "start" : margin.left + plotWidth - x < 24 ? "end" : "middle";
+    const label = svg("text", { class: "compare-tick", x, y: height - 10, "text-anchor": anchor });
+    label.textContent = tick.text;
     chart.append(label);
   }
   chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
