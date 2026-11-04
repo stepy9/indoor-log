@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../src/core.js";
-import { backupText, entryFromFit, entryFromWorkout, entryId, mergeDuplicates, parseBackup, sameWorkout } from "../src/library.js";
+import { backupDue, backupText, entryFromFit, entryFromWorkout, entryId, mergeDuplicates, parseBackup, sameWorkout } from "../src/library.js";
 
 const folder = path.resolve("test", "fixtures", "rowing");
 
@@ -116,4 +116,14 @@ test("a plan's resistance lands on the laps it covers, and hand-set resistance o
   assert.equal(save[0].trainer, "Woodrower");
   assert.equal(save[0].resistance, 6);
   assert.deepEqual(save[0].laps.map((lap) => lap.resistance), [11, 12]);
+});
+
+test("a backup is due with activities and none made, or with new ones since one over 30 days old", () => {
+  const now = Date.parse("2026-11-04T12:00:00Z");
+  const day = 86_400_000;
+  assert.equal(backupDue(2, null, now), false);
+  assert.equal(backupDue(3, null, now), true);
+  assert.equal(backupDue(20, { at: now - 40 * day, count: 20 }, now), false);
+  assert.equal(backupDue(21, { at: now - 40 * day, count: 20 }, now), true);
+  assert.equal(backupDue(21, { at: now - 10 * day, count: 20 }, now), false);
 });

@@ -179,6 +179,14 @@ export function lapLevelsFromPlan(laps, steps, toLevel) {
   });
 }
 
+// Whether it is time to back up: the activities live only in this browser. Due with a few activities and
+// never a backup, or with activities added since one more than 30 days old. last is { at, count } or null.
+export function backupDue(count, last, now = Date.now()) {
+  if (count < 3) return false;
+  if (!last?.at) return true;
+  return count > (last.count ?? 0) && now - last.at > 30 * 86_400_000;
+}
+
 // A backup is one JSON file with every entry and the remembered settings (trainers among them), read back by parseBackup.
 // Version 1 backups carry no settings.
 export function backupText(entries, settings = null) {

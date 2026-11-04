@@ -1,7 +1,7 @@
 import { buildWorkout, decodeGarminFit, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
-import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries } from "../library.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries, backupDue } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -330,8 +330,34 @@ async function addFiles(files) {
   renderList();
 }
 
+// When the last backup was made and of how many activities, kept apart from the settings a backup carries.
+const backupKey = "kinomap-backup-last";
+const lastBackup = () => {
+  try {
+    return JSON.parse(localStorage.getItem(backupKey));
+  } catch {
+    return null;
+  }
+};
+const markBackup = (count) => {
+  try {
+    localStorage.setItem(backupKey, JSON.stringify({ at: Date.now(), count }));
+  } catch {}
+};
+
+// A dot on the Library button and a line in the library while a backup is due.
+export async function updateBackupReminder() {
+  const count = (await listEntries().catch(() => [])).length;
+  const due = backupDue(count, lastBackup());
+  const button = byId("libraryButton");
+  button.classList.toggle("is-due", due);
+  button.title = due ? t("backupDue") : "";
+  byId("libraryBackupDue").hidden = !due;
+}
+
 async function downloadBackup() {
-  const blob = new Blob([backupText(await listEntries(), settingsSnapshot())], { type: "application/json" });
+  const entries = await listEntries();
+  const blob = new Blob([backupText(entries, settingsSnapshot())], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = Object.assign(document.createElement("a"), { href: url, download: `indoor-log-backup-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(link);
@@ -340,6 +366,8 @@ async function downloadBackup() {
     link.remove();
     URL.revokeObjectURL(url);
   }, 1000);
+  markBackup(entries.length);
+  updateBackupReminder();
 }
 
 async function restoreBackup(file) {
@@ -356,6 +384,9 @@ async function restoreBackup(file) {
       ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []),
       ...(settings ? [t("librarySettingsRestored")] : []),
     ].join(" · "), "success");
+    // What came back from a file is backed up by that file.
+    markBackup((await listEntries()).length);
+    updateBackupReminder();
   } catch (error) {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
   }
@@ -411,4 +442,7 @@ export function setupLibrary({ onRestore } = {}) {
     backupInput.value = "";
   });
   if (typeof indexedDB === "undefined") byId("libraryButton").hidden = true;
+  else updateBackupReminder();
+  // The library may grow from the converter too; a closed library dialog checks again.
+  byId("libraryDialog").addEventListener("close", updateBackupReminder);
 }
