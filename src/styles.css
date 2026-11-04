@@ -937,3 +937,14 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .compare-view.is-trend .compare-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .compare-view.is-trend .compare-filters input { grid-column: 1 / -1; }
 }
+
+/* Phones: the trend's filters and chart controls stack in full-width rows instead of squeezing into one bar. */
+@media (max-width: 640px) {
+  .compare-view.is-trend .compare-picker { flex-direction: column; align-items: stretch; gap: 8px; }
+  .compare-view.is-trend .compare-picker > .panel-title-row, .compare-view.is-trend .compare-picker .panel-title-row select { width: 100%; }
+  .compare-view.is-trend .compare-filters { flex: none; width: 100%; }
+  #trendControls { flex-direction: column; align-items: stretch; gap: 8px; }
+  #trendControls #trendMetric { width: 100%; }
+  #trendControls .segmented { display: flex; }
+  #trendControls .segmented button { flex: 1; }
+}
