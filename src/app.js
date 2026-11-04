@@ -7,7 +7,7 @@ import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
 import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
 import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
-import { setupSettings } from "./ui/settings.js";
+import { perKgText, setupSettings } from "./ui/settings.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
@@ -631,6 +631,11 @@ function renderLaps(laps, sport) {
   byId("lapsTable").replaceChildren(head, ...rows);
 }
 
+// A new weight in the settings shows at once in the open workout's W/kg.
+window.addEventListener("settings-change", () => {
+  if (state.result) renderSummary(state.result.summary, state.result.startMs, state.result.endMs, state.result.sport);
+});
+
 function renderSummary(summary, startMs, endMs, sport) {
   byId("summaryDuration").textContent = formatDuration(summary.timerSeconds);
   byId("summaryDistance").textContent = `${displayNumber(summary.distance / 1000, 2)} km`;
@@ -641,7 +646,7 @@ function renderSummary(summary, startMs, endMs, sport) {
   byId("summaryHeartRate").textContent = summary.avgHeartRate == null
     ? "—" : `${displayNumber(summary.avgHeartRate)} / ${displayNumber(summary.maxHeartRate)} bpm`;
   byId("summaryPower").textContent = summary.avgPower == null
-    ? "—" : `${displayNumber(summary.avgPower)} / ${displayNumber(summary.maxPower)} W`;
+    ? "—" : `${displayNumber(summary.avgPower)} / ${displayNumber(summary.maxPower)} W${perKgText(summary.avgPower, startMs) ? ` · ${perKgText(summary.avgPower, startMs)}` : ""}`;
   byId("summaryCadenceLabel").textContent = t("cadence");
   byId("summaryCadence").textContent = summary.avgCadence == null
     ? "—" : `${displayNumber(summary.avgCadence)} / ${displayNumber(summary.maxCadence)} ${sport === "running" ? "spm" : "rpm"}`;

@@ -6,6 +6,7 @@ import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from 
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
+import { perKgText } from "./settings.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -483,13 +484,15 @@ function renderTables() {
   if (zoom) rangeNote.textContent = t("compareRange", { from: axisText(zoom[0]), to: axisText(zoom[1]) });
   renderLapTable(all);
   const unit = (value, suffix, digits = 0) => (!Number.isFinite(value) ? "—" : `${displayNumber(value, digits)} ${suffix}`);
+  // Watts with the W/kg by the weight on the workout's day.
+  const watts = (value, entry) => (!Number.isFinite(value) ? "—" : [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · "));
   const cadence = sport === "running" ? "spm" : "rpm";
   renderTable("compareSummary", [
     [t("lapTime"), (entry) => formatDuration(entry.summary.timerSeconds)],
     [t("lapDistanceColumn"), (entry) => unit(entry.summary.distance / 1000, "km", 2)],
     [metricLabel("pace", sport), (entry) => metricText(paceFrom(entry.summary.timerSeconds > 0 ? entry.summary.distance / entry.summary.timerSeconds : null, sport), "pace", sport)],
-    [t("compareAvgPower"), (entry) => unit(entry.summary.avgPower, "W")],
-    [t("compareMaxPower"), (entry) => unit(entry.summary.maxPower, "W")],
+    [t("compareAvgPower"), (entry) => watts(entry.summary.avgPower, entry)],
+    [t("compareMaxPower"), (entry) => watts(entry.summary.maxPower, entry)],
     [t("compareAvgHeartRate"), (entry) => unit(entry.summary.avgHeartRate, "bpm")],
     [t("compareMaxHeartRate"), (entry) => unit(entry.summary.maxHeartRate, "bpm")],
     [t("compareAvgCadence"), (entry) => unit(entry.summary.avgCadence, cadence)],
@@ -502,7 +505,7 @@ function renderTables() {
       const seconds = bestTime(entry, meters);
       return seconds == null ? "—" : formatDuration(seconds);
     }]),
-    ...powerDurations.map((seconds) => [t("compareBestPower", { duration: formatDuration(seconds) }), (entry) => unit(bestAverage(entry, "power", seconds), "W")]),
+    ...powerDurations.map((seconds) => [t("compareBestPower", { duration: formatDuration(seconds) }), (entry) => watts(bestAverage(entry, "power", seconds), entry)]),
   ], picked);
 }
 

@@ -32,6 +32,15 @@ function savedWeights() {
   return saved.weightHistory ?? (saved.weight ? [{ from: null, kg: saved.weight }] : []);
 }
 
+// The body weight on the day of the moment, for the power per kilogram anywhere in the app; null without one.
+export const weightOnDay = (ms) => weightOn({ weightHistory: savedWeights(), timeZone: zone }, ms);
+
+// Power per kilogram as text by the weight on the day, empty without a weight.
+export function perKgText(watts, ms) {
+  const kg = weightOnDay(ms);
+  return kg && Number.isFinite(watts) ? `${displayNumber(watts / kg, 2)} W/kg` : "";
+}
+
 function saveSport(sport, patch) {
   const saved = remembered();
   saveFitness({ sports: { ...saved.sports, [sport]: { ...savedSport(sport), ...patch } } });
