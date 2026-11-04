@@ -959,3 +959,28 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 
 /* Phones: the footer describing the app is left out, the bottom bar sits there. */
 @media (max-width: 640px) { footer { display: none; } }
+
+/* The header: on a desktop the buttons keep their words. On a phone it names the open tab, shows the library
+   and a gear, and the gear opens a menu with the settings, the language and the appearance. */
+.topbar-title, .topbar-more-button, .topbar-more-label { display: none; }
+.topbar-more { display: contents; }
+.topbar-icon { display: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 640px) {
+  .brand { flex: none; }
+  .topbar-title { display: block; align-self: center; flex: 1; min-width: 0; overflow: hidden; color: var(--topbar-ink); font-size: 17px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-actions { position: relative; gap: 8px; }
+  #libraryButton, .topbar-more-button { position: relative; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border-radius: 50%; }
+  #libraryButton > span { display: none; }
+  .topbar-icon { display: block; }
+  .topbar-more-button[aria-expanded="true"] { color: #fff; border-color: var(--topbar-muted); }
+  .topbar-more {
+    position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; width: 230px;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 12px; padding: 12px;
+    border: 1px solid var(--topbar-line); border-radius: 14px; background: #111a2b; box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+  }
+  .topbar-more:not(.is-open) { display: none; }
+  .topbar-more #settingsButton { grid-column: 1 / -1; height: 40px; border-radius: 10px; color: var(--topbar-ink); font-size: 14px; }
+  .topbar-more .language-control { display: contents; }
+  .topbar-more .language-control > .visually-hidden, .topbar-more-label { position: static; display: block; width: auto; height: auto; overflow: visible; clip: auto; clip-path: none; color: var(--topbar-muted); font-size: 13px; font-weight: 600; }
+  .topbar-more .language-menu { top: 100%; }
+}

@@ -793,6 +793,11 @@ function showView(name) {
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.appView === name));
   }
+  // A phone names the open tab in the header; the key keeps it translated on a language switch.
+  const label = document.querySelector(`[data-app-view="${name}"] span`);
+  const title = byId("topbarTitle");
+  title.dataset.i18n = label.dataset.i18n;
+  title.textContent = label.textContent;
   window.scrollTo({ top: 0 });
   if (name === "compare" || name === "trend") refresh();
   if (name === "diary") showDiary();

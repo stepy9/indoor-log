@@ -693,7 +693,21 @@ restoreUnsaved();
 export function setupSettings({ onTrainers, currentSport }) {
   state.onTrainers = onTrainers;
   state.sport = currentSport;
-  byId("settingsButton").addEventListener("click", () => openSettings());
+  byId("settingsButton").addEventListener("click", () => {
+    setMoreMenu(false);
+    openSettings();
+  });
+  // On a phone the gear opens a menu with the settings, the language and the appearance; a tap outside closes it.
+  const moreButton = byId("topbarMoreButton");
+  const more = byId("topbarMore");
+  function setMoreMenu(open) {
+    more.classList.toggle("is-open", open);
+    moreButton.setAttribute("aria-expanded", String(open));
+  }
+  moreButton.addEventListener("click", () => setMoreMenu(!more.classList.contains("is-open")));
+  document.addEventListener("click", (event) => {
+    if (!more.contains(event.target) && !moreButton.contains(event.target)) setMoreMenu(false);
+  });
   const dialog = byId("settingsDialog");
   byId("settingsClose").addEventListener("click", () => dialog.close());
   byId("settingsCancel").addEventListener("click", () => dialog.close());
