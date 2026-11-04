@@ -513,8 +513,9 @@ function renderCalendar(range, entries) {
 }
 
 // Each legend entry turns its sport or kind on and off in the chart; the last one shown stays on.
-function renderLegend() {
-  const groups = barGroups();
+// Only the sports or kinds the period has are listed.
+function renderLegend(entries) {
+  const groups = barGroups().filter(({ has }) => entries.some(has));
   byId("diaryLegend").replaceChildren(...groups.map(({ key, label, color }) => {
     const item = Object.assign(document.createElement("button"), { type: "button", className: "diary-legend-item" });
     item.setAttribute("aria-pressed", String(!view.hidden.has(key)));
@@ -549,7 +550,7 @@ function render() {
   renderControls(range);
   renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
   renderBars(range, current);
-  renderLegend();
+  renderLegend(current);
   renderCalendar(range, current);
   renderPlan();
 }
