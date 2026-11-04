@@ -1,4 +1,4 @@
-import { estimateMaxHeartRate, forSport, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
+import { estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
@@ -26,6 +26,12 @@ function savedSport(sport) {
   return own;
 }
 
+// The weight history; a single weight, as the first version kept it, holds from the start.
+function savedWeights() {
+  const saved = remembered();
+  return saved.weightHistory ?? (saved.weight ? [{ from: null, kg: saved.weight }] : []);
+}
+
 function saveSport(sport, patch) {
   const saved = remembered();
   saveFitness({ sports: { ...saved.sports, [sport]: { ...savedSport(sport), ...patch } } });
@@ -43,7 +49,7 @@ export function settingsFor(entries) {
     timeZone: zone,
     maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
-    weight: remembered().weight || null,
+    weightHistory: savedWeights(),
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
       return [sport, { ...saved, maxHeartRate: saved.maxHeartRate || generalMax }];
@@ -159,18 +165,7 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
-  // The body weight, to the tenth of a kilogram, for the power per kilogram.
-  const weight = numberField(t("settingsWeightLabel"), remembered().weight, "—", () => {}, { min: 30, max: 200 });
-  const weightInput = weight.querySelector("input");
-  weightInput.step = "0.1";
-  weightInput.inputMode = "decimal";
-  weightInput.addEventListener("change", () => {
-    const value = Number(weightInput.value.replace(",", "."));
-    saveFitness({ weight: weightInput.value.trim() && value > 0 ? Math.round(value * 10) / 10 : null });
-    changed();
-  });
-  grid.append(weight);
-  pane.append(grid);
+  pane.append(grid, weightBlock());
   return pane;
 }
 
@@ -312,6 +307,56 @@ function zonesBlock(sport, by, settings) {
 }
 
 // The FTP over time: each record holds from its day until the next; without one in force the estimate counts.
+// The weight history as the FTP's: each record holds from its day, so a new weight leaves the past W/kg as it was.
+function weightBlock() {
+  const block = node("div", { class: "settings-ftp" });
+  const title = node("div", { class: "panel-title-row" });
+  const add = node("button", { type: "button", class: "outline-button" }, t("settingsWeightAdd"));
+  const history = savedWeights();
+  const write = (list) => {
+    saveFitness({ weightHistory: list, weight: null });
+    changed();
+  };
+  const today = dayKey(Date.now(), zone);
+  add.addEventListener("click", () => write([...history.filter((item) => item.from !== today), { from: today, kg: weightOn({ weightHistory: history, timeZone: zone }, Date.now()) || 75 }]));
+  title.append(node("span", { class: "settings-label" }, t("settingsWeightHistory")), add);
+  block.append(title, node("p", { class: "field-note" }, t("settingsWeightNote")));
+  if (!history.length) return block;
+  const table = node("table", { class: "laps-table settings-ftp-table" });
+  const head = node("tr");
+  head.append(...[t("settingsFtpFrom"), t("settingsWeightLabel"), ""].map((label) => node("th", {}, label)));
+  table.append(node("thead"), node("tbody"));
+  table.tHead.append(head);
+  const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
+  for (const { record, index } of order) {
+    const update = (patch) => write(history.map((item, at) => (at === index ? { ...item, ...patch } : item)));
+    const from = node("input", { type: "date", "data-key": `weight-from-${index}`, "aria-label": t("settingsFtpFrom") });
+    from.value = record.from ?? "";
+    from.addEventListener("change", () => update({ from: from.value || null }));
+    const kg = node("input", { type: "number", min: "30", max: "200", step: "0.1", inputmode: "decimal", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
+    kg.value = String(record.kg);
+    kg.addEventListener("change", () => {
+      const value = Math.round(Number(kg.value.replace(",", ".")) * 10) / 10;
+      if (value >= 30) update({ kg: value });
+      else kg.value = String(record.kg);
+    });
+    const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
+    remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
+    const row = node("tr");
+    const fromCell = node("td");
+    fromCell.append(from);
+    if (!record.from) fromCell.append(node("span", { class: "settings-ftp-start" }, t("settingsFtpStart")));
+    row.append(fromCell, ...[kg, remove].map((control) => {
+      const cell = node("td");
+      cell.append(control);
+      return cell;
+    }));
+    table.tBodies[0].append(row);
+  }
+  block.append(table);
+  return block;
+}
+
 function ftpBlock(sport, settings, estimate) {
   const block = node("div", { class: "settings-ftp" });
   const title = node("div", { class: "panel-title-row" });

@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -140,7 +140,8 @@ function renderTiles(history, settings) {
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {
     const ftp = currentFtp(settings, sport);
-    const perKg = settings.weight ? ` · ${displayNumber(ftp / settings.weight, 2)} W/kg` : "";
+    const weight = weightOn(settings, Date.now());
+    const perKg = weight ? ` · ${displayNumber(ftp / weight, 2)} W/kg` : "";
     if (ftp) tiles.push(tile(`FTP · ${sportLabel(sport)}`, `${displayNumber(ftp)} W`, `${setByHand(sport, "ftp") ? t("fitnessSetByHand") : t("fitnessEstimated")}${perKg}`));
   }
   byId("fitnessTiles").replaceChildren(...tiles);
@@ -339,7 +340,7 @@ function renderCurve(current, previous, earlier, settings) {
   byId("fitnessCurveEmpty").hidden = has;
   chart.hidden = !has;
   byId("fitnessCurveLegend").hidden = !has || !before.some((point) => point.value != null);
-  renderCurveTable(curve, before, settings.weight);
+  renderCurveTable(curve, before, settings);
   if (!has) return;
   const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
   const height = 260;
@@ -548,13 +549,15 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
-function renderCurveTable(curve, before, weight) {
+function renderCurveTable(curve, before, settings) {
+  // Each best in W/kg by the weight on the day it was ridden.
+  const weighed = (settings.weightHistory ?? []).length > 0;
   const table = byId("fitnessCurveTable");
   const shown = curve.filter((point) => point.value != null);
   table.hidden = !shown.length;
   const head = node("tr");
   const hasBefore = before.some((point) => point.value != null);
-  head.append(...[t("fitnessDuration"), t("fitnessBestPower"), ...(weight ? ["W/kg"] : []), ...(hasBefore ? [t("fitnessPrevious"), t("trendChange")] : []), t("fitnessFrom")].map((label) => node("th", {}, label)));
+  head.append(...[t("fitnessDuration"), t("fitnessBestPower"), ...(weighed ? ["W/kg"] : []), ...(hasBefore ? [t("fitnessPrevious"), t("trendChange")] : []), t("fitnessFrom")].map((label) => node("th", {}, label)));
   const rows = shown.map((point) => {
     const row = node("tr");
     const old = before.find((item) => item.duration === point.duration)?.value;
@@ -566,7 +569,7 @@ function renderCurveTable(curve, before, weight) {
     from.append(link);
     const best = node("td", {}, `${point.value} W`);
     if (point.record) best.append(" ", node("span", { class: "fitness-record" }, t("fitnessRecord")));
-    row.append(node("td", {}, durationText(point.duration)), best, ...(weight ? [node("td", {}, displayNumber(point.value / weight, 2))] : []), ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
+    row.append(node("td", {}, durationText(point.duration)), best, ...(weighed ? [node("td", {}, ((kg) => (kg ? displayNumber(point.value / kg, 2) : "—"))(weightOn(settings, point.entry.startMs)))] : []), ...(hasBefore ? [node("td", {}, old ? `${old} W` : "—"), changeCell] : []), from);
     return row;
   });
   table.replaceChildren(node("thead"), node("tbody"));

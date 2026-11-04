@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, heartRateLoad, loadHistory, normalizedPower, powerCurve, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -152,4 +152,11 @@ test("freshInDays counts the days of rest until the form is above +15", () => {
   assert.equal(freshInDays([{ day: "2026-11-04", fitness: 0, fatigue: 0 }]), null);
   assert.equal(freshInDays([{ day: "2026-11-04", fitness: 7, fatigue: 17 }]), null);
   assert.ok(freshInDays([{ day: "2026-11-04", fitness: 7, fatigue: 17 }], 0) > 1);
+});
+
+test("weightOn takes the record in force on the day, one without a date from the start", () => {
+  const settings = { timeZone: "UTC", weightHistory: [{ from: null, kg: 80 }, { from: "2026-10-01", kg: 76.5 }] };
+  assert.equal(weightOn(settings, Date.parse("2026-09-15T08:00:00Z")), 80);
+  assert.equal(weightOn(settings, Date.parse("2026-10-01T08:00:00Z")), 76.5);
+  assert.equal(weightOn({ weightHistory: [] }, Date.now()), null);
 });

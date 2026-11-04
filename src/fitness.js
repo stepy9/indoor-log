@@ -87,6 +87,15 @@ export function ftpOn(settings, sport, atMs) {
   return ftpSourceOn(settings, sport, atMs)?.ftp ?? null;
 }
 
+// The body weight on the moment: the latest record of the history up to that day, one without a date holding
+// from the start; null without any. settings.weightHistory is [{ from: "YYYY-MM-DD" | null, kg }].
+export function weightOn(settings, atMs) {
+  const day = dayKey(atMs, settings.timeZone ?? "UTC");
+  const records = (settings.weightHistory ?? []).filter((record) => record.kg > 0 && (!record.from || record.from <= day));
+  if (!records.length) return null;
+  return records.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest)).kg;
+}
+
 // The same FTP with where it comes from: { ftp, method: "manual", from } for a record typed,
 // or { ftp, method: "cp" | "20min", entry } for the estimate; null without any.
 export function ftpSourceOn(settings, sport, atMs) {
