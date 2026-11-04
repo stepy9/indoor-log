@@ -359,20 +359,21 @@ function goalBlock(sport) {
   block.append(row);
   // The time to train each week, in hours to the tenth, for the weekly summary to measure each week by.
   const weekly = node("label", { class: "settings-field settings-weekly" });
-  const hours = node("input", { type: "text", inputmode: "decimal", "data-key": `weekly-hours-${sport}`, placeholder: "—" });
+  // Number fields, so the arrows and the wheel step the value: half hours, whole kilometres.
+  const hours = node("input", { type: "number", min: "0", step: "0.5", inputmode: "decimal", "data-key": `weekly-hours-${sport}`, placeholder: "—" });
   const typed = savedSport(sport).weeklyHours;
-  hours.value = typed ? displayNumber(typed, typed % 1 ? 1 : 0) : "";
+  hours.value = typed ? String(typed) : "";
   hours.addEventListener("change", () => {
     const value = Math.round(Number(hours.value.replace(",", ".")) * 10) / 10;
     if (!hours.value.trim() || value > 0) {
       saveSport(sport, { weeklyHours: hours.value.trim() ? value : null });
       changed();
-    } else hours.value = typed ? displayNumber(typed, typed % 1 ? 1 : 0) : "";
+    } else hours.value = typed ? String(typed) : "";
   });
   weekly.append(node("span", {}, t("settingsWeeklyHours")), hours);
   // Or the distance each week, in whole kilometres.
   const distance = node("label", { class: "settings-field settings-weekly" });
-  const kmInput = node("input", { type: "text", inputmode: "numeric", "data-key": `weekly-km-${sport}`, placeholder: "—" });
+  const kmInput = node("input", { type: "number", min: "0", step: "1", inputmode: "numeric", "data-key": `weekly-km-${sport}`, placeholder: "—" });
   const typedKm = savedSport(sport).weeklyKm;
   kmInput.value = typedKm ? String(typedKm) : "";
   kmInput.addEventListener("change", () => {
