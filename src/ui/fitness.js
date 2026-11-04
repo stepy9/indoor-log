@@ -139,16 +139,20 @@ function renderTiles(history, settings) {
   // With little fitness the form cannot reach +15, so then the day it turns positive.
   const level = freshInDays(history, 15) ? 15 : 0;
   const freshIn = freshInDays(history, level);
-  // The goal set in the settings: from when to rest for a fresh form on its day, by the same level.
-  const goal = settings.goal;
-  const plan = goal && goalPlan(history, goal.day, level);
-  if (plan) {
+  // Each shown sport's goal from the settings: from when to rest for a fresh form on its day, by the same
+  // level, from the load the page shows (that sport's, or all the sports' together).
+  const goalSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
+  for (const sport of goalSports) {
+    const goal = settings.sports[sport]?.goal;
+    const plan = goal?.day && goalPlan(history, goal.day, level);
+    if (!plan) continue;
     const form = `${plan.form >= 0 ? "+" : ""}${displayNumber(plan.form, Math.abs(plan.form) < 10 ? 1 : 0)}`;
     const restNow = plan.restFrom && plan.restFrom <= addDays(last.day, 1);
     const note = !plan.restFrom ? t("fitnessGoalShort", { days: plan.days, form })
       : restNow ? t("fitnessGoalRestNow", { days: plan.days, form })
       : t("fitnessGoalRestFrom", { days: plan.days, level: level ? "+15" : "0", from: dayText(plan.restFrom, { weekday: "short", day: "numeric", month: "numeric" }) });
-    tiles.push(tile(goal.name || t("fitnessGoal"), dayText(goal.day, { weekday: "short", day: "numeric", month: "numeric" }), note));
+    const title = [goal.name || t("fitnessGoal"), ...(goalSports.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
+    tiles.push(tile(title, dayText(goal.day, { weekday: "short", day: "numeric", month: "numeric" }), note));
   }
   if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];

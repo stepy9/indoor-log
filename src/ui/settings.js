@@ -61,7 +61,6 @@ export function settingsFor(entries) {
     maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
     weightHistory: savedWeights(),
-    goal: remembered().goal?.day ? remembered().goal : null,
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
       return [sport, { ...saved, maxHeartRate: saved.maxHeartRate || generalMax }];
@@ -198,7 +197,7 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
-  pane.append(grid, weightBlock(), goalBlock());
+  pane.append(grid, weightBlock());
   return pane;
 }
 
@@ -341,21 +340,22 @@ function zonesBlock(sport, by, settings) {
 
 // The FTP over time: each record holds from its day until the next; without one in force the estimate counts.
 // The weight history as the FTP's: each record holds from its day, so a new weight leaves the past W/kg as it was.
-// The next race or FTP test: a day and an optional name, for the analysis to plan the rest before it.
-function goalBlock() {
-  const block = node("div", { class: "settings-ftp" });
-  const goal = remembered().goal ?? {};
+// The sport's next race or FTP test: a day and an optional name, for the analysis to plan the rest before it
+// from that sport's workouts.
+function goalBlock(sport) {
+  const block = node("div", { class: "settings-block" });
+  const goal = savedSport(sport).goal ?? {};
   const write = (patch) => {
     const next = { ...goal, ...patch };
-    saveFitness({ goal: next.day ? next : null });
+    saveSport(sport, { goal: next.day ? next : null });
     changed();
   };
-  block.append(node("span", { class: "settings-label" }, t("settingsGoal")), node("p", { class: "field-note" }, t("settingsGoalNote")));
+  block.append(node("h4", {}, t("settingsGoal")), node("p", { class: "field-note" }, t("settingsGoalNote")));
   const row = node("div", { class: "settings-goal" });
-  const name = node("input", { type: "text", "data-key": "goal-name", "aria-label": t("settingsGoalName"), placeholder: t("settingsGoalName") });
+  const name = node("input", { type: "text", "data-key": `goal-name-${sport}`, "aria-label": t("settingsGoalName"), placeholder: t("settingsGoalName") });
   name.value = goal.name ?? "";
   name.addEventListener("change", () => write({ name: name.value.trim() || null }));
-  row.append(dateField("goal-day", goal.day ?? null, (day) => write({ day })), name);
+  row.append(dateField(`goal-day-${sport}`, goal.day ?? null, (day) => write({ day })), name);
   block.append(row);
   return block;
 }
@@ -475,7 +475,7 @@ function sportPane(sport) {
   thresholds.append(grid, ftpBlock(sport, settings, estimate.ftp));
   const zones = node("div", { class: "settings-zone-grid" });
   zones.append(zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
-  pane.append(thresholds, zones);
+  pane.append(thresholds, zones, goalBlock(sport));
   return pane;
 }
 
