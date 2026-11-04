@@ -370,7 +370,22 @@ function goalBlock(sport) {
     } else hours.value = typed ? displayNumber(typed, typed % 1 ? 1 : 0) : "";
   });
   weekly.append(node("span", {}, t("settingsWeeklyHours")), hours);
-  block.append(weekly);
+  // Or the distance each week, in whole kilometres.
+  const distance = node("label", { class: "settings-field settings-weekly" });
+  const kmInput = node("input", { type: "text", inputmode: "numeric", "data-key": `weekly-km-${sport}`, placeholder: "—" });
+  const typedKm = savedSport(sport).weeklyKm;
+  kmInput.value = typedKm ? String(typedKm) : "";
+  kmInput.addEventListener("change", () => {
+    const value = Math.round(Number(kmInput.value.replace(",", ".")));
+    if (!kmInput.value.trim() || value > 0) {
+      saveSport(sport, { weeklyKm: kmInput.value.trim() ? value : null });
+      changed();
+    } else kmInput.value = typedKm ? String(typedKm) : "";
+  });
+  distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
+  const both = node("div", { class: "settings-weekly-row" });
+  both.append(weekly, distance);
+  block.append(both);
   return block;
 }
 
