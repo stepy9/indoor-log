@@ -383,12 +383,15 @@ function drawBars(buckets, groups, metric, height) {
   }
   children.push(svgNode("line", { x1: left, x2: width - right, y1: top + plotHeight, y2: top + plotHeight, class: "diary-axis" }));
   children.push(svgNode("text", { x: left - 8, y: top + plotHeight + 4, class: "diary-axis-label" }, "0"));
+  const labelWidth = { year: 30, week: 44 }[view.period] ?? 22;
+  const labelStep = Math.max(1, Math.ceil(labelWidth / slot));
   buckets.forEach((bucket, index) => {
     const x = left + slot * index + (slot - barWidth) / 2;
     const total = barValue(drawn(bucket.entries), metric);
     const label = view.period === "year" ? format(`${bucket.key}-01`, { month: "short" })
       : view.period === "week" ? format(bucket.key, { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
-    children.push(svgNode("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
+    // A narrow chart labels every few bars only, as many as fit side by side.
+    if (index % labelStep === 0) children.push(svgNode("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
     if (!total || !max) return;
     const group = svgNode("g", { class: "diary-bar" });
     let y = top + plotHeight;
