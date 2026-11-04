@@ -376,17 +376,30 @@ function renderFtpChart(settings) {
     children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
   }
-  // Month ticks, at least 56 px apart.
-  let lastTick = -Infinity;
-  for (let month = dayKey(start, zone).slice(0, 7); ;) {
-    const ms = Date.parse(`${month}-01T12:00:00Z`);
-    if (ms > end) break;
-    if (ms >= start && xFor(ms) - lastTick >= 56) {
-      lastTick = xFor(ms);
-      children.push(node("text", { x: lastTick, y: height - 8, class: "diary-tick" }, dayText(`${month}-01`, { month: "short", ...(month.endsWith("-01") ? { year: "numeric" } : {}) })));
+  // Ticks as dense as fit at least 64 px apart: days, weeks from Monday, or months; each with a faint vertical grid line.
+  const pxPerDay = (width - margin.left - margin.right) / Math.max(1, (end - start) / 86_400_000);
+  const spacing = [1, 2, 7, 14, 30, 61, 91, 182, 365].find((daysApart) => daysApart * pxPerDay >= 64) ?? 365;
+  const ticks = [];
+  if (spacing <= 14) {
+    for (let ms = Date.parse(`${dayKey(start, zone)}T12:00:00Z`); ms <= end; ms += 86_400_000) {
+      const key = new Date(ms).toISOString().slice(0, 10);
+      const offset = Math.round((ms - Date.parse("2024-01-01T12:00:00Z")) / 86_400_000); // 2024-01-01 was a Monday.
+      if (ms >= start && ((offset % spacing) + spacing) % spacing === 0) ticks.push({ ms, label: dayText(key, { day: "numeric", month: "short" }) });
     }
-    const [year, number] = month.split("-").map(Number);
-    month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
+  } else {
+    const every = Math.round(spacing / 30.4);
+    for (let month = dayKey(start, zone).slice(0, 7); ;) {
+      const ms = Date.parse(`${month}-01T12:00:00Z`);
+      if (ms > end) break;
+      const [year, number] = month.split("-").map(Number);
+      if (ms >= start && (number - 1) % every === 0) ticks.push({ ms, label: dayText(`${month}-01`, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
+      month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
+    }
+  }
+  for (const tick of ticks) {
+    const x = xFor(tick.ms);
+    children.push(node("line", { x1: x, x2: x, y1: margin.top, y2: height - margin.bottom, class: "diary-grid" }));
+    children.push(node("text", { x, y: height - 8, class: "diary-tick" }, tick.label));
   }
   for (const line of lines) {
     // A step line: the FTP holds until the next change.
