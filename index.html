@@ -2,7 +2,7 @@
 <html lang="cs">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1220" />
     <title>Indoor Log</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
@@ -512,7 +512,7 @@
       <section class="compare-view" id="compareView" hidden>
         <aside class="card compare-picker">
           <div class="panel-title-row">
-            <span class="field-label" data-i18n="compareActivities">Aktivity</span>
+            <button class="compare-picker-toggle" id="comparePickerToggle" type="button" aria-expanded="true" aria-controls="compareList"><span data-i18n="compareActivities">Aktivity</span><span id="comparePickerCount"></span></button>
             <select id="compareSport" aria-label="Sport" data-i18n-aria="librarySport"></select>
           </div>
           <p class="field-note" id="compareEmpty" data-i18n="compareEmpty" hidden>Knihovna je prázdná. Stáhněte aktivitu v převodníku nebo přidejte soubory do knihovny.</p>

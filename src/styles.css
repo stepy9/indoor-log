@@ -499,7 +499,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .compare-view.is-trend { grid-template-columns: minmax(0, 1fr); }
 .compare-view.is-trend .compare-picker { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; }
 .compare-view.is-trend .compare-picker > .panel-title-row { margin: 0; }
-.compare-view.is-trend .compare-picker > .panel-title-row .field-label,
+.compare-view.is-trend .compare-picker-toggle,
 .compare-view.is-trend #compareList, .compare-view.is-trend #compareLimit, .compare-view.is-trend #compareLibraryButton { display: none; }
 .compare-view.is-trend .compare-picker .panel-title-row select { max-width: none; }
 .compare-view.is-trend .compare-filters { flex: 1; grid-template-columns: minmax(160px, 1.5fr) repeat(2, minmax(140px, 1fr)); }
@@ -905,7 +905,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .topbar-actions { gap: 6px; min-width: 0; }
   .library-button { padding: 6px 10px; }
   .language-button { padding: 0 8px; gap: 5px; }
-  input, select, textarea { font-size: 16px !important; }
   .panel-title-row:has(.diary-basis) { flex-wrap: wrap; }
   .panel-title-row .segmented { flex: 1 1 100%; display: flex; }
   .panel-title-row .segmented button { flex: 1; padding-inline: 6px; }
@@ -1082,4 +1081,23 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .diary-head .diary-filters > .segmented button { flex: 1; padding-block: 8px; }
   .diary-head .diary-filters select { width: 100%; height: 40px; }
   .diary-head .diary-filters > select:last-child, .diary-head .diary-filters > select:only-of-type:not(:has(+ label)) { grid-column: 1 / -1; }
+}
+
+/* The comparison's picker: on a desktop its title is plain text; on a phone it folds to one line with the count picked. */
+.compare-picker-toggle { display: contents; }
+.compare-picker-toggle > span:first-child { color: var(--ink); font-size: 13px; font-weight: 700; }
+.compare-picker-toggle > #comparePickerCount { display: none; }
+@media (min-width: 641px) { .compare-picker-toggle { pointer-events: none; } }
+@media (max-width: 640px) {
+  .compare-picker-toggle { display: flex; flex: 1; min-width: 0; align-items: center; gap: 4px; padding: 6px 0; white-space: nowrap; border: 0; color: var(--ink); background: transparent; font: inherit; cursor: pointer; }
+  .compare-picker-toggle > span:first-child { color: var(--ink); font-size: 15px; letter-spacing: 0; text-transform: none; }
+  .compare-picker-toggle > #comparePickerCount { display: inline; color: var(--muted); font-size: 15px; font-weight: 600; }
+  .compare-picker-toggle::after { content: ""; margin-right: auto; width: 7px; height: 7px; margin: 0 0 3px 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+  .compare-picker-toggle[aria-expanded="true"]::after { margin-bottom: -3px; transform: rotate(-135deg); }
+  .compare-view:not(.is-trend) .compare-picker.is-collapsed > :not(.panel-title-row), .compare-view:not(.is-trend) .compare-picker.is-collapsed .panel-title-row select { display: none; }
+  .compare-view:not(.is-trend) .compare-picker.is-collapsed { padding-block: 10px; }
+  .compare-view:not(.is-trend) .compare-picker.is-collapsed > .panel-title-row { margin: 0; }
+  .compare-view.is-trend .compare-picker-toggle { display: none; }
+  /* A row: the name over the date, time and distance, the kind tag at the end. */
+  .compare-item .kind-tag { height: 26px; max-width: 110px; }
 }

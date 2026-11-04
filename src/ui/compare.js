@@ -14,6 +14,7 @@ const slotCount = 6;
 const svgNs = "http://www.w3.org/2000/svg";
 
 const view = {
+  pickerOpen: true,
   entries: [],
   // Selected entry id → colour slot 1–6.
   slots: new Map(),
@@ -185,6 +186,10 @@ function renderList() {
     return row;
   }), `compare:${view.sport}`);
   byId("compareLimit").hidden = view.slots.size < slotCount;
+  // On a phone the picker folds to one line, so an activity opened from elsewhere shows its chart first.
+  byId("comparePickerCount").textContent = view.slots.size ? ` · ${view.slots.size}` : "";
+  byId("comparePickerToggle").setAttribute("aria-expanded", String(view.pickerOpen));
+  document.querySelector(".compare-picker").classList.toggle("is-collapsed", !view.pickerOpen);
 }
 
 function renderControls() {
@@ -809,6 +814,7 @@ function openInCompare(entry) {
   view.sport = entry.sport;
   view.zoom = null;
   view.slots = new Map([[entry.id, 1]]);
+  view.pickerOpen = false;
   showView("compare");
 }
 
@@ -817,10 +823,16 @@ export function setupCompare({ onConverter }) {
     button.addEventListener("click", () => {
       const name = button.dataset.appView;
       if (name === currentView) return;
+      // The comparison opened from its tab shows the picker when nothing is picked yet.
+      if (name === "compare") view.pickerOpen = view.slots.size === 0;
       showView(name);
       if (name === "converter") onConverter();
     });
   }
+  byId("comparePickerToggle").addEventListener("click", () => {
+    view.pickerOpen = !view.pickerOpen;
+    renderList();
+  });
   setupDiary({ onOpen: openInCompare });
   setupFitness({ onOpen: openInCompare });
   // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
