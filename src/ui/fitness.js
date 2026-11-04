@@ -865,9 +865,10 @@ function renderRecords(entries) {
     return best && { meters, ...best };
   }).filter(Boolean);
   const distanceLabel = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000, meters % 1000 ? 1 : 0)} km` : `${meters} m`);
-  fill(byId("fitnessRecordTimes"), [t("fitnessDistance"), t("fitnessBestTime"), t("fitnessFrom")], times.map((item) => {
+  // An empty column where the power has its W/kg, so both tables line up.
+  fill(byId("fitnessRecordTimes"), [t("fitnessDistance"), t("fitnessBestTime"), ...(weighed ? [""] : []), t("fitnessFrom")], times.map((item) => {
     const row = node("tr");
-    row.append(node("td", {}, distanceLabel(item.meters)), valueCell(formatDuration(item.seconds), item.entry.startMs), fromCell(item.entry));
+    row.append(node("td", {}, distanceLabel(item.meters)), valueCell(formatDuration(item.seconds), item.entry.startMs), ...(weighed ? [node("td")] : []), fromCell(item.entry));
     return row;
   }));
   byId("fitnessRecordsEmpty").hidden = power.length > 0 || times.length > 0;
