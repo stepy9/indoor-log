@@ -612,7 +612,18 @@ function renderCurveTable(curve, before, settings) {
 
 // Week by week from Monday, the latest on top: workouts, time, distance and load (with a bar to compare),
 // and how much the fitness rose or fell over the week, coloured when it climbs too fast.
-function renderWeeks(history, entries) {
+// With a weekly time set for the sports shown, each week tells how much of it was done, the running one what is left.
+// A week's share of its time target, the running week with what is left: done in green, short of half in red.
+function targetCell(seconds, target, running) {
+  const share = (seconds / target) * 100;
+  const left = target - seconds;
+  const text = `${displayNumber(share)} %${running && left > 0 ? ` · ${t("fitnessTargetLeft", { time: formatDuration(left) })}` : ""}`;
+  return node("td", { class: share >= 100 ? "is-better" : !running && share < 50 ? "is-worse" : "" }, text);
+}
+
+function renderWeeks(history, entries, settings) {
+  const shownSports = view.sport === "all" ? sports : [view.sport];
+  const target = shownSports.reduce((sum, sport) => sum + (settings.sports[sport]?.weeklyHours ?? 0) * 3600, 0);
   const table = byId("fitnessWeeks");
   const days = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
   const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -638,7 +649,7 @@ function renderWeeks(history, entries) {
   table.hidden = !list.length;
   const highest = Math.max(1, ...list.map((week) => week.load));
   const head = node("tr");
-  head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), t("fitnessDistance"), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
+  head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), ...(target ? [t("fitnessOfTarget", { target: formatDuration(target) })] : []), t("fitnessDistance"), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
   const thisMonday = mondayOf(today());
   const rows = list.map((week) => {
     const row = node("tr");
@@ -660,6 +671,7 @@ function renderWeeks(history, entries) {
       node("td", {}, when),
       node("td", {}, String(week.workouts)),
       node("td", {}, week.seconds ? formatDuration(week.seconds) : "—"),
+      ...(target ? [targetCell(week.seconds, target, week.monday === thisMonday)] : []),
       node("td", {}, week.meters ? `${displayNumber(week.meters / 1000, 1)} km` : "—"),
       loadCell,
       node("td", { class: rampClass }, ramp == null ? "—" : Math.abs(ramp) < 0.05 ? "±0" : `${ramp > 0 ? "+" : ""}${displayNumber(ramp, 1)}`),
@@ -832,7 +844,7 @@ function render() {
   renderTiles(history, settings);
   renderLoadChart(history, settings);
   const current = inRange(shown);
-  renderWeeks(history, current);
+  renderWeeks(history, current, settings);
   renderZones(current, settings);
   const currentSet = new Set(current);
   renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)), settings);

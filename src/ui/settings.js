@@ -357,6 +357,20 @@ function goalBlock(sport) {
   name.addEventListener("change", () => write({ name: name.value.trim() || null }));
   row.append(dateField(`goal-day-${sport}`, goal.day ?? null, (day) => write({ day })), name);
   block.append(row);
+  // The time to train each week, in hours to the tenth, for the weekly summary to measure each week by.
+  const weekly = node("label", { class: "settings-field settings-weekly" });
+  const hours = node("input", { type: "text", inputmode: "decimal", "data-key": `weekly-hours-${sport}`, placeholder: "—" });
+  const typed = savedSport(sport).weeklyHours;
+  hours.value = typed ? displayNumber(typed, typed % 1 ? 1 : 0) : "";
+  hours.addEventListener("change", () => {
+    const value = Math.round(Number(hours.value.replace(",", ".")) * 10) / 10;
+    if (!hours.value.trim() || value > 0) {
+      saveSport(sport, { weeklyHours: hours.value.trim() ? value : null });
+      changed();
+    } else hours.value = typed ? displayNumber(typed, typed % 1 ? 1 : 0) : "";
+  });
+  weekly.append(node("span", {}, t("settingsWeeklyHours")), hours);
+  block.append(weekly);
   return block;
 }
 
