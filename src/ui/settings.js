@@ -112,8 +112,9 @@ const changed = () => {
 };
 
 const snapshot = () => {
+  // Empty rather than missing, so putting it back clears what was typed into a fresh setup too.
   const { fitness, trainers: list } = savedDefaults();
-  return { fitness, trainers: list };
+  return { fitness: fitness ?? {}, trainers: list ?? [] };
 };
 
 function save() {
@@ -499,11 +500,34 @@ export async function openSettings(pane) {
   if (sports.includes(sport) || sport === "general") state.pane = sport;
   state.entries = await listEntries().catch(() => []);
   state.before = snapshot();
+  keepUndo(state.before);
   state.dirty = false;
   state.saved = false;
   byId("settingsDialog").showModal();
   render();
 }
+
+// What the settings were when the dialog opened, kept in storage until it closes: edits are written as typed,
+// so a reload or a closed tab with the dialog open would otherwise keep them unsaved. The next start puts it back.
+const undoKey = "kinomap-settings-undo";
+
+function keepUndo(before) {
+  try {
+    if (before) localStorage.setItem(undoKey, JSON.stringify(before));
+    else localStorage.removeItem(undoKey);
+  } catch {}
+}
+
+function restoreUnsaved() {
+  try {
+    const before = JSON.parse(localStorage.getItem(undoKey));
+    if (before) saveDefaults(before);
+    localStorage.removeItem(undoKey);
+  } catch {}
+}
+
+// At load, before anything reads the settings.
+restoreUnsaved();
 
 // onTrainers runs after a save, so the converter's trainer list stays current;
 // currentSport gives the sport to open on.
@@ -517,5 +541,6 @@ export function setupSettings({ onTrainers, currentSport }) {
   byId("settingsSave").addEventListener("click", save);
   dialog.addEventListener("close", () => {
     if (!state.saved && state.dirty) saveDefaults(state.before);
+    keepUndo(null);
   });
 }
