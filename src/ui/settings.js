@@ -326,8 +326,10 @@ function weightBlock() {
     saveFitness({ weightHistory: list, weight: null });
     changed();
   };
-  const today = dayKey(Date.now(), zone);
-  add.addEventListener("click", () => write([...history.filter((item) => item.from !== today), { from: today, kg: weightOn({ weightHistory: history, timeZone: zone }, Date.now()) || 75 }]));
+  // The first weight holds from the first workout, so the whole library gets its W/kg; later ones from today.
+  const firstWorkout = state.entries.length ? dayKey(Math.min(...state.entries.map((entry) => entry.startMs)), zone) : null;
+  const from = !history.length && firstWorkout ? firstWorkout : dayKey(Date.now(), zone);
+  add.addEventListener("click", () => write([...history.filter((item) => item.from !== from), { from, kg: weightOn({ weightHistory: history, timeZone: zone }, Date.now()) || 75 }]));
   title.append(node("span", { class: "settings-label" }, t("settingsWeightHistory")), add);
   block.append(title, node("p", { class: "field-note" }, t("settingsWeightNote")));
   if (!history.length) return block;
