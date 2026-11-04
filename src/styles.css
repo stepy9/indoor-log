@@ -1165,3 +1165,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 @media (max-width: 640px) {
   #fitnessCurveTable td:last-child .link-button { display: inline; max-width: none; overflow: visible; white-space: normal; }
 }
+@media (max-width: 640px) {
+  #fitnessRecords td:last-child, #fitnessRecordTimes td:last-child { overflow: visible; text-overflow: clip; white-space: normal; }
+}
