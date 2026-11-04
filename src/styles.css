@@ -877,7 +877,17 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 #fitnessRecords th:nth-child(2), #fitnessRecordTimes th:nth-child(2) { width: 150px; }
 #fitnessRecords th:nth-child(3):not(:last-child), #fitnessRecordTimes th:nth-child(3):not(:last-child) { width: 70px; }
 #fitnessRecords td:last-child, #fitnessRecordTimes td:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.settings-cloud-state { margin: 6px 0; font-size: 13px; }
+.settings-cloud-group { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.settings-cloud-state { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 14px; }
+.settings-cloud-icon { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; font-size: 12px; font-weight: 700; color: #fff; background: var(--muted); }
+.settings-cloud-state.is-ok .settings-cloud-icon { background: var(--success); }
 .settings-cloud-state.is-error { color: var(--danger-ink); }
+.settings-cloud-state.is-error .settings-cloud-icon { background: var(--danger-ink); }
+.settings-cloud-state.is-syncing .settings-cloud-icon { background: var(--accent); animation: cloud-spin 1s linear infinite; }
+@keyframes cloud-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .settings-cloud-state.is-syncing .settings-cloud-icon { animation: none; } }
+.settings-cloud-indent { margin-left: 26px; }
+.settings-cloud-group .field-note.settings-cloud-indent { margin-top: 4px; margin-bottom: 10px; }
 .settings-cloud-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.settings-cloud-fit { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
+.settings-cloud-fit { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.settings-cloud-fit input { width: 18px; height: 18px; margin: 0; }

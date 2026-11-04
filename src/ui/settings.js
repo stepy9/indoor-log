@@ -384,13 +384,22 @@ function cloudBlock() {
       });
       const uploadRow = node("div", { class: "settings-cloud-actions" });
       uploadRow.append(upload, pick, progress);
-      extra = [fitLabel, node("p", { class: "field-note" }, t("cloudFitNote")), uploadRow];
+      const fitGroup = node("div", { class: "settings-cloud-group" });
+      fitGroup.append(fitLabel, node("p", { class: "field-note settings-cloud-indent" }, t("cloudFitNote")), uploadRow);
+      uploadRow.classList.add("settings-cloud-indent");
+      extra = [fitGroup];
     } else {
       const on = node("button", { type: "button", class: "export-button" }, t("cloudConnect"));
       on.addEventListener("click", () => connectCloud());
       actions.append(on);
     }
-    block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), node("p", { class: `settings-cloud-state${state === "error" ? " is-error" : ""}` }, line), actions, ...extra);
+    // A mark before the state: grey when off, turning while syncing, green when synced, red on a failure.
+    const kind = !connected ? "off" : state === "syncing" ? "syncing" : state === "error" ? "error" : "ok";
+    const stateLine = node("p", { class: `settings-cloud-state is-${kind}` });
+    stateLine.append(node("span", { class: "settings-cloud-icon", "aria-hidden": "true" }, { off: "○", syncing: "↻", error: "!", ok: "✓" }[kind]), document.createTextNode(line));
+    const statusGroup = node("div", { class: "settings-cloud-group" });
+    statusGroup.append(stateLine, actions);
+    block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), statusGroup, ...extra);
   };
   draw();
   // Kept current while the dialog is open; the listener goes with the block.
