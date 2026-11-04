@@ -1017,3 +1017,19 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   #libraryClearButton { grid-column: 1 / -1; order: 1; min-height: 32px; }
   #libraryCancel, #librarySave { order: 2; }
 }
+
+/* Phones: the lap resistance fills the screen; its table drops the start column (the laps run in order) so it fits the width. */
+@media (max-width: 640px) {
+  #lapResistanceDialog[open] { display: flex; flex-direction: column; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: calc(14px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)); border-radius: 0; }
+  #lapResistanceDialog .dialog-head { flex-wrap: wrap; }
+  #lapResistanceDialog .dialog-head h2 { flex: 1 1 100%; }
+  #lapResistanceName { flex: 1 1 100%; }
+  #lapResistanceDialog .lap-resistance-activity { justify-content: space-between; }
+  #lapResistanceDialog .level-input { width: 64px; height: 36px; font-size: 16px; }
+  #lapResistanceDialog .laps-scroll { flex: 1; min-height: 0; max-height: none; overflow-x: hidden; }
+  #lapResistanceDialog .laps-table tr > :nth-child(2) { display: none; }
+  #lapResistanceDialog .laps-table th, #lapResistanceDialog .laps-table td { padding: 6px 6px; }
+  #lapResistanceDialog .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #lapResistanceDialog .dialog-spacer { display: none; }
+  #lapResistanceDialog .dialog-actions > * { width: 100%; min-height: 42px; justify-content: center; }
+}
