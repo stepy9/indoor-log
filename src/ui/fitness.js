@@ -626,6 +626,66 @@ function renderWeeks(history, entries) {
   table.tBodies[0].append(...rows);
 }
 
+// The efficiency factor of each steady workout over the range as dots, with a least-squares trend line.
+// Power and speed do not share a scale, so the one with more workouts is shown.
+function renderEfficiency(entries) {
+  const chart = byId("fitnessEfficiencyChart");
+  const all = entries.map((entry) => ({ entry, result: decoupling(entry) })).filter((item) => item.result?.efficiency > 0);
+  const by = all.filter((item) => item.result.by === "power").length >= all.filter((item) => item.result.by === "speed").length ? "power" : "speed";
+  const points = all.filter((item) => item.result.by === by).map((item) => ({ entry: item.entry, ms: item.entry.startMs, value: item.result.efficiency })).sort((a, b) => a.ms - b.ms);
+  const has = points.length > 0;
+  chart.hidden = !has;
+  byId("fitnessEfficiencyEmpty").hidden = has;
+  byId("fitnessEfficiencySummary").textContent = "";
+  if (!has) return;
+  const unit = by === "power" ? `W ${t("fitnessPerBeat")}` : `m/min ${t("fitnessPerBeat")}`;
+  const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
+  const height = 200;
+  const margin = { left: 48, right: 14, top: 14, bottom: 26 };
+  const days = ranges[view.range];
+  const lastKey = today();
+  const firstKey = Number.isFinite(days) ? addDays(lastKey, 1 - days) : dayKey(points[0].ms, zone);
+  const noonOf = (key) => Date.parse(`${key}T12:00:00Z`);
+  const axisStart = noonOf(firstKey) - 43_200_000;
+  const axisEnd = noonOf(lastKey) + 43_200_000;
+  const xFor = (ms) => margin.left + ((ms - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
+  const values = points.map((point) => point.value);
+  const spread = Math.max(...values) - Math.min(...values) || Math.max(...values) * 0.1;
+  const minY = Math.max(0, Math.min(...values) - spread * 0.25);
+  const maxY = Math.max(...values) + spread * 0.25;
+  const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
+  const digits = maxY < 10 ? 2 : 1;
+  const children = [];
+  for (let index = 0; index <= 4; index += 1) {
+    const value = minY + ((maxY - minY) * index) / 4;
+    children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: index ? "diary-grid" : "diary-axis" }));
+    children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value, digits)));
+  }
+  children.push(...dateTicks(firstKey, lastKey, (key) => xFor(noonOf(key)), { margin, width, height }));
+  // The least-squares line, drawn between the first and the last workout.
+  if (points.length >= 3) {
+    const n = points.length;
+    const meanX = points.reduce((sum, point) => sum + point.ms, 0) / n;
+    const meanY = values.reduce((sum, value) => sum + value, 0) / n;
+    const slope = points.reduce((sum, point) => sum + (point.ms - meanX) * (point.value - meanY), 0) / (points.reduce((sum, point) => sum + (point.ms - meanX) ** 2, 0) || 1);
+    const at = (ms) => meanY + slope * (ms - meanX);
+    const from = points[0].ms;
+    const to = points.at(-1).ms;
+    children.push(node("path", { class: "fitness-line is-trend", d: `M${xFor(from).toFixed(1)},${yFor(at(from)).toFixed(1)}L${xFor(to).toFixed(1)},${yFor(at(to)).toFixed(1)}` }));
+    const change = ((at(to) - at(from)) / at(from)) * 100;
+    byId("fitnessEfficiencySummary").textContent = t("fitnessEfficiencyTrend", { change: `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}` });
+  }
+  for (const point of points) {
+    const dot = node("circle", { cx: xFor(point.ms), cy: yFor(point.value), r: 4, class: "fitness-curve-dot" });
+    dot.append(node("title", {}, `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, digits)} ${unit}`));
+    dot.addEventListener("click", () => openActivity(point.entry));
+    children.push(dot);
+  }
+  chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  chart.style.height = `${height}px`;
+  chart.replaceChildren(...children);
+}
+
 function renderDecoupling(entries, settings) {
   const table = byId("fitnessDecoupling");
   const rows = entries.map((entry) => ({ entry, result: decoupling(entry), load: activityLoad(entry, settings) })).filter((item) => item.result);
@@ -675,6 +735,7 @@ function render() {
   renderWeeks(history, current);
   renderZones(current, settings);
   renderCurve(current, inRange(shown, 1));
+  renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });

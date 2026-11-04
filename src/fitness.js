@@ -349,5 +349,7 @@ export function decoupling(entry) {
   }
   if (!halves.every((half) => half.output > 0 && half.heart > 0)) return null;
   const [first, second] = halves.map((half) => half.output / half.heart);
-  return { percent: ((first - second) / first) * 100, by: field };
+  // The efficiency factor of the whole after the warm-up: watts, or metres a minute, per heartbeat a minute.
+  const efficiency = ((halves[0].output + halves[1].output) / (halves[0].heart + halves[1].heart)) * (field === "speed" ? 60 : 1);
+  return { percent: ((first - second) / first) * 100, by: field, efficiency };
 }

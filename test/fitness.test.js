@@ -83,6 +83,7 @@ test("decoupling compares output per heartbeat of a steady workout's halves afte
   assert.equal(result.by, "power");
   assert.ok(result.percent > 4 && result.percent < 8, `got ${result.percent}`);
   assert.ok(Math.abs(decoupling(entry()).percent) < 0.01);
+  assert.ok(decoupling(entry()).efficiency > 0);
   assert.equal(decoupling(entry({ minutes: 25 })), null);
 });
 
