@@ -209,7 +209,7 @@ function renderLoadChart(history, settings) {
   if (!days.length) return;
   const width = Math.max(320, Math.round(chart.parentElement.getBoundingClientRect().width) || 1000);
   const height = 300;
-  const margin = { left: 44, right: 12, top: 14, bottom: 26 };
+  const margin = { left: 44, right: 12, top: ahead.length ? 24 : 14, bottom: 26 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
   const values = days.flatMap((day) => [day.fitness, day.fatigue, day.form, day.load]);
@@ -257,11 +257,14 @@ function renderLoadChart(history, settings) {
     children.push(
       node("line", { x1: today, x2: today, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-today" }),
       node("line", { x1: goal, x2: goal, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-goal" }),
-      node("text", { x: goal - 4, y: margin.top + 12, class: "fitness-goal-label" }, next.goal.name || t("fitnessGoal")),
+      // The goal named above the plot, clear of the lines and the band label.
+      node("text", { x: goal, y: margin.top - 6, class: "fitness-goal-label" }, next.goal.name || t("fitnessGoal")),
     );
     if (next.plan.restFrom && indexOf.has(next.plan.restFrom)) {
       const rest = xFor(indexOf.get(next.plan.restFrom)) - plotWidth / days.length / 2;
-      children.push(node("text", { x: rest + 4, y: margin.top + plotHeight - 6, class: "fitness-goal-label is-rest" }, t("fitnessRestFrom")));
+      // Rest named right of its line, or left of it when the goal is too close for the word.
+      const left = goal - rest < 44;
+      children.push(node("text", { x: left ? rest - 4 : rest + 4, y: margin.top + plotHeight - 6, class: `fitness-goal-label is-rest${left ? " is-left" : ""}` }, t("fitnessRestFrom")));
       children.push(node("line", { x1: rest, x2: rest, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-today" }));
     }
   }
