@@ -343,11 +343,16 @@ function renderFtpChart(settings) {
   const firstMs = Math.min(...view.entries.map((entry) => entry.startMs));
   const start = Number.isFinite(days) ? Math.max(firstMs, end - days * 86_400_000) : firstMs;
   const step = Math.max(86_400_000, Math.ceil((end - start) / 400 / 86_400_000) * 86_400_000);
+  // Whole days on the axis: half a day before the first one and after today, each day centred on its noon.
+  const noonOf = (ms) => Date.parse(`${dayKey(ms, zone)}T12:00:00Z`);
+  const todayNoon = noonOf(end);
+  const axisStart = noonOf(start) - 43_200_000;
+  const axisEnd = todayNoon + 43_200_000;
   const lines = shownSports.map((sport, index) => {
+    // The FTP a day ends with holds over the whole day, so a change steps at the day's edge, between two ticks.
     const points = [];
-    for (let ms = start; ms < end; ms += step) points.push({ ms, ftp: ftpOn(settings, sport, ms) });
-    points.push({ ms: end, ftp: ftpOn(settings, sport, end) });
-    const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start && point.best).map((point) => ({ ms: point.ms, ftp: point.best * 0.95, entry: point.entry }));
+    for (let noon = noonOf(start); noon <= todayNoon; noon += step) points.push({ ms: noon - 43_200_000, ftp: ftpOn(settings, sport, Math.min(end, noon + 43_199_999)) });
+    const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start && point.best).map((point) => ({ ms: noonOf(point.ms), ftp: point.best * 0.95, entry: point.entry }));
     return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts };
   }).filter((line) => line.points.length || line.efforts.length);
   const has = lines.length > 0;
@@ -370,10 +375,6 @@ function renderFtpChart(settings) {
   const yStep = [10, 20, 25, 50, 100].find((size) => (high - low) / size <= 4) ?? 100;
   const minY = Math.max(0, Math.floor(low / yStep) * yStep - yStep);
   const maxY = Math.ceil(high / yStep) * yStep + yStep;
-  // Whole days on the axis: half a day before the first one and after today, each day's tick at its noon.
-  const todayNoon = Date.parse(`${dayKey(end, zone)}T12:00:00Z`);
-  const axisStart = Date.parse(`${dayKey(start, zone)}T12:00:00Z`) - 43_200_000;
-  const axisEnd = todayNoon + 43_200_000;
   const xFor = (ms) => margin.left + ((ms - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
   const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
   const children = [];
@@ -419,8 +420,7 @@ function renderFtpChart(settings) {
       const y = yFor(point.ftp).toFixed(1);
       d += index ? `H${x}V${y}` : `M${x},${y}`;
     });
-    // Today's value holds to today's tick at least.
-    if (d) d += `H${Math.max(xFor(end), xFor(todayNoon)).toFixed(1)}`;
+    if (d) d += `H${xFor(axisEnd).toFixed(1)}`;
     if (d) children.push(node("path", { class: "fitness-line", d, style: `stroke: ${line.color}` }));
     for (const effort of line.efforts) {
       const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `fill: ${line.color}` });
@@ -431,7 +431,7 @@ function renderFtpChart(settings) {
   }
   const guide = node("g");
   children.push(guide);
-  view.ftpLayout = { lines, settings, start, end, axisStart, axisEnd, xFor, margin, width, height, guide };
+  view.ftpLayout = { lines, settings, start, end, noonOf, axisStart, axisEnd, xFor, margin, width, height, guide };
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.style.height = `${height}px`;
   chart.replaceChildren(...children);
@@ -445,7 +445,8 @@ function showFtpTooltip(event) {
   const box = byId("fitnessFtpChart").getBoundingClientRect();
   const x = ((event.clientX - box.left) / box.width) * layout.width;
   const plotWidth = layout.width - layout.margin.left - layout.margin.right;
-  const ms = Math.min(layout.end, Math.max(layout.start, layout.axisStart + ((x - layout.margin.left) / plotWidth) * (layout.axisEnd - layout.axisStart)));
+  // Snapped to the day under the pointer, its guide at the day's noon like the ticks and dots.
+  const ms = layout.noonOf(Math.min(layout.end, Math.max(layout.start, layout.axisStart + ((x - layout.margin.left) / plotWidth) * (layout.axisEnd - layout.axisStart))));
   const at = layout.xFor(ms);
   layout.guide.replaceChildren(node("line", { x1: at, x2: at, y1: layout.margin.top, y2: layout.height - layout.margin.bottom, class: "fitness-guide" }));
   const rows = [node("div", { class: "diary-tooltip-when" }, dayText(dayKey(ms, zone), { weekday: "long", day: "numeric", month: "numeric", year: "numeric" }))];
@@ -456,13 +457,13 @@ function showFtpTooltip(event) {
       element.style.background = line.color;
       return element;
     };
-    const ftp = ftpOn(layout.settings, line.sport, ms);
+    const ftp = ftpOn(layout.settings, line.sport, Math.min(layout.end, ms + 43_199_999));
     if (ftp) {
       const row = node("div", { class: "diary-tooltip-row" });
       row.append(swatch(), node("span", {}, several ? `FTP · ${sportLabel(line.sport)}` : "FTP"), node("strong", {}, `${Math.round(ftp)} W`));
       rows.push(row);
     }
-    const near = line.efforts.filter((effort) => Math.abs(layout.xFor(effort.ms) - x) <= 8).sort((a, b) => Math.abs(a.ms - ms) - Math.abs(b.ms - ms))[0];
+    const near = line.efforts.filter((effort) => effort.ms === ms).at(-1);
     if (near) {
       const row = node("div", { class: "diary-tooltip-row" });
       row.append(swatch(), node("span", {}, `${near.entry.name ?? ""} ${dayText(dayKey(near.ms, zone))} · 95 % ${t("fitnessBest20")}`), node("strong", {}, `${Math.round(near.ftp)} W`));
