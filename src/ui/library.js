@@ -213,7 +213,6 @@ function shortDate(epochMs) {
   }).format(new Date(epochMs));
 }
 
-const value = (number, unit) => (number == null ? "—" : `${displayNumber(number)} ${unit}`);
 
 // The library shows one sport at a time; the tab opened last is kept for the next visit.
 const sports = ["rowing", "cycling", "running"];
@@ -268,8 +267,6 @@ function renderRows() {
       "",
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
-      value(entry.summary.avgPower, "W"),
-      value(entry.summary.avgHeartRate, "bpm"),
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     row.children[1].append(nameInput(entry));
