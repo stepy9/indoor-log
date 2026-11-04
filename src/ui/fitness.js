@@ -140,6 +140,45 @@ function renderTiles(history, settings) {
   byId("fitnessTiles").replaceChildren(...tiles);
 }
 
+// The date axis of a chart by days: ticks as dense as fit at least 64 px apart (each day, every other day, weeks
+// from Monday, or months), the last day always closing it, each with a faint vertical grid line.
+// xForKey places a day ("YYYY-MM-DD") at its centre.
+function dateTicks(firstKey, lastKey, xForKey, { margin, width, height }) {
+  const first = Date.parse(`${firstKey}T12:00:00Z`);
+  const last = Date.parse(`${lastKey}T12:00:00Z`);
+  const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const pxPerDay = first < last ? (xForKey(lastKey) - xForKey(firstKey)) / ((last - first) / 86_400_000) : width;
+  const spacing = [1, 2, 7, 14, 30, 61, 91, 182, 365].find((daysApart) => daysApart * pxPerDay >= 64) ?? 365;
+  const ticks = [];
+  if (spacing <= 14) {
+    for (let ms = first; ms <= last; ms += 86_400_000) {
+      const offset = Math.round((ms - Date.parse("2024-01-01T12:00:00Z")) / 86_400_000); // 2024-01-01 was a Monday.
+      if (((offset % spacing) + spacing) % spacing === 0) ticks.push({ key: keyOf(ms), label: dayText(keyOf(ms), { day: "numeric", month: "short" }) });
+    }
+  } else {
+    const every = Math.round(spacing / 30.4);
+    for (let month = firstKey.slice(0, 7); ;) {
+      const key = `${month}-01`;
+      if (key > lastKey) break;
+      const [year, number] = month.split("-").map(Number);
+      if (key >= firstKey && (number - 1) % every === 0) ticks.push({ key, label: dayText(key, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
+      month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
+    }
+  }
+  // The last day always closes the axis; a regular tick too close to it gives way.
+  while (ticks.length && (ticks.at(-1).key === lastKey || xForKey(lastKey) - xForKey(ticks.at(-1).key) < 64)) ticks.pop();
+  ticks.push({ key: lastKey, label: dayText(lastKey, { day: "numeric", month: "short", ...(spacing > 14 ? { year: "numeric" } : {}) }) });
+  return ticks.flatMap((tick) => {
+    const x = xForKey(tick.key);
+    // A label near the right edge is right-aligned so it is not cut off.
+    const near = width - margin.right - x < 30;
+    return [
+      node("line", { x1: x, x2: x, y1: margin.top, y2: height - margin.bottom, class: "diary-grid" }),
+      node("text", { x, y: height - 8, class: "diary-tick", ...(near ? { style: "text-anchor: end" } : {}) }, tick.label),
+    ];
+  });
+}
+
 // Fitness, fatigue and form over the range, with each day's load as faint bars behind.
 function renderLoadChart(history) {
   const chart = byId("fitnessLoadChart");
@@ -160,13 +199,16 @@ function renderLoadChart(history) {
   const step = niceStep(rawMax - rawMin);
   const minY = Math.floor(rawMin / step) * step;
   const maxY = Math.ceil(rawMax / step) * step;
-  const xFor = (index) => margin.left + (days.length > 1 ? (index / (days.length - 1)) * plotWidth : plotWidth / 2);
+  // Each day centred in its own slot, so the first and last have half a day of room like in the FTP chart.
+  const xFor = (index) => margin.left + ((index + 0.5) / days.length) * plotWidth;
+  const indexOf = new Map(days.map((day, index) => [day.day, index]));
   const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * plotHeight;
   const children = [];
   for (let value = minY; value <= maxY + 1e-9; value += step) {
     children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === 0 ? "diary-axis" : "diary-grid" }));
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
   }
+  children.push(...dateTicks(days[0].day, days.at(-1).day, (key) => xFor(indexOf.get(key) ?? 0), { margin, width, height }));
   // The form's zones: fresh above +15 and overreaching below −30, shaded where they fall in the scale.
   const band = (from, to, className) => {
     const top = yFor(Math.min(maxY, to));
@@ -181,17 +223,6 @@ function renderLoadChart(history) {
   });
   const line = (field, className) => node("path", { class: `fitness-line ${className}`, d: days.map((day, index) => `${index ? "L" : "M"}${xFor(index).toFixed(1)},${yFor(day[field]).toFixed(1)}`).join("") });
   children.push(line("form", "is-form"), line("fatigue", "is-fatigue"), line("fitness", "is-fitness"));
-  // Month ticks along the bottom, or weeks over a short range.
-  const tickEvery = days.length > 120 ? "month" : "week";
-  // Labels at least 48 px apart, so a narrow chart skips some.
-  let lastTick = -Infinity;
-  days.forEach((day, index) => {
-    const isTick = tickEvery === "month" ? day.day.endsWith("-01") : new Date(`${day.day}T12:00:00Z`).getUTCDay() === 1;
-    if (!isTick || xFor(index) - lastTick < 48) return;
-    lastTick = xFor(index);
-    const label = tickEvery === "month" ? dayText(day.day, { month: "short", ...(day.day.slice(5, 7) === "01" ? { year: "numeric" } : {}) }) : dayText(day.day, { day: "numeric", month: "numeric" });
-    children.push(node("text", { x: xFor(index), y: height - 8, class: "diary-tick" }, label));
-  });
   const guide = node("g");
   children.push(guide);
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -206,7 +237,7 @@ function showLoadTooltip(event) {
   if (!layout) return;
   const box = byId("fitnessLoadChart").getBoundingClientRect();
   const x = ((event.clientX - box.left) / box.width) * layout.width;
-  const index = Math.round(((x - layout.margin.left) / layout.plotWidth) * (layout.days.length - 1));
+  const index = Math.floor(((x - layout.margin.left) / layout.plotWidth) * layout.days.length);
   const day = layout.days[Math.min(layout.days.length - 1, Math.max(0, index))];
   if (!day) return;
   const at = layout.xFor(layout.days.indexOf(day));
@@ -389,36 +420,7 @@ function renderFtpChart(settings) {
     children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
   }
-  // Ticks as dense as fit at least 64 px apart: days, weeks from Monday, or months; each with a faint vertical grid line.
-  const pxPerDay = (width - margin.left - margin.right) / ((axisEnd - axisStart) / 86_400_000);
-  const spacing = [1, 2, 7, 14, 30, 61, 91, 182, 365].find((daysApart) => daysApart * pxPerDay >= 64) ?? 365;
-  const ticks = [];
-  if (spacing <= 14) {
-    for (let ms = Date.parse(`${dayKey(start, zone)}T12:00:00Z`); ms <= todayNoon; ms += 86_400_000) {
-      const key = new Date(ms).toISOString().slice(0, 10);
-      const offset = Math.round((ms - Date.parse("2024-01-01T12:00:00Z")) / 86_400_000); // 2024-01-01 was a Monday.
-      if (((offset % spacing) + spacing) % spacing === 0) ticks.push({ ms, label: dayText(key, { day: "numeric", month: "short" }) });
-    }
-  } else {
-    const every = Math.round(spacing / 30.4);
-    for (let month = dayKey(start, zone).slice(0, 7); ;) {
-      const ms = Date.parse(`${month}-01T12:00:00Z`);
-      if (ms > end) break;
-      const [year, number] = month.split("-").map(Number);
-      if (ms >= axisStart && (number - 1) % every === 0) ticks.push({ ms, label: dayText(`${month}-01`, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
-      month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
-    }
-  }
-  // Today always closes the axis; a regular tick too close to it gives way.
-  while (ticks.length && (ticks.at(-1).ms === todayNoon || xFor(todayNoon) - xFor(ticks.at(-1).ms) < 64)) ticks.pop();
-  ticks.push({ ms: todayNoon, label: dayText(dayKey(end, zone), { day: "numeric", month: "short", ...(spacing > 14 ? { year: "numeric" } : {}) }) });
-  for (const tick of ticks) {
-    const x = xFor(tick.ms);
-    // A label near the right edge is right-aligned so it is not cut off.
-    const near = width - margin.right - x < 30;
-    children.push(node("line", { x1: x, x2: x, y1: margin.top, y2: height - margin.bottom, class: "diary-grid" }));
-    children.push(node("text", { x, y: height - 8, class: "diary-tick", ...(near ? { style: "text-anchor: end" } : {}) }, tick.label));
-  }
+  children.push(...dateTicks(dayKey(start, zone), dayKey(end, zone), (key) => xFor(Date.parse(`${key}T12:00:00Z`)), { margin, width, height }));
   for (const line of lines) {
     // A step line: the FTP holds until the next change.
     let d = "";
