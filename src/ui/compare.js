@@ -633,9 +633,11 @@ function renderTrendChart() {
   }
   // Date ticks spread evenly, one per 80px at most so they do not overlap; a short span shows fewer of them.
   const tickCount = Math.min(6, Math.max(2, Math.floor(plotWidth / 80)), Math.max(2, Math.round((maxX - minX) / day)));
+  // The first and the last sit at the plot's edges, aligned inwards, the rest evenly between them.
   for (let index = 0; index < tickCount; index += 1) {
-    const x = minX + ((maxX - minX) * (index + 0.5)) / tickCount;
-    const label = svg("text", { class: "compare-tick", x: xFor(x), y: height - 10, "text-anchor": "middle" });
+    const x = minX + ((maxX - minX) * index) / (tickCount - 1);
+    const anchor = index === 0 ? "start" : index === tickCount - 1 ? "end" : "middle";
+    const label = svg("text", { class: "compare-tick", x: xFor(x), y: height - 10, "text-anchor": anchor });
     label.textContent = dayDate(x);
     chart.append(label);
   }
