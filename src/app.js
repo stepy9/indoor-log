@@ -12,6 +12,7 @@ import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
+import { setupInfoNotes } from "./ui/info.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
@@ -966,6 +967,7 @@ setupLibrary({ onRestore: () => {
 } });
 setupCompare({ onConverter: drawChart });
 setupCloud();
+setupInfoNotes();
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);
 setTheme(savedTheme(), false);

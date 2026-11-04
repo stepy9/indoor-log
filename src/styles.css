@@ -1180,3 +1180,16 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .fitness-records-pair[data-by="duration"] .laps-scroll:has(> #fitnessRecordTimes),
   .fitness-records-pair[data-by="distance"] .laps-scroll:has(> #fitnessRecords) { display: none; }
 }
+
+/* Explanations: in the card on a desktop; on a phone behind an ⓘ by the card's title, opened in a sheet from the bottom. */
+.info-button { display: none; }
+@media (max-width: 640px) {
+  .info-note, #compareZoomHint { display: none !important; }
+  .info-button { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; padding: 0; border: 1.5px solid var(--muted); border-radius: 50%; color: var(--muted); background: transparent; font: italic 700 12px/1 Georgia, serif; vertical-align: 1px; cursor: pointer; }
+  .info-button[hidden] { display: none; }
+  .panel-title-row:has(> .segmented) > .info-button { margin-right: auto; }
+  .panel-title-row:has(> .segmented) > .field-label:has(+ .info-button) { flex: 0 1 auto; }
+  .info-dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; }
+  .info-dialog .dialog-head { justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .info-dialog-text { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.5; }
+}

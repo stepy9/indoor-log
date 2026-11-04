@@ -448,14 +448,14 @@
             <svg class="diary-chart fitness-chart" id="fitnessLoadChart" role="img" aria-label="Zátěž a forma" data-i18n-aria="fitnessLoadTitle"></svg>
             <div class="diary-tooltip" id="fitnessTooltip" role="tooltip" hidden></div>
             <p class="field-note" id="fitnessLoadEmpty" data-i18n="fitnessLoadEmpty" hidden>Žádná aktivita s tepem nebo výkonem.</p>
-            <p class="field-note" id="fitnessLoadNote"></p>
+            <p class="field-note info-note" id="fitnessLoadNote"></p>
             <button class="link-button fitness-settings-link" id="fitnessSettingsLink" type="button" data-i18n="fitnessEditThresholds">Upravit prahové hodnoty (max. tep, FTP)…</button>
           </section>
           <section class="card">
             <span class="field-label" data-i18n="fitnessWeeksTitle">Týdenní souhrn</span>
             <div class="laps-scroll"><table class="laps-table compare-table fitness-table card-table" id="fitnessWeeks"></table></div>
             <p class="field-note" id="fitnessWeeksEmpty" data-i18n="fitnessNoData" hidden>V tomto období žádná data.</p>
-            <p class="field-note" data-i18n="fitnessWeeksNote"></p>
+            <p class="field-note info-note" data-i18n="fitnessWeeksNote"></p>
           </section>
           <div class="fitness-grid">
             <section class="card">
@@ -485,7 +485,7 @@
                 <button type="button" data-records-by="distance" aria-pressed="false" data-i18n="fitnessDistance">Vzdálenost</button>
               </div>
             </div>
-            <p class="field-note" data-i18n="fitnessRecordsNote"></p>
+            <p class="field-note info-note" data-i18n="fitnessRecordsNote"></p>
             <div class="fitness-records-pair" id="fitnessRecordsPair">
               <div class="laps-scroll"><table class="laps-table compare-table fitness-table card-table is-compact" id="fitnessRecords"></table></div>
               <div class="laps-scroll"><table class="laps-table compare-table fitness-table card-table is-compact" id="fitnessRecordTimes"></table></div>
@@ -500,18 +500,18 @@
             <svg class="diary-chart" id="fitnessFtpChart" role="img" aria-label="Vývoj FTP" data-i18n-aria="fitnessFtpTitle"></svg>
             <div class="diary-tooltip" id="fitnessFtpTooltip" role="tooltip" hidden></div>
             <p class="field-note" id="fitnessFtpEmpty" data-i18n="fitnessFtpEmpty" hidden></p>
-            <p class="field-note" data-i18n="fitnessFtpNote"></p>
+            <p class="field-note info-note" data-i18n="fitnessFtpNote"></p>
           </section>
           <section class="card">
             <span class="field-label" data-i18n="fitnessEfficiencyTitle">Aerobní efektivita</span>
             <svg class="diary-chart" id="fitnessEfficiencyChart" role="img" aria-label="Aerobní efektivita" data-i18n-aria="fitnessEfficiencyTitle"></svg>
             <p class="field-note" id="fitnessEfficiencySummary"></p>
             <p class="field-note" id="fitnessEfficiencyEmpty" data-i18n="fitnessDecouplingEmpty" hidden></p>
-            <p class="field-note" data-i18n="fitnessEfficiencyNote"></p>
+            <p class="field-note info-note" data-i18n="fitnessEfficiencyNote"></p>
           </section>
           <section class="card">
             <span class="field-label" data-i18n="fitnessDecouplingTitle">Aerobní decoupling</span>
-            <p class="field-note" data-i18n="fitnessDecouplingNote"></p>
+            <p class="field-note info-note" data-i18n="fitnessDecouplingNote"></p>
             <div class="laps-scroll"><table class="laps-table compare-table fitness-table" id="fitnessDecoupling"></table></div>
             <p class="field-note" id="fitnessDecouplingEmpty" data-i18n="fitnessDecouplingEmpty" hidden></p>
           </section>
@@ -620,7 +620,7 @@
           <span class="estimate-note" id="libraryCount"></span>
           <button class="settings-close library-close" id="libraryClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
         </div>
-        <p class="field-note" data-i18n="libraryHint">Aktivity uložené jen v tomto prohlížeči, pro pozdější porovnání. Nikam se neodesílají.</p>
+        <p class="field-note info-note" data-i18n="libraryHint">Aktivity uložené jen v tomto prohlížeči, pro pozdější porovnání. Nikam se neodesílají.</p>
         <p class="field-note backup-due" id="libraryBackupDue" data-i18n="backupDue" hidden>Je čas na zálohu: aktivity jsou jen v tomto prohlížeči a od poslední zálohy přibyly nové. Uložte ji tlačítkem Exportovat zálohu dole.</p>
         <div class="segmented library-sports" id="librarySports" role="group" aria-label="Sport" data-i18n-aria="librarySport"></div>
         <label class="check-field"><input id="librarySaveToggle" type="checkbox" checked /> <span data-i18n="librarySave">Ukládat stažené aktivity do knihovny</span></label>
