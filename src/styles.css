@@ -948,3 +948,11 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   #trendControls .segmented { display: flex; }
   #trendControls .segmented button { flex: 1; }
 }
+
+/* Phones: the trend's note wraps instead of widening the card; its table drops time and distance and cuts long names. */
+@media (max-width: 640px) {
+  #trendNote, #diaryPrevious { min-width: 0; white-space: normal; }
+  .trend-table { width: 100%; }
+  .trend-table tr > :nth-child(3), .trend-table tr > :nth-child(4) { display: none; }
+  .trend-table tr > :nth-child(2) { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

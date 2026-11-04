@@ -596,7 +596,8 @@ function renderTrendChart() {
   if (!points.length) return;
   const width = chart.clientWidth || 800;
   const height = 320;
-  const margin = { top: 16, right: 24, bottom: 30, left: 72 };
+  // A phone keeps the plot wide with a narrower label column.
+  const margin = { top: 16, right: width < 500 ? 12 : 24, bottom: 30, left: width < 500 ? 48 : 72 };
   const day = 86_400_000;
   // A grouped point sits at its period's first day, so the axis reaches to the last period's end.
   const tail = { activity: day, week: 7 * day, month: 31 * day }[view.trendGroup];
@@ -625,8 +626,8 @@ function renderTrendChart() {
     label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, twoDecimals(metric) ? 2 : 0);
     chart.append(label);
   }
-  // Date ticks spread evenly; a short span shows fewer of them.
-  const tickCount = Math.min(6, Math.max(2, Math.round((maxX - minX) / day)));
+  // Date ticks spread evenly, one per 80px at most so they do not overlap; a short span shows fewer of them.
+  const tickCount = Math.min(6, Math.max(2, Math.floor(plotWidth / 80)), Math.max(2, Math.round((maxX - minX) / day)));
   for (let index = 0; index < tickCount; index += 1) {
     const x = minX + ((maxX - minX) * (index + 0.5)) / tickCount;
     const label = svg("text", { class: "compare-tick", x: xFor(x), y: height - 10, "text-anchor": "middle" });
