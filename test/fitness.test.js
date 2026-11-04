@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -159,4 +159,22 @@ test("weightOn takes the record in force on the day, one without a date from the
   assert.equal(weightOn(settings, Date.parse("2026-09-15T08:00:00Z")), 80);
   assert.equal(weightOn(settings, Date.parse("2026-10-01T08:00:00Z")), 76.5);
   assert.equal(weightOn({ weightHistory: [] }, Date.now()), null);
+});
+
+test("goalPlan finds the latest day to start resting for a fresh form on the goal day", () => {
+  // Steady training at 60 a day for long: fitness and fatigue both near 60, form near 0.
+  const history = Array.from({ length: 120 }, (_, index) => ({ day: `2026-${String(7 + Math.floor(index / 30)).padStart(2, "0")}-${String(1 + (index % 28)).padStart(2, "0")}`, load: 60, fitness: 60, fatigue: 60 }));
+  history.at(-1).day = "2026-11-04";
+  const plan = goalPlan(history, "2026-11-24", 15);
+  assert.equal(plan.days, 20);
+  assert.ok(plan.restFrom > "2026-11-05" && plan.restFrom < "2026-11-24", plan.restFrom);
+  assert.ok(plan.form > 15);
+  // Resting a day later would not be enough.
+  const later = goalPlan(history, "2026-11-24", plan.form + 0.01);
+  assert.ok(!later.restFrom || later.restFrom < plan.restFrom);
+  assert.equal(goalPlan(history, "2026-11-04"), null);
+  assert.equal(goalPlan([], "2026-11-24"), null);
+  // Too little fitness for +15 by any rest.
+  const weak = goalPlan([{ day: "2026-11-04", load: 0, fitness: 7, fatigue: 17 }], "2026-11-10", 15);
+  assert.equal(weak.restFrom, null);
 });

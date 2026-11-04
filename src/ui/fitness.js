@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances } from "../analysis.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
@@ -139,6 +139,17 @@ function renderTiles(history, settings) {
   // With little fitness the form cannot reach +15, so then the day it turns positive.
   const level = freshInDays(history, 15) ? 15 : 0;
   const freshIn = freshInDays(history, level);
+  // The goal set in the settings: from when to rest for a fresh form on its day, by the same level.
+  const goal = settings.goal;
+  const plan = goal && goalPlan(history, goal.day, level);
+  if (plan) {
+    const form = `${plan.form >= 0 ? "+" : ""}${displayNumber(plan.form, Math.abs(plan.form) < 10 ? 1 : 0)}`;
+    const restNow = plan.restFrom && plan.restFrom <= addDays(last.day, 1);
+    const note = !plan.restFrom ? t("fitnessGoalShort", { days: plan.days, form })
+      : restNow ? t("fitnessGoalRestNow", { days: plan.days, form })
+      : t("fitnessGoalRestFrom", { days: plan.days, level: level ? "+15" : "0", from: dayText(plan.restFrom, { weekday: "short", day: "numeric", month: "numeric" }) });
+    tiles.push(tile(goal.name || t("fitnessGoal"), dayText(goal.day, { weekday: "short", day: "numeric", month: "numeric" }), note));
+  }
   if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of shownSports) {

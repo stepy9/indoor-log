@@ -236,6 +236,34 @@ export function loadHistory(entries, settings, timeZone, lastDay) {
   return days;
 }
 
+// A plan for a goal day (a race or an FTP test): training on at the average daily load of the last 28 days,
+// then rest, the latest day the rest can start for the form on the goal's morning to be above the level.
+// { restFrom: "YYYY-MM-DD" | null, form, days } — restFrom null when even resting from tomorrow is not enough,
+// form the goal's morning form by that plan (or by resting from tomorrow), days until the goal; null for a goal
+// not after the history's last day.
+export function goalPlan(history, goalKey, level = 15) {
+  const last = history.at(-1);
+  if (!last || !goalKey || goalKey <= last.day) return null;
+  const days = Math.round((Date.parse(`${goalKey}T12:00:00Z`) - Date.parse(`${last.day}T12:00:00Z`)) / 86_400_000);
+  const recent = history.slice(-28);
+  const average = recent.reduce((sum, day) => sum + day.load, 0) / recent.length;
+  // The days after the last one up to the one before the goal: its morning form comes from them.
+  const formWith = (trainingDays) => {
+    let { fitness, fatigue } = last;
+    for (let day = 1; day < days; day += 1) {
+      const load = day <= trainingDays ? average : 0;
+      fitness += (load - fitness) / fitnessDays;
+      fatigue += (load - fatigue) / fatigueDays;
+    }
+    return fitness - fatigue;
+  };
+  for (let trainingDays = days - 1; trainingDays >= 0; trainingDays -= 1) {
+    const form = formWith(trainingDays);
+    if (form > level) return { restFrom: addDays(last.day, trainingDays + 1), form, days };
+  }
+  return { restFrom: null, form: formWith(0), days };
+}
+
 // How many days of rest after the last day of the history until the form is above the level (fresh: +15):
 // 1 when it already is for tomorrow, null when not within 60 days or without history.
 export function freshInDays(history, level = 15) {
