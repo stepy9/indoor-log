@@ -5,7 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
-import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits } from "./cloud.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
@@ -419,7 +419,11 @@ function cloudBlock() {
       uploadRow.append(upload, pick, progress);
       const fitGroup = node("div", { class: "settings-cloud-group" });
       const coverage = node("div", { class: "settings-cloud-indent settings-cloud-coverage" });
-      fitCoverageInto(coverage);
+      // What is already in Dropbox is looked through first, then the count shown.
+      coverage.replaceChildren(node("p", { class: "field-note" }, t("cloudFitChecking")));
+      checkDropboxFits().then(() => fitCoverageInto(coverage), (error) => {
+        fitCoverageInto(coverage).then(() => coverage.prepend(node("p", { class: "settings-cloud-state is-error" }, /scope/.test(error.message) ? t("cloudReconnect") : t("cloudError", { message: error.message }))));
+      });
       fitGroup.append(fitLabel, node("p", { class: "field-note settings-cloud-indent" }, t("cloudFitNote")), uploadRow, coverage);
       uploadRow.classList.add("settings-cloud-indent");
       extra = [fitGroup];

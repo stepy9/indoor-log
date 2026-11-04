@@ -65,7 +65,7 @@ export async function connectCloud() {
     redirect_uri: redirectUri(),
     token_access_type: "offline",
     // Asked for by name, so a token never comes without them (Dropbox refuses here if the app lacks them).
-    scope: "files.content.read files.content.write",
+    scope: "files.metadata.read files.content.read files.content.write",
   });
   location.assign(`https://www.dropbox.com/oauth2/authorize?${params}`);
 }
@@ -171,7 +171,8 @@ async function uploadFit(filename, bytes) {
 const marks = [];
 let marking = null;
 async function applyMarks() {
-  if (marking || !marks.length) return;
+  if (marking) return marking.then(applyMarks);
+  if (!marks.length) return;
   marking = (async () => {
     const entries = await listEntries();
     const save = [];
@@ -199,6 +200,13 @@ async function backupFitBytes(bytes, filename, kind = "export") {
   } catch {}
   await uploadFit(probe ? backupFitName(probe.startMs, filename) : filename, bytes);
   if (probe) await markFit(probe, kind);
+  rememberChecked(probe ? backupFitName(probe.startMs, filename) : filename);
+}
+
+function rememberChecked(name) {
+  const checked = new Set(read(checkedKey) ?? []);
+  checked.add(name);
+  write(checkedKey, [...checked]);
 }
 
 async function sendWaitingFits() {
@@ -206,6 +214,74 @@ async function sendWaitingFits() {
     await backupFitBytes(bytes, filename);
     fitWaiting.delete(filename);
   }
+}
+
+// The FIT files already in Dropbox (some put there before activities were marked): each one not seen before
+// is downloaded, read and its activity marked; an old name without the date gets it. Seen files are kept by name.
+const checkedKey = "kinomap-dropbox-fit-checked";
+
+async function api(endpoint, body) {
+  const response = await fetch(`https://api.dropboxapi.com/2/${endpoint}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw await dropboxError(response);
+  return response.json();
+}
+
+async function listFits() {
+  let page;
+  try {
+    page = await api("files/list_folder", { path: "/FIT" });
+  } catch (error) {
+    if (/not_found/.test(error.message)) return [];
+    throw error;
+  }
+  const files = [...page.entries];
+  while (page.has_more) {
+    page = await api("files/list_folder/continue", { cursor: page.cursor });
+    files.push(...page.entries);
+  }
+  return files.filter((file) => file[".tag"] === "file" && /\.fit$/i.test(file.name));
+}
+
+async function downloadFit(path) {
+  const response = await fetch("https://content.dropboxapi.com/2/files/download", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await accessToken()}`, "Dropbox-API-Arg": asciiJson({ path }) },
+  });
+  if (!response.ok) throw await dropboxError(response);
+  return response.arrayBuffer();
+}
+
+let checking = null;
+export function checkDropboxFits() {
+  if (!cloudConnected()) return Promise.resolve(0);
+  checking ??= (async () => {
+    const checked = new Set(read(checkedKey) ?? []);
+    let found = 0;
+    for (const file of await listFits()) {
+      if (checked.has(file.name)) continue;
+      let name = file.name;
+      try {
+        const probe = entryFromFit(decodeGarminFit(await downloadFit(file.path_lower)), { name: file.name });
+        await markFit(probe, "export");
+        found += 1;
+        const dated = backupFitName(probe.startMs, file.name);
+        if (dated !== file.name) {
+          try {
+            await api("files/move_v2", { from_path: file.path_lower, to_path: `/FIT/${dated}` });
+            name = dated;
+          } catch {}
+        }
+      } catch {}
+      checked.add(name);
+      write(checkedKey, [...checked]);
+    }
+    return found;
+  })().finally(() => (checking = null));
+  return checking;
 }
 
 export async function fitBackupCoverage() {
@@ -224,6 +300,7 @@ export async function rebuildMissingFits(onProgress = () => {}) {
       const bytes = encodeFit(workout.records, workout.summary, workout.laps, workout.startMs, workout.endMs, zone, workout.activityName, workout.sport, workout.subSport);
       await uploadFit(backupFitName(entry.startMs, fitFileName(entry.name, "Activity")), bytes);
       await markFit(entry, "rebuilt");
+      rememberChecked(backupFitName(entry.startMs, fitFileName(entry.name, "Activity")));
     }
     onProgress(++done, missing.length);
   }
