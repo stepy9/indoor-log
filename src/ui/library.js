@@ -266,8 +266,6 @@ function renderRows() {
     const cells = [
       shortDate(entry.startMs),
       "",
-      // A conversion saved as a FIT is the same file an import of that FIT would give.
-      t(`librarySource_${entry.exported ? "export" : entry.source}`),
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
       value(entry.summary.avgPower, "W"),
@@ -275,9 +273,12 @@ function renderRows() {
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     row.children[1].append(nameInput(entry));
+    // Where it came from, on hovering the date rather than in a column of its own: it is the same for most.
+    // A conversion saved as a FIT is the same file an import of that FIT would give.
+    row.children[0].title = t(`librarySource_${entry.exported ? "export" : entry.source}`);
     const kind = document.createElement("td");
     kind.append(kindSelect(entry, renderRows, "kind-select", true));
-    row.children[2].after(kind);
+    row.children[1].after(kind);
     const trainerCell = document.createElement("td");
     trainerCell.append(trainerSelect(entry));
     kind.after(trainerCell);
