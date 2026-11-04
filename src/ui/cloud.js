@@ -74,9 +74,20 @@ export function disconnectCloud() {
   if (token?.access) fetch("https://api.dropboxapi.com/2/auth/token/revoke", { method: "POST", headers: { Authorization: `Bearer ${token.access}` } }).catch(() => {});
 }
 
+// Dropbox says what went wrong in the body: a summary in JSON, or plain text for a missing permission.
+async function dropboxError(response) {
+  const text = await response.text().catch(() => "");
+  let reason = text;
+  try {
+    const data = JSON.parse(text);
+    reason = data.error_summary ?? data.error_description ?? data.error ?? text;
+  } catch {}
+  return new Error(`Dropbox ${response.status}${reason ? `: ${String(reason).slice(0, 160)}` : ""}`);
+}
+
 async function tokenRequest(body) {
   const response = await fetch("https://api.dropboxapi.com/oauth2/token", { method: "POST", body: new URLSearchParams({ client_id: dropboxAppKey, ...body }) });
-  if (!response.ok) throw new Error(`Dropbox ${response.status}`);
+  if (!response.ok) throw await dropboxError(response);
   return response.json();
 }
 
@@ -109,7 +120,7 @@ async function download() {
   });
   // No file yet: the first sync writes it.
   if (response.status === 409) return null;
-  if (!response.ok) throw new Error(`Dropbox ${response.status}`);
+  if (!response.ok) throw await dropboxError(response);
   return parseSync(await response.text());
 }
 
@@ -123,7 +134,7 @@ async function upload(state) {
     },
     body: syncText(state),
   });
-  if (!response.ok) throw new Error(`Dropbox ${response.status}`);
+  if (!response.ok) throw await dropboxError(response);
 }
 
 // One sync: read the file, merge, write here what came from there and there what is new here.
