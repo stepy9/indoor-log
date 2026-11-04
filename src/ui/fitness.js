@@ -345,7 +345,8 @@ function renderFtpChart(settings) {
   const step = Math.max(86_400_000, Math.ceil((end - start) / 400 / 86_400_000) * 86_400_000);
   const lines = shownSports.map((sport, index) => {
     const points = [];
-    for (let ms = start; ms <= end + 1; ms += step) points.push({ ms, ftp: ftpOn(settings, sport, Math.min(ms, end)) });
+    for (let ms = start; ms < end; ms += step) points.push({ ms, ftp: ftpOn(settings, sport, ms) });
+    points.push({ ms: end, ftp: ftpOn(settings, sport, end) });
     const efforts = (settings.estimatedFtp[sport] ?? []).filter((point) => point.ms >= start && point.best).map((point) => ({ ms: point.ms, ftp: point.best * 0.95, entry: point.entry }));
     return { sport, color: `var(--compare-${index + 1})`, points: points.filter((point) => point.ftp), efforts };
   }).filter((line) => line.points.length || line.efforts.length);
@@ -369,7 +370,11 @@ function renderFtpChart(settings) {
   const yStep = [10, 20, 25, 50, 100].find((size) => (high - low) / size <= 4) ?? 100;
   const minY = Math.max(0, Math.floor(low / yStep) * yStep - yStep);
   const maxY = Math.ceil(high / yStep) * yStep + yStep;
-  const xFor = (ms) => margin.left + ((ms - start) / Math.max(1, end - start)) * (width - margin.left - margin.right);
+  // Whole days on the axis: half a day before the first one and after today, each day's tick at its noon.
+  const todayNoon = Date.parse(`${dayKey(end, zone)}T12:00:00Z`);
+  const axisStart = Date.parse(`${dayKey(start, zone)}T12:00:00Z`) - 43_200_000;
+  const axisEnd = todayNoon + 43_200_000;
+  const xFor = (ms) => margin.left + ((ms - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
   const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
   const children = [];
   for (let value = minY; value <= maxY + 1e-9; value += yStep) {
@@ -377,14 +382,14 @@ function renderFtpChart(settings) {
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
   }
   // Ticks as dense as fit at least 64 px apart: days, weeks from Monday, or months; each with a faint vertical grid line.
-  const pxPerDay = (width - margin.left - margin.right) / Math.max(1, (end - start) / 86_400_000);
+  const pxPerDay = (width - margin.left - margin.right) / ((axisEnd - axisStart) / 86_400_000);
   const spacing = [1, 2, 7, 14, 30, 61, 91, 182, 365].find((daysApart) => daysApart * pxPerDay >= 64) ?? 365;
   const ticks = [];
   if (spacing <= 14) {
-    for (let ms = Date.parse(`${dayKey(start, zone)}T12:00:00Z`); ms <= end; ms += 86_400_000) {
+    for (let ms = Date.parse(`${dayKey(start, zone)}T12:00:00Z`); ms <= todayNoon; ms += 86_400_000) {
       const key = new Date(ms).toISOString().slice(0, 10);
       const offset = Math.round((ms - Date.parse("2024-01-01T12:00:00Z")) / 86_400_000); // 2024-01-01 was a Monday.
-      if (ms >= start && ((offset % spacing) + spacing) % spacing === 0) ticks.push({ ms, label: dayText(key, { day: "numeric", month: "short" }) });
+      if (((offset % spacing) + spacing) % spacing === 0) ticks.push({ ms, label: dayText(key, { day: "numeric", month: "short" }) });
     }
   } else {
     const every = Math.round(spacing / 30.4);
@@ -392,19 +397,20 @@ function renderFtpChart(settings) {
       const ms = Date.parse(`${month}-01T12:00:00Z`);
       if (ms > end) break;
       const [year, number] = month.split("-").map(Number);
-      if (ms >= start && (number - 1) % every === 0) ticks.push({ ms, label: dayText(`${month}-01`, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
+      if (ms >= axisStart && (number - 1) % every === 0) ticks.push({ ms, label: dayText(`${month}-01`, { month: "short", ...(number === 1 || !ticks.length ? { year: "numeric" } : {}) }) });
       month = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
     }
   }
-  // Today always closes the axis, right-aligned to the edge; a regular tick too close to it gives way.
-  while (ticks.length && xFor(end) - xFor(ticks.at(-1).ms) < 64) ticks.pop();
+  // Today always closes the axis; a regular tick too close to it gives way.
+  while (ticks.length && (ticks.at(-1).ms === todayNoon || xFor(todayNoon) - xFor(ticks.at(-1).ms) < 64)) ticks.pop();
+  ticks.push({ ms: todayNoon, label: dayText(dayKey(end, zone), { day: "numeric", month: "short", ...(spacing > 14 ? { year: "numeric" } : {}) }) });
   for (const tick of ticks) {
     const x = xFor(tick.ms);
+    // A label near the right edge is right-aligned so it is not cut off.
+    const near = width - margin.right - x < 30;
     children.push(node("line", { x1: x, x2: x, y1: margin.top, y2: height - margin.bottom, class: "diary-grid" }));
-    children.push(node("text", { x, y: height - 8, class: "diary-tick" }, tick.label));
+    children.push(node("text", { x, y: height - 8, class: "diary-tick", ...(near ? { style: "text-anchor: end" } : {}) }, tick.label));
   }
-  const todayLabel = spacing <= 14 ? dayText(dayKey(end, zone), { day: "numeric", month: "short" }) : dayText(dayKey(end, zone), { day: "numeric", month: "short", year: "numeric" });
-  children.push(node("text", { x: xFor(end), y: height - 8, class: "diary-tick", style: "text-anchor: end" }, todayLabel));
   for (const line of lines) {
     // A step line: the FTP holds until the next change.
     let d = "";
@@ -413,6 +419,8 @@ function renderFtpChart(settings) {
       const y = yFor(point.ftp).toFixed(1);
       d += index ? `H${x}V${y}` : `M${x},${y}`;
     });
+    // Today's value holds to today's tick at least.
+    if (d) d += `H${Math.max(xFor(end), xFor(todayNoon)).toFixed(1)}`;
     if (d) children.push(node("path", { class: "fitness-line", d, style: `stroke: ${line.color}` }));
     for (const effort of line.efforts) {
       const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `fill: ${line.color}` });
@@ -423,7 +431,7 @@ function renderFtpChart(settings) {
   }
   const guide = node("g");
   children.push(guide);
-  view.ftpLayout = { lines, settings, start, end, xFor, margin, width, height, guide };
+  view.ftpLayout = { lines, settings, start, end, axisStart, axisEnd, xFor, margin, width, height, guide };
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.style.height = `${height}px`;
   chart.replaceChildren(...children);
@@ -437,7 +445,7 @@ function showFtpTooltip(event) {
   const box = byId("fitnessFtpChart").getBoundingClientRect();
   const x = ((event.clientX - box.left) / box.width) * layout.width;
   const plotWidth = layout.width - layout.margin.left - layout.margin.right;
-  const ms = Math.min(layout.end, Math.max(layout.start, layout.start + ((x - layout.margin.left) / plotWidth) * (layout.end - layout.start)));
+  const ms = Math.min(layout.end, Math.max(layout.start, layout.axisStart + ((x - layout.margin.left) / plotWidth) * (layout.axisEnd - layout.axisStart)));
   const at = layout.xFor(ms);
   layout.guide.replaceChildren(node("line", { x1: at, x2: at, y1: layout.margin.top, y2: layout.height - layout.margin.bottom, class: "fitness-guide" }));
   const rows = [node("div", { class: "diary-tooltip-when" }, dayText(dayKey(ms, zone), { weekday: "long", day: "numeric", month: "numeric", year: "numeric" }))];
