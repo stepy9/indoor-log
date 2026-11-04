@@ -560,6 +560,67 @@ function renderCurveTable(curve, before) {
   table.tBodies[0].append(...rows);
 }
 
+// Week by week from Monday, the latest on top: workouts, time, distance and load (with a bar to compare),
+// and how much the fitness rose or fell over the week, coloured when it climbs too fast.
+function renderWeeks(history, entries) {
+  const table = byId("fitnessWeeks");
+  const days = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
+  const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const weeks = new Map();
+  const weekOf = (monday) => weeks.get(monday) ?? weeks.set(monday, { monday, workouts: 0, seconds: 0, meters: 0, load: 0, fitness: null }).get(monday);
+  for (const day of days) {
+    const week = weekOf(mondayOf(day.day));
+    week.load += day.load;
+    week.fitness = day.fitness;
+  }
+  for (const entry of entries) {
+    const monday = mondayOf(dayKey(entry.startMs, zone));
+    if (!weeks.has(monday)) continue;
+    const week = weeks.get(monday);
+    week.workouts += 1;
+    week.seconds += entry.summary?.timerSeconds ?? 0;
+    week.meters += entry.summary?.distance ?? 0;
+  }
+  // The fitness the week started from: the day before its Monday.
+  const fitnessBefore = (monday) => history.find((day) => day.day === addDays(monday, -1))?.fitness ?? null;
+  const list = [...weeks.values()].reverse();
+  byId("fitnessWeeksEmpty").hidden = list.length > 0;
+  table.hidden = !list.length;
+  const highest = Math.max(1, ...list.map((week) => week.load));
+  const head = node("tr");
+  head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), t("fitnessDistance"), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
+  const thisMonday = mondayOf(today());
+  const rows = list.map((week) => {
+    const row = node("tr");
+    const sunday = addDays(week.monday, 6);
+    const when = `${dayText(week.monday, { day: "numeric", month: "numeric" })} – ${dayText(sunday, { day: "numeric", month: "numeric" })}${week.monday === thisMonday ? ` (${t("fitnessWeekRunning")})` : ""}`;
+    const loadCell = node("td");
+    const loadBox = node("div", { class: "fitness-week-load" });
+    const track = node("div", { class: "fitness-zone-track" });
+    const fill = node("div", { class: "fitness-zone-fill" });
+    fill.style.width = `${(week.load / highest) * 100}%`;
+    fill.style.background = "var(--compare-1)";
+    track.append(fill);
+    loadBox.append(node("span", {}, displayNumber(week.load)), track);
+    loadCell.append(loadBox);
+    const before = fitnessBefore(week.monday);
+    const ramp = before == null || week.fitness == null ? null : week.fitness - before;
+    const rampClass = ramp == null ? "" : ramp > 8 ? "is-worse" : ramp > 5 ? "is-middle" : "";
+    row.append(
+      node("td", {}, when),
+      node("td", {}, String(week.workouts)),
+      node("td", {}, week.seconds ? formatDuration(week.seconds) : "—"),
+      node("td", {}, week.meters ? `${displayNumber(week.meters / 1000, 1)} km` : "—"),
+      loadCell,
+      node("td", { class: rampClass }, ramp == null ? "—" : `${ramp >= 0 ? "+" : ""}${displayNumber(ramp, 1)}`),
+    );
+    return row;
+  });
+  table.replaceChildren(node("thead"), node("tbody"));
+  table.tHead.append(head);
+  table.tBodies[0].append(...rows);
+}
+
 function renderDecoupling(entries, settings) {
   const table = byId("fitnessDecoupling");
   const rows = entries.map((entry) => ({ entry, result: decoupling(entry), load: activityLoad(entry, settings) })).filter((item) => item.result);
@@ -606,6 +667,7 @@ function render() {
   renderTiles(history, settings);
   renderLoadChart(history);
   const current = inRange(shown);
+  renderWeeks(history, current);
   renderZones(current, settings);
   renderCurve(current, inRange(shown, 1));
   renderDecoupling(current, settings);
