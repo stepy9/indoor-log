@@ -21,6 +21,8 @@ const view = {
   entries: [],
   sport: remembered().sport ?? "all",
   range: Object.hasOwn(ranges, remembered().range) ? remembered().range : "quarter",
+  // The records show the best powers by duration or the best times by distance.
+  recordsBy: "duration",
   layout: null,
 };
 
@@ -884,6 +886,13 @@ function renderRecords(entries) {
     return row;
   }));
   byId("fitnessRecordsEmpty").hidden = power.length > 0 || times.length > 0;
+  // With both kinds of record a switch shows one of them; with one, that one.
+  const both = power.length > 0 && times.length > 0;
+  const by = both ? view.recordsBy : times.length ? "distance" : "duration";
+  byId("fitnessRecordsBy").hidden = !both;
+  for (const button of document.querySelectorAll("[data-records-by]")) button.setAttribute("aria-pressed", String(button.dataset.recordsBy === by));
+  byId("fitnessRecords").hidden = by !== "duration" || !power.length;
+  byId("fitnessRecordTimes").hidden = by !== "distance" || !times.length;
 }
 
 function renderDecoupling(entries, settings) {
@@ -966,6 +975,12 @@ export function setupFitness({ onOpen }) {
     button.addEventListener("click", () => {
       view.range = button.dataset.fitnessRange;
       save({ range: view.range });
+      render();
+    });
+  }
+  for (const button of document.querySelectorAll("[data-records-by]")) {
+    button.addEventListener("click", () => {
+      view.recordsBy = button.dataset.recordsBy;
       render();
     });
   }

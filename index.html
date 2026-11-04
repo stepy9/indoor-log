@@ -478,7 +478,13 @@
             </section>
           </div>
           <section class="card">
-            <span class="field-label" data-i18n="fitnessRecordsTitle">Osobní rekordy</span>
+            <div class="panel-title-row">
+              <span class="field-label" data-i18n="fitnessRecordsTitle">Osobní rekordy</span>
+              <div class="segmented" id="fitnessRecordsBy" role="group" aria-label="Osobní rekordy" data-i18n-aria="fitnessRecordsTitle" hidden>
+                <button type="button" data-records-by="duration" aria-pressed="true" data-i18n="lapTime">Čas</button>
+                <button type="button" data-records-by="distance" aria-pressed="false" data-i18n="fitnessDistance">Vzdálenost</button>
+              </div>
+            </div>
             <p class="field-note" data-i18n="fitnessRecordsNote"></p>
             <div class="laps-scroll"><table class="laps-table compare-table fitness-table card-table is-compact" id="fitnessRecords"></table></div>
             <div class="laps-scroll"><table class="laps-table compare-table fitness-table card-table is-compact" id="fitnessRecordTimes"></table></div>
