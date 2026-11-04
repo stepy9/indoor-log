@@ -4,6 +4,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
+import { openDatePicker } from "./datepicker.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -139,11 +140,10 @@ function numberField(label, value, placeholder, apply, { min, max } = {}) {
 }
 
 // A day typed in the app's language (13. 10. 2026, or 13/10/2026 in English) rather than the browser's,
-// as a date field follows the browser; the calendar stays a click away. onChange gets "YYYY-MM-DD" or null.
+// as a date field follows the browser; the app's own calendar (weeks from Monday) behind a button. onChange gets "YYYY-MM-DD" or null.
 function dateField(key, value, onChange) {
   const box = node("span", { class: "date-field" });
   const text = node("input", { type: "text", inputmode: "numeric", "data-key": key, "aria-label": t("settingsFtpFrom") });
-  const picker = node("input", { type: "date", tabindex: "-1", "aria-hidden": "true", class: "date-field-picker" });
   const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), title: t("settingsPickDate") });
   button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
   const shown = (key) => {
@@ -161,18 +161,14 @@ function dateField(key, value, onChange) {
     return parts.length === 3 && date.getUTCDate() === day && date.getUTCMonth() === month - 1 && year > 1900 ? date.toISOString().slice(0, 10) : undefined;
   };
   text.value = shown(value);
-  picker.value = value ?? "";
   text.placeholder = appState.language === "en" ? "dd/mm/yyyy" : "d. m. rrrr";
   text.addEventListener("change", () => {
     const day = parsed(text.value);
     if (day === undefined) text.value = shown(value);
     else onChange(day);
   });
-  picker.addEventListener("change", () => onChange(picker.value || null));
-  button.addEventListener("click", () => {
-    try { picker.showPicker(); } catch { picker.focus(); }
-  });
-  box.append(text, button, picker);
+  button.addEventListener("click", () => openDatePicker(box, value, onChange));
+  box.append(text, button);
   return box;
 }
 

@@ -785,4 +785,14 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .date-field { position: relative; display: inline-flex; align-items: center; gap: 4px; }
 .date-field input[type="text"] { width: 110px; height: 30px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; }
 .date-field-button { color: var(--muted); height: 30px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); cursor: pointer; font-size: 13px; line-height: 1; }
-.date-field-picker { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.date-picker { position: fixed; z-index: 50; width: 252px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
+.date-picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.date-picker-head strong { font-size: 13px; text-transform: capitalize; }
+.date-picker-nav { width: 28px; height: 28px; border: 0; border-radius: 6px; color: var(--ink); background: transparent; font-size: 18px; cursor: pointer; }
+.date-picker-nav:hover, .date-picker-day:hover { background: var(--surface-2); }
+.date-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.date-picker-weekday { padding: 4px 0; color: var(--muted); font-size: 11px; font-weight: 600; text-align: center; }
+.date-picker-day { height: 30px; border: 1px solid transparent; border-radius: 6px; color: var(--ink); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.date-picker-day.is-today { border-color: var(--line-strong); font-weight: 700; }
+.date-picker-day.is-selected { color: var(--surface); background: var(--accent); font-weight: 700; }
+.date-picker-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; }
