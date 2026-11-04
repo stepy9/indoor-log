@@ -254,6 +254,10 @@ function hideTooltip() {
   byId("diaryTooltip").hidden = true;
 }
 
+document.addEventListener("pointerdown", (event) => {
+  if (event.pointerType !== "mouse" && !event.target.closest?.(".diary-bar")) hideTooltip();
+});
+
 // One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
 function drawBars(buckets, groups, metric, height) {
   const svg = svgNode("svg", { class: "diary-chart", role: "img" });
@@ -301,7 +305,10 @@ function drawBars(buckets, groups, metric, height) {
     const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
     const parts = groups.map(({ has, label, color }) => ({ label, color, value: barValue(bucket.entries.filter(has), metric) })).filter(({ value }) => value);
     group.addEventListener("pointerenter", () => showTooltip(group, { when, total: barText(total, metric), parts: parts.map((part) => ({ ...part, value: barText(part.value, metric) })), hint: view.period === "year" ? t("diaryOpenMonth") : "" }));
-    group.addEventListener("pointerleave", hideTooltip);
+    // A finger lifting is not leaving: its tooltip stays until a tap elsewhere.
+    group.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") hideTooltip();
+    });
     // A month of the year's chart opens that month.
     if (view.period === "year") {
       group.classList.add("is-link");

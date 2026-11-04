@@ -914,7 +914,24 @@ export function setupCompare({ onConverter }) {
       view.zoom = widened([valueAtPixel(from), valueAtPixel(to)]);
       view.hoverX = null;
       renderZoomed();
-    } else renderHover();
+    } else {
+      // A tap shows the values at that point, as a finger has no hover; it stays until a tap elsewhere.
+      if (event.pointerType !== "mouse") view.hoverX = valueAtPixel(plotX(event));
+      renderHover();
+    }
+  });
+  // A finger scrolling the page up or down takes the gesture over: no stretch is left half marked.
+  chart.addEventListener("pointercancel", () => {
+    view.dragFrom = null;
+    view.panFrom = null;
+    chart.classList.remove("is-panning");
+    view.layout?.guide.replaceChildren();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" && view.hoverX != null && !chart.contains(event.target)) {
+      view.hoverX = null;
+      renderHover();
+    }
   });
   chart.addEventListener("dblclick", () => {
     if (!view.zoom) return;
@@ -956,7 +973,8 @@ export function setupCompare({ onConverter }) {
     view.zoom = null;
     renderZoomed();
   });
-  chart.addEventListener("pointerleave", () => {
+  chart.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse") return;
     view.hoverX = null;
     renderHover();
   });
