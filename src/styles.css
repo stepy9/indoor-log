@@ -1125,16 +1125,37 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   #overlayControls .compare-smooth { margin-left: auto; }
 }
 
-/* Phones: the weekly summary is a card per week, the week on top and each value under its column's name. */
+/* Phones: a card table shows a card per row: its first cell on top, each value under its column's name,
+   the activity it came from across the card. */
 @media (max-width: 640px) {
-  #fitnessWeeks, #fitnessWeeks tbody { display: block; }
-  #fitnessWeeks thead { display: none; }
-  #fitnessWeeks tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
-  #fitnessWeeks td { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; }
-  #fitnessWeeks td::before { content: attr(data-label); color: var(--muted); font-size: 11px; font-weight: 600; }
-  #fitnessWeeks td:first-child { grid-column: 1 / -1; color: var(--ink); font-size: 14px; font-weight: 700; }
-  #fitnessWeeks td:first-child::before { content: none; }
-  #fitnessWeeks .fitness-week-load { width: 100%; min-width: 0; }
-  #fitnessWeeks .fitness-week-load span { min-width: 0; text-align: left; }
-  .laps-scroll:has(> #fitnessWeeks) { max-height: none; overflow: visible; border-radius: 0; box-shadow: none; }
+  .card-table, .card-table tbody { display: block; }
+  .card-table thead { display: none; }
+  .card-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+  .card-table td { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 0; border: 0; color: var(--ink); text-align: left; white-space: normal; }
+  .card-table td::before { content: attr(data-label); color: var(--muted); font-size: 11px; font-weight: 600; }
+  .card-table td:first-child { grid-column: 1 / -1; color: var(--ink); font-size: 14px; font-weight: 700; }
+  .card-table td:first-child::before, .card-table td[data-label=""]::before { content: none; }
+  .card-table td[data-label=""]:empty { display: none; }
+  .card-table td:has(> .link-button) { grid-column: 1 / -1; display: block; }
+  .card-table td:has(> .link-button)::before { display: block; margin-bottom: 2px; }
+  .card-table .link-button { text-align: left; }
+  .card-table .fitness-week-load { width: 100%; min-width: 0; }
+  .card-table .fitness-week-load span { min-width: 0; text-align: left; }
+  .laps-scroll:has(> .card-table) { max-height: none; overflow: visible; border-radius: 0; box-shadow: none; }
+}
+
+/* Phones: the week's load bar is left out (the cards do not line the bars up to compare); the power curve and the
+   records are compact lines: the duration, the best value with its other numbers, the activity small under them. */
+@media (max-width: 640px) {
+  .card-table .fitness-zone-track { display: none; }
+  #fitnessRecords, #fitnessRecordTimes { min-width: 0; table-layout: auto; }
+  .card-table.is-compact tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-bottom: 0; padding: 8px 2px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+  .card-table.is-compact td { display: block; }
+  .card-table.is-compact td::before { content: none; }
+  .card-table.is-compact td:first-child { flex: 0 0 56px; font-size: 14px; }
+  .card-table.is-compact td:nth-child(2) { font-size: 15px; font-weight: 700; }
+  .card-table.is-compact td:nth-child(n+3):not(:has(> .link-button)) { color: var(--muted); font-size: 13px; }
+  .card-table.is-compact td:nth-child(n+3):not(:has(> .link-button))::before { content: attr(data-label) " "; display: inline; font-size: 11px; }
+  .card-table.is-compact td:has(> .link-button) { flex: 1 1 100%; padding-left: 68px; font-size: 12px; }
+  .card-table.is-compact td:has(> .link-button) .link-button { color: var(--muted); font-size: 12px; font-weight: 500; }
 }

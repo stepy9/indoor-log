@@ -652,6 +652,12 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
+// Each cell carries its column's name, which a phone shows over the value when the table turns into cards.
+function labelCells(table) {
+  const labels = [...(table.tHead?.rows[0]?.cells ?? [])].map((cell) => cell.textContent);
+  for (const row of table.tBodies[0]?.rows ?? []) [...row.cells].forEach((cell, index) => { cell.dataset.label = labels[index] ?? ""; });
+}
+
 function renderCurveTable(curve, before, settings) {
   // Each best in W/kg by the weight on the day it was ridden.
   const weighed = (settings.weightHistory ?? []).length > 0;
@@ -678,6 +684,7 @@ function renderCurveTable(curve, before, settings) {
   table.replaceChildren(node("thead"), node("tbody"));
   table.tHead.append(head);
   table.tBodies[0].append(...rows);
+  labelCells(table);
 }
 
 // Week by week from Monday, the latest on top: workouts, time, distance and load (with a bar to compare),
@@ -753,12 +760,10 @@ function renderWeeks(history, entries, settings) {
     );
     return row;
   });
-  // Each cell carries its column's name, which a phone shows beside the value when a week becomes a card.
-  const labels = [...head.cells].map((cell) => cell.textContent);
-  for (const row of rows) [...row.cells].forEach((cell, index) => { cell.dataset.label = labels[index]; });
   table.replaceChildren(node("thead"), node("tbody"));
   table.tHead.append(head);
   renderLimited(table.tBodies[0], rows, "fitness:weeks", { step: 12 });
+  labelCells(table);
 }
 
 // The efficiency factor of each steady workout over the range as dots, with a least-squares trend line.
@@ -850,6 +855,7 @@ function renderRecords(entries) {
     table.replaceChildren(node("thead"), node("tbody"));
     table.tHead.append(header);
     table.tBodies[0].append(...rows);
+    labelCells(table);
   };
   const power = powerCurve(entries).filter((point) => point.value != null);
   const weighed = power.some((point) => perKgText(point.value, point.entry.startMs));
