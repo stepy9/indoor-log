@@ -805,3 +805,11 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 }
 .settings-goal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
 .settings-goal input[type="text"][data-key="goal-name"] { flex: 1; min-width: 160px; height: 30px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; }
+
+/* The load chart's forecast to a goal: the plan dashed and fainter, today, the start of the rest and the goal marked. */
+.fitness-line.is-ahead { stroke-dasharray: 4 4; opacity: .7; }
+.fitness-load-bar.is-planned { fill: none; stroke: var(--line-strong); stroke-dasharray: 2 2; }
+.fitness-today { stroke: var(--chart-subtle); stroke-dasharray: 2 3; }
+.fitness-goal { stroke: var(--success); stroke-width: 1.5; }
+.fitness-goal-label { fill: var(--success); font-size: 11px; font-weight: 700; text-anchor: end; }
+.fitness-goal-label.is-rest { fill: var(--muted); font-weight: 600; text-anchor: start; }

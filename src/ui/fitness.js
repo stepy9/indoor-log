@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances } from "../analysis.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
@@ -124,6 +124,18 @@ function renderSuggestions(settings) {
   }));
 }
 
+// The goals of the sports shown, each with its plan from the load the page shows, nearest first.
+// The form aimed at is fresh (+15), or above 0 when the fitness is too low for that, as in the Fresh tile.
+function shownGoals(history, settings) {
+  const level = freshInDays(history, 15) ? 15 : 0;
+  const shown = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
+  return shown.map((sport) => {
+    const goal = settings.sports[sport]?.goal;
+    const plan = goal?.day ? goalPlan(history, goal.day, level) : null;
+    return plan && { sport, goal, plan, level };
+  }).filter(Boolean).sort((a, b) => a.goal.day.localeCompare(b.goal.day));
+}
+
 function renderTiles(history, settings) {
   const last = history.at(-1);
   const week = history.slice(-7).reduce((sum, day) => sum + day.load, 0);
@@ -141,17 +153,14 @@ function renderTiles(history, settings) {
   const freshIn = freshInDays(history, level);
   // Each shown sport's goal from the settings: from when to rest for a fresh form on its day, by the same
   // level, from the load the page shows (that sport's, or all the sports' together).
-  const goalSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
-  for (const sport of goalSports) {
-    const goal = settings.sports[sport]?.goal;
-    const plan = goal?.day && goalPlan(history, goal.day, level);
-    if (!plan) continue;
+  const goals = shownGoals(history, settings);
+  for (const { sport, goal, plan } of goals) {
     const form = `${plan.form >= 0 ? "+" : ""}${displayNumber(plan.form, Math.abs(plan.form) < 10 ? 1 : 0)}`;
     const restNow = plan.restFrom && plan.restFrom <= addDays(last.day, 1);
     const note = !plan.restFrom ? t("fitnessGoalShort", { days: plan.days, form })
       : restNow ? t("fitnessGoalRestNow", { days: plan.days, form })
       : t("fitnessGoalRestFrom", { days: plan.days, level: level ? "+15" : "0", from: dayText(plan.restFrom, { weekday: "short", day: "numeric", month: "numeric" }) });
-    const title = [goal.name || t("fitnessGoal"), ...(goalSports.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
+    const title = [goal.name || t("fitnessGoal"), ...(view.sport === "all" && goals.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
     tiles.push(tile(title, dayText(goal.day, { weekday: "short", day: "numeric", month: "numeric" }), note));
   }
   if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
@@ -187,9 +196,13 @@ function dateTicks(firstKey, lastKey, xForKey, { margin, width, height }) {
 }
 
 // Fitness, fatigue and form over the range, with each day's load as faint bars behind.
-function renderLoadChart(history) {
+// With a goal ahead the chart goes on past today to its day, dashed, by the goal's plan.
+function renderLoadChart(history, settings) {
   const chart = byId("fitnessLoadChart");
-  const days = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
+  const past = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
+  const next = shownGoals(history, settings)[0];
+  const ahead = next ? goalForecast(history, next.goal.day, next.plan.restFrom) : [];
+  const days = [...past, ...ahead];
   byId("fitnessLoadEmpty").hidden = days.length > 0;
   chart.hidden = !days.length;
   view.layout = null;
@@ -229,10 +242,29 @@ function renderLoadChart(history) {
   band(minY, -30, "fitness-band-over", `${t("fitnessState_overreaching")} · ${t("fitnessForm").toLowerCase()} < −30`);
   const barWidth = Math.max(1, Math.min(12, (plotWidth / days.length) * 0.7));
   days.forEach((day, index) => {
-    if (day.load > 0) children.push(node("rect", { x: xFor(index) - barWidth / 2, y: yFor(day.load), width: barWidth, height: yFor(0) - yFor(day.load), class: "fitness-load-bar" }));
+    if (day.load > 0) children.push(node("rect", { x: xFor(index) - barWidth / 2, y: yFor(day.load), width: barWidth, height: yFor(0) - yFor(day.load), class: `fitness-load-bar${day.projected ? " is-planned" : ""}` }));
   });
-  const line = (field, className) => node("path", { class: `fitness-line ${className}`, d: days.map((day, index) => `${index ? "L" : "M"}${xFor(index).toFixed(1)},${yFor(day[field]).toFixed(1)}`).join("") });
-  children.push(line("form", "is-form"), line("fatigue", "is-fatigue"), line("fitness", "is-fitness"));
+  // The past solid; the plan dashed from today on, joined to it.
+  const path = (field, from, to) => days.slice(from, to).map((day, index) => `${index ? "L" : "M"}${xFor(from + index).toFixed(1)},${yFor(day[field]).toFixed(1)}`).join("");
+  for (const [field, className] of [["form", "is-form"], ["fatigue", "is-fatigue"], ["fitness", "is-fitness"]]) {
+    children.push(node("path", { class: `fitness-line ${className}`, d: path(field, 0, past.length) }));
+    if (ahead.length) children.push(node("path", { class: `fitness-line ${className} is-ahead`, d: path(field, past.length - 1, days.length) }));
+  }
+  if (ahead.length) {
+    // Today, where the plan starts, and the goal day with its name.
+    const today = xFor(past.length - 1);
+    const goal = xFor(days.length - 1);
+    children.push(
+      node("line", { x1: today, x2: today, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-today" }),
+      node("line", { x1: goal, x2: goal, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-goal" }),
+      node("text", { x: goal - 4, y: margin.top + 12, class: "fitness-goal-label" }, next.goal.name || t("fitnessGoal")),
+    );
+    if (next.plan.restFrom && indexOf.has(next.plan.restFrom)) {
+      const rest = xFor(indexOf.get(next.plan.restFrom)) - plotWidth / days.length / 2;
+      children.push(node("text", { x: rest + 4, y: margin.top + plotHeight - 6, class: "fitness-goal-label is-rest" }, t("fitnessRestFrom")));
+      children.push(node("line", { x1: rest, x2: rest, y1: margin.top, y2: margin.top + plotHeight, class: "fitness-today" }));
+    }
+  }
   const guide = node("g");
   children.push(guide);
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -259,11 +291,12 @@ function showLoadTooltip(event) {
   };
   const form = day.fitness - day.fatigue;
   tooltip.replaceChildren(
-    node("div", { class: "diary-tooltip-when" }, dayText(day.day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })),
+    node("div", { class: "diary-tooltip-when" }, `${dayText(day.day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })}${day.projected ? ` · ${t("fitnessPlanned")}` : ""}`),
     row(t("fitnessLoad"), displayNumber(day.load), "is-load"),
     row(t("fitnessFitness"), displayNumber(day.fitness), "is-fitness"),
     row(t("fitnessFatigue"), displayNumber(day.fatigue), "is-fatigue"),
-    row(t("fitnessFormNext"), `${form >= 0 ? "+" : ""}${displayNumber(form)}`, "is-form"),
+    // A form that rounds to nothing reads 0, not −0.
+    row(t("fitnessFormNext"), Math.abs(form) < 0.5 ? "0" : `${form > 0 ? "+" : ""}${displayNumber(form)}`, "is-form"),
   );
   tooltip.hidden = false;
   const card = tooltip.offsetParent.getBoundingClientRect();
@@ -797,7 +830,7 @@ function render() {
   const history = loadHistory(shown, settings, zone, today());
   renderSuggestions(settings);
   renderTiles(history, settings);
-  renderLoadChart(history);
+  renderLoadChart(history, settings);
   const current = inRange(shown);
   renderWeeks(history, current);
   renderZones(current, settings);

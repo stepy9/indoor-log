@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -177,4 +177,17 @@ test("goalPlan finds the latest day to start resting for a fresh form on the goa
   // Too little fitness for +15 by any rest.
   const weak = goalPlan([{ day: "2026-11-04", load: 0, fitness: 7, fatigue: 17 }], "2026-11-10", 15);
   assert.equal(weak.restFrom, null);
+});
+
+test("goalForecast projects the days to the goal by the plan, its form on the goal day matching the plan's", () => {
+  const history = Array.from({ length: 60 }, (_, index) => ({ day: index === 59 ? "2026-11-04" : `2026-09-${String(1 + (index % 28)).padStart(2, "0")}`, load: 60, fitness: 60, fatigue: 60 }));
+  const plan = goalPlan(history, "2026-11-24", 15);
+  const days = goalForecast(history, "2026-11-24", plan.restFrom);
+  assert.equal(days.length, 20);
+  assert.equal(days[0].day, "2026-11-05");
+  assert.equal(days.at(-1).day, "2026-11-24");
+  assert.ok(days.every((day) => day.projected));
+  assert.ok(Math.abs(days.at(-1).form - plan.form) < 1e-9);
+  assert.ok(days.filter((day) => day.day >= plan.restFrom).every((day) => day.load === 0));
+  assert.deepEqual(goalForecast(history, "2026-11-04", null), []);
 });

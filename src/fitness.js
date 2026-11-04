@@ -236,6 +236,30 @@ export function loadHistory(entries, settings, timeZone, lastDay) {
   return days;
 }
 
+// The average daily load of the last 28 days, the load a plan expects until its rest.
+const recentAverage = (history) => {
+  const recent = history.slice(-28);
+  return recent.length ? recent.reduce((sum, day) => sum + day.load, 0) / recent.length : 0;
+};
+
+// The days from after the history's last one up to the goal day, by a plan: the recent average load until
+// restFrom, nothing from then on (restFrom null: rest throughout). Shaped as loadHistory's days, each projected.
+export function goalForecast(history, goalKey, restFrom) {
+  const last = history.at(-1);
+  if (!last || !goalKey || goalKey <= last.day) return [];
+  const average = recentAverage(history);
+  let { fitness, fatigue } = last;
+  const days = [];
+  for (let day = addDays(last.day, 1); day <= goalKey; day = addDays(day, 1)) {
+    const load = restFrom && day < restFrom ? average : 0;
+    const form = fitness - fatigue;
+    fitness += (load - fitness) / fitnessDays;
+    fatigue += (load - fatigue) / fatigueDays;
+    days.push({ day, load, fitness, fatigue, form, projected: true });
+  }
+  return days;
+}
+
 // A plan for a goal day (a race or an FTP test): training on at the average daily load of the last 28 days,
 // then rest, the latest day the rest can start for the form on the goal's morning to be above the level.
 // { restFrom: "YYYY-MM-DD" | null, form, days } — restFrom null when even resting from tomorrow is not enough,
@@ -245,8 +269,7 @@ export function goalPlan(history, goalKey, level = 15) {
   const last = history.at(-1);
   if (!last || !goalKey || goalKey <= last.day) return null;
   const days = Math.round((Date.parse(`${goalKey}T12:00:00Z`) - Date.parse(`${last.day}T12:00:00Z`)) / 86_400_000);
-  const recent = history.slice(-28);
-  const average = recent.reduce((sum, day) => sum + day.load, 0) / recent.length;
+  const average = recentAverage(history);
   // The days after the last one up to the one before the goal: its morning form comes from them.
   const formWith = (trainingDays) => {
     let { fitness, fatigue } = last;
