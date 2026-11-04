@@ -210,13 +210,16 @@ function renderLoadChart(history) {
   }
   children.push(...dateTicks(days[0].day, days.at(-1).day, (key) => xFor(indexOf.get(key) ?? 0), { margin, width, height }));
   // The form's zones: fresh above +15 and overreaching below −30, shaded where they fall in the scale.
-  const band = (from, to, className) => {
+  // Each named in its corner, as they are about the form line, not the load bars.
+  const band = (from, to, className, label) => {
     const top = yFor(Math.min(maxY, to));
     const bottom = yFor(Math.max(minY, from));
-    if (bottom > top) children.push(node("rect", { x: margin.left, y: top, width: plotWidth, height: bottom - top, class: className }));
+    if (bottom <= top) return;
+    children.push(node("rect", { x: margin.left, y: top, width: plotWidth, height: bottom - top, class: className }));
+    if (bottom - top >= 16) children.push(node("text", { x: margin.left + 6, y: top + 13, class: `fitness-band-label ${className}` }, label));
   };
-  band(15, maxY, "fitness-band-fresh");
-  band(minY, -30, "fitness-band-over");
+  band(15, maxY, "fitness-band-fresh", `${t("fitnessState_fresh")} · ${t("fitnessForm").toLowerCase()} > +15`);
+  band(minY, -30, "fitness-band-over", `${t("fitnessState_overreaching")} · ${t("fitnessForm").toLowerCase()} < −30`);
   const barWidth = Math.max(1, Math.min(12, (plotWidth / days.length) * 0.7));
   days.forEach((day, index) => {
     if (day.load > 0) children.push(node("rect", { x: xFor(index) - barWidth / 2, y: yFor(day.load), width: barWidth, height: yFor(0) - yFor(day.load), class: "fitness-load-bar" }));
