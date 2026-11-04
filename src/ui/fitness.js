@@ -886,13 +886,13 @@ function renderRecords(entries) {
     return row;
   }));
   byId("fitnessRecordsEmpty").hidden = power.length > 0 || times.length > 0;
-  // With both kinds of record a switch shows one of them; with one, that one.
+  // With both kinds of record a phone's switch shows one of them; with one, that one.
   const both = power.length > 0 && times.length > 0;
   const by = both ? view.recordsBy : times.length ? "distance" : "duration";
   byId("fitnessRecordsBy").hidden = !both;
   for (const button of document.querySelectorAll("[data-records-by]")) button.setAttribute("aria-pressed", String(button.dataset.recordsBy === by));
-  byId("fitnessRecords").hidden = by !== "duration" || !power.length;
-  byId("fitnessRecordTimes").hidden = by !== "distance" || !times.length;
+  // A desktop shows both side by side; the switch and the choice it makes only count on a phone.
+  byId("fitnessRecordsPair").dataset.by = by;
 }
 
 function renderDecoupling(entries, settings) {
