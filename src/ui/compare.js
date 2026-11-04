@@ -7,7 +7,7 @@ import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
-import { perKgText } from "./settings.js";
+import { perKgText, weightOnDay } from "./settings.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -535,7 +535,7 @@ function groupTitle(from) {
 // The trend's points: one per activity, or per week or month put together; the best of the range is marked.
 function trendPoints() {
   const metric = view.trendMetric;
-  const perActivity = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric) })).filter((point) => Number.isFinite(point.y));
+  const perActivity = trendEntries().map((entry) => ({ entry, x: entry.startMs, y: trendValue(entry, metric, weightOnDay(entry.startMs)) })).filter((point) => Number.isFinite(point.y));
   const points = view.trendGroup === "activity" ? perActivity : groupTrend(perActivity, view.trendGroup, metric, view.sport, zone);
   const records = recordFlags(points.map((point) => point.y), trendDirection(metric, view.sport));
   return points.map((point, index) => ({ ...point, record: records[index] }));
@@ -545,6 +545,9 @@ function saveTrend() {
   saveDefaults({ trend: { metric: view.trendMetric, range: view.trendRange, group: view.trendGroup } });
 }
 
+// Ratios small enough to need two decimals on the axis and in the table.
+const twoDecimals = (metric) => metric === "efficiency" || metric === "powerPerKg";
+
 function trendLabel(metric, sport) {
   const { short, long } = trendDistances(sport);
   const distance = (meters) => (meters >= 1000 ? `${meters / 1000} km` : `${meters} m`);
@@ -552,7 +555,7 @@ function trendLabel(metric, sport) {
   if (metric === "bestShort") return t("compareBestTime", { distance: distance(short) });
   if (metric === "bestLong") return t("compareBestTime", { distance: distance(long) });
   if (metric === "bestPower") return t("compareBestPower", { duration: formatDuration(300) });
-  return t({ avgPower: "compareAvgPower", avgHeartRate: "compareAvgHeartRate", efficiency: "trendEfficiency" }[metric]);
+  return t({ avgPower: "compareAvgPower", avgHeartRate: "compareAvgHeartRate", efficiency: "trendEfficiency", powerPerKg: "trendPowerPerKg" }[metric]);
 }
 
 function trendText(value, metric, sport) {
@@ -560,6 +563,7 @@ function trendText(value, metric, sport) {
   if (metric === "pace") return metricText(value, "pace", sport);
   if (trendIsTime(metric, sport)) return formatDuration(value);
   if (metric === "efficiency") return `${displayNumber(value, 2)} W/bpm`;
+  if (metric === "powerPerKg") return `${displayNumber(value, 2)} W/kg`;
   return `${displayNumber(value)} ${metric === "avgHeartRate" ? "bpm" : "W"}`;
 }
 
@@ -603,7 +607,7 @@ function renderTrendChart() {
   const high = Math.max(...ys);
   const pad = (high - low) * 0.15 || Math.abs(high) * 0.05 || 1;
   const isTime = trendIsTime(metric, view.sport);
-  const yTicks = niceTicks(Math.max(0, low - pad), high + pad, 5, isTime ? [1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600] : metric === "efficiency" ? [0.05, 0.1, 0.2, 0.25, 0.5, 1] : null);
+  const yTicks = niceTicks(Math.max(0, low - pad), high + pad, 5, isTime ? [1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600] : twoDecimals(metric) ? [0.05, 0.1, 0.2, 0.25, 0.5, 1] : null);
   const yLow = Math.min(yTicks[0], low - pad);
   const yHigh = Math.max(yTicks.at(-1), high + pad);
   const plotWidth = width - margin.left - margin.right;
@@ -618,7 +622,7 @@ function renderTrendChart() {
   for (const tick of yTicks) {
     chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
     const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
-    label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, metric === "efficiency" ? 2 : 0);
+    label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, twoDecimals(metric) ? 2 : 0);
     chart.append(label);
   }
   // Date ticks spread evenly; a short span shows fewer of them.
@@ -691,7 +695,7 @@ function renderTrendTable() {
     if (Number.isFinite(value) && Number.isFinite(previous)) {
       const delta = value - previous;
       const better = metric === "avgHeartRate" ? null : isTime ? delta < 0 : delta > 0;
-      change = `${delta > 0 ? "+" : delta < 0 ? "−" : "±"}${isTime ? formatDuration(Math.abs(delta)) : displayNumber(Math.abs(delta), metric === "efficiency" ? 2 : 0)}`;
+      change = `${delta > 0 ? "+" : delta < 0 ? "−" : "±"}${isTime ? formatDuration(Math.abs(delta)) : displayNumber(Math.abs(delta), twoDecimals(metric) ? 2 : 0)}`;
       tone = delta === 0 || better == null ? "" : better ? "is-better" : "is-worse";
     }
     if (Number.isFinite(value)) previous = value;

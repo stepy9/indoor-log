@@ -189,7 +189,7 @@ export function inLengthRange(entry, filter) {
 }
 
 // One number per activity for the trend over time.
-export const trendMetrics = ["avgPower", "pace", "avgHeartRate", "efficiency", "bestShort", "bestLong", "bestPower"];
+export const trendMetrics = ["avgPower", "powerPerKg", "pace", "avgHeartRate", "efficiency", "bestShort", "bestLong", "bestPower"];
 
 // The short and long best-effort distances the trend follows: 500 m and 2 km for rowing.
 export const trendDistances = (sport) => {
@@ -197,10 +197,12 @@ export const trendDistances = (sport) => {
   return { short: distances[0], long: distances[2] };
 };
 
-export function trendValue(entry, metric) {
+// weight is the body weight on the workout's day, for the power per kilogram; without it that metric has no value.
+export function trendValue(entry, metric, weight = null) {
   const { summary, sport } = entry;
   switch (metric) {
     case "avgPower": return summary.avgPower ?? null;
+    case "powerPerKg": return summary.avgPower && weight > 0 ? summary.avgPower / weight : null;
     case "avgHeartRate": return summary.avgHeartRate ?? null;
     case "pace": return summary.timerSeconds > 0 ? paceFrom(summary.distance / summary.timerSeconds, sport) : null;
     // Watts per heartbeat: more power for the same heart rate means better fitness.

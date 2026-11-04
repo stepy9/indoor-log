@@ -81,6 +81,8 @@ test("trend values give one number per activity, with times improving downwards"
   const activity = { ...entry(), laps: [], summary: { timerSeconds: 600, distance: 2460, avgPower: 210, avgHeartRate: 150 } };
   assert.equal(trendValue(activity, "avgPower"), 210);
   assert.equal(trendValue(activity, "efficiency"), 1.4);
+  assert.equal(trendValue(activity, "powerPerKg", 70), 3);
+  assert.equal(trendValue(activity, "powerPerKg"), null);
   assert.equal(Math.round(trendValue(activity, "pace")), 122);
   assert.equal(trendValue(activity, "bestShort"), 110);
   assert.equal(trendValue(activity, "bestLong"), 485);
