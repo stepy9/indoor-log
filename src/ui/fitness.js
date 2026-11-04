@@ -753,6 +753,9 @@ function renderWeeks(history, entries, settings) {
     );
     return row;
   });
+  // Each cell carries its column's name, which a phone shows beside the value when a week becomes a card.
+  const labels = [...head.cells].map((cell) => cell.textContent);
+  for (const row of rows) [...row.cells].forEach((cell, index) => { cell.dataset.label = labels[index]; });
   table.replaceChildren(node("thead"), node("tbody"));
   table.tHead.append(head);
   renderLimited(table.tBodies[0], rows, "fitness:weeks", { step: 12 });
