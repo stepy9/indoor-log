@@ -5,6 +5,7 @@ import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entry
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
+import { cloudConnected, onCloudStatus } from "./cloud.js";
 import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
@@ -345,10 +346,11 @@ const markBackup = (count) => {
   } catch {}
 };
 
-// A dot on the Library button and a line in the library while a backup is due.
+// A dot on the Library button and a line in the library while a backup is due. With Dropbox connected the library
+// is kept there too, so no reminder.
 export async function updateBackupReminder() {
   const count = (await listEntries().catch(() => [])).length;
-  const due = backupDue(count, lastBackup());
+  const due = !cloudConnected() && backupDue(count, lastBackup());
   const button = byId("libraryButton");
   button.classList.toggle("is-due", due);
   button.title = due ? t("backupDue") : "";
@@ -410,6 +412,13 @@ let onSettingsRestored = () => {};
 
 // onRestore lets the converter pick up trainers and defaults that a backup brought in.
 export function setupLibrary({ onRestore } = {}) {
+  // Connecting or disconnecting Dropbox turns the reminder off or back on.
+  let connected = cloudConnected();
+  onCloudStatus((status) => {
+    if (status.connected === connected) return;
+    connected = status.connected;
+    updateBackupReminder();
+  });
   if (onRestore) onSettingsRestored = onRestore;
   byId("libraryButton").addEventListener("click", openLibrary);
   byId("libraryClose").addEventListener("click", () => dialog.close());
