@@ -242,29 +242,29 @@
             </section>
 
             <section class="panel">
-              <label class="field">
-                <span data-i18n="activityName">Název v metadatech FIT</span>
+              <label class="field" for="activityName">
+                <span class="info-title" data-i18n="activityName">Název v metadatech FIT</span>
                 <input id="activityName" type="text" maxlength="255" value="Kinomap - Rowing Workout" />
               </label>
-              <p class="field-note" data-i18n="activityNameNote">Connect může název při importu ignorovat. FIT nepřenáší poznámky ani odkaz; nadpis, typ události a poznámku upravte v detailu aktivity.</p>
+              <p class="field-note info-note" data-i18n="activityNameNote">Connect může název při importu ignorovat. FIT nepřenáší poznámky ani odkaz; nadpis, typ události a poznámku upravte v detailu aktivity.</p>
             </section>
 
             <details class="advanced">
               <summary><span data-i18n="advanced">Pokročilé</span></summary>
               <section class="panel" aria-label="Časové pásmo výstupu" data-i18n-aria="timeZone">
-                <label class="field">
-                  <span class="panel-title-row"><span data-i18n="timeZone">Časové pásmo výstupu</span><span class="zone-badge" id="zoneBadge"></span></span>
+                <label class="field" for="timeZoneSelect">
+                  <span class="panel-title-row"><span class="info-title" data-i18n="timeZone">Časové pásmo výstupu</span><span class="zone-badge" id="zoneBadge"></span></span>
                   <select id="timeZoneSelect"></select>
                 </label>
-                <p class="field-note" data-i18n="timeZoneNote">Platí pro všechny aktivity: místní čas ve FIT a časy v TCX/PWX, které pásmo neuvádějí.</p>
+                <p class="field-note info-note" data-i18n="timeZoneNote">Platí pro všechny aktivity: místní čas ve FIT a časy v TCX/PWX, které pásmo neuvádějí.</p>
               </section>
               <section class="panel" aria-label="Zařízení v exportu" data-i18n-aria="asWatch">
-                <label class="check-field"><input id="asWatchToggle" type="checkbox" checked /> <span data-i18n="asWatch">Hlásit export jako hodinky Garmin</span></label>
-                <p class="field-note" data-i18n="asWatchNote">Connect pak spočítá Training Effect a tréninkovou zátěž. Bez toho se soubor hlásí jako vývojářské zařízení.</p>
+                <label class="check-field" for="asWatchToggle"><input id="asWatchToggle" type="checkbox" checked /> <span class="info-title" data-i18n="asWatch">Hlásit export jako hodinky Garmin</span></label>
+                <p class="field-note info-note" data-i18n="asWatchNote">Connect pak spočítá Training Effect a tréninkovou zátěž. Bez toho se soubor hlásí jako vývojářské zařízení.</p>
               </section>
               <section class="panel" aria-label="Cíl kadence ve wattech" data-i18n-aria="cadenceAsPower">
-                <label class="check-field"><input id="cadenceAsPowerToggle" type="checkbox" /> <span data-i18n="cadenceAsPower">Převést cíl kadence na watty</span></label>
-                <p class="field-note" data-i18n="cadenceAsPowerNote">Connect kreslí jen cíl výkonu. Cíl v rpm se zapíše jako watty, které by na tomto trenažéru odpovídaly: průměrný výkon úseku × cílová / skutečná kadence. Cíl kadence pak v souboru nebude.</p>
+                <label class="check-field" for="cadenceAsPowerToggle"><input id="cadenceAsPowerToggle" type="checkbox" /> <span class="info-title" data-i18n="cadenceAsPower">Převést cíl kadence na watty</span></label>
+                <p class="field-note info-note" data-i18n="cadenceAsPowerNote">Connect kreslí jen cíl výkonu. Cíl v rpm se zapíše jako watty, které by na tomto trenažéru odpovídaly: průměrný výkon úseku × cílová / skutečná kadence. Cíl kadence pak v souboru nebude.</p>
               </section>
             </details>
           </aside>
@@ -327,7 +327,7 @@
           <h2 id="intervalsTitle" data-i18n="intervalsTitle">Intervaly</h2>
           <span class="estimate-note" id="intervalsCount"></span>
         </div>
-        <p class="field-note" data-i18n="intervalsHint">Odhad podle změn výkonu nebo kadence. Upravte začátky nebo délky úseků (min:s, šipkami po 1 s, se Shiftem po 10 s), jejich typ a cíl, nebo úseky přidejte či odeberte. Změna délky posune všechny další úseky. Každý úsek bude v Garminu samostatné kolo.</p>
+        <p class="field-note info-note" data-i18n="intervalsHint">Odhad podle změn výkonu nebo kadence. Upravte začátky nebo délky úseků (min:s, šipkami po 1 s, se Shiftem po 10 s), jejich typ a cíl, nebo úseky přidejte či odeberte. Změna délky posune všechny další úseky. Každý úsek bude v Garminu samostatné kolo.</p>
         <details class="plan-paste">
           <summary data-i18n="pastePlan">Vložit plán z Kinomapu</summary>
           <textarea id="planText" rows="4" placeholder="01:09  80%  24rpm  A"></textarea>

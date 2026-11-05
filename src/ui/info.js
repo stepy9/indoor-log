@@ -27,8 +27,9 @@ function sheet() {
 
 export function setupInfoNotes() {
   for (const note of document.querySelectorAll(".info-note")) {
-    const box = note.closest(".card, dialog");
-    const title = box?.querySelector(".field-label, h2");
+    // A converter setting's note belongs to its own panel, headed by that setting's name (.info-title).
+    const box = note.closest(".panel:has(.info-title), .card, dialog");
+    const title = box?.querySelector(".info-title, .field-label, h2");
     if (!title) continue;
     const button = Object.assign(document.createElement("button"), { type: "button", className: "info-button", textContent: "i" });
     button.dataset.i18nAria = "infoOpen";
