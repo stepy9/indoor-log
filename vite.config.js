@@ -23,9 +23,15 @@ const commit = (() => {
 })();
 const version = [new Date().toISOString().slice(0, 10), commit].filter(Boolean).join(" · ");
 
+// The version written into the page itself, so it shows even before (or without) the script.
+const stampVersion = {
+  name: "stamp-version",
+  transformIndexHtml: (html) => html.replaceAll('<span class="app-version"></span>', `<span class="app-version">v ${version}</span>`),
+};
+
 // Relative paths let the build run from any folder, such as a GitHub Pages project site.
 export default defineConfig({
   base: "./",
   define: { __APP_VERSION__: JSON.stringify(version) },
-  plugins: [stampServiceWorker],
+  plugins: [stampServiceWorker, stampVersion],
 });
