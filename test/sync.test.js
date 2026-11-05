@@ -40,11 +40,23 @@ test("mergeStates keeps one activity of a workout saved on two devices, and reme
   assert.deepEqual(mergeStates(merged, merged).entries.map((entry) => entry.id), ["there"]);
 });
 
-test("mergeStates takes the settings changed last", () => {
-  const here = { defaults: { fitness: { goal: "here" } }, changedAt: 1000 };
-  const there = { defaults: { fitness: { goal: "there" } }, changedAt: 2000 };
-  assert.equal(mergeStates(state([], {}, here), state([], {}, there)).settings, there);
-  assert.equal(mergeStates(state([], {}, here), emptyState()).settings, here);
+test("mergeStates takes each setting changed last", () => {
+  const here = { defaults: { fitness: { goal: "here" }, trainers: [{ id: "a" }] }, changedAt: { fitness: 1000, trainers: 3000 } };
+  const there = { defaults: { fitness: { goal: "there" }, trainers: [{ id: "b" }] }, changedAt: { fitness: 2000, trainers: 500 } };
+  assert.deepEqual(mergeStates(state([], {}, here), state([], {}, there)).settings, {
+    defaults: { fitness: { goal: "there" }, trainers: [{ id: "a" }] },
+    changedAt: { fitness: 2000, trainers: 3000 },
+  });
+  assert.deepEqual(mergeStates(state([], {}, here), emptyState()).settings, here);
+});
+
+test("a blank setting never wipes a filled one, and an old single time counts for each key", () => {
+  const filled = { defaults: { fitness: { weightHistory: [{ kg: 78 }] }, trainers: [{ id: "a" }] }, changedAt: 0 };
+  const empty = { defaults: { fitness: {}, trainers: [] }, changedAt: { fitness: 9000, trainers: 9000 } };
+  const merged = mergeStates(state([], {}, filled), state([], {}, empty)).settings;
+  assert.deepEqual(merged.defaults, filled.defaults);
+  assert.equal(changesFor(state([], {}, empty), { entries: [], settings: merged }).settings, true);
+  assert.equal(changesFor(state([], {}, merged), { entries: [], settings: merged }).settings, false);
 });
 
 test("changesFor tells each side what to write and delete", () => {

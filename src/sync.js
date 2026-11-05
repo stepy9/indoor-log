@@ -36,10 +36,43 @@ export function mergeStates(local, remote) {
   for (const entry of alive) {
     if (!kept.some((item) => item.id === entry.id)) deleted[entry.id] = Math.max(deleted[entry.id] ?? 0, changedAt(entry));
   }
-  // The settings changed last.
-  const settings = [a.settings, b.settings].filter(Boolean).sort((x, y) => (y.changedAt ?? 0) - (x.changedAt ?? 0))[0] ?? null;
-  return { entries: kept.sort((x, y) => y.startMs - x.startMs), deleted, settings };
+  return { entries: kept.sort((x, y) => y.startMs - x.startMs), deleted, settings: mergeSettings(a.settings, b.settings) };
 }
+
+// Settings as { defaults, changedAt: { key: ms } }: each synced key with its own time. An older file kept one
+// time for all of them, which counts for each key it holds.
+export function normalizeSettings(settings) {
+  if (!settings || typeof settings !== "object") return null;
+  const defaults = settings.defaults && typeof settings.defaults === "object" ? settings.defaults : {};
+  const times = settings.changedAt && typeof settings.changedAt === "object"
+    ? settings.changedAt
+    : Object.fromEntries(Object.keys(defaults).map((key) => [key, Number(settings.changedAt) || 0]));
+  return { defaults, changedAt: times };
+}
+
+// A value that says nothing: missing, null, or an empty object or list.
+const blank = (value) => value == null || (typeof value === "object" && Object.keys(value).length === 0);
+
+// Each key from the side that changed it last; a blank value never wins over a filled one, whatever its time,
+// so a device that has not set anything up cannot wipe what another has.
+export function mergeSettings(local, remote) {
+  const a = normalizeSettings(local);
+  const b = normalizeSettings(remote);
+  if (!a || !b) return a ?? b;
+  const defaults = {};
+  const changedAt = {};
+  for (const key of new Set([...Object.keys(a.defaults), ...Object.keys(b.defaults)])) {
+    const here = { value: a.defaults[key], at: a.changedAt[key] ?? 0 };
+    const there = { value: b.defaults[key], at: b.changedAt[key] ?? 0 };
+    const pick = blank(here.value) !== blank(there.value) ? (blank(here.value) ? there : here) : there.at > here.at ? there : here;
+    if (pick.value !== undefined) defaults[key] = pick.value;
+    changedAt[key] = pick.at;
+  }
+  return { defaults, changedAt };
+}
+
+const sameSettings = (x, y) => JSON.stringify(x?.defaults ?? null) === JSON.stringify(y?.defaults ?? null)
+  && JSON.stringify(x?.changedAt ?? null) === JSON.stringify(y?.changedAt ?? null);
 
 // What a merge changes against one side: the activities to write there and the ids to delete there,
 // and whether its settings are behind.
@@ -49,7 +82,7 @@ export function changesFor(side, merged) {
   return {
     write: merged.entries.filter((entry) => changedAt(entry) !== changedAt(current.get(entry.id) ?? {}) || !current.has(entry.id)),
     remove: [...current.keys()].filter((id) => !keep.has(id)),
-    settings: Boolean(merged.settings) && (merged.settings.changedAt ?? 0) > (side?.settings?.changedAt ?? 0),
+    settings: Boolean(merged.settings) && !sameSettings(normalizeSettings(side?.settings), merged.settings),
   };
 }
 

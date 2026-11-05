@@ -1,7 +1,7 @@
 import { buildWorkout, decodeGarminFit, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
-import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries, backupDue } from "../library.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries, backupDue } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -372,15 +372,19 @@ async function downloadBackup() {
 
 async function restoreBackup(file) {
   try {
-    const { entries, settings } = parseBackup(await file.text());
-    const { skipped } = await addEntries(entries);
+    const { entries: all, settings } = parseBackup(await file.text());
+    // Only workouts the library lacks come in: one already here stays as it is, edits since the backup included.
+    const existing = await listEntries();
+    const entries = all.filter((entry) => !existing.some((item) => item.id === entry.id) && !findWorkout(existing, entry));
+    const { skipped: duplicates } = await addEntries(entries);
+    const skipped = duplicates + all.length - entries.length;
     if (settings) {
       restoreSettings(settings);
       toggle.checked = savesToLibrary();
       onSettingsRestored();
     }
     libraryNote([
-      t("libraryRestored", { count: entries.length - skipped }),
+      t("libraryRestored", { count: entries.length - duplicates }),
       ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []),
       ...(settings ? [t("librarySettingsRestored")] : []),
     ].join(" · "), "success");

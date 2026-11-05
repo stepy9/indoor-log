@@ -36,33 +36,64 @@ export function savedDefaults() {
 
 export function saveDefaults(patch) {
   try {
-    localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...patch }));
-    if (syncedKeys.some((key) => key in patch)) {
-      localStorage.setItem(syncedChangedKey, String(Date.now()));
+    const before = savedDefaults();
+    const after = { ...before, ...patch };
+    localStorage.setItem(defaultsKey, JSON.stringify(after));
+    // Only a real change to a synced value counts, each key with its own time: the fitness page remembering
+    // its sport, or saving the same value again, leaves the time alone.
+    const changed = syncedKeys.filter((key) => key in patch && JSON.stringify(syncedValue(key, before)) !== JSON.stringify(syncedValue(key, after)));
+    if (changed.length) {
+      const times = changedTimes();
+      for (const key of changed) times[key] = Date.now();
+      localStorage.setItem(syncedChangedKey, JSON.stringify(times));
       window.dispatchEvent(new Event("synced-settings-change"));
     }
   } catch {}
 }
 
 // The settings kept the same on every device: thresholds, weight, goals and trainers. What a page shows last
-// (a sport, a period, a range) stays with each device, so browsing on one does not undo a change on another.
-export const syncedKeys = ["fitness", "trainers", "trainerBySport"];
+// (a sport, a period, a range, the trainer used last) stays with each device, so browsing on one does not undo
+// a change on another.
+export const syncedKeys = ["fitness", "trainers"];
+const localFitness = ["sport", "range"];
 const syncedChangedKey = "kinomap-settings-changed";
+
+function syncedValue(key, defaults) {
+  const value = defaults[key];
+  if (key !== "fitness" || !value) return value;
+  return Object.fromEntries(Object.entries(value).filter(([name]) => !localFitness.includes(name)));
+}
+
+// When each synced key last changed here; an older version kept one time for all of them.
+function changedTimes() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(syncedChangedKey));
+    if (stored && typeof stored === "object") return stored;
+    return Object.fromEntries(syncedKeys.map((key) => [key, Number(stored) || 0]));
+  } catch {
+    return {};
+  }
+}
 
 export function syncedSettings() {
   const defaults = savedDefaults();
-  let changedAt = 0;
-  try {
-    changedAt = Number(localStorage.getItem(syncedChangedKey)) || 0;
-  } catch {}
-  return { defaults: Object.fromEntries(syncedKeys.filter((key) => key in defaults).map((key) => [key, defaults[key]])), changedAt };
+  const times = changedTimes();
+  const keys = syncedKeys.filter((key) => key in defaults);
+  return {
+    defaults: Object.fromEntries(keys.map((key) => [key, syncedValue(key, defaults)])),
+    changedAt: Object.fromEntries(keys.map((key) => [key, times[key] ?? 0])),
+  };
 }
 
-// Settings that came from another device, written with their own time so they do not count as a change here.
+// Settings that came from another device, written with their own times so they do not count as a change here;
+// what this device keeps for itself stays.
 export function applySyncedSettings({ defaults, changedAt }) {
   try {
-    localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...defaults }));
-    localStorage.setItem(syncedChangedKey, String(changedAt));
+    const current = savedDefaults();
+    const incoming = { ...defaults };
+    if (incoming.fitness) incoming.fitness = { ...incoming.fitness, ...Object.fromEntries(localFitness.filter((name) => current.fitness && name in current.fitness).map((name) => [name, current.fitness[name]])) };
+    localStorage.setItem(defaultsKey, JSON.stringify({ ...current, ...incoming }));
+    localStorage.setItem(syncedChangedKey, JSON.stringify({ ...changedTimes(), ...changedAt }));
   } catch {}
 }
 
@@ -89,16 +120,25 @@ export function rememberExport(key) {
 // Remembered settings as a backup carries them to another browser.
 export const settingsSnapshot = () => ({ defaults: savedDefaults(), exports: [...exportedKeys()] });
 
-// The backup's settings win, except that trainers and exported recordings set up here are kept beside the backup's.
+// A backup only fills in: what is set here stays, and the backup adds what is missing, down into nested
+// values (a sport's thresholds, the weight history); its trainers join those here that are not already set up.
+const blankValue = (value) => value == null || (typeof value === "object" && Object.keys(value).length === 0);
+const isPlain = (value) => value && typeof value === "object" && !Array.isArray(value);
+
+export function fillMissing(current, backup) {
+  if (blankValue(current)) return backup;
+  if (!isPlain(current) || !isPlain(backup)) return current;
+  const filled = { ...current };
+  for (const [key, value] of Object.entries(backup)) filled[key] = key in current ? fillMissing(current[key], value) : value;
+  return filled;
+}
+
 export function restoreSettings({ defaults = {}, exports = [] } = {}) {
   const current = savedDefaults();
-  const backupTrainers = Array.isArray(defaults.trainers) ? defaults.trainers : [];
-  const localOnly = (current.trainers ?? []).filter((trainer) => !backupTrainers.some((item) => item.id === trainer.id));
-  saveDefaults({
-    ...defaults,
-    trainers: [...backupTrainers, ...localOnly],
-    trainerBySport: { ...current.trainerBySport, ...defaults.trainerBySport },
-  });
+  const here = Array.isArray(current.trainers) ? current.trainers : [];
+  const backupOnly = (Array.isArray(defaults.trainers) ? defaults.trainers : []).filter((trainer) => !here.some((item) => item.id === trainer.id));
+  const filled = fillMissing(current, defaults);
+  saveDefaults({ ...filled, trainers: [...here, ...backupOnly] });
   if (Array.isArray(exports)) {
     const keys = [...new Set([...exportedKeys(), ...exports])].slice(-exportsLimit);
     try {
