@@ -21,6 +21,10 @@ import { exportFit, saveFit } from "./ui/export.js";
 import { exportedKeys, rememberExport, saveDefaults, savedDefaults, savedLanguage, savedTheme, setLanguageMenu, setTheme } from "./ui/preferences.js";
 import { allZones, defaultZoneFor, offsetLabel, systemZone, zoneOffsetMinutes } from "./zones.js";
 
+// Cadence targets go as watts by default for intervals and races, the workouts Connect should chart a target for.
+const cadenceAsPowerFor = (kind) => kind === "intervals" || kind === "race";
+let cadenceRerender = false;
+
 function lapLabel(meters) {
   if (Math.abs(meters - 1609.344) < 1) return "1 mi";
   return meters >= 1000 ? `${meters / 1000} km` : `${meters} m`;
@@ -257,6 +261,7 @@ function currentSettings() {
     segments: state.segments,
     zoneChoice: state.zoneChoice,
     workoutKind: elements.workoutKind.value,
+    cadenceAsPower: state.cadenceManual ?? undefined,
     trainerId: elements.trainer.value,
     resistance: elements.resistance.value,
     activityName: elements.activityName.value,
@@ -278,6 +283,7 @@ function applySettings(settings) {
   state.segments = settings.segments ?? null;
   state.zoneChoice = settings.zoneChoice ?? null;
   elements.workoutKind.value = settings.workoutKind ?? "";
+  state.cadenceManual = settings.cadenceAsPower ?? null;
   if (settings.trainerId !== undefined) {
     renderTrainerOptions(state.kinomap?.sport, settings.trainerId);
     elements.resistance.value = settings.resistance ?? "";
@@ -350,6 +356,7 @@ async function selectBatchItem(item) {
   setFeel();
   state.zoneChoice = null;
   elements.workoutKind.value = "";
+  state.cadenceManual = null;
   state.fit = null;
   state.fitFile = null;
   state.estimate = null;
@@ -420,10 +427,15 @@ async function exportBatch(targetDirectory = null) {
       const settings = item.settings ?? {};
       const trainer = trainerFor(settings.trainerId ?? lastTrainerId(item.sport));
       const resistance = Number(settings.resistance ?? trainer?.defaultLevel) || null;
-      const workout = buildBatchWorkout(item, {
-        ...(item.settings ?? rememberedSettings(item.sport)), ...item.overrides, asWatch: elements.asWatch.checked, cadenceAsPower: elements.cadenceAsPower.checked,
+      const options = {
+        ...(item.settings ?? rememberedSettings(item.sport)), ...item.overrides, asWatch: elements.asWatch.checked, cadenceAsPower: settings.cadenceAsPower ?? false,
         resistance, resistanceLevels: trainer?.levels,
-      });
+      };
+      let workout = buildBatchWorkout(item, options);
+      // Unless set by hand, cadence targets go as watts for intervals and races only.
+      if (settings.cadenceAsPower == null && cadenceAsPowerFor(settings.workoutKind || detectedKind(entryFromWorkout(workout)))) {
+        workout = buildBatchWorkout(item, { ...options, cadenceAsPower: true });
+      }
       const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
       counts[saved ? "saved" : "downloaded"] += 1;
       rememberExport(kinomapExportKey(item.kinomapFile.name));
@@ -520,6 +532,7 @@ async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = fal
   if (!keepBatch) {
     state.zoneChoice = null;
     elements.workoutKind.value = "";
+    state.cadenceManual = null;
     resetTrim();
     setMetricSources();
     setFeel();
@@ -756,7 +769,20 @@ function render() {
       renderSummary(state.result.summary, state.result.startMs, state.result.endMs, state.result.sport);
       renderLaps(state.result.laps, state.result.sport);
       // The automatic option shows the kind the library would give this workout.
-      renderKindOptions(elements.workoutKind, detectedKind(entryFromWorkout(state.result)), elements.workoutKind.value, state.result.sport);
+      const detected = detectedKind(entryFromWorkout(state.result));
+      renderKindOptions(elements.workoutKind, detected, elements.workoutKind.value, state.result.sport);
+      // Unless set by hand for this activity, cadence targets go as watts for intervals and races only.
+      const cadenceWanted = state.cadenceManual ?? cadenceAsPowerFor(elements.workoutKind.value || detected);
+      if (elements.cadenceAsPower.checked !== cadenceWanted && !cadenceRerender) {
+        elements.cadenceAsPower.checked = cadenceWanted;
+        cadenceRerender = true;
+        try {
+          render();
+        } finally {
+          cadenceRerender = false;
+        }
+        return;
+      }
       renderChecks();
       elements.export.disabled = false;
       elements.liveState.classList.add("is-ready");
@@ -1002,12 +1028,13 @@ elements.asWatch.addEventListener("change", () => {
   render();
 });
 
-// Writing cadence targets as watts is off unless turned on; the choice is remembered.
-if (savedDefaults().cadenceAsPower) {
-  elements.cadenceAsPower.checked = true;
-  render();
-}
+// Writing cadence targets as watts follows the kind of workout (on for intervals and races); a click sets it
+// by hand for this activity only, and picking another kind hands it back to the kind.
 elements.cadenceAsPower.addEventListener("change", () => {
-  saveDefaults({ cadenceAsPower: elements.cadenceAsPower.checked });
+  state.cadenceManual = elements.cadenceAsPower.checked;
+  render();
+});
+elements.workoutKind.addEventListener("change", () => {
+  state.cadenceManual = null;
   render();
 });
