@@ -1207,3 +1207,10 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .app-version { opacity: 0.75; font-variant-numeric: tabular-nums; }
 .privacy .app-version { margin-left: 10px; }
 .topbar-more-about .app-version { display: block; margin-top: 4px; }
+
+/* What the last sync covered: a tick for each part set and synced, a dash for one not set. */
+.settings-cloud-items { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 13px; color: var(--subtle); }
+.settings-cloud-items li { display: flex; align-items: center; gap: 6px; }
+.settings-cloud-items li.is-set { color: var(--ink); }
+.settings-cloud-tick { width: 1em; text-align: center; font-weight: 700; }
+.settings-cloud-items li.is-set .settings-cloud-tick { color: var(--success); }

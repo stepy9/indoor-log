@@ -1,7 +1,7 @@
 import { applySynced, backupFitName, deletedIds, entryFromFit, findWorkout, fitCoverage, listEntries, saveEntries, workoutFromEntry } from "../library.js";
 import { decodeGarminFit, encodeFit } from "../fit.js";
 import { fitFileName } from "../files.js";
-import { changesFor, mergeStates, NewerSyncError, normalizeSettings, parseSettingsFile, parseSync, settingsText, syncText } from "../sync.js";
+import { changesFor, mergeStates, NewerSyncError, normalizeSettings, parseSettingsFile, parseSync, settingsText, syncSummary, syncText } from "../sync.js";
 import { t } from "./context.js";
 import { applySyncedSettings, syncedSettings } from "./preferences.js";
 
@@ -17,6 +17,8 @@ export const dropboxAppKey = "yp3m2oa7u1h8qww";
 const tokenKey = "kinomap-dropbox";
 const verifierKey = "kinomap-dropbox-verifier";
 const syncedKey = "kinomap-dropbox-synced";
+// What the last sync left the same everywhere, listed in the settings.
+const summaryKey = "kinomap-dropbox-summary";
 const fitBackupKey = "kinomap-dropbox-fit";
 const libraryPath = "/library.json";
 const settingsPath = "/settings.json";
@@ -44,7 +46,7 @@ export const lastSynced = () => read(syncedKey);
 
 const status = { state: "idle", error: null };
 const listeners = new Set();
-export const cloudStatus = () => ({ ...status, connected: cloudConnected(), at: lastSynced() });
+export const cloudStatus = () => ({ ...status, connected: cloudConnected(), at: lastSynced(), summary: read(summaryKey) });
 export function onCloudStatus(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -78,6 +80,7 @@ export function disconnectCloud() {
   const token = read(tokenKey);
   write(tokenKey, null);
   write(syncedKey, null);
+  write(summaryKey, null);
   setStatus("idle");
   // Revoking is a courtesy; signing out here holds either way.
   if (token?.access) fetch("https://api.dropboxapi.com/2/auth/token/revoke", { method: "POST", headers: { Authorization: `Bearer ${token.access}` } }).catch(() => {});
@@ -366,6 +369,7 @@ export function syncNow() {
       if (!has.library || there.write.length || there.remove.length || deletedChanged) await upload(libraryPath, syncText(merged));
       if (merged.settings && (!has.settings || there.settings)) await upload(settingsPath, settingsText(merged.settings));
       write(syncedKey, Date.now());
+      write(summaryKey, syncSummary(merged));
       setStatus("idle");
       // The pages showing the library or the settings draw again with what came in.
       if (changedHere) window.dispatchEvent(new Event("library-synced"));

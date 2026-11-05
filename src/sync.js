@@ -129,3 +129,20 @@ export function parseSettingsFile(text) {
   checkVersion(data);
   return normalizeSettings(data.settings);
 }
+
+// What a sync left the same on every device, for the settings to list: how many activities and trainers, and
+// whether the weight, the heart rate and the sports' thresholds are set.
+export function syncSummary(state) {
+  const defaults = normalizeSettings(state?.settings)?.defaults ?? {};
+  const fitness = defaults.fitness ?? {};
+  const weight = (fitness.weightHistory ?? []).some((record) => record?.kg > 0) || fitness.weight > 0;
+  const heartRate = fitness.restHeartRate > 0 || fitness.maxHeartRate > 0;
+  const thresholds = Object.values(fitness.sports ?? {}).some((sport) => sport && Object.values(sport).some((value) => !blank(value)));
+  return {
+    activities: state?.entries?.length ?? 0,
+    trainers: Array.isArray(defaults.trainers) ? defaults.trainers.length : 0,
+    weight,
+    heartRate,
+    thresholds,
+  };
+}

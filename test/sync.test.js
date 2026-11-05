@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { changesFor, emptyState, mergeStates, NewerSyncError, parseSettingsFile, parseSync, settingsText, syncText } from "../src/sync.js";
+import { changesFor, emptyState, mergeStates, NewerSyncError, parseSettingsFile, parseSync, settingsText, syncSummary, syncText } from "../src/sync.js";
 
 const hour = 3_600_000;
 // An activity as the library keeps it, enough of it for merging.
@@ -89,4 +89,9 @@ test("the settings go in their own file, and an old shared file still gives them
 test("a file from a newer version of the app is not read", () => {
   assert.throws(() => parseSync(JSON.stringify({ format: "indoor-log-sync", version: 99, entries: [] })), NewerSyncError);
   assert.throws(() => parseSettingsFile(JSON.stringify({ format: "indoor-log-settings", version: 99, settings: {} })), NewerSyncError);
+});
+
+test("a sync's summary counts the activities and trainers and tells which settings are set", () => {
+  const settings = { defaults: { fitness: { restHeartRate: 44, weightHistory: [{ from: null, kg: 78 }], sports: { rowing: { maxHeartRate: null } } }, trainers: [{ id: "a" }] }, changedAt: 1 };
+  assert.deepEqual(syncSummary(state([activity("a"), activity("b")], {}, settings)), { activities: 2, trainers: 1, weight: true, heartRate: true, thresholds: false });
 });

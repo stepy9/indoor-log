@@ -437,7 +437,27 @@ function cloudBlock() {
     const stateLine = node("p", { class: `settings-cloud-state is-${kind}` });
     stateLine.append(node("span", { class: "settings-cloud-icon", "aria-hidden": "true" }, { off: "○", syncing: "↻", error: "!", ok: "✓" }[kind]), document.createTextNode(line));
     const statusGroup = node("div", { class: "settings-cloud-group" });
-    statusGroup.append(stateLine, actions);
+    statusGroup.append(stateLine);
+    // What the last sync left the same on every device: a tick for what is there, a dash for what is not set.
+    const { summary } = cloudStatus();
+    if (connected && summary) {
+      const items = [
+        [t("cloudItemActivities"), summary.activities > 0, summary.activities],
+        [t("cloudItemTrainers"), summary.trainers > 0, summary.trainers],
+        [t("cloudItemWeight"), summary.weight],
+        [t("cloudItemHeartRate"), summary.heartRate],
+        [t("cloudItemThresholds"), summary.thresholds],
+      ];
+      const list = node("ul", { class: "settings-cloud-items" });
+      for (const [label, set, count] of items) {
+        const item = node("li", { class: set ? "is-set" : "" });
+        item.append(node("span", { class: "settings-cloud-tick", "aria-hidden": "true" }, set ? "✓" : "–"), document.createTextNode(count != null ? `${label} (${count})` : label));
+        item.title = set ? t("cloudItemSynced") : t("cloudItemNotSet");
+        list.append(item);
+      }
+      statusGroup.append(list);
+    }
+    statusGroup.append(actions);
     block.replaceChildren(node("h4", {}, t("cloudTitle")), node("p", { class: "field-note" }, t("cloudNote")), statusGroup, ...extra);
   };
   draw();
