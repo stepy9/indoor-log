@@ -5,6 +5,7 @@ import { saveTrainers, trainers } from "./trainers.js";
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
+import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 
@@ -198,7 +199,7 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
-  pane.append(grid, weightBlock(), cloudBlock());
+  pane.append(grid, weightBlock(), cloudBlock(), backupBlock());
   return pane;
 }
 
@@ -463,6 +464,46 @@ function cloudBlock() {
   draw();
   // Kept current while the dialog is open; the listener goes with the block.
   const stop = onCloudStatus(() => (block.isConnected ? draw() : stop()));
+  return block;
+}
+
+// A backup to a file and back: the whole library and the settings in one JSON file. A restore makes what it
+// brought the settings this dialog started from, so Cancel does not take them back.
+function backupBlock() {
+  const block = node("div", { class: "settings-block settings-backup" });
+  const due = node("p", { class: "field-note backup-due" }, t("backupDue"));
+  due.hidden = true;
+  const note = node("p", { class: "field-note backup-message" });
+  const save = node("button", { type: "button", class: "outline-button" }, t("libraryBackup"));
+  save.disabled = !state.entries.length && !snapshot().trainers.length;
+  save.addEventListener("click", () => downloadBackup());
+  const pick = node("input", { type: "file", accept: ".json,application/json", class: "visually-hidden" });
+  const load = node("button", { type: "button", class: "outline-button" }, t("libraryRestore"));
+  load.addEventListener("click", () => pick.click());
+  pick.addEventListener("change", async () => {
+    const file = pick.files[0];
+    pick.value = "";
+    if (!file) return;
+    const { text, type } = await restoreBackup(file);
+    if (type === "success") {
+      state.entries = await listEntries().catch(() => []);
+      state.before = snapshot();
+      keepUndo(state.before);
+      render();
+    }
+    // A restore draws the pane anew, so the message goes into the block shown now.
+    const shown = byId("settingsPanes").querySelector(".settings-backup .backup-message") ?? note;
+    Object.assign(shown, { textContent: text, className: `field-note backup-message is-${type}` });
+  });
+  const actions = node("div", { class: "settings-cloud-actions" });
+  actions.append(save, load, pick);
+  const group = node("div", { class: "settings-cloud-group" });
+  group.append(due, actions, note);
+  block.append(node("h4", {}, t("backupTitle")), node("p", { class: "field-note" }, t("backupNote")), group);
+  const showDue = () => backupIsDue().then((value) => (due.hidden = !value));
+  showDue();
+  const onReminder = () => (block.isConnected ? showDue() : window.removeEventListener("backup-reminder", onReminder));
+  window.addEventListener("backup-reminder", onReminder);
   return block;
 }
 

@@ -822,6 +822,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .library-button.is-due::after { content: ""; position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
 .backup-due { margin: 4px 0 8px; padding: 6px 10px; border-left: 3px solid var(--warning); color: var(--ink); background: var(--surface-2); border-radius: 4px; }
 .backup-due[hidden] { display: none; }
+.backup-message.is-success { color: var(--success); }
+.backup-message.is-error { color: var(--danger); }
 .settings-weekly { max-width: 220px; margin-top: 10px; }
 .fitness-goal-label.is-rest.is-left { text-anchor: end; }
 .settings-weekly-row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -1015,7 +1017,6 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .library-dialog .dialog-actions > * { width: 100%; min-height: 42px; margin: 0; justify-content: center; text-align: center; }
   .library-dialog .dialog-spacer { display: none; }
   #libraryAddButton { grid-column: 1 / -1; order: -1; }
-  #libraryBackupButton, #libraryRestoreButton { border: 1px solid var(--line-strong); border-radius: 10px; color: var(--ink); text-decoration: none; }
   #libraryClearButton { grid-column: 1 / -1; order: 1; border: 1px solid color-mix(in srgb, var(--danger-ink) 55%, transparent); border-radius: 10px; color: var(--danger-ink); background: color-mix(in srgb, var(--danger-ink) 8%, transparent); text-decoration: none; }
   #libraryClearButton:disabled { opacity: .45; }
   #libraryCancel, #librarySave { order: 2; }

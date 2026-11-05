@@ -11,7 +11,6 @@ import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainer
 const dialog = byId("libraryDialog");
 const toggle = byId("librarySaveToggle");
 const filesInput = byId("libraryFilesInput");
-const backupInput = byId("libraryBackupInput");
 
 // Edits in the library wait here, by entry id, until Save writes them; Cancel, the cross or Escape drop them.
 // Adding, deleting and backups are actions of their own and happen at once, the edits waiting kept across them.
@@ -259,7 +258,6 @@ function renderRows() {
   shown = entries;
   byId("libraryCount").textContent = t("libraryCount", { count: all.length });
   byId("libraryEmpty").hidden = entries.length > 0;
-  byId("libraryBackupButton").disabled = !all.length && !trainers().length;
   byId("libraryClearButton").disabled = !entries.length;
   renderLimited(byId("libraryRows"), entries.map((entry) => {
     const row = document.createElement("tr");
@@ -346,18 +344,23 @@ const markBackup = (count) => {
   } catch {}
 };
 
-// A dot on the Library button and a line in the library while a backup is due. With Dropbox connected the library
-// is kept there too, so no reminder.
-export async function updateBackupReminder() {
+// Whether a backup is due. With Dropbox connected the library is kept there too, so never.
+export async function backupIsDue() {
   const count = (await listEntries().catch(() => [])).length;
-  const due = !cloudConnected() && backupDue(count, lastBackup());
-  const button = byId("libraryButton");
-  button.classList.toggle("is-due", due);
-  button.title = due ? t("backupDue") : "";
-  byId("libraryBackupDue").hidden = !due;
+  return !cloudConnected() && backupDue(count, lastBackup());
 }
 
-async function downloadBackup() {
+// The backup lives in Settings, so the gear (and Settings in its menu) carries a dot while one is due.
+export async function updateBackupReminder() {
+  const due = await backupIsDue();
+  for (const button of [byId("topbarMoreButton"), byId("settingsButton")]) {
+    button.classList.toggle("is-due", due);
+    button.title = due ? t("backupDueHint") : "";
+  }
+  window.dispatchEvent(new Event("backup-reminder"));
+}
+
+export async function downloadBackup() {
   const entries = await listEntries();
   const blob = new Blob([backupText(entries, settingsSnapshot())], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -372,7 +375,8 @@ async function downloadBackup() {
   updateBackupReminder();
 }
 
-async function restoreBackup(file) {
+// Brings a backup file in and says what came back, as { text, type } for the place that asked.
+export async function restoreBackup(file) {
   try {
     const { entries: all, settings } = parseBackup(await file.text());
     // Only workouts the library lacks come in: one already here stays as it is, edits since the backup included.
@@ -385,18 +389,19 @@ async function restoreBackup(file) {
       toggle.checked = savesToLibrary();
       onSettingsRestored();
     }
-    libraryNote([
+    const message = { type: "success", text: [
       t("libraryRestored", { count: entries.length - duplicates }),
       ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []),
       ...(settings ? [t("librarySettingsRestored")] : []),
-    ].join(" · "), "success");
+    ].join(" · ") };
     // What came back from a file is backed up by that file.
     markBackup((await listEntries()).length);
     updateBackupReminder();
+    if (dialog.open) renderList();
+    return message;
   } catch (error) {
-    libraryNote(t("libraryFailed", { message: error.message }), "error");
+    return { type: "error", text: t("libraryFailed", { message: error.message }) };
   }
-  renderList();
 }
 
 export function openLibrary() {
@@ -441,18 +446,12 @@ export function setupLibrary({ onRestore } = {}) {
     addFiles([...filesInput.files]);
     filesInput.value = "";
   });
-  byId("libraryBackupButton").addEventListener("click", downloadBackup);
   // Emptying the open sport cannot be undone, so it asks first and names the sport and how many activities go.
   byId("libraryClearButton").addEventListener("click", async () => {
     if (!window.confirm(t("libraryClearConfirm", { count: shown.length, sport: sportLabel(librarySport) }))) return;
     await deleteEntries(shown.map((entry) => entry.id));
     libraryNote(t("libraryCleared", { sport: sportLabel(librarySport) }), "success");
     renderList();
-  });
-  byId("libraryRestoreButton").addEventListener("click", () => backupInput.click());
-  backupInput.addEventListener("change", () => {
-    if (backupInput.files[0]) restoreBackup(backupInput.files[0]);
-    backupInput.value = "";
   });
   if (typeof indexedDB === "undefined") byId("libraryButton").hidden = true;
   else updateBackupReminder();
