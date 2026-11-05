@@ -1,7 +1,8 @@
 import { applySynced, backupFitName, deletedIds, entryFromFit, findWorkout, fitCoverage, listEntries, saveEntries, workoutFromEntry } from "../library.js";
 import { decodeGarminFit, encodeFit } from "../fit.js";
 import { fitFileName } from "../files.js";
-import { changesFor, mergeStates, parseSync, syncText } from "../sync.js";
+import { changesFor, mergeStates, NewerSyncError, normalizeSettings, parseSettingsFile, parseSync, settingsText, syncText } from "../sync.js";
+import { t } from "./context.js";
 import { applySyncedSettings, syncedSettings } from "./preferences.js";
 
 // Keeping the library and the settings in one file in the user's Dropbox, in the app's own folder, so every
@@ -17,7 +18,10 @@ const tokenKey = "kinomap-dropbox";
 const verifierKey = "kinomap-dropbox-verifier";
 const syncedKey = "kinomap-dropbox-synced";
 const fitBackupKey = "kinomap-dropbox-fit";
-const filePath = "/indoor-log.json";
+const libraryPath = "/library.json";
+const settingsPath = "/settings.json";
+// The one file the library and the settings shared before; read until the two exist, never written again.
+const legacyPath = "/indoor-log.json";
 const redirectUri = () => `${location.origin}${location.pathname}`;
 
 const read = (key) => {
@@ -118,26 +122,41 @@ async function accessToken() {
   return data.access_token;
 }
 
-async function download() {
+// A file's text, or null when there is none yet (the first sync writes it).
+async function downloadText(path) {
   const response = await fetch("https://content.dropboxapi.com/2/files/download", {
     method: "POST",
-    headers: { Authorization: `Bearer ${await accessToken()}`, "Dropbox-API-Arg": JSON.stringify({ path: filePath }) },
+    headers: { Authorization: `Bearer ${await accessToken()}`, "Dropbox-API-Arg": JSON.stringify({ path }) },
   });
-  // No file yet: the first sync writes it.
   if (response.status === 409) return null;
   if (!response.ok) throw await dropboxError(response);
-  return parseSync(await response.text());
+  return response.text();
 }
 
-async function upload(state) {
+// What is in Dropbox: the library and the settings from their own files; until they exist, from the one file
+// both used to share, which stays there untouched.
+async function download() {
+  const [libraryText, settingsFileText] = await Promise.all([downloadText(libraryPath), downloadText(settingsPath)]);
+  const legacyText = libraryText == null || settingsFileText == null ? await downloadText(legacyPath) : null;
+  const legacy = legacyText == null ? null : parseSync(legacyText);
+  const library = libraryText == null ? legacy : parseSync(libraryText);
+  const settings = settingsFileText == null ? normalizeSettings(legacy?.settings) : parseSettingsFile(settingsFileText);
+  if (!library && !settings) return { state: null, has: { library: false, settings: false } };
+  return {
+    state: { entries: library?.entries ?? [], deleted: library?.deleted ?? {}, settings },
+    has: { library: libraryText != null, settings: settingsFileText != null },
+  };
+}
+
+async function upload(path, body) {
   const response = await fetch("https://content.dropboxapi.com/2/files/upload", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
       "Content-Type": "application/octet-stream",
-      "Dropbox-API-Arg": JSON.stringify({ path: filePath, mode: "overwrite", mute: true }),
+      "Dropbox-API-Arg": JSON.stringify({ path, mode: "overwrite", mute: true }),
     },
-    body: syncText(state),
+    body,
   });
   if (!response.ok) throw await dropboxError(response);
 }
@@ -334,7 +353,7 @@ export function syncNow() {
     setStatus("syncing");
     try {
       const local = { entries: await listEntries(), deleted: deletedIds(), settings: syncedSettings() };
-      const remote = await download();
+      const { state: remote, has } = await download();
       const merged = mergeStates(local, remote);
       const here = changesFor(local, merged);
       const there = changesFor(remote, merged);
@@ -343,14 +362,16 @@ export function syncNow() {
       if (here.settings) applySyncedSettings(merged.settings);
       const deletedChanged = JSON.stringify(Object.keys(merged.deleted).sort()) !== JSON.stringify(Object.keys(remote?.deleted ?? {}).sort());
       if (fitWaiting.size) await sendWaitingFits();
-      if (!remote || there.write.length || there.remove.length || there.settings || deletedChanged) await upload(merged);
+      // Each file goes up only when its own part changed (or it is not there yet).
+      if (!has.library || there.write.length || there.remove.length || deletedChanged) await upload(libraryPath, syncText(merged));
+      if (merged.settings && (!has.settings || there.settings)) await upload(settingsPath, settingsText(merged.settings));
       write(syncedKey, Date.now());
       setStatus("idle");
       // The pages showing the library or the settings draw again with what came in.
       if (changedHere) window.dispatchEvent(new Event("library-synced"));
       return changedHere;
     } catch (error) {
-      setStatus("error", error.message);
+      setStatus("error", error instanceof NewerSyncError ? t("cloudNewerVersion") : error.message);
       return false;
     } finally {
       running = null;

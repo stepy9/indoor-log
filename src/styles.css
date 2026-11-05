@@ -1202,3 +1202,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .topbar-more-about { display: block; grid-column: 1 / -1; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid var(--topbar-line); color: var(--topbar-muted); font-size: 12px; line-height: 1.45; }
   .topbar-more-about span[data-i18n="privacy"] { display: block; margin-top: 4px; }
 }
+
+/* The app's version: build day and commit, quiet beside the privacy note. */
+.app-version { opacity: 0.75; font-variant-numeric: tabular-nums; }
+.privacy .app-version { margin-left: 10px; }
+.topbar-more-about .app-version { display: block; margin-top: 4px; }

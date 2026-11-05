@@ -86,18 +86,46 @@ export function changesFor(side, merged) {
   };
 }
 
-// The file in the cloud, and reading it back; deletions older than a year are dropped to keep it small.
-export function syncText(state, now = Date.now()) {
-  const deleted = Object.fromEntries(Object.entries(state.deleted ?? {}).filter(([, at]) => now - at < 365 * 86_400_000));
-  return JSON.stringify({ format: syncFormat, version: 1, entries: state.entries, deleted, settings: state.settings });
+// The files in the cloud: the library (activities and deletions) and the settings apart, so a change to one
+// does not send the other again. Each carries the version of its format; a file from a newer version of the
+// app is not read and not written over, so an older app left open somewhere cannot undo what it does not know.
+export const syncVersion = 2;
+export const settingsFormat = "indoor-log-settings";
+
+export class NewerSyncError extends Error {
+  constructor() {
+    super("newer-sync");
+    this.name = "NewerSyncError";
+  }
 }
 
+const checkVersion = (data) => {
+  if ((Number(data?.version) || 1) > syncVersion) throw new NewerSyncError();
+};
+
+// Deletions older than a year are dropped to keep the file small.
+export function syncText(state, now = Date.now()) {
+  const deleted = Object.fromEntries(Object.entries(state.deleted ?? {}).filter(([, at]) => now - at < 365 * 86_400_000));
+  return JSON.stringify({ format: syncFormat, version: syncVersion, entries: state.entries, deleted });
+}
+
+// Reads the library file; one from before the split (version 1) also holds the settings.
 export function parseSync(text) {
   const data = JSON.parse(text);
   if (data?.format !== syncFormat || !Array.isArray(data.entries)) throw new Error("Not a sync file.");
+  checkVersion(data);
   return {
     entries: data.entries.filter((entry) => entry?.id && entry.records?.seconds?.length),
     deleted: data.deleted && typeof data.deleted === "object" ? data.deleted : {},
     settings: data.settings && typeof data.settings === "object" ? data.settings : null,
   };
+}
+
+export const settingsText = (settings) => JSON.stringify({ format: settingsFormat, version: syncVersion, settings });
+
+export function parseSettingsFile(text) {
+  const data = JSON.parse(text);
+  if (data?.format !== settingsFormat) throw new Error("Not a settings file.");
+  checkVersion(data);
+  return normalizeSettings(data.settings);
 }

@@ -966,6 +966,9 @@ setupLibrary({ onRestore: () => {
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();
 } });
 setupCompare({ onConverter: drawChart });
+// The version the page was built as, beside what the app does.
+const appVersion = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
+for (const element of document.querySelectorAll(".app-version")) element.textContent = appVersion ? `v ${appVersion}` : "";
 setupCloud();
 setupInfoNotes();
 const observer = new ResizeObserver(drawChart);

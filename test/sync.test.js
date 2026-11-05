@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { changesFor, emptyState, mergeStates, parseSync, syncText } from "../src/sync.js";
+import { changesFor, emptyState, mergeStates, NewerSyncError, parseSettingsFile, parseSync, settingsText, syncText } from "../src/sync.js";
 
 const hour = 3_600_000;
 // An activity as the library keeps it, enough of it for merging.
@@ -76,4 +76,17 @@ test("a sync file reads back, dropping deletions over a year old", () => {
   assert.deepEqual(back.entries.map((entry) => entry.id), ["a"]);
   assert.deepEqual(Object.keys(back.deleted), ["recent"]);
   assert.throws(() => parseSync("{}"));
+});
+
+test("the settings go in their own file, and an old shared file still gives them", () => {
+  const settings = { defaults: { fitness: { restHeartRate: 44 } }, changedAt: { fitness: 5 } };
+  assert.equal(JSON.parse(syncText(state([], {}, settings))).settings, undefined);
+  assert.deepEqual(parseSettingsFile(settingsText(settings)), settings);
+  const old = JSON.stringify({ format: "indoor-log-sync", version: 1, entries: [], deleted: {}, settings: { defaults: {}, changedAt: 3 } });
+  assert.deepEqual(parseSync(old).settings, { defaults: {}, changedAt: 3 });
+});
+
+test("a file from a newer version of the app is not read", () => {
+  assert.throws(() => parseSync(JSON.stringify({ format: "indoor-log-sync", version: 99, entries: [] })), NewerSyncError);
+  assert.throws(() => parseSettingsFile(JSON.stringify({ format: "indoor-log-settings", version: 99, settings: {} })), NewerSyncError);
 });
