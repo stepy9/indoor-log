@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -167,6 +167,10 @@ export function trainingPlan(entries, chosen = "all") {
   });
   const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today() }) : null;
   if (!plan) return null;
+  // The steady workouts' heart rate: the second zone of the sport's own zones.
+  const own = forSport(settings, sport);
+  const bounds = [own.heartRateZones[1], own.heartRateZones[2]].map((fraction) => heartRateAt(fraction, own));
+  plan.steadyHeartRate = bounds.every(Number.isFinite) ? bounds.map(Math.round) : null;
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
 }
@@ -179,6 +183,7 @@ function renderNextStep() {
   const { sport, plan } = result;
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
+  const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
   const line = (title, text, className = "") => {
     const row = node("div", { class: `fitness-next-row ${className}` });
     row.append(node("strong", {}, title), node("span", {}, text));
@@ -189,7 +194,7 @@ function renderNextStep() {
   rows.push(plan.doneLong
     ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
     : line(t("nextLong"), t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
-  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts)));
+  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts) + beats(plan.steadyHeartRate)));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
   rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts))

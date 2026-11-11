@@ -44,9 +44,11 @@ function renderPlan() {
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
-  const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })
+  const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
+  const steady = watts(plan.steadyWatts) + beats(plan.steadyHeartRate);
+  const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
     : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts)
-    : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }));
+    : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady);
   const rows = checklist.map((item) => {
     const row = Object.assign(document.createElement("div"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
     // A mark, not a checkbox: the app marks a day by the workouts in the library.
