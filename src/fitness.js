@@ -301,6 +301,23 @@ export function freshInDays(history, level = 15) {
   return null;
 }
 
+// The load chart in words: how fitness moved over the last week and four weeks, how fatigue sits against it,
+// and what to do next. history: loadHistory's days, today last. Keys and numbers only, the wording is the UI's.
+// { few: true } with under three weeks of history, too short for fitness to mean much.
+export function formSummary(history) {
+  if (history.length < 21) return { few: true };
+  const last = history.at(-1);
+  const weekAgo = history.at(-8);
+  const monthAgo = history.at(-29) ?? history[0];
+  const ramp = last.fitness - weekAgo.fitness;
+  const trend = ramp > 5 ? "fast" : ramp >= 0.5 ? "rising" : ramp > -0.5 ? "flat" : "falling";
+  const state = formState(last.form);
+  // Overreaching for most of the last two weeks is worse than a single hard day.
+  const longTired = history.slice(-14).filter((day) => day.form < -30).length >= 7;
+  const advice = longTired || state === "overreaching" ? "ease" : trend === "fast" ? "hold" : state === "fresh" || trend === "flat" || trend === "falling" ? "add" : "keep";
+  return { trend, state, longTired, advice, fitness: last.fitness, fitnessBefore: monthAgo.fitness, ramp, fatigue: last.fatigue, form: last.form };
+}
+
 // What the form says: fresh and ready, in balance, building fitness, or overreaching.
 export function formState(form) {
   if (form > 15) return "fresh";

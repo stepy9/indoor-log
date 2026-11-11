@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -381,6 +381,26 @@ function showLoadTooltip(event) {
   const right = left + 14;
   tooltip.style.left = `${Math.max(8, right + tooltip.offsetWidth > card.width - 8 ? left - tooltip.offsetWidth - 14 : right)}px`;
   tooltip.style.top = `${box.top - card.top + 12}px`;
+}
+
+// The load chart in two or three sentences: fitness's trend, fatigue against it, and what to do next.
+function renderSummary(history) {
+  const box = byId("fitnessSummary");
+  box.hidden = !history.length;
+  if (box.hidden) return;
+  const summary = formSummary(history);
+  if (summary.few) {
+    box.textContent = t("summaryFew");
+    return;
+  }
+  const number = (value) => displayNumber(Math.round(value));
+  const signed = (value) => `${value >= 0.5 ? "+" : value <= -0.5 ? "−" : ""}${displayNumber(Math.abs(Math.round(value)))}`;
+  box.textContent = [
+    t(`summaryTrend_${summary.trend}`, { before: number(summary.fitnessBefore), now: number(summary.fitness), ramp: signed(summary.ramp) }),
+    t(`summaryState_${summary.state}`, { fatigue: number(summary.fatigue), form: signed(summary.form) }),
+    ...(summary.longTired ? [t("summaryLongTired")] : []),
+    t(`summaryAdvice_${summary.advice}`),
+  ].join(" ");
 }
 
 function hideLoadTooltip() {
@@ -971,6 +991,7 @@ function render() {
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
+  renderSummary(history);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -190,4 +190,22 @@ test("goalForecast projects the days to the goal by the plan, its form on the go
   assert.ok(Math.abs(days.at(-1).form - plan.form) < 1e-9);
   assert.ok(days.filter((day) => day.day >= plan.restFrom).every((day) => day.load === 0));
   assert.deepEqual(goalForecast(history, "2026-11-04", null), []);
+});
+
+test("formSummary reads the trend, the balance and what to do next", () => {
+  const days = (count, at) => Array.from({ length: count }, (_, index) => at(index));
+  assert.deepEqual(formSummary(days(10, () => ({ fitness: 1, fatigue: 1, form: 0 }))), { few: true });
+  // Slow climb, fatigue a little above: building, carry on.
+  const steady = formSummary(days(40, (index) => ({ fitness: index * 0.25, fatigue: index * 0.25 + 12, form: -12 })));
+  assert.equal(steady.trend, "rising");
+  assert.equal(steady.state, "productive");
+  assert.equal(steady.advice, "keep");
+  // Fast climb: hold.
+  assert.equal(formSummary(days(40, (index) => ({ fitness: index, fatigue: index + 15, form: -15 }))).advice, "hold");
+  // Deep and lasting overreaching: ease off.
+  const tired = formSummary(days(40, () => ({ fitness: 30, fatigue: 65, form: -35 })));
+  assert.equal(tired.longTired, true);
+  assert.equal(tired.advice, "ease");
+  // Flat and fresh: room to add.
+  assert.equal(formSummary(days(40, () => ({ fitness: 20, fatigue: 2, form: 18 }))).advice, "add");
 });
