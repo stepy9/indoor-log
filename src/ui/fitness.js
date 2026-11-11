@@ -415,6 +415,10 @@ function zoneGroup(entries, settings, by, sport, previous) {
     return group;
   }
   const highest = Math.max(...totals);
+  // The bounds in beats or watts, for the tooltip: the sport's own, or with all sports the general maximum.
+  const scale = own ?? { ...settings, heartRateBasis: "max", ftp: null };
+  const valueAt = (fraction) => (by === "power" ? (scale.ftp ? fraction * scale.ftp : null) : heartRateAt(fraction, scale));
+  const unit = by === "power" ? "W" : "bpm";
   const before = previous ? timeInZones(previous, by, settings) : null;
   // A change under half a minute reads as none.
   const change = (difference) => (Math.abs(difference) < 30 ? "=" : `${difference > 0 ? "+" : "−"}${formatDuration(Math.round(Math.abs(difference) / 60) * 60)}`);
@@ -423,7 +427,10 @@ function zoneGroup(entries, settings, by, sport, previous) {
     const to = bounds[index + 1] ? Math.round(bounds[index + 1] * 100) : null;
     const reference = by === "power" ? "FTP" : own?.heartRateBasis === "reserve" ? "HRR" : "HRmax";
     const range = to ? (from ? `${from}–${to} %` : `< ${to} %`) : `> ${from} %`;
-    const row = node("div", { class: `fitness-zone${before ? " has-change" : ""}` });
+    const low = valueAt(bounds[index]);
+    const high = bounds[index + 1] ? valueAt(bounds[index + 1]) : null;
+    const exact = low == null ? "" : high == null ? `> ${Math.round(low)} ${unit}` : index === 0 ? `< ${Math.round(high)} ${unit}` : `${Math.round(low)}–${Math.round(high) - 1} ${unit}`;
+    const row = node("div", { class: `fitness-zone${before ? " has-change" : ""}`, ...(exact ? { title: `Z${index + 1}: ${exact}` } : {}) });
     const bar = node("div", { class: "fitness-zone-track" });
     const fill = node("div", { class: "fitness-zone-fill" });
     fill.style.width = `${(seconds / highest) * 100}%`;
