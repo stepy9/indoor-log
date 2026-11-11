@@ -57,9 +57,15 @@ function save(patch) {
   saveDefaults({ fitness: { ...remembered(), ...patch } });
 }
 
-function tile(label, value, note = "", className = "") {
+// info: what the values mean, in a tooltip from an ⓘ in the corner, opened by hover or, on a phone, a tap.
+function tile(label, value, note = "", className = "", info = "") {
   const element = node("div", { class: `diary-tile ${className}` });
   element.append(node("span", { class: "diary-tile-label" }, label), node("span", { class: "diary-tile-value" }, value));
+  if (info) {
+    const hint = node("span", { class: "tile-info", tabindex: "0", role: "button", "aria-label": info }, "i");
+    hint.append(node("span", { class: "tile-info-text", role: "tooltip" }, info));
+    element.append(hint);
+  }
   if (note) element.append(node("span", { class: "diary-tile-change" }, note));
   return element;
 }
@@ -216,9 +222,9 @@ function renderTiles(history, settings) {
   const before = history.at(-8);
   const change = (now, then) => (then ? `${now - then >= 0 ? "+" : ""}${displayNumber(now - then)} ${t("fitnessVsWeek")}` : "");
   const tiles = last ? [
-    tile(t("fitnessFitness"), displayNumber(last.fitness), change(last.fitness, before?.fitness), "is-fitness"),
-    tile(t("fitnessFatigue"), displayNumber(last.fatigue), change(last.fatigue, before?.fatigue), "is-fatigue"),
-    tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form"),
+    tile(t("fitnessFitness"), displayNumber(last.fitness), change(last.fitness, before?.fitness), "is-fitness", t("fitnessInfoFitness")),
+    tile(t("fitnessFatigue"), displayNumber(last.fatigue), change(last.fatigue, before?.fatigue), "is-fatigue", t("fitnessInfoFatigue")),
+    tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form", t("fitnessInfoForm")),
     tile(t("fitnessWeekLoad"), displayNumber(week)),
   ] : [];
   // When a rest would make the form fresh, for planning a race or an FTP test.
