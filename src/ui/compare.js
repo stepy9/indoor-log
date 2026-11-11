@@ -630,9 +630,10 @@ function renderTrendControls() {
   const select = byId("trendMetric");
   select.replaceChildren(...trendMetrics.map((metric) => new Option(trendLabel(metric, view.sport), metric)));
   select.value = view.trendMetric;
-  // What the metric is, beside its picker.
-  if (!select.nextElementSibling?.classList.contains("tile-info")) select.after(Object.assign(infoHint(), { className: "tile-info is-inline opens-right" }));
-  select.nextElementSibling.set(t(`trendInfo_${view.trendMetric}`));
+  // What the metric is, in the chart card's top right corner like the other cards' ⓘ.
+  const card = select.closest(".card");
+  if (!card.querySelector(":scope > .tile-info")) card.append(Object.assign(infoHint(), { id: "trendInfo" }));
+  byId("trendInfo").set(t(`trendInfo_${view.trendMetric}`));
   for (const button of document.querySelectorAll("[data-trend-range]")) button.setAttribute("aria-pressed", String(button.dataset.trendRange === view.trendRange));
   for (const button of document.querySelectorAll("[data-trend-group]")) button.setAttribute("aria-pressed", String(button.dataset.trendGroup === view.trendGroup));
 }
@@ -789,6 +790,8 @@ function renderMode() {
   byId("trendControls").hidden = !trend;
   // The trend has no list to pick from: its filters sit in a bar over the chart.
   byId("compareView").classList.toggle("is-trend", trend);
+  // The metric's ⓘ belongs to the trend only.
+  if (!trend && byId("trendInfo")) byId("trendInfo").hidden = true;
   byId("compareChartEmpty").textContent = t(trend ? "trendEmpty" : "compareChartEmpty");
 }
 
