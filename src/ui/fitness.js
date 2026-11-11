@@ -390,32 +390,40 @@ function hideLoadTooltip() {
 
 // Heart rate and power zones one below the other, each with its note when the threshold or the data is missing.
 function renderZones(entries, settings) {
-  byId("fitnessZones").replaceChildren(...["heartRate", "power"].map((by) => zoneGroup(entries, settings, by)));
+  byId("fitnessZones").replaceChildren(...zoneGroups(entries, settings, view.sport));
 }
 
-function zoneGroup(entries, settings, by) {
+// Both groups, for the fitness page and the diary; with previous, each zone also shows how its time changed.
+export function zoneGroups(entries, settings, sport, previous = null) {
+  return ["heartRate", "power"].map((by) => zoneGroup(entries, settings, by, sport, previous));
+}
+
+function zoneGroup(entries, settings, by, sport, previous) {
   const group = node("div", { class: "fitness-zone-group" });
   group.append(node("h4", { class: "fitness-zone-title" }, t(by === "power" ? "settingsPowerZones" : "settingsHeartRateZones")));
   // One sport shows its own bounds; several show the defaults as a guide.
-  const own = view.sport === "all" ? null : forSport(settings, view.sport);
+  const own = sport === "all" ? null : forSport(settings, sport);
   const bounds = own ? own[by === "power" ? "powerZones" : "heartRateZones"] : by === "power" ? powerZones : heartRateZones;
   const totals = timeInZones(entries, by, settings);
   const sum = totals.reduce((total, value) => total + value, 0);
   const field = by === "power" ? "ftp" : "maxHeartRate";
   const has = (sport) => (field === "ftp" ? currentFtp(settings, sport) : settings.sports[sport][field]);
-  const missing = view.sport === "all" ? !sports.some(has) : !has(view.sport);
+  const missing = sport === "all" ? !sports.some(has) : !has(sport);
   const note = missing ? t(by === "power" ? "fitnessNeedFtp" : "fitnessNeedMaxHr") : !sum ? t("fitnessNoData") : "";
   if (note) {
     group.append(node("p", { class: "field-note" }, note));
     return group;
   }
   const highest = Math.max(...totals);
+  const before = previous ? timeInZones(previous, by, settings) : null;
+  // A change under half a minute reads as none.
+  const change = (difference) => (Math.abs(difference) < 30 ? "=" : `${difference > 0 ? "+" : "−"}${formatDuration(Math.round(Math.abs(difference) / 60) * 60)}`);
   group.append(...totals.map((seconds, index) => {
     const from = Math.round(bounds[index] * 100);
     const to = bounds[index + 1] ? Math.round(bounds[index + 1] * 100) : null;
     const reference = by === "power" ? "FTP" : own?.heartRateBasis === "reserve" ? "HRR" : "HRmax";
     const range = to ? (from ? `${from}–${to} %` : `< ${to} %`) : `> ${from} %`;
-    const row = node("div", { class: "fitness-zone" });
+    const row = node("div", { class: `fitness-zone${before ? " has-change" : ""}` });
     const bar = node("div", { class: "fitness-zone-track" });
     const fill = node("div", { class: "fitness-zone-fill" });
     fill.style.width = `${(seconds / highest) * 100}%`;
@@ -427,6 +435,7 @@ function zoneGroup(entries, settings, by) {
       bar,
       node("span", { class: "fitness-zone-time" }, formatDuration(seconds)),
       node("span", { class: "fitness-zone-share" }, `${displayNumber((seconds / sum) * 100)} %`),
+      ...(before ? [node("span", { class: "fitness-zone-change" }, change(seconds - before[index]))] : []),
     );
     return row;
   }));

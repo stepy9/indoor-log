@@ -4,7 +4,8 @@ import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
-import { trainingPlan } from "./fitness.js";
+import { trainingPlan, zoneGroups } from "./fitness.js";
+import { settingsFor } from "./settings.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
@@ -537,6 +538,13 @@ function renderLegend(entries) {
   }));
 }
 
+// Time in the heart rate and power zones over the period, each zone set against the period it is compared with.
+function renderZones(current, previous) {
+  byId("diaryZonesCard").hidden = !current.length;
+  if (!current.length) return;
+  byId("diaryZones").replaceChildren(...zoneGroups(current, settingsFor(view.entries), view.sport, previous));
+}
+
 function render() {
   if (byId("diaryView").hidden) return;
   saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span, showPlan: view.showPlan } });
@@ -557,6 +565,7 @@ function render() {
   renderBars(range, current);
   renderLegend(current);
   renderCalendar(range, current);
+  renderZones(current, previous);
   renderPlan();
 }
 
