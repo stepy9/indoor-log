@@ -1209,14 +1209,15 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 /* Explanations: in the card on a desktop; on a phone behind an ⓘ by the card's title, opened in a sheet from the bottom. */
 .info-button { display: none; }
 .info-tip { display: none; }
+/* On the Analysis page, desktop and phone alike, in the card's top right corner like the tiles' ⓘ, clear of the
+   legends on the title row. */
+#fitnessView .card:has(> .info-button, > .panel-title-row > .info-button) { position: relative; }
+#fitnessView .card .info-button { position: absolute; top: 6px; right: 6px; margin: 0; }
 @media (min-width: 641px) {
   #fitnessView .info-note { display: none; }
   #fitnessView .info-button { position: relative; display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; margin-left: 8px; padding: 0; border: 1.5px solid var(--muted); border-radius: 50%; color: var(--muted); background: transparent; font: italic 700 10px/1 Georgia, serif; vertical-align: 1px; cursor: help; }
   #fitnessView .info-button[hidden] { display: none; }
   #fitnessView .info-button:hover, #fitnessView .info-button:focus-visible { color: var(--ink); border-color: var(--ink); outline: none; }
-  /* In the card's top right corner, like the tiles' ⓘ, clear of the legends on the title row. */
-  #fitnessView .card:has(> .info-button, > .panel-title-row > .info-button) { position: relative; }
-  #fitnessView .card .info-button { position: absolute; top: 6px; right: 6px; margin: 0; }
   #fitnessView .info-tip { display: block; width: min(380px, 70vw); max-width: none; }
   #fitnessView .info-button:hover .info-tip, #fitnessView .info-button:focus .info-tip { visibility: visible; opacity: 1; }
 }
