@@ -503,7 +503,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .compare-view.is-trend .compare-picker { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; }
 .compare-view.is-trend .compare-picker > .panel-title-row { margin: 0; }
 .compare-view.is-trend .compare-picker-toggle,
-.compare-view.is-trend #compareList, .compare-view.is-trend #compareLimit, .compare-view.is-trend #compareLibraryButton { display: none; }
+.compare-view.is-trend #compareList, .compare-view.is-trend #compareList-more, .compare-view.is-trend #compareLimit, .compare-view.is-trend #compareLibraryButton { display: none; }
 .compare-view.is-trend .compare-picker .panel-title-row select { max-width: none; }
 .compare-view.is-trend .compare-filters { flex: 1; grid-template-columns: minmax(160px, 1.5fr) repeat(2, minmax(140px, 1fr)); }
 .compare-view.is-trend .compare-filters input { grid-column: auto; }
