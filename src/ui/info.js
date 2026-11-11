@@ -5,6 +5,27 @@ import { t } from "./context.js";
 // but on the Analysis page, where they would crowd the charts, as a tooltip of the ⓘ.
 // The sheet reads the note when it opens, so notes the page rewrites (a translation, a computed text) stay current.
 
+// An explanation laid out into box: the first line says what it is about; each "range: meaning" line after it
+// becomes a row of a table, coloured by tones in order ("fresh", "neutral", "building", "over" or none);
+// any other line a note of its own.
+export function renderInfo(box, text, tones = []) {
+  const span = (className, content) => Object.assign(document.createElement("span"), { className, textContent: content });
+  const [intro, ...lines] = text.trim().split(/\n/);
+  const table = span("tile-info-table", "");
+  box.replaceChildren(span("tile-info-intro", intro));
+  let row = 0;
+  for (const line of lines) {
+    const at = line.indexOf(": ");
+    if (at < 0) {
+      box.append(span("tile-info-note", line));
+      continue;
+    }
+    if (!table.isConnected) box.append(table);
+    const tone = tones[row++];
+    table.append(span(`tile-info-range${tone ? ` is-${tone}` : ""}`, line.slice(0, at)), span("", line.slice(at + 2)));
+  }
+}
+
 function sheet() {
   let dialog = document.getElementById("infoDialog");
   if (dialog) return dialog;
@@ -17,7 +38,7 @@ function sheet() {
   close.addEventListener("click", () => dialog.close());
   head.append(title, close);
   dialog.setAttribute("aria-labelledby", title.id);
-  dialog.append(head, Object.assign(document.createElement("p"), { id: "infoDialogText", className: "info-dialog-text" }));
+  dialog.append(head, Object.assign(document.createElement("div"), { id: "infoDialogText", className: "info-dialog-text" }));
   // A tap on the backdrop, outside the sheet, closes it.
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
@@ -40,13 +61,13 @@ export function setupInfoNotes() {
       if (button.closest("#fitnessView") && matchMedia("(min-width: 641px)").matches) return;
       const dialog = sheet();
       document.getElementById("infoDialogTitle").textContent = title.textContent;
-      document.getElementById("infoDialogText").textContent = note.textContent;
+      renderInfo(document.getElementById("infoDialogText"), note.textContent);
       dialog.showModal();
     });
     // On a desktop the Analysis page keeps its notes behind the ⓘ too, shown as a tooltip on hover or focus.
     const tip = Object.assign(document.createElement("span"), { className: "tile-info-text info-tip", role: "tooltip" });
     button.append(tip);
-    const fill = () => { tip.textContent = note.textContent; };
+    const fill = () => renderInfo(tip, note.textContent);
     button.addEventListener("mouseenter", fill);
     button.addEventListener("focus", fill);
     title.after(button);

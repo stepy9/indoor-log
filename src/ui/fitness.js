@@ -5,6 +5,7 @@ import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { listEntries } from "../library.js";
+import { renderInfo } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
@@ -64,22 +65,8 @@ function tile(label, value, note = "", className = "", info = "", tones = []) {
   element.append(node("span", { class: "diary-tile-label" }, label), node("span", { class: "diary-tile-value" }, value));
   if (info) {
     const hint = node("span", { class: "tile-info", tabindex: "0", role: "button", "aria-label": info }, "i");
-    // The first line says what the value is; each "range: meaning" line after it becomes a row of a table,
-    // any other line a closing note.
-    const [intro, ...lines] = info.split(/\n/);
     const box = node("span", { class: "tile-info-text", role: "tooltip" });
-    const table = node("span", { class: "tile-info-table" });
-    box.append(node("span", { class: "tile-info-intro" }, intro), table);
-    let row = 0;
-    for (const line of lines) {
-      const at = line.indexOf(": ");
-      if (at < 0) {
-        box.append(node("span", { class: "tile-info-note" }, line));
-        continue;
-      }
-      const tone = tones[row++] ? ` is-${tones[row - 1]}` : "";
-      table.append(node("span", { class: `tile-info-range${tone}` }, line.slice(0, at)), node("span", {}, line.slice(at + 2)));
-    }
+    renderInfo(box, info, tones);
     hint.append(box);
     element.append(hint);
   }

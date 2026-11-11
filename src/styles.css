@@ -1231,7 +1231,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
   .panel-title-row > .field-label:has(+ .info-button) { flex: 0 1 auto; }
   .info-dialog { width: 100vw; max-width: 100vw; margin: auto 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; }
   .info-dialog .dialog-head { justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .info-dialog-text { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.5; }
+  .info-dialog-text { display: flex; flex-direction: column; gap: 12px; color: var(--ink); font-size: 15px; line-height: 1.5; }
+  .info-dialog-text .tile-info-table { gap: 6px 14px; }
 }
 
 /* What the app does and that it stays in the browser: the phone's footer, at the end of the gear's menu. */
