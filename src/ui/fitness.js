@@ -242,7 +242,7 @@ function renderTiles(history, settings) {
     tile(t("fitnessFitness"), displayNumber(last.fitness), change(last.fitness, before?.fitness), "is-fitness", t("fitnessInfoFitness")),
     tile(t("fitnessFatigue"), displayNumber(last.fatigue), change(last.fatigue, before?.fatigue), "is-fatigue", t("fitnessInfoFatigue"), ["fresh", "neutral", "building", "over"]),
     tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form", t("fitnessInfoForm"), ["fresh", "neutral", "building", "over"]),
-    tile(t("fitnessWeekLoad"), displayNumber(week)),
+    tile(t("fitnessWeekLoad"), displayNumber(week), "", "", t("fitnessInfoWeekLoad")),
   ] : [];
   // When a rest would make the form fresh, for planning a race or an FTP test.
   // With little fitness the form cannot reach +15, so then the day it turns positive.
