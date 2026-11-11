@@ -26,6 +26,23 @@ export function renderInfo(box, text, tones = []) {
   }
 }
 
+// An ⓘ whose tooltip, opened by hover or a tap, lays out text as renderInfo does; set() changes the text later,
+// an empty text hiding the ⓘ.
+export function infoHint(text = "", tones = []) {
+  const hint = Object.assign(document.createElement("span"), { className: "tile-info", tabIndex: 0, textContent: "i" });
+  hint.setAttribute("role", "button");
+  const box = Object.assign(document.createElement("span"), { className: "tile-info-text" });
+  box.setAttribute("role", "tooltip");
+  hint.append(box);
+  hint.set = (value, valueTones = []) => {
+    hint.hidden = !value;
+    hint.setAttribute("aria-label", value);
+    if (value) renderInfo(box, value, valueTones);
+  };
+  hint.set(text, tones);
+  return hint;
+}
+
 function sheet() {
   let dialog = document.getElementById("infoDialog");
   if (dialog) return dialog;

@@ -6,6 +6,7 @@ import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from 
 import { kindLabel } from "./library.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
+import { infoHint } from "./info.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
@@ -72,7 +73,7 @@ function renderPlan() {
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
   const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });
   body.append(list, side);
-  card.replaceChildren(head, body);
+  card.replaceChildren(head, body, infoHint(t("planInfo")));
   // Drawn at the column's own width, so the text keeps its size.
   const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
   side.append(weekBar(done, ahead, plan.weekKm, km, width), longestChart(longest, plan.long.fromKm, km, width));
@@ -542,6 +543,9 @@ function renderLegend(entries) {
 function renderZones(current, previous) {
   byId("diaryZonesCard").hidden = !current.length;
   if (!current.length) return;
+  const card = byId("diaryZonesCard");
+  if (!card.querySelector(".tile-info")) card.append(infoHint());
+  card.querySelector(".tile-info").set(t("fitnessZonesNote"));
   byId("diaryZones").replaceChildren(...zoneGroups(current, settingsFor(view.entries), view.sport, previous));
 }
 

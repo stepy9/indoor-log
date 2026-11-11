@@ -7,6 +7,7 @@ import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
+import { infoHint } from "./info.js";
 import { perKgText, weightOnDay } from "./settings.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
@@ -629,6 +630,9 @@ function renderTrendControls() {
   const select = byId("trendMetric");
   select.replaceChildren(...trendMetrics.map((metric) => new Option(trendLabel(metric, view.sport), metric)));
   select.value = view.trendMetric;
+  // What the metric is, beside its picker.
+  if (!select.nextElementSibling?.classList.contains("tile-info")) select.after(Object.assign(infoHint(), { className: "tile-info is-inline opens-right" }));
+  select.nextElementSibling.set(t(`trendInfo_${view.trendMetric}`));
   for (const button of document.querySelectorAll("[data-trend-range]")) button.setAttribute("aria-pressed", String(button.dataset.trendRange === view.trendRange));
   for (const button of document.querySelectorAll("[data-trend-group]")) button.setAttribute("aria-pressed", String(button.dataset.trendGroup === view.trendGroup));
 }
