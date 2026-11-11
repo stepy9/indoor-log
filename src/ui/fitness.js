@@ -58,12 +58,29 @@ function save(patch) {
 }
 
 // info: what the values mean, in a tooltip from an ⓘ in the corner, opened by hover or, on a phone, a tap.
-function tile(label, value, note = "", className = "", info = "") {
+// tones: a colour for each range row, in order ("fresh", "neutral", "building", "over" or "" for none).
+function tile(label, value, note = "", className = "", info = "", tones = []) {
   const element = node("div", { class: `diary-tile ${className}` });
   element.append(node("span", { class: "diary-tile-label" }, label), node("span", { class: "diary-tile-value" }, value));
   if (info) {
     const hint = node("span", { class: "tile-info", tabindex: "0", role: "button", "aria-label": info }, "i");
-    hint.append(node("span", { class: "tile-info-text", role: "tooltip" }, info));
+    // The first line says what the value is; each "range: meaning" line after it becomes a row of a table,
+    // any other line a closing note.
+    const [intro, ...lines] = info.split(/\n/);
+    const box = node("span", { class: "tile-info-text", role: "tooltip" });
+    const table = node("span", { class: "tile-info-table" });
+    box.append(node("span", { class: "tile-info-intro" }, intro), table);
+    let row = 0;
+    for (const line of lines) {
+      const at = line.indexOf(": ");
+      if (at < 0) {
+        box.append(node("span", { class: "tile-info-note" }, line));
+        continue;
+      }
+      const tone = tones[row++] ? ` is-${tones[row - 1]}` : "";
+      table.append(node("span", { class: `tile-info-range${tone}` }, line.slice(0, at)), node("span", {}, line.slice(at + 2)));
+    }
+    hint.append(box);
     element.append(hint);
   }
   if (note) element.append(node("span", { class: "diary-tile-change" }, note));
@@ -223,8 +240,8 @@ function renderTiles(history, settings) {
   const change = (now, then) => (then ? `${now - then >= 0 ? "+" : ""}${displayNumber(now - then)} ${t("fitnessVsWeek")}` : "");
   const tiles = last ? [
     tile(t("fitnessFitness"), displayNumber(last.fitness), change(last.fitness, before?.fitness), "is-fitness", t("fitnessInfoFitness")),
-    tile(t("fitnessFatigue"), displayNumber(last.fatigue), change(last.fatigue, before?.fatigue), "is-fatigue", t("fitnessInfoFatigue")),
-    tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form", t("fitnessInfoForm")),
+    tile(t("fitnessFatigue"), displayNumber(last.fatigue), change(last.fatigue, before?.fatigue), "is-fatigue", t("fitnessInfoFatigue"), ["fresh", "neutral", "building", "over"]),
+    tile(t("fitnessForm"), `${last.fitness - last.fatigue >= 0 ? "+" : ""}${displayNumber(last.fitness - last.fatigue)}`, t(`fitnessState_${formState(last.fitness - last.fatigue)}`), "is-form", t("fitnessInfoForm"), ["fresh", "neutral", "building", "over"]),
     tile(t("fitnessWeekLoad"), displayNumber(week)),
   ] : [];
   // When a rest would make the form fresh, for planning a race or an FTP test.
