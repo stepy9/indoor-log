@@ -10,7 +10,7 @@ import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/train
 import { perKgText, setupSettings } from "./ui/settings.js";
 import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
-import { entryFromWorkout } from "./library.js";
+import { backupFitName, entryFromWorkout } from "./library.js";
 import { rerenderCompare, setupCompare } from "./ui/compare.js";
 import { setupInfoNotes } from "./ui/info.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
@@ -436,7 +436,7 @@ async function exportBatch(targetDirectory = null) {
       if (settings.cadenceAsPower == null && cadenceAsPowerFor(settings.workoutKind || detectedKind(entryFromWorkout(workout)))) {
         workout = buildBatchWorkout(item, { ...options, cadenceAsPower: true });
       }
-      const { saved } = await saveFit(workout.fitBytes, fitFileName(workout.activityName, t("fallbackActivity")), targetDirectory ?? item.directoryHandle);
+      const { saved } = await saveFit(workout.fitBytes, backupFitName(workout.startMs, fitFileName(workout.activityName, t("fallbackActivity"))), targetDirectory ?? item.directoryHandle);
       counts[saved ? "saved" : "downloaded"] += 1;
       rememberExport(kinomapExportKey(item.kinomapFile.name));
       await rememberWorkout(workout, settings.workoutKind, { trainer: trainer?.name, resistance });

@@ -1,4 +1,5 @@
 import { fitFileName, kinomapExportKey } from "../files.js";
+import { backupFitName } from "../library.js";
 import { elements, setNotice, state, t } from "./context.js";
 import { rememberWorkout } from "./library.js";
 import { trainerFor } from "./trainers.js";
@@ -63,7 +64,7 @@ async function saveFitAs(fitBytes, filename) {
 
 export async function exportFit() {
   if (!state.result) return;
-  const filename = fitFileName(elements.activityName.value || state.result.activityName, t("fallbackActivity"));
+  const filename = backupFitName(state.result.startMs, fitFileName(elements.activityName.value || state.result.activityName, t("fallbackActivity")));
   if (state.outputDirectoryHandle) setNotice(t("savingBesideFiles"));
   try {
     if (!state.outputDirectoryHandle && typeof window.showSaveFilePicker === "function") {
