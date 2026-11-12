@@ -38,11 +38,15 @@ export function kinomapExportKey(fileName) {
   return name.match(/--(\d+)\.(tcx|pwx)$/i)?.[1] ?? name.replace(/\.(tcx|pwx)$/i, "");
 }
 
-export function fitFileName(activityName, fallback) {
+// A saved FIT's name ends with the activity's day and time, so a workout repeated under one name does not collide.
+export function fitFileName(activityName, fallback, startMs) {
   const safeName = String(activityName ?? "")
     .trim()
     .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-")
     .replace(/[. ]+$/g, "") || fallback;
-  return `${safeName}.fit`;
+  if (!Number.isFinite(startMs)) return `${safeName}.fit`;
+  const date = new Date(startMs);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${safeName} ${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}${pad(date.getMinutes())}.fit`;
 }
 

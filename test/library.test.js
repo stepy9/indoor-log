@@ -155,3 +155,4 @@ test("FIT backup coverage, matching and names", () => {
   const { save } = mergeDuplicates([{ ...a, source: "convert" }], [{ ...a, id: "a2", source: "merge", fitBackup: undefined }]);
   assert.equal(save[0].fitBackup, "export");
 });
+test("a backup keeps a name already ending with the day and time", () => { assert.equal(backupFitName(0, "Row 2026-11-04 0705.fit"), "Row 2026-11-04 0705.fit"); });

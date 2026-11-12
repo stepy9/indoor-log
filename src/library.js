@@ -182,7 +182,7 @@ export const findWorkout = (entries, probe) => entries.find((entry) => sameWorko
 
 // A backup's name starts with the day and time, so two activities of one name do not overwrite each other.
 export function backupFitName(startMs, filename) {
-  if (/^\d{4}-\d{2}-\d{2}/.test(filename)) return filename;
+  if (/^\d{4}-\d{2}-\d{2}|\d{4}-\d{2}-\d{2} \d{4}\.fit$/i.test(filename)) return filename;
   const date = new Date(startMs);
   const pad = (value) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}${pad(date.getMinutes())} ${filename}`;

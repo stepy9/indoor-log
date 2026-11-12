@@ -86,3 +86,7 @@ test("remembers an export by its Kinomap activity number, wherever the FIT went"
   });
   assert.ok(items.every((item) => item.exported && !item.selected));
 });
+
+test("a saved FIT's name ends with the activity's day and time", () => {
+  assert.equal(fitFileName("Row", "Fallback", new Date(2026, 10, 4, 7, 5).getTime()), "Row 2026-11-04 0705.fit");
+});
