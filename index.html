@@ -316,7 +316,7 @@
 
             <div class="export-row">
               <div class="start-stamp"><span data-i18n="outputStart">Čas aktivity</span><strong id="startStamp">—</strong></div>
-              <button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Uložit FIT</span><span aria-hidden="true">↓</span></button>
+              <span class="export-actions"><button class="outline-button" id="saveLibraryButton" type="button" disabled data-i18n="saveToLibrary">Uložit</button><button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Uložit a stáhnout FIT</span><span aria-hidden="true">↓</span></button></span>
             </div>
             <div class="notice-slot" id="workspaceNoticeSlot"><div class="notice" id="notice" role="status" hidden></div></div>
           </section>
@@ -634,7 +634,7 @@
         <label class="check-field"><input id="librarySaveToggle" type="checkbox" checked /> <span data-i18n="librarySave">Ukládat stažené aktivity do knihovny</span></label>
         <div class="laps-scroll">
           <table class="laps-table library-table">
-            <thead><tr><th data-i18n="libraryDate">Datum</th><th data-i18n="libraryName">Název</th><th data-i18n="compareKind">Typ</th><th data-i18n="trainer">Trenažér</th><th data-i18n="resistance">Odpor</th><th data-i18n="lapTime">Čas</th><th data-i18n="lapDistanceColumn">Vzdálenost</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="libraryDate">Datum</th><th data-i18n="libraryName">Název</th><th data-i18n="compareKind">Typ</th><th data-i18n="lapTime">Čas</th><th data-i18n="lapDistanceColumn">Vzdálenost</th><th></th></tr></thead>
             <tbody id="libraryRows"></tbody>
           </table>
           <p class="field-note" id="libraryEmpty" data-i18n="libraryEmpty">Knihovna je prázdná.</p>
@@ -644,29 +644,6 @@
           <button class="outline-button" id="libraryAddButton" type="button" data-i18n="libraryAdd">Přidat soubory</button>
           <span class="dialog-spacer"></span>
           <button class="link-button danger-link" id="libraryClearButton" type="button" data-i18n="libraryClear">Smazat vše</button>
-          <button class="outline-button" id="libraryCancel" type="button" data-i18n="cancel">Zrušit</button>
-          <button class="export-button library-save" id="librarySave" type="button" data-i18n="save" disabled>Uložit</button>
-        </div>
-      </dialog>
-      <dialog class="intervals-dialog" id="lapResistanceDialog" aria-labelledby="lapResistanceTitle">
-        <div class="dialog-head"><h2 id="lapResistanceTitle" data-i18n="lapResistanceTitle">Odpor po kolech</h2><span class="estimate-note" id="lapResistanceName"></span></div>
-        <p class="field-note" id="lapResistanceNote"></p>
-        <label class="lap-resistance-activity"><span data-i18n="lapResistanceActivity">Odpor aktivity (pro kola bez vlastního)</span><input class="level-input" id="lapResistanceActivity" type="number" min="1" placeholder="—" /></label>
-        <details class="plan-paste">
-          <summary data-i18n="pastePlan">Vložit plán z Kinomapu</summary>
-          <textarea id="lapResistancePlan" rows="4" placeholder="01:09  80%  24rpm  A"></textarea>
-          <button class="accent-button" id="lapResistanceApply" type="button" data-i18n="lapResistanceApply">Doplnit odpor z plánu</button>
-        </details>
-        <div class="laps-scroll">
-          <table class="laps-table">
-            <thead><tr><th>#</th><th data-i18n="segmentStart">Začátek</th><th data-i18n="segmentDuration">Trvání</th><th data-i18n="segmentTarget">Cíl</th><th data-i18n="lapType">Typ</th><th data-i18n="resistance">Odpor</th></tr></thead>
-            <tbody id="lapResistanceRows"></tbody>
-          </table>
-        </div>
-        <div class="dialog-actions">
-          <span class="dialog-spacer"></span>
-          <button class="outline-button" id="lapResistanceCancel" type="button" data-i18n="cancel">Zrušit</button>
-          <button class="export-button" id="lapResistanceSave" type="button" data-i18n="save">Uložit</button>
         </div>
       </dialog>
       <dialog class="intervals-dialog settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">

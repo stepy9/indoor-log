@@ -61,6 +61,13 @@ async function saveFitAs(fitBytes, filename) {
   return handle.name;
 }
 
+// Save puts the activity in the library alone, without a FIT to download; it does so even with saving exports turned off.
+export async function saveToLibrary() {
+  if (!state.result) return;
+  const saved = await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry, always: true });
+  if (saved) setNotice(t("savedToLibrary"), "success");
+}
+
 export async function exportFit() {
   if (!state.result) return;
   const filename = fitFileName(elements.activityName.value || state.result.activityName, t("fallbackActivity"), state.result.startMs);
@@ -75,13 +82,13 @@ export async function exportFit() {
         throw error;
       }
       rememberExport(kinomapExportKey(state.kinomapFile?.name));
-      await rememberWorkout(state.result, elements.workoutKind.value, trainerSettings());
+      await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry });
       setNotice(t("savedAs", { filename: savedName }), "success");
       return;
     }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
-    await rememberWorkout(state.result, elements.workoutKind.value, trainerSettings());
+    await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry });
     if (saved) setNotice(t("savedBesideFiles"), "success");
     else if (fallbackMessage) setNotice(t("saveFallbackStarted", { message: fallbackMessage }));
     else setNotice(t("downloadStarted", { filename }), "success");

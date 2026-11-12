@@ -10,14 +10,14 @@ import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/train
 import { perKgText, setupSettings } from "./ui/settings.js";
 import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
-import { entryFromWorkout } from "./library.js";
-import { rerenderCompare, setupCompare } from "./ui/compare.js";
+import { entryFromWorkout, workoutFromEntry } from "./library.js";
+import { openConverter, rerenderCompare, setupCompare } from "./ui/compare.js";
 import { setupInfoNotes } from "./ui/info.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
 } from "./ui/context.js";
-import { exportFit, saveFit } from "./ui/export.js";
+import { exportFit, saveFit, saveToLibrary } from "./ui/export.js";
 import { exportedKeys, rememberExport, saveDefaults, savedDefaults, savedLanguage, savedTheme, setLanguageMenu, setTheme } from "./ui/preferences.js";
 import { allZones, defaultZoneFor, offsetLabel, systemZone, zoneOffsetMinutes } from "./zones.js";
 
@@ -469,8 +469,8 @@ function resetSummary() {
 }
 
 function updateFileRows() {
-  elements.kinomapName.textContent = state.kinomapFile?.name ?? t("dropKinomap");
-  elements.kinomapName.classList.toggle("has-file", Boolean(state.kinomapFile));
+  elements.kinomapName.textContent = state.kinomapFile?.name ?? (state.editingEntry ? t("fromLibrary", { name: state.editingEntry.name }) : t("dropKinomap"));
+  elements.kinomapName.classList.toggle("has-file", Boolean(state.kinomapFile || state.editingEntry));
   elements.fitName.textContent = state.fitFile?.name ?? t("dropFit");
   elements.fitName.classList.toggle("has-file", Boolean(state.fitFile));
   elements.kinomapDetail.textContent = state.kinomap
@@ -538,6 +538,7 @@ async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = fal
     setFeel();
   }
   state.error = null;
+  state.editingEntry = null;
   state.outputDirectoryHandle = sourceDirectoryHandle;
   state.kinomapFileHandle = fileHandle;
   try {
@@ -692,7 +693,7 @@ function showView(view) {
 
 function updateContext() {
   byId("continueButton").disabled = !state.kinomap;
-  const files = [state.kinomapFile?.name, state.fitFile?.name].filter(Boolean).join(" + ");
+  const files = [state.kinomapFile?.name ?? (state.editingEntry && t("fromLibrary", { name: state.editingEntry.name })), state.fitFile?.name].filter(Boolean).join(" + ");
   byId("contextSummary").textContent = state.batch
     ? `${t("contextFolder", { count: state.batch.items.length })} · ${files}`
     : files;
@@ -726,6 +727,7 @@ function render() {
   updateContext();
   state.result = null;
   elements.export.disabled = true;
+  byId("saveLibraryButton").disabled = true;
   elements.liveState.classList.remove("is-ready");
   elements.liveState.lastChild.textContent = t("waiting");
   resetSummary();
@@ -785,6 +787,7 @@ function render() {
       }
       renderChecks();
       elements.export.disabled = false;
+      byId("saveLibraryButton").disabled = false;
       elements.liveState.classList.add("is-ready");
       elements.liveState.lastChild.textContent = t("ready");
       const warnings = state.result.warnings.map(translateMessage);
@@ -795,6 +798,53 @@ function render() {
     }
   }
   drawChart();
+}
+
+// An activity from the library opens in the converter as a conversion of the records the library kept,
+// with its name, type, trainer, feel and laps as saved; saving it replaces the library's activity.
+function openLibraryEntry(entry) {
+  const workout = workoutFromEntry(entry);
+  if (workout.records.length < 2) return;
+  Object.assign(state, {
+    batch: null, fit: null, fitFile: null, estimate: null, mode: "convert", zoneChoice: null, error: null, cadenceManual: null,
+    kinomapFile: null, kinomapText: null, kinomapFileHandle: null, outputDirectoryHandle: null, editingEntry: entry,
+  });
+  renderBatch();
+  state.kinomap = {
+    sport: entry.sport, subSport: workout.subSport, startMs: entry.startMs, records: workout.records,
+    calories: entry.summary?.calories ?? null, warnings: [],
+  };
+  elements.manualPanel.hidden = true;
+  elements.manualStart.value = "";
+  elements.offset.value = "0";
+  setMetricSources();
+  setFeel({ ...defaultFeel, ...rememberedFeel(), ...Object.fromEntries(["workoutFeel", "workoutRpe"].filter((key) => entry.summary?.[key] != null).map((key) => [key, entry.summary[key]])) });
+  applySavedLapDistance(entry.sport);
+  const laps = entry.laps ?? [];
+  // Interval laps come back as the intervals they were cut by; distance laps as their distance, with their types.
+  const segments = entry.intervalLaps
+    ? laps.map(({ startMs, intensity, targetType, target, resistance }) => ({ startMs, intensity: intensity ?? "active", targetType, target, resistance }))
+    : null;
+  const lapDistance = String(Math.round(laps[0]?.distance ?? 0));
+  const byDistance = !segments && laps.length >= 2 && (lapDistancePresets[entry.sport] ?? []).map(String).includes(lapDistance);
+  if (segments) renderLapOptions(entry.sport, "intervals");
+  else if (byDistance) renderLapOptions(entry.sport, lapDistance);
+  resetTrim({ segments, lapIntensities: byDistance ? laps.map((lap) => lap.intensity ?? "active") : [] });
+  const trainer = trainers().find((candidate) => candidate.sport === entry.sport && candidate.name === entry.trainer);
+  if (trainer) {
+    renderTrainerOptions(entry.sport, trainer.id);
+    useDefaultResistance();
+  }
+  if (entry.resistance) {
+    elements.resistance.value = entry.resistance;
+    delete elements.resistance.dataset.fromDefault;
+  }
+  elements.activityName.value = entry.name;
+  elements.workoutKind.value = entry.kind ?? "";
+  render();
+  // The converter's tab first, then its workspace over the file picking it may have shown.
+  openConverter();
+  showView("workspace");
 }
 
 async function loadFolder(files) {
@@ -916,6 +966,7 @@ elements.workoutRpe.addEventListener("input", () => {
 });
 byId("autoOffsetButton").addEventListener("click", offsetEstimate);
 elements.export.addEventListener("click", exportFit);
+byId("saveLibraryButton").addEventListener("click", saveToLibrary);
 byId("batchExportButton").addEventListener("click", () => exportBatch());
 byId("batchFolderExportButton").addEventListener("click", exportBatchToFolder);
 byId("batchApplyButton").addEventListener("click", applyToSelected);
@@ -986,7 +1037,7 @@ for (const button of document.querySelectorAll(".mode-button")) {
 
 setupChartTrim(render);
 setupChartLegend();
-setupLibrary({ onRestore: () => {
+setupLibrary({ onEdit: openLibraryEntry, onRestore: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, lastTrainerId(sport));
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();

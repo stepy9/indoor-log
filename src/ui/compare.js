@@ -864,6 +864,11 @@ function showView(name) {
   if (name === "fitness") showFitness();
 }
 
+// The converter's tab, for an activity opened from the library while another tab is showing.
+export function openConverter() {
+  if (currentView !== "converter") showView("converter");
+}
+
 // A phone names the open tab in the header; the key keeps it translated on a language switch.
 function nameTab(name) {
   const label = document.querySelector(`[data-app-view="${name}"] span`);

@@ -1,25 +1,16 @@
-import { buildWorkout, decodeGarminFit, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../core.js";
+import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
-import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, lapLevelsFromPlan, listEntries, parseBackup, saveEntries, backupDue } from "../library.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, listEntries, parseBackup, saveEntries, backupDue, sameWorkout } from "../library.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { cloudConnected, onCloudStatus } from "./cloud.js";
-import { lastTrainerId, levelFromPercent, trainerFor, trainers } from "./trainers.js";
+import { lastTrainerId, trainerFor } from "./trainers.js";
 
 const dialog = byId("libraryDialog");
 const toggle = byId("librarySaveToggle");
 const filesInput = byId("libraryFilesInput");
-
-// Edits in the library wait here, by entry id, until Save writes them; Cancel, the cross or Escape drop them.
-// Adding, deleting and backups are actions of their own and happen at once, the edits waiting kept across them.
-const pending = new Map();
-
-function edited(entry) {
-  pending.set(entry.id, entry);
-  byId("librarySave").disabled = false;
-}
 
 const libraryNote = (text, type = "") => {
   const note = byId("libraryNote");
@@ -33,16 +24,22 @@ export const savesToLibrary = () => savedDefaults().saveToLibrary !== false;
 // Called after each export; a failure here never stops the export itself.
 // kind is the workout type picked in the converter; empty leaves it to the data.
 // extra holds the trainer's name and the resistance set for the activity.
-export async function rememberWorkout(workout, kind = "", { trainer, resistance } = {}) {
-  if (!savesToLibrary() || !workout) return;
+// An activity opened from the library (edited) goes back to it whatever the setting, under the name it now has.
+export async function rememberWorkout(workout, kind = "", { trainer, resistance, edited = null, always = false } = {}) {
+  if (!workout || (!edited && !always && !savesToLibrary())) return false;
   try {
     const entry = entryFromWorkout(workout, { exported: true });
     if (kind) entry.kind = kind;
     if (trainer) entry.trainer = trainer;
     if (resistance > 0) entry.resistance = resistance;
+    if (edited) entry.renamed = true;
+    // Trimmed far enough to no longer count as the same workout, it still replaces the one it was opened from.
+    if (edited && !sameWorkout(edited, entry)) await deleteEntry(edited.id);
     await addEntries([entry]);
+    return true;
   } catch (error) {
     setNotice(t("libraryFailed", { message: error.message }), "error");
+    return false;
   }
 }
 
@@ -62,137 +59,7 @@ export function renderKindOptions(select, detected, value = select.value, sport 
 }
 
 // The type of a saved activity, changed in place; className lets the comparison list show it as a tag.
-// The name, edited in place: Enter or leaving the field saves it, Escape puts it back.
-// The "Kinomap - " every conversion starts with stays hidden and is kept.
-function nameInput(entry) {
-  const prefix = entry.name.startsWith("Kinomap - ") ? "Kinomap - " : "";
-  const shown = entry.name.slice(prefix.length);
-  const input = Object.assign(document.createElement("input"), { type: "text", className: "name-input", value: shown, title: entry.name });
-  input.setAttribute("aria-label", t("libraryName"));
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") input.blur();
-    if (event.key === "Escape") {
-      // Escape would otherwise close the whole dialog.
-      event.preventDefault();
-      input.value = shown;
-      input.blur();
-    }
-  });
-  input.addEventListener("change", async () => {
-    const name = input.value.trim();
-    if (!name || name === shown) {
-      input.value = shown;
-      return;
-    }
-    Object.assign(entry, { name: prefix + name, renamed: true });
-    edited(entry);
-    renderRows();
-  });
-  return input;
-}
-
-// The activity's resistance, edited in place; empty removes it.
-function resistanceInput(entry) {
-  const input = Object.assign(document.createElement("input"), {
-    type: "number", className: "level-input", min: "1", value: entry.resistance ?? "", placeholder: "—", title: entry.trainer ?? "",
-  });
-  input.setAttribute("aria-label", t("resistance"));
-  input.addEventListener("change", () => {
-    const level = Math.round(Number(input.value));
-    if (level > 0) entry.resistance = level;
-    else delete entry.resistance;
-    edited(entry);
-  });
-  return input;
-}
-
-// The trainer of a saved activity, by name; a name no longer set up stays listed so it is not lost.
-function trainerSelect(entry) {
-  const select = Object.assign(document.createElement("select"), { className: "kind-select" });
-  select.setAttribute("aria-label", t("trainer"));
-  const names = trainers().filter((trainer) => trainer.sport === entry.sport).map((trainer) => trainer.name);
-  if (entry.trainer && !names.includes(entry.trainer)) names.push(entry.trainer);
-  select.append(new Option("—", ""), ...names.map((name) => new Option(name, name)));
-  select.value = entry.trainer ?? "";
-  select.addEventListener("change", () => {
-    if (select.value) entry.trainer = select.value;
-    else delete entry.trainer;
-    edited(entry);
-  });
-  return select;
-}
-
-const trainerOf = (entry) => trainers().find((trainer) => trainer.sport === entry.sport && trainer.name === entry.trainer) ?? null;
-const intensityKey = { warmup: "intensityWarmup", active: "intensityActive", recovery: "intensityRecovery", rest: "intensityRest", cooldown: "intensityCooldown" };
-
-// Resistance lap by lap for a saved activity: typed per lap, or taken from a Kinomap plan through its trainer's levels.
-function openLapResistance(entry) {
-  const lapsDialog = byId("lapResistanceDialog");
-  let laps = entry.laps.map((lap) => ({ ...lap }));
-  byId("lapResistanceName").textContent = entry.name;
-  const trainer = trainerOf(entry);
-  const note = byId("lapResistanceNote");
-  note.textContent = trainer ? t("lapResistanceTrainer", { name: trainer.name, levels: trainer.levels }) : t("lapResistanceNoTrainer");
-  note.className = `field-note${trainer ? "" : " is-error"}`;
-  const activityLevel = byId("lapResistanceActivity");
-  activityLevel.value = entry.resistance ?? "";
-  const renderRows = () => {
-    byId("lapResistanceRows").replaceChildren(...laps.map((lap, index) => {
-      const input = Object.assign(document.createElement("input"), {
-        type: "number", className: "level-input", min: "1", value: lap.resistance ?? "", placeholder: activityLevel.value || "—",
-      });
-      input.setAttribute("aria-label", t("resistance"));
-      input.addEventListener("change", () => {
-        const level = Math.round(Number(input.value));
-        if (level > 0) lap.resistance = level;
-        else delete lap.resistance;
-      });
-      const cells = [
-        String(index + 1),
-        formatDuration((lap.startMs - entry.startMs) / 1000),
-        formatDuration(lap.timerSeconds ?? 0),
-        lap.target ? `${lap.target} ${lap.targetType === "power" ? "W" : "rpm"}` : "—",
-        t(intensityKey[lap.intensity] ?? "intensityActive"),
-      ];
-      const row = document.createElement("tr");
-      row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
-      const cell = document.createElement("td");
-      cell.append(input);
-      row.append(cell);
-      return row;
-    }));
-  };
-  const text = byId("lapResistancePlan");
-  text.value = "";
-  text.classList.remove("is-invalid");
-  text.onpaste = () => setTimeout(() => {
-    text.value = kinomapPlanText(text.value);
-  });
-  byId("lapResistanceApply").disabled = !trainer;
-  byId("lapResistanceApply").onclick = () => {
-    const steps = parseKinomapPlan(text.value, entry.startMs);
-    text.classList.toggle("is-invalid", !steps.some((step) => step.resistancePercent > 0));
-    laps = lapLevelsFromPlan(laps, steps, (percent) => levelFromPercent(percent, trainer));
-    renderRows();
-  };
-  activityLevel.oninput = renderRows;
-  byId("lapResistanceCancel").onclick = () => lapsDialog.close();
-  // The laps join the library's other edits, written with them by its Save.
-  byId("lapResistanceSave").onclick = () => {
-    entry.laps = laps;
-    const level = Math.round(Number(activityLevel.value));
-    if (level > 0) entry.resistance = level;
-    else delete entry.resistance;
-    edited(entry);
-    lapsDialog.close();
-    renderRows();
-  };
-  renderRows();
-  lapsDialog.showModal();
-}
-
-// deferred holds the change for the library's Save instead of writing it at once.
-export function kindSelect(entry, onChange, className = "kind-select", deferred = false) {
+export function kindSelect(entry, onChange, className = "kind-select") {
   const select = Object.assign(document.createElement("select"), { className });
   select.setAttribute("aria-label", t("workoutKindLabel"));
   renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport, className === "kind-tag");
@@ -200,11 +67,18 @@ export function kindSelect(entry, onChange, className = "kind-select", deferred 
   select.addEventListener("change", async () => {
     if (select.value) entry.kind = select.value;
     else delete entry.kind;
-    if (deferred) edited(entry);
-    else await saveEntries([entry]).catch(() => {});
+    await saveEntries([entry]).catch(() => {});
     onChange();
   });
   return select;
+}
+
+// A row's action as an icon; its name is the tooltip and what a screen reader says.
+function iconButton(label, paths) {
+  const button = Object.assign(document.createElement("button"), { type: "button", className: "row-icon-button", title: label });
+  button.setAttribute("aria-label", label);
+  button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+  return button;
 }
 
 function shortDate(epochMs) {
@@ -245,9 +119,7 @@ async function renderList() {
     libraryNote(t("libraryFailed", { message: error.message }), "error");
     return;
   }
-  // Edits not saved yet stay on the activities they were made on.
-  allEntries = all.map((entry) => pending.get(entry.id) ?? entry);
-  for (const id of pending.keys()) if (!all.some((entry) => entry.id === id)) pending.delete(id);
+  allEntries = all;
   renderRows();
 }
 
@@ -268,35 +140,31 @@ function renderRows() {
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,
     ];
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
-    row.children[1].append(nameInput(entry));
+    // The name without the "Kinomap - " every conversion starts with; all of it on hovering.
+    row.children[1].textContent = entry.name.replace(/^Kinomap - /, "");
+    row.children[1].title = entry.name;
+    row.children[1].className = "library-name";
     // Where it came from, on hovering the date rather than in a column of its own: it is the same for most.
     // A conversion saved as a FIT is the same file an import of that FIT would give.
     row.children[0].title = t(`librarySource_${entry.exported ? "export" : entry.source}`);
-    const kind = document.createElement("td");
-    kind.append(kindSelect(entry, renderRows, "kind-select", true));
-    row.children[1].after(kind);
-    const trainerCell = document.createElement("td");
-    trainerCell.append(trainerSelect(entry));
-    kind.after(trainerCell);
-    const resistance = document.createElement("td");
-    resistance.className = "library-resistance";
-    // An interval workout sets its resistance lap by lap, the activity's own among them, in a dialog of its own.
-    if (entry.laps?.length >= 2 && workoutKind(entry) === "intervals") {
-      const lapsButton = Object.assign(document.createElement("button"), { type: "button", className: "level-button", textContent: t("lapResistanceOpen"), title: t("lapResistanceTitle") });
-      lapsButton.addEventListener("click", () => openLapResistance(entry));
-      resistance.append(lapsButton);
-    } else {
-      resistance.append(resistanceInput(entry));
-    }
-    trainerCell.after(resistance);
-    const remove = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("libraryDelete") });
+    // The type reads only: the pencil opens the activity to change it, its trainer and resistance among the rest.
+    row.children[1].after(Object.assign(document.createElement("td"), { textContent: kindLabel(workoutKind(entry), entry.sport) }));
+    const remove = iconButton(t("libraryDelete"), '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>');
+    remove.classList.add("is-danger");
     remove.addEventListener("click", async () => {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
       await deleteEntry(entry.id);
       renderList();
     });
+    // Editing opens the activity in the converter, where saving its FIT also puts it back here.
+    const edit = iconButton(t("libraryEditTitle"), '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>');
+    edit.addEventListener("click", () => {
+      dialog.close();
+      onEditEntry(entry);
+    });
     const actions = document.createElement("td");
-    actions.append(remove);
+    actions.className = "library-actions";
+    actions.append(edit, remove);
     row.append(actions);
     return row;
   }), `library:${librarySport}`);
@@ -405,8 +273,6 @@ export async function restoreBackup(file) {
 }
 
 export function openLibrary() {
-  pending.clear();
-  byId("librarySave").disabled = true;
   toggle.checked = savesToLibrary();
   libraryNote("");
   renderList();
@@ -416,7 +282,10 @@ export function openLibrary() {
 let onSettingsRestored = () => {};
 
 // onRestore lets the converter pick up trainers and defaults that a backup brought in.
-export function setupLibrary({ onRestore } = {}) {
+let onEditEntry = () => {};
+
+export function setupLibrary({ onRestore, onEdit } = {}) {
+  if (onEdit) onEditEntry = onEdit;
   // Connecting or disconnecting Dropbox turns the reminder off or back on.
   let connected = cloudConnected();
   onCloudStatus((status) => {
@@ -427,19 +296,6 @@ export function setupLibrary({ onRestore } = {}) {
   if (onRestore) onSettingsRestored = onRestore;
   byId("libraryButton").addEventListener("click", openLibrary);
   byId("libraryClose").addEventListener("click", () => dialog.close());
-  byId("libraryCancel").addEventListener("click", () => dialog.close());
-  byId("librarySave").addEventListener("click", async () => {
-    try {
-      await saveEntries([...pending.values()]);
-    } catch (error) {
-      libraryNote(t("libraryFailed", { message: error.message }), "error");
-      return;
-    }
-    pending.clear();
-    dialog.close();
-  });
-  // Closing without Save drops the edits; the entries are read again when the library next opens.
-  dialog.addEventListener("close", () => pending.clear());
   toggle.addEventListener("change", () => saveDefaults({ saveToLibrary: toggle.checked }));
   byId("libraryAddButton").addEventListener("click", () => filesInput.click());
   filesInput.addEventListener("change", () => {
