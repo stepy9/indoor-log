@@ -836,6 +836,8 @@ export function rerenderCompare() {
 // The view shown: "converter" (its setup or workspace, whichever was open), "compare", "diary" or "trend".
 // The trend is the comparison's page in its own mode, with the same activity list and filters.
 let currentView = "converter";
+// Where saving or leaving an activity goes back to: the tab open before it.
+let returnView = "diary";
 
 function showView(name) {
   const converterViews = ["setupView", "workspaceView"];
@@ -844,8 +846,10 @@ function showView(name) {
     for (const id of converterViews) byId(id).hidden = true;
   }
   if (name === "converter") byId(previousView).hidden = false;
+  if (name === "converter" && currentView !== "converter") returnView = currentView;
   currentView = name;
-  saveDefaults({ appView: name });
+  if (name !== "converter") saveDefaults({ appView: name });
+  byId("addButton").setAttribute("aria-pressed", String(name === "converter"));
   byId("compareView").hidden = name !== "compare" && name !== "trend";
   if (name === "compare" || name === "trend") {
     view.mode = name === "trend" ? "trend" : "overlay";
@@ -864,14 +868,18 @@ function showView(name) {
   if (name === "fitness") showFitness();
 }
 
-// The converter's tab, for an activity opened from the library while another tab is showing.
+// The converter has no tab of its own: Add and the library's pencil open it, and saving goes back to the tab before.
 export function openConverter() {
   if (currentView !== "converter") showView("converter");
 }
 
+export function leaveConverter() {
+  if (currentView === "converter") showView(returnView);
+}
+
 // A phone names the open tab in the header; the key keeps it translated on a language switch.
 function nameTab(name) {
-  const label = document.querySelector(`[data-app-view="${name}"] span`);
+  const label = document.querySelector(name === "converter" ? "#addButton span" : `[data-app-view="${name}"] span`);
   const title = byId("topbarTitle");
   title.dataset.i18n = label.dataset.i18n;
   title.textContent = label.textContent;
@@ -886,11 +894,13 @@ function openInCompare(entry) {
   showView("compare");
 }
 
-export function setupCompare({ onConverter }) {
+// canLeave asks before a tab leaves an activity not saved yet.
+export function setupCompare({ onConverter, canLeave = () => true }) {
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.addEventListener("click", () => {
       const name = button.dataset.appView;
       if (name === currentView) return;
+      if (currentView === "converter" && !canLeave()) return;
       // The comparison opened from its tab shows the picker when nothing is picked yet.
       if (name === "compare") view.pickerOpen = view.slots.size === 0;
       showView(name);
@@ -901,13 +911,13 @@ export function setupCompare({ onConverter }) {
     view.pickerOpen = !view.pickerOpen;
     renderList();
   });
-  // The page opens on the converter, named until another tab is shown.
   nameTab("converter");
   setupDiary({ onOpen: openInCompare });
   setupFitness({ onOpen: openInCompare });
   // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
   const remembered = savedDefaults().appView;
-  if (["compare", "diary", "trend", "fitness"].includes(remembered)) queueMicrotask(() => showView(remembered));
+  // The page opens on the tab open last, the diary at first; adding an activity is a step of its own, not a place to open on.
+  queueMicrotask(() => showView(["compare", "diary", "trend", "fitness"].includes(remembered) ? remembered : "diary"));
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;

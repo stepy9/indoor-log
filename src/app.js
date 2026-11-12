@@ -11,7 +11,7 @@ import { perKgText, setupSettings } from "./ui/settings.js";
 import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout, workoutFromEntry } from "./library.js";
-import { openConverter, rerenderCompare, setupCompare } from "./ui/compare.js";
+import { leaveConverter, openConverter, rerenderCompare, setupCompare } from "./ui/compare.js";
 import { setupInfoNotes } from "./ui/info.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
@@ -730,6 +730,7 @@ function render() {
   updateFileRows();
   updateContext();
   state.result = null;
+  state.saved = false;
   elements.export.disabled = true;
   byId("saveLibraryButton").disabled = true;
   elements.liveState.classList.remove("is-ready");
@@ -807,6 +808,7 @@ function render() {
 // An activity from the library opens in the converter as a conversion of the records the library kept,
 // with its name, type, trainer, feel and laps as saved; saving it replaces the library's activity.
 function openLibraryEntry(entry) {
+  if (!confirmLeave()) return;
   const workout = workoutFromEntry(entry);
   if (workout.records.length < 2) return;
   Object.assign(state, {
@@ -849,6 +851,21 @@ function openLibraryEntry(entry) {
   // The converter's tab first, then its workspace over the file picking it may have shown.
   openConverter();
   showView("workspace");
+}
+
+// An activity worked on and not saved yet asks before it is left.
+function confirmLeave() {
+  return !state.result || state.saved || state.batch || window.confirm(t("leaveUnsaved"));
+}
+
+// Add starts over: no files, nothing opened from the library.
+function resetConverter() {
+  Object.assign(state, {
+    batch: null, fit: null, fitFile: null, kinomap: null, kinomapFile: null, kinomapText: null, kinomapFileHandle: null,
+    outputDirectoryHandle: null, editingEntry: null, estimate: null, mode: "convert", zoneChoice: null, error: null, saved: false,
+  });
+  renderBatch();
+  render();
 }
 
 async function loadFolder(files) {
@@ -969,8 +986,20 @@ elements.workoutRpe.addEventListener("input", () => {
   render();
 });
 byId("autoOffsetButton").addEventListener("click", offsetEstimate);
-elements.export.addEventListener("click", exportFit);
-byId("saveLibraryButton").addEventListener("click", saveToLibrary);
+// A saved activity goes back to the tab it was added or edited from.
+const afterSave = (saved) => {
+  if (!saved) return;
+  state.saved = true;
+  leaveConverter();
+};
+elements.export.addEventListener("click", async () => afterSave(await exportFit()));
+byId("saveLibraryButton").addEventListener("click", async () => afterSave(await saveToLibrary()));
+byId("addButton").addEventListener("click", () => {
+  if (!confirmLeave()) return;
+  resetConverter();
+  openConverter();
+  showView("setup");
+});
 byId("batchExportButton").addEventListener("click", () => exportBatch());
 byId("batchFolderExportButton").addEventListener("click", exportBatchToFolder);
 byId("batchApplyButton").addEventListener("click", applyToSelected);
@@ -1046,7 +1075,7 @@ setupLibrary({ onEdit: openLibraryEntry, onRestore: () => {
   renderTrainerOptions(sport, lastTrainerId(sport));
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();
 } });
-setupCompare({ onConverter: drawChart });
+setupCompare({ onConverter: drawChart, canLeave: confirmLeave });
 // The version the page was built as, beside what the app does.
 const appVersion = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
 for (const element of document.querySelectorAll(".app-version")) element.textContent = appVersion ? `v ${appVersion}` : "";

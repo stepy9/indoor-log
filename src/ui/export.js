@@ -66,6 +66,7 @@ export async function saveToLibrary() {
   if (!state.result) return;
   const saved = await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry, always: true });
   if (saved) setNotice(t("savedToLibrary"), "success");
+  return saved;
 }
 
 export async function exportFit() {
@@ -78,13 +79,13 @@ export async function exportFit() {
       try {
         savedName = await saveFitAs(state.result.fitBytes, filename);
       } catch (error) {
-        if (error.name === "AbortError") return;
+        if (error.name === "AbortError") return false;
         throw error;
       }
       rememberExport(kinomapExportKey(state.kinomapFile?.name));
       await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry });
       setNotice(t("savedAs", { filename: savedName }), "success");
-      return;
+      return true;
     }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
@@ -92,7 +93,9 @@ export async function exportFit() {
     if (saved) setNotice(t("savedBesideFiles"), "success");
     else if (fallbackMessage) setNotice(t("saveFallbackStarted", { message: fallbackMessage }));
     else setNotice(t("downloadStarted", { filename }), "success");
+    return true;
   } catch (error) {
     setNotice(t("exportFailed", { message: error.message }), "error");
+    return false;
   }
 }
