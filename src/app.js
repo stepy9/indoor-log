@@ -692,6 +692,10 @@ function showView(view) {
 }
 
 function updateContext() {
+  // A new activity or one opened from the library; the key keeps the heading translated on a language switch.
+  const title = byId("summaryTitle");
+  title.dataset.i18n = state.editingEntry ? "summaryEditing" : "summary";
+  title.textContent = t(title.dataset.i18n);
   byId("continueButton").disabled = !state.kinomap;
   const files = [state.kinomapFile?.name ?? (state.editingEntry && t("fromLibrary", { name: state.editingEntry.name })), state.fitFile?.name].filter(Boolean).join(" + ");
   byId("contextSummary").textContent = state.batch
