@@ -1,7 +1,7 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
-import { withCleanHeartRate } from "../fitness.js";
+import { aerobicEffect, benefitGroup, primaryBenefit, withCleanHeartRate } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
@@ -463,7 +463,21 @@ function renderBars(range, entries) {
   byId("diaryChartEmpty").hidden = entries.length > 0;
 }
 
-function activityButton(entry) {
+// The primary benefit, coloured by its group as Garmin does, with the aerobic Training Effect; both estimates.
+function benefitLine(entry, settings) {
+  const benefit = primaryBenefit(entry, settings);
+  if (!benefit) return null;
+  const effect = aerobicEffect(entry, settings);
+  const name = t(`benefit_${benefit.benefit}`);
+  const group = benefitGroup[benefit.benefit];
+  const node = Object.assign(document.createElement("span"), { className: `diary-activity-benefit is-${group}` });
+  node.append(Object.assign(document.createElement("i"), { ariaHidden: "true" }), `${name}${effect ? ` · ${displayNumber(effect.value, 1)}` : ""}`);
+  const text = `${t("compareBenefit")}: ${name} (${t(`benefitGroup_${group}`)})${effect ? ` · ${t("compareAerobicEffect")} ${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : ""} · ${t("estimate")}`;
+  return { node, text };
+}
+
+function activityButton(entry, settings) {
+  const effect = benefitLine(entry, settings);
   const button = Object.assign(document.createElement("button"), { type: "button", className: "diary-activity" });
   // The stripe matches the chart's legend: the sport's colour when several are shown, the kind's within one.
   const group = barGroups().find(({ has }) => has(entry));
@@ -474,10 +488,11 @@ function activityButton(entry) {
   button.append(
     name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
+    ...(effect ? [effect.node] : []),
     // A phone's narrow day shows only the kilometres, to one decimal.
     Object.assign(document.createElement("span"), { className: "diary-activity-short", ariaHidden: "true", textContent: displayNumber((entry.summary.distance ?? 0) / 1000, 1) }),
   );
-  button.title = `${entry.name}\n${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}\n${t("diaryOpen")}`;
+  button.title = [entry.name, `${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}`, ...(effect ? [effect.text] : []), t("diaryOpen")].join("\n");
   button.addEventListener("click", () => openActivity(entry));
   return button;
 }
@@ -489,6 +504,7 @@ function renderCalendar(range, entries) {
   if (card.hidden) return;
   const days = view.period === "week" ? periodBuckets("week", range, [], zone).map((bucket) => bucket.key) : calendarDays(range[0]);
   const today = dayKey(Date.now(), zone);
+  const settings = settingsFor(view.entries);
   const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: format(day, { weekday: "short" }) }));
   const cells = days.map((day) => {
     const cell = Object.assign(document.createElement("div"), { className: "diary-day" });
@@ -501,7 +517,7 @@ function renderCalendar(range, entries) {
     cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: format(day, { day: "numeric" }) }));
     // A phone lists a week's days one under another, each named by its weekday and date.
     cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: format(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
-    cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map(activityButton));
+    cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map((entry) => activityButton(entry, settings)));
     return cell;
   });
   // Each row opens with its week number, which opens that week.

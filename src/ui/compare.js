@@ -9,7 +9,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
-import { aerobicEffect, benefitGroup, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
+import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -496,14 +496,19 @@ function renderTables() {
   const watts = (value, entry) => (!Number.isFinite(value) ? "—" : [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · "));
   const cadence = sport === "running" ? "spm" : "rpm";
   const settings = settingsFor(view.entries);
+  // Beats with their share of the sport's maximum heart rate.
+  const beats = (value, entry) => {
+    const max = forSport(settings, entry.sport, entry.startMs).maxHeartRate;
+    return !Number.isFinite(value) ? "—" : max > 0 ? `${unit(value, "bpm")} · ${displayNumber((value / max) * 100)} %` : unit(value, "bpm");
+  };
   renderTable("compareSummary", [
     [t("lapTime"), (entry) => formatDuration(entry.summary.timerSeconds)],
     [t("lapDistanceColumn"), (entry) => unit(entry.summary.distance / 1000, "km", 2)],
     [metricLabel("pace", sport), (entry) => metricText(paceFrom(entry.summary.timerSeconds > 0 ? entry.summary.distance / entry.summary.timerSeconds : null, sport), "pace", sport)],
     [t("compareAvgPower"), (entry) => watts(entry.summary.avgPower, entry)],
     [t("compareMaxPower"), (entry) => watts(entry.summary.maxPower, entry)],
-    [t("compareAvgHeartRate"), (entry) => unit(entry.summary.avgHeartRate, "bpm")],
-    [t("compareMaxHeartRate"), (entry) => unit(entry.summary.maxHeartRate, "bpm")],
+    [t("compareAvgHeartRate"), (entry) => beats(entry.summary.avgHeartRate, entry)],
+    [t("compareMaxHeartRate"), (entry) => beats(entry.summary.maxHeartRate, entry)],
     [t("compareAvgCadence"), (entry) => unit(entry.summary.avgCadence, cadence)],
     [t("compareCalories"), (entry) => unit(entry.summary.calories, "kcal")],
     [t("compareWork"), (entry) => unit(workKilojoules(entry), "kJ")],
