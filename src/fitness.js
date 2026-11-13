@@ -398,7 +398,7 @@ export function primaryBenefit(entry, allSettings) {
   const anaerobic = by === "power" && zones[top] >= 120
     ? (longestAbove(entry, settings.ftp * settings.powerZones[top]) <= 30 ? "sprint" : "anaerobic") : null;
   const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
-    : from(vo2max - 1) >= 1200 ? "threshold"
+    : from(vo2max - 1) >= 900 ? "threshold"
     : from(vo2max - 2) >= Math.max(300, total * 0.5) ? "tempo"
     : total >= 1200 && from(1) >= total * 0.5 ? "base"
     : "recovery");
