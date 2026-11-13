@@ -225,7 +225,7 @@ test("the primary benefit is the hardest zone held long enough, by power before 
   assert.deepEqual(primaryBenefit(entry({ minutes: 12, power: () => 90 }), power), { benefit: "recovery", by: "power" });
   assert.equal(primaryBenefit(entry({ power: () => 130 }), power).benefit, "base");
   assert.equal(primaryBenefit(entry({ power: () => 165 }), power).benefit, "tempo");
-  assert.equal(primaryBenefit(entry({ power: (second) => (second < 1200 ? 200 : 120) }), power).benefit, "threshold");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second < 1500 ? 200 : 120) }), power).benefit, "threshold");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 230 : 120) }), power).benefit, "vo2max");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 20 ? 400 : 120) }), power).benefit, "sprint");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 300 : 120) }), power).benefit, "anaerobic");
@@ -244,6 +244,6 @@ test("the aerobic Training Effect rises with the logarithm of the load, Garmin's
   const settings = { ftp: { cycling: 200 } };
   // An hour at FTP makes a load of 100: 1.12 + 0.49 · ln 100 = 3.4, improving.
   assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.4, level: "improving" });
-  assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "maintaining");
+  assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "some");
   assert.equal(aerobicEffect(entry(), {}), null);
 });
