@@ -12,8 +12,10 @@ function hintFor(input) {
   hint.className = "field-error";
   hint.setAttribute("role", "alert");
   hint.hidden = true;
-  const anchor = input.closest(".date-field") ?? input;
-  anchor.after(hint);
+  // A row laid out in columns (data-field-row) takes the note on a line of its own under it.
+  const row = input.closest("[data-field-row]");
+  if (row) row.append(hint);
+  else (input.closest(".date-field") ?? input).after(hint);
   input._hint = hint;
   return hint;
 }

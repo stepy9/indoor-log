@@ -323,7 +323,7 @@ function zonesBlock(sport, by, settings) {
     : own.heartRateBasis === "reserve" ? t("settingsReserveNote", { rest: displayNumber(own.restHeartRate) }) : t("settingsHeartRateZonesNote")));
   const list = node("div", { class: "settings-zones" });
   bounds.forEach((bound, index) => {
-    const row = node("div", { class: "settings-zone" });
+    const row = node("div", { class: "settings-zone", "data-field-row": "" });
     const swatch = node("span", { class: "settings-zone-swatch" });
     swatch.style.background = `var(--zone-${index + 1})`;
     const next = bounds[index + 1];
