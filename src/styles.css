@@ -777,8 +777,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .settings-zone-from { color: var(--muted); }
 .settings-zone-from input { width: 58px; height: 28px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; text-align: right; }
 .settings-zone-span { color: var(--muted); }
-.settings-zones-error { color: var(--danger-ink); }
-.settings-zones-error[hidden], .settings-block .link-button[hidden] { display: none; }
+.settings-block .link-button[hidden] { display: none; }
 @media (max-width: 640px) {
   .settings-body { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .settings-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }

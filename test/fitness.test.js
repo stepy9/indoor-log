@@ -209,3 +209,13 @@ test("formSummary reads the trend, the balance and what to do next", () => {
   // Flat and fresh: room to add.
   assert.equal(formSummary(days(40, () => ({ fitness: 20, fatigue: 2, form: 18 }))).advice, "add");
 });
+
+test("zone bounds above the limit fall back to the defaults", () => {
+  const settings = (zones) => ({ sports: { cycling: { heartRateZones: zones.heartRate, powerZones: zones.power } } });
+  const silly = forSport(settings({ heartRate: [0, 0.6, 0.7, 0.8, 90], power: [0, 0.55, 0.75, 0.9, 1.05, 120] }), "cycling");
+  const fine = forSport(settings({ heartRate: [0, 0.6, 0.7, 0.8, 0.9], power: [0, 0.55, 0.75, 0.9, 1.05, 1.5] }), "cycling");
+  assert.deepEqual(silly.heartRateZones, forSport({}, "cycling").heartRateZones);
+  assert.deepEqual(silly.powerZones, forSport({}, "cycling").powerZones);
+  assert.deepEqual(fine.heartRateZones, [0, 0.6, 0.7, 0.8, 0.9]);
+  assert.deepEqual(fine.powerZones, [0, 0.55, 0.75, 0.9, 1.05, 1.5]);
+});

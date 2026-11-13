@@ -1,4 +1,4 @@
-import { estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
+import { zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { saveTrainers, trainers } from "./trainers.js";
@@ -321,7 +321,6 @@ function zonesBlock(sport, by, settings) {
   }
   block.append(node("p", { class: "field-note" }, by === "power" ? t("settingsPowerZonesNote")
     : own.heartRateBasis === "reserve" ? t("settingsReserveNote", { rest: displayNumber(own.restHeartRate) }) : t("settingsHeartRateZonesNote")));
-  const note = node("p", { class: "field-note settings-zones-error", hidden: "" });
   const list = node("div", { class: "settings-zones" });
   bounds.forEach((bound, index) => {
     const row = node("div", { class: "settings-zone" });
@@ -338,15 +337,15 @@ function zonesBlock(sport, by, settings) {
     if (index === 0) {
       row.append(node("span", { class: "settings-zone-from" }, "0 %"));
     } else {
-      const input = node("input", { type: "number", min: "1", max: "300", inputmode: "numeric", "aria-label": `Z${index + 1} %`, "data-key": `${by}-${index}` });
+      const limit = Math.round(zoneLimits[by] * 100);
+      const input = node("input", { type: "number", min: "1", max: String(limit), inputmode: "numeric", "aria-label": `Z${index + 1} %`, "data-key": `${by}-${index}` });
       input.value = String(Math.round(bound * 100));
       input.addEventListener("change", () => {
-        const typed = bounds.map((value, at) => (at === index ? Number(input.value) / 100 : value));
-        const rising = typed.every((value, at) => !at || value > typed[at - 1]);
-        if (!rising || !(Number(input.value) > 0)) {
-          note.textContent = t("settingsZonesRising");
-          note.hidden = false;
-          input.value = String(Math.round(bound * 100));
+        const percent = checkNumber(input, { min: 1, max: limit, required: true });
+        if (percent === undefined) return;
+        const typed = bounds.map((value, at) => (at === index ? percent / 100 : value));
+        if (!typed.every((value, at) => !at || value > typed[at - 1])) {
+          markField(input, t("settingsZonesRising"));
           return;
         }
         saveSport(sport, { [field]: typed });
@@ -359,7 +358,7 @@ function zonesBlock(sport, by, settings) {
     row.append(node("span", { class: "settings-zone-span" }, span));
     list.append(row);
   });
-  block.append(list, note);
+  block.append(list);
   return block;
 }
 

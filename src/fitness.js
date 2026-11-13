@@ -73,10 +73,10 @@ export function forSport(settings, sport, atMs = Date.now()) {
     restHeartRate: settings.restHeartRate,
     maxHeartRate: own.maxHeartRate ?? settings.maxHeartRate ?? null,
     ftp: ftpOn(settings, sport, atMs),
-    heartRateZones: validZones(own.heartRateZones, heartRateZones),
+    heartRateZones: validZones(own.heartRateZones, heartRateZones, zoneLimits.heartRate),
     // "max": zones as a share of the maximum; "reserve": of the reserve above the resting heart rate (Karvonen).
     heartRateBasis: own.heartRateBasis === "reserve" ? "reserve" : "max",
-    powerZones: validZones(own.powerZones, powerZones),
+    powerZones: validZones(own.powerZones, powerZones, zoneLimits.power),
   };
 }
 
@@ -182,10 +182,14 @@ export function ftpSuggestion(settings, sport, nowMs = Date.now()) {
   return best && best.ftp >= current.ftp * 1.02 ? { ftp: best.ftp, from: dayKey(best.ms, timeZone), entry: best.entry } : null;
 }
 
-// Zone bounds as typed: as many as the defaults, starting at 0 and rising, or else the defaults.
-function validZones(bounds, fallback) {
+// The highest bound a zone may start at, as a fraction: heart rate zones within the maximum (or the whole reserve),
+// power zones up to three times the FTP.
+export const zoneLimits = { heartRate: 1, power: 3 };
+
+// Zone bounds as typed: as many as the defaults, starting at 0, rising and within the limit, or else the defaults.
+function validZones(bounds, fallback, limit) {
   return Array.isArray(bounds) && bounds.length === fallback.length && bounds[0] === 0
-    && bounds.every((value, index) => !index || value > bounds[index - 1]) ? bounds : fallback;
+    && bounds.every((value, index) => !index || (value > bounds[index - 1] && value <= limit)) ? bounds : fallback;
 }
 
 // The activity's load: TSS from power when the sport's FTP is known and most of it has power, else from the heart rate.
