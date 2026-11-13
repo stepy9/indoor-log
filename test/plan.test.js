@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { longestByWeek, mondayOf, nextStep, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { longestByWeek, mondayOf, nextStep, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -136,4 +136,15 @@ test("an intense training focus allows one interval workout a week, an easy one 
   const days = [0, 1, 2, 3, 4, 5, 6];
   const count = (plan) => weekPlan(plan, workouts, today, days).filter((item) => item.type === "intervals").length;
   assert.equal(count(intense), 1);
+});
+
+test("the suggested resistance is the steady level nearest zone 2's middle and the intervals' hard lap levels", () => {
+  const steady = (day, level, avgHeartRate) => ({ day, kind: "steady", level, avgHeartRate, lapLevels: [] });
+  const workouts = [
+    steady("2026-11-01", 5, 118), steady("2026-11-02", 5, 122), steady("2026-11-03", 6, 132), steady("2026-11-04", 6, 136), steady("2026-11-05", 7, 150),
+    { day: "2026-11-06", kind: "intervals", level: 6, avgHeartRate: 146, lapLevels: [12, 13, 12, 6] },
+    { day: "2026-11-08", kind: "intervals", level: 6, avgHeartRate: 149, lapLevels: [11, 14, 6] },
+  ];
+  assert.deepEqual(suggestedLevels(workouts, [127, 141], "2026-11-10"), { steady: 6, intervals: [12, 14] });
+  assert.deepEqual(suggestedLevels([], null, "2026-11-10"), { steady: null, intervals: null });
 });

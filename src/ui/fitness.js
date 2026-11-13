@@ -1,6 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
-import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
+import { longestByWeek, nextStep, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
@@ -173,6 +173,9 @@ export function trainingPlan(entries, chosen = "all") {
       kind: workoutKind(entry),
       decoupling: decoupling(entry)?.percent ?? null,
       hardShare: total ? (zones[3] + zones[4]) / total : null,
+      level: entry.resistance ?? null,
+      lapLevels: (entry.laps ?? []).map((lap) => lap.resistance).filter((level) => level > 0),
+      avgHeartRate: entry.summary?.avgHeartRate ?? null,
     };
   });
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
@@ -184,6 +187,8 @@ export function trainingPlan(entries, chosen = "all") {
   const own = forSport(settings, sport);
   const bounds = [own.heartRateZones[1], own.heartRateZones[2]].map((fraction) => heartRateAt(fraction, own));
   plan.steadyHeartRate = bounds.every(Number.isFinite) ? bounds.map(Math.round) : null;
+  // The trainer's resistance for them, from the levels used before.
+  plan.levels = suggestedLevels(workouts, plan.steadyHeartRate, today());
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
 }
@@ -197,6 +202,7 @@ function renderNextStep() {
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
+  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
   const line = (title, text, className = "") => {
     const row = node("div", { class: `fitness-next-row ${className}` });
     row.append(node("strong", {}, title), node("span", {}, text));
@@ -207,10 +213,10 @@ function renderNextStep() {
   rows.push(plan.doneLong
     ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
     : line(t("nextLong"), t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
-  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts) + beats(plan.steadyHeartRate)));
+  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts) + beats(plan.steadyHeartRate) + level(plan.levels?.steady)));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
   rows.push(plan.intervals.due
-    ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts))
+    ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
     : line(t("nextIntervals"), t(plan.holds.includes("tired") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   // Why it holds back, or that this is a lighter week.
   const notes = [

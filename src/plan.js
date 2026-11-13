@@ -175,3 +175,34 @@ export function longestByWeek(workouts, today, weeks = 8) {
     return { monday, km: inWeek.length ? Math.max(...inWeek.map((workout) => workout.km)) : 0 };
   });
 }
+
+// The trainer's resistance to set, from the workouts of the last eight weeks: for the steady ones the level whose
+// workouts kept the heart rate nearest the middle of the range given (zone 2), from two workouts at it; for the
+// intervals the levels their hard laps ran at (the laps above the workout's own level), the medians of the
+// lowest and highest. workouts as nextStep's, with level, lapLevels and avgHeartRate. { steady, intervals } with
+// steady a level or null and intervals [low, high] or null.
+export function suggestedLevels(workouts, heartRange, today) {
+  const since = addDays(today, -56);
+  const recent = workouts.filter((workout) => workout.day > since && workout.level > 0);
+  let steady = null;
+  if (heartRange) {
+    const middle = (heartRange[0] + heartRange[1]) / 2;
+    const byLevel = new Map();
+    for (const workout of recent) {
+      if (workout.kind !== "steady" || !(workout.avgHeartRate > 0)) continue;
+      byLevel.set(workout.level, [...(byLevel.get(workout.level) ?? []), workout.avgHeartRate]);
+    }
+    let best = null;
+    for (const [level, rates] of byLevel) {
+      if (rates.length < 2) continue;
+      const off = Math.abs(rates.reduce((sum, value) => sum + value, 0) / rates.length - middle);
+      if (!best || off < best.off) best = { level, off };
+    }
+    steady = best?.level ?? null;
+  }
+  const hard = recent.filter((workout) => workout.kind === "intervals")
+    .map((workout) => (workout.lapLevels ?? []).filter((level) => level > workout.level))
+    .filter((levels) => levels.length);
+  const intervals = hard.length ? [Math.round(median(hard.map((levels) => Math.min(...levels)))), Math.round(median(hard.map((levels) => Math.max(...levels))))] : null;
+  return { steady, intervals };
+}

@@ -48,9 +48,11 @@ function renderPlan() {
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
-  const steady = watts(plan.steadyWatts) + beats(plan.steadyHeartRate);
+  // The trainer's resistance, a level or a range of them.
+  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
+  const steady = watts(plan.steadyWatts) + beats(plan.steadyHeartRate) + level(plan.levels?.steady);
   const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
-    : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts)
+    : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
     : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady);
   const rows = checklist.map((item) => {
     const row = Object.assign(document.createElement("div"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
