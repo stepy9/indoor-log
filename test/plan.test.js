@@ -124,3 +124,16 @@ test("longestByWeek gives each week's longest steady workout, this week last", (
   assert.deepEqual(list.map((week) => week.monday), ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"]);
   assert.deepEqual(list.map((week) => week.km), [0, 2, 2, 2, 2.6, 0]);
 });
+
+test("an intense training focus allows one interval workout a week, an easy one asks for two", () => {
+  const today = "2026-11-10";
+  const workouts = Array.from({ length: 10 }, (_, index) => ({ day: `2026-11-0${(index % 9) + 1}`.replace("-010", "-10"), km: 2, seconds: 720, kind: "steady", decoupling: null, hardShare: 0 }))
+    .filter((workout) => workout.day < today);
+  const intense = nextStep({ workouts, today, focus: "intense" });
+  assert.equal(intense.intervals.max, 1);
+  assert.equal(intense.focus, "intense");
+  assert.equal(nextStep({ workouts, today, focus: "easy" }).intervals.max, 2);
+  const days = [0, 1, 2, 3, 4, 5, 6];
+  const count = (plan) => weekPlan(plan, workouts, today, days).filter((item) => item.type === "intervals").length;
+  assert.equal(count(intense), 1);
+});

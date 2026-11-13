@@ -20,8 +20,10 @@ const tenthUp = (km) => Math.ceil(km * 10 - 1e-9) / 10;
 
 // workouts: one sport's, as [{ day: "YYYY-MM-DD", km, seconds, kind, decoupling: percent | null, hardShare: 0–1 | null }],
 // hardShare being the time above zone 3 of the heart rate. form and ramp: today's form and the fitness gained
-// over the last week. ftp in watts or null. today: "YYYY-MM-DD".
-export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today }) {
+// over the last week. ftp in watts or null. today: "YYYY-MM-DD". focus: how the last four weeks' training focus
+// leans, "intense" (too little low aerobic load, or too much high aerobic or anaerobic), "easy" (too little
+// intensity) or null when balanced; intense allows one interval workout a week, easy asks for two.
+export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
   const recentSteady = steady.filter((workout) => workout.day > since(14));
@@ -66,9 +68,11 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today }) {
   const intervalsDone = workouts.filter((workout) => workout.kind === "intervals" && workout.day > since(56)).length;
   const intervalsThisWeek = thisWeek.filter((workout) => workout.kind === "intervals").length;
   const repeats = Math.min(8, 4 + Math.floor(intervalsDone / 2) - (lighter ? 1 : 0));
+  const intervalsMax = lighter || focus === "intense" ? 1 : 2;
   const intervals = {
-    due: intervalsThisWeek < (lighter ? 1 : 2) && !holds.includes("tired"),
+    due: intervalsThisWeek < intervalsMax && !holds.includes("tired"),
     done: intervalsThisWeek,
+    max: intervalsMax,
     repeats,
     minutes: 2,
     rest: 2,
@@ -85,6 +89,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today }) {
     lighter,
     holds,
     tooHard,
+    focus,
     intervals,
     steadyWatts: ftp ? [Math.round(ftp * 0.56), Math.round(ftp * 0.75)] : null,
   };
@@ -125,9 +130,10 @@ export function weekPlan(plan, workouts, today, days) {
   const longDays = plan.doneLong || !thisWeekOpen.length ? open.filter((day) => day >= nextMonday) : thisWeekOpen;
   const longDay = [...longDays].reverse().find((day) => weekday(day) >= 5) ?? longDays.at(-1);
   if (longDay) types.set(longDay, "long");
-  // Intervals: once a week, twice with five days or more to train on (once in a lighter week), never leaving the
-  // week without a usual workout, on open days away from the longer one.
-  const wanted = plan.intervals.due ? Math.max(0, (plan.lighter || open.length < 5 ? 1 : 2) - plan.intervals.done) : 0;
+  // Intervals: once a week, twice with five days or more to train on (once in a lighter week or when the training
+  // is too intense), never leaving the week without a usual workout, on open days away from the longer one.
+  const most = Math.min(plan.intervals.max ?? (plan.lighter ? 1 : 2), open.length < 5 ? 1 : 2);
+  const wanted = plan.intervals.due ? Math.max(0, most - plan.intervals.done) : 0;
   const room = open.length >= 3 ? open.length - 2 : open.length === 2 ? 1 : 0;
   const free = open.filter((day) => types.get(day) === "usual" && day !== addDays(longDay ?? "", 1) && day !== addDays(longDay ?? "", -1));
   const picks = [];

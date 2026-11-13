@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -175,7 +175,10 @@ export function trainingPlan(entries, chosen = "all") {
       hardShare: total ? (zones[3] + zones[4]) / total : null,
     };
   });
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today() }) : null;
+  // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
+  const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
+  const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -214,6 +217,7 @@ function renderNextStep() {
     ...(plan.lighter ? [t("nextLighter")] : []),
     ...plan.holds.map((hold) => t(`nextHold_${hold}`)),
     ...(plan.tooHard ? [t("nextTooHard")] : []),
+    ...(plan.focus ? [t(`nextFocus_${plan.focus}`)] : []),
   ];
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
