@@ -19,6 +19,7 @@ import {
 } from "./ui/context.js";
 import { exportFit, saveFit, saveToLibrary } from "./ui/export.js";
 import { exportedKeys, rememberExport, saveDefaults, savedDefaults, savedLanguage, savedTheme, setLanguageMenu, setTheme } from "./ui/preferences.js";
+import { checkNumber, checkText, markField } from "./ui/validate.js";
 import { allZones, defaultZoneFor, offsetLabel, systemZone, zoneOffsetMinutes } from "./zones.js";
 
 // Cadence targets go as watts by default for intervals and races, the workouts Connect should chart a target for.
@@ -723,6 +724,29 @@ function renderChecks() {
   }
 }
 
+// The converter's typed values checked and marked field by field; false when any is wrong.
+function converterFieldsValid() {
+  const records = state.kinomap?.records ?? [];
+  const duration = records.length > 1 ? Math.floor((records.at(-1).timeMs - records[0].timeMs) / 1000) : null;
+  const day = 86_400;
+  const checks = [
+    checkNumber(elements.offset, { min: -day, max: day }) !== undefined,
+    checkNumber(elements.resistance, { min: 1, max: trainerFor(elements.trainer.value)?.levels ?? 100 }) !== undefined,
+    checkText(elements.activityName, { maxLength: 255 }) !== undefined,
+  ];
+  if (elements.lapPreset.value === "custom") checks.push(checkNumber(elements.lapDistance, { min: 10, max: 100_000, required: true }) !== undefined);
+  else markField(elements.lapDistance, null);
+  const start = checkNumber(elements.trimStart, { min: 0, max: duration });
+  const end = checkNumber(elements.trimEnd, { min: 0, max: duration });
+  checks.push(start !== undefined, end !== undefined);
+  // Together the two trims must leave something of the activity.
+  if (start !== undefined && end !== undefined && duration != null && (start ?? 0) + (end ?? 0) >= duration) {
+    markField(elements.trimEnd, t("trimTooLong", { duration: formatDuration(duration) }));
+    checks.push(false);
+  }
+  return checks.every(Boolean);
+}
+
 function render() {
   syncZone();
   renderTrimStatus();
@@ -746,6 +770,8 @@ function render() {
     setNotice(t("missingFit"));
   } else if (state.kinomap.needsManualStart && !elements.manualStart.value) {
     setNotice(t("confirmStart"), "error");
+  } else if (!converterFieldsValid()) {
+    setNotice(t("fieldsInvalid"), "error");
   } else {
     try {
       state.result = buildWorkout(
@@ -947,7 +973,10 @@ elements.trainer.addEventListener("change", () => {
   renderTrainerOptions(sport);
   useDefaultResistance();
 });
-elements.resistance.addEventListener("input", () => delete elements.resistance.dataset.fromDefault);
+elements.resistance.addEventListener("input", () => {
+  delete elements.resistance.dataset.fromDefault;
+  render();
+});
 setupSettings({ currentSport: () => state.kinomap?.sport, onTrainers: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, elements.trainer.value || lastTrainerId(sport));

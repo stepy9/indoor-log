@@ -9,6 +9,7 @@ import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 import { setCalorieProfile } from "../core.js";
+import { checkNumber, checkText, markField } from "./validate.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -136,29 +137,17 @@ function save() {
   state.onTrainers();
 }
 
-const typedNumber = (input) => {
-  const value = Number(input.value);
-  return input.value.trim() && value > 0 ? Math.round(value) : null;
-};
-
 function numberField(label, value, placeholder, apply, { min, max } = {}) {
   const field = node("label", { class: "settings-field" });
   const input = node("input", { type: "number", inputmode: "numeric", "data-key": label, ...(min ? { min } : {}), ...(max ? { max } : {}) });
   input.value = value ?? "";
   input.placeholder = placeholder;
-  // A number outside the field's range is marked and left unsaved.
-  const hint = node("span", { class: "settings-field-error", role: "alert" });
-  hint.hidden = true;
+  // A wrong number is marked and left unsaved; an empty field clears the value.
   input.addEventListener("change", () => {
-    const typed = typedNumber(input);
-    const outside = typed != null && ((min && typed < min) || (max && typed > max));
-    input.classList.toggle("is-invalid", Boolean(outside));
-    input.setAttribute("aria-invalid", String(Boolean(outside)));
-    hint.hidden = !outside;
-    hint.textContent = outside ? t("settingsOutOfRange", { min, max }) : "";
-    if (!outside) apply(typed);
+    const value = checkNumber(input, { min, max });
+    if (value !== undefined) apply(value);
   });
-  field.append(node("span", {}, label), input, hint);
+  field.append(node("span", {}, label), input);
   return field;
 }
 
@@ -174,8 +163,7 @@ function dateField(key, value, onChange) {
   text.placeholder = appState.language === "en" ? "dd/mm/yyyy" : "d. m. rrrr";
   text.addEventListener("change", () => {
     const day = parseDay(text.value);
-    if (day === undefined) text.value = shown(value);
-    else onChange(day);
+    if (markField(text, day === undefined ? t("fieldBadDate") : null)) onChange(day);
   });
   button.addEventListener("click", () => openDatePicker(box, value, onChange));
   box.append(text, button);
@@ -264,19 +252,22 @@ function trainersBlock(sport) {
     };
     const name = node("input", { type: "text", class: "name-input", "aria-label": t("trainerName"), "data-key": `${trainer.id}-name` });
     name.value = trainer.name;
-    name.addEventListener("change", () => update({ name: name.value.trim() || trainer.name }));
-    const level = (value, label, apply) => {
+    name.maxLength = 60;
+    name.addEventListener("change", () => {
+      const text = checkText(name, { maxLength: 60 });
+      if (text !== undefined) update({ name: text });
+    });
+    const level = (value, label, apply, max) => {
       const input = node("input", { type: "number", class: "level-input", min: "1", "aria-label": label, "data-key": `${trainer.id}-${label}` });
       input.value = String(value);
       input.addEventListener("change", () => {
-        const next = Math.round(Number(input.value));
-        if (next >= 1) apply(next);
-        else input.value = String(value);
+        const next = checkNumber(input, { min: 1, max, required: true });
+        if (next !== undefined) apply(next);
       });
       return input;
     };
-    const levels = level(trainer.levels, t("trainerLevels"), (value) => update({ levels: value, defaultLevel: Math.min(trainer.defaultLevel, value) }));
-    const usual = level(trainer.defaultLevel, t("trainerDefault"), (value) => update({ defaultLevel: Math.min(value, trainer.levels) }));
+    const levels = level(trainer.levels, t("trainerLevels"), (value) => update({ levels: value, defaultLevel: Math.min(trainer.defaultLevel, value) }), 100);
+    const usual = level(trainer.defaultLevel, t("trainerDefault"), (value) => update({ defaultLevel: value }), trainer.levels);
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
     remove.addEventListener("click", () => {
       if (!window.confirm(t("trainerDeleteConfirm", { name: trainer.name }))) return;
@@ -553,7 +544,11 @@ function goalBlock(sport) {
   const row = node("div", { class: "settings-goal" });
   const name = node("input", { type: "text", "data-key": `goal-name-${sport}`, "aria-label": t("settingsGoalName"), placeholder: t("settingsGoalName") });
   name.value = goal.name ?? "";
-  name.addEventListener("change", () => write({ name: name.value.trim() || null }));
+  name.maxLength = 60;
+  name.addEventListener("change", () => {
+    const text = checkText(name, { required: false, maxLength: 60 });
+    if (text !== undefined) write({ name: text || null });
+  });
   row.append(dateField(`goal-day-${sport}`, goal.day ?? null, (day) => write({ day })), name);
   block.append(row);
   // The time to train each week, in hours to the tenth, for the weekly summary to measure each week by.
@@ -563,11 +558,10 @@ function goalBlock(sport) {
   const typed = savedSport(sport).weeklyHours;
   hours.value = typed ? String(typed) : "";
   hours.addEventListener("change", () => {
-    const value = Math.round(Number(hours.value.replace(",", ".")) * 10) / 10;
-    if (!hours.value.trim() || value > 0) {
-      saveSport(sport, { weeklyHours: hours.value.trim() ? value : null });
-      changed();
-    } else hours.value = typed ? String(typed) : "";
+    const value = checkNumber(hours, { min: 0.5, max: 40, decimals: 1 });
+    if (value === undefined) return;
+    saveSport(sport, { weeklyHours: value });
+    changed();
   });
   weekly.append(node("span", {}, t("settingsWeeklyHours")), hours);
   // Or the distance each week, in whole kilometres.
@@ -576,11 +570,10 @@ function goalBlock(sport) {
   const typedKm = savedSport(sport).weeklyKm;
   kmInput.value = typedKm ? String(typedKm) : "";
   kmInput.addEventListener("change", () => {
-    const value = Math.round(Number(kmInput.value.replace(",", ".")));
-    if (!kmInput.value.trim() || value > 0) {
-      saveSport(sport, { weeklyKm: kmInput.value.trim() ? value : null });
-      changed();
-    } else kmInput.value = typedKm ? String(typedKm) : "";
+    const value = checkNumber(kmInput, { min: 1, max: 2000 });
+    if (value === undefined) return;
+    saveSport(sport, { weeklyKm: value });
+    changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
   const both = node("div", { class: "settings-weekly-row" });
@@ -635,16 +628,9 @@ function weightBlock() {
     const kg = node("input", { type: "text", inputmode: "decimal", pattern: "[0-9]+([.,][0-9])?", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
     kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
     // A weight outside the range, or no number, is marked and left unsaved, as in the other number fields.
-    const hint = node("span", { class: "settings-field-error", role: "alert" });
-    hint.hidden = true;
     kg.addEventListener("change", () => {
-      const value = Math.round(Number(kg.value.replace(",", ".")) * 10) / 10;
-      const valid = value >= weightRange.min && value <= weightRange.max;
-      kg.classList.toggle("is-invalid", !valid);
-      kg.setAttribute("aria-invalid", String(!valid));
-      hint.hidden = valid;
-      hint.textContent = valid ? "" : t("settingsOutOfRange", weightRange);
-      if (valid) update({ kg: value });
+      const value = checkNumber(kg, { ...weightRange, decimals: 1, required: true });
+      if (value !== undefined) update({ kg: value });
     });
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
@@ -652,11 +638,11 @@ function weightBlock() {
     const fromCell = node("td");
     fromCell.append(from);
     if (!record.from) fromCell.append(node("span", { class: "settings-ftp-start" }, t("settingsFtpStart")));
-    const kgCell = node("td", { class: "settings-weight-cell" });
-    kgCell.append(kg, hint);
-    const removeCell = node("td");
-    removeCell.append(remove);
-    row.append(fromCell, kgCell, removeCell);
+    row.append(fromCell, ...[kg, remove].map((control) => {
+      const cell = node("td");
+      cell.append(control);
+      return cell;
+    }));
     table.tBodies[0].append(row);
   }
   block.append(table);
@@ -689,9 +675,8 @@ function ftpBlock(sport, settings, estimate) {
     const watts = node("input", { type: "number", min: "30", max: "600", inputmode: "numeric", class: "level-input", "data-key": `ftp-value-${index}`, "aria-label": "FTP" });
     watts.value = String(record.ftp);
     watts.addEventListener("change", () => {
-      const value = Math.round(Number(watts.value));
-      if (value >= 30) update({ ftp: value });
-      else watts.value = String(record.ftp);
+      const value = checkNumber(watts, { min: 30, max: 600, required: true });
+      if (value !== undefined) update({ ftp: value });
     });
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));

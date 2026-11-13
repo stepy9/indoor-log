@@ -1,4 +1,5 @@
 import { detectIntervals, kinomapPlanText, parseKinomapPlan } from "../core.js";
+import { checkNumber, markField } from "./validate.js";
 import { byId, displayNumber, formatDuration, t } from "./context.js";
 import { levelFromPercent } from "./trainers.js";
 
@@ -117,8 +118,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
         });
         input.addEventListener("change", () => {
           const value = parseOffset(input.value);
-          input.classList.toggle("is-invalid", value == null);
-          if (value != null) commit(value);
+          if (markField(input, value == null ? t("fieldNotNumber") : null)) commit(value);
         });
         return input;
       };
@@ -175,12 +175,20 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
           const done = average(records, targetType.value, segment.startMs, nextMs);
           if (done != null) targetValue.value = String(Math.round(done));
         }
-        segment.target = targetType.value && Number(targetValue.value) > 0 ? Number(targetValue.value) : undefined;
+        readTarget();
         if (!targetValue.hidden) targetValue.focus();
       });
-      targetValue.addEventListener("input", () => {
-        segment.target = Number(targetValue.value) > 0 ? Number(targetValue.value) : undefined;
-      });
+      // A cadence or a power the trainer could hold; a wrong one leaves the segment without a target.
+      function readTarget() {
+        if (!targetType.value) {
+          markField(targetValue, null);
+          segment.target = undefined;
+          return;
+        }
+        const value = checkNumber(targetValue, { min: 1, max: targetType.value === "power" ? 2000 : 250 });
+        segment.target = value ?? undefined;
+      }
+      targetValue.addEventListener("input", readTarget);
       target.append(targetValue, targetType);
 
       // Resistance for this segment; left empty, the activity's applies.
@@ -190,7 +198,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
       if (current.trainer) resistance.max = String(current.trainer.levels);
       resistance.setAttribute("aria-label", `${t("resistance")} ${index + 1}`);
       resistance.addEventListener("input", () => {
-        segment.resistance = Number(resistance.value) > 0 ? Math.round(Number(resistance.value)) : undefined;
+        segment.resistance = checkNumber(resistance, { min: 1, max: current.trainer?.levels ?? 100 }) ?? undefined;
       });
 
       const cadence = average(records, "cadence", segment.startMs, nextMs);
@@ -260,6 +268,12 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
   };
   byId("intervalsCancel").onclick = () => dialog.close();
   byId("intervalsSave").onclick = () => {
+    // A field still marked wrong keeps the dialog open on it.
+    const wrong = dialog.querySelector('input[aria-invalid="true"]:not([hidden])');
+    if (wrong) {
+      wrong.focus();
+      return;
+    }
     onSave(normalized());
     dialog.close();
   };
