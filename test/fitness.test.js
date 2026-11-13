@@ -242,8 +242,8 @@ test("the work sums the power over the time in kilojoules", () => {
 
 test("the aerobic Training Effect rises with the logarithm of the load, Garmin's levels named", () => {
   const settings = { ftp: { cycling: 200 } };
-  // An hour at FTP makes a load of 100: 1.12 + 0.49 · ln 100 = 3.4, improving.
-  assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.4, level: "improving" });
+  // An hour at FTP makes a load of 100: 0.43 + 0.73 · ln 100 = 3.8, improving.
+  assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.8, level: "improving" });
   assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "some");
   assert.equal(aerobicEffect(entry(), {}), null);
 });

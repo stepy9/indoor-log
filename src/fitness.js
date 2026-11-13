@@ -412,7 +412,7 @@ export const teLevels = ["none", "some", "maintaining", "improving", "highlyImpr
 export function aerobicEffect(entry, allSettings) {
   const result = activityLoad(entry, allSettings);
   if (!result || !(result.load > 0)) return null;
-  const value = Math.round(Math.min(5, Math.max(0, 1.12 + 0.49 * Math.log(result.load))) * 10) / 10;
+  const value = Math.round(Math.min(5, Math.max(0, 0.43 + 0.73 * Math.log(result.load))) * 10) / 10;
   return { value, level: teLevels[Math.min(5, Math.floor(value))] };
 }
 
