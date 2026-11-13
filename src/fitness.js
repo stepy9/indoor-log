@@ -360,8 +360,9 @@ export function timeInZones(entries, by, allSettings) {
 }
 
 // The workout's primary benefit, as Garmin names it, from its time in zones: by power when the sport's FTP is known
-// and most of it has power, else by heart rate. The hardest zone held long enough wins; a short or easy workout is a
-// recovery. Returns { benefit, by } with benefit one of benefits, or null without zones to go by.
+// and most of it has power, else by heart rate. The hardest zone held long enough wins; a workout under 25 minutes
+// that wins none is a recovery. Bounds fitted to Garmin's labels of 57 runs and rowing workouts, 44 of them matching.
+// Returns { benefit, by } with benefit one of benefits, or null without zones to go by.
 export const benefits = ["recovery", "base", "tempo", "threshold", "vo2max", "anaerobic", "sprint"];
 // Garmin's groups of the benefits.
 export const benefitGroup = { recovery: "lowAerobic", base: "lowAerobic", tempo: "highAerobic", threshold: "highAerobic", vo2max: "highAerobic", anaerobic: "anaerobic", sprint: "anaerobic" };
@@ -398,9 +399,9 @@ export function primaryBenefit(entry, allSettings) {
   const anaerobic = by === "power" && zones[top] >= 120
     ? (longestAbove(entry, settings.ftp * settings.powerZones[top]) <= 30 ? "sprint" : "anaerobic") : null;
   const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
-    : from(vo2max - 1) >= 900 ? "threshold"
+    : from(vo2max - 1) >= Math.max(900, total * 0.45) ? "threshold"
     : from(vo2max - 2) >= Math.max(300, total * 0.5) ? "tempo"
-    : total >= 1200 && from(1) >= total * 0.5 ? "base"
+    : total >= 1500 ? "base"
     : "recovery");
   return { benefit, by };
 }
