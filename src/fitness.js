@@ -397,11 +397,22 @@ export function primaryBenefit(entry, allSettings) {
   const anaerobic = by === "power" && zones[top] >= 120
     ? (longestAbove(entry, settings.ftp * settings.powerZones[top]) <= 30 ? "sprint" : "anaerobic") : null;
   const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
-    : from(vo2max - 1) >= 600 ? "threshold"
-    : from(vo2max - 2) >= Math.max(600, total * 0.3) ? "tempo"
+    : from(vo2max - 1) >= 1200 ? "threshold"
+    : from(vo2max - 2) >= Math.max(300, total * 0.5) ? "tempo"
     : total >= 1200 && from(1) >= total * 0.5 ? "base"
     : "recovery");
   return { benefit, by };
+}
+
+// Aerobic Training Effect (0–5) estimated from the activity's load: fitted to Garmin's values for the same
+// workouts, where it rose with the logarithm of the load. Returns { value, level } with level one of teLevels, or null.
+export const teLevels = ["none", "some", "maintaining", "improving", "highlyImproving", "overreaching"];
+
+export function aerobicEffect(entry, allSettings) {
+  const result = activityLoad(entry, allSettings);
+  if (!result || !(result.load > 0)) return null;
+  const value = Math.round(Math.min(5, Math.max(0, 1.12 + 0.49 * Math.log(result.load))) * 10) / 10;
+  return { value, level: teLevels[Math.min(5, Math.floor(value))] };
 }
 
 // The work done in kilojoules: the power summed over the time, or null without power.

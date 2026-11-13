@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -238,4 +238,12 @@ test("the primary benefit is the hardest zone held long enough, by power before 
 test("the work sums the power over the time in kilojoules", () => {
   assert.ok(Math.abs(workKilojoules(entry({ minutes: 10, power: () => 100 })) - 60) < 0.01);
   assert.equal(workKilojoules(entry({ power: () => null })), null);
+});
+
+test("the aerobic Training Effect rises with the logarithm of the load, Garmin's levels named", () => {
+  const settings = { ftp: { cycling: 200 } };
+  // An hour at FTP makes a load of 100: 1.12 + 0.49 · ln 100 = 3.4, improving.
+  assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.4, level: "improving" });
+  assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "maintaining");
+  assert.equal(aerobicEffect(entry(), {}), null);
 });
