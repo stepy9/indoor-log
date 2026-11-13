@@ -1,7 +1,7 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
-import { aerobicEffect, benefitGroup, benefitGroups, benefits, primaryBenefit, trainingFocus, withCleanHeartRate } from "../fitness.js";
+import { aerobicEffect, benefitGroup, benefitGroups, benefits, focusAdvice, focusTargets, primaryBenefit, trainingFocus, withCleanHeartRate } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
@@ -580,7 +580,12 @@ function renderFocus(current, previous) {
     const track = Object.assign(document.createElement("div"), { className: "fitness-zone-track" });
     const fill = Object.assign(document.createElement("div"), { className: "fitness-zone-fill" });
     fill.style.width = `${now}%`;
-    track.append(fill);
+    // The range the share should fall in, dashed over the bar.
+    const [low, high] = focusTargets[group];
+    const target = Object.assign(document.createElement("div"), { className: "diary-focus-target", title: t("diaryFocusTarget", { low, high }) });
+    target.style.left = `${low}%`;
+    target.style.width = `${high - low}%`;
+    track.append(fill, target);
     const name = span(`diary-activity-benefit diary-focus-name is-${group}`, "");
     name.append(Object.assign(document.createElement("i"), { ariaHidden: "true" }), t(`benefitGroup_${group}`));
     row.append(
@@ -593,9 +598,11 @@ function renderFocus(current, previous) {
     return row;
   });
   const counts = benefits.filter((benefit) => focus.counts[benefit]).map((benefit) => `${t(`benefit_${benefit}`)} ${focus.counts[benefit]}`).join(" · ");
+  // The advice for the group furthest out of its range; a week of a few workouts only hints at it.
+  const advice = focusAdvice(focus);
   const notes = [
-    ...(!focus.counts.base ? [t("diaryFocusNoBase")] : []),
-    ...(share(focus.load.highAerobic, focus.total) > 50 ? [t("diaryFocusTooHigh")] : []),
+    advice ? `${t(`diaryFocus_${advice.group}_${advice.side}`)}${view.period === "week" ? ` ${t("diaryFocusWeek")}` : ""}` : t("diaryFocusBalanced"),
+    t("diaryFocusTargetNote"),
   ];
   const note = (text, extra = "") => Object.assign(document.createElement("p"), { className: `field-note${extra}`, textContent: text });
   byId("diaryFocus").replaceChildren(...rows, note(`${counts} · ${t("estimate")}`), ...notes.map((text) => note(text, " diary-focus-note")));

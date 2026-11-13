@@ -589,3 +589,21 @@ export function trainingFocus(entries, allSettings) {
   const total = benefitGroups.reduce((sum, group) => sum + load[group], 0);
   return { load, total, counts };
 }
+
+// The share of the load each group should have, in percent, after the 80/20 split proven for endurance training:
+// most of it easy, some around the threshold, little anaerobic. Garmin's own ranges follow the fitness and the
+// four weeks' load and are not published.
+export const focusTargets = { lowAerobic: [60, 80], highAerobic: [15, 30], anaerobic: [0, 10] };
+
+// The group furthest out of its range and which way, as { group, side: "low" | "high" }, or null when all are in.
+export function focusAdvice(focus) {
+  if (!focus.total) return null;
+  let worst = null;
+  for (const group of benefitGroups) {
+    const share = (focus.load[group] / focus.total) * 100;
+    const [low, high] = focusTargets[group];
+    const off = share < low ? low - share : share > high ? share - high : 0;
+    if (off > (worst?.off ?? 0)) worst = { group, side: share < low ? "low" : "high", off };
+  }
+  return worst && { group: worst.group, side: worst.side };
+}

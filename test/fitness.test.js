@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts, withCleanHeartRate, heartRateOf, trainingFocus } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts, withCleanHeartRate, heartRateOf, trainingFocus, focusAdvice } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -273,4 +273,12 @@ test("the training focus splits the load by the benefit's group and counts each 
   assert.ok(focus.load.highAerobic > focus.load.lowAerobic);
   assert.equal(focus.load.anaerobic, 0);
   assert.ok(Math.abs(focus.total - focus.load.lowAerobic - focus.load.highAerobic) < 1e-9);
+});
+
+test("the focus advice names the group furthest out of its range", () => {
+  const focus = (lowAerobic, highAerobic, anaerobic) => ({ load: { lowAerobic, highAerobic, anaerobic }, total: lowAerobic + highAerobic + anaerobic });
+  assert.equal(focusAdvice(focus(70, 25, 5)), null);
+  assert.deepEqual(focusAdvice(focus(9, 63, 28)), { group: "lowAerobic", side: "low" });
+  assert.deepEqual(focusAdvice(focus(95, 5, 0)), { group: "lowAerobic", side: "high" });
+  assert.deepEqual(focusAdvice(focus(60, 20, 20)), { group: "anaerobic", side: "high" });
 });
