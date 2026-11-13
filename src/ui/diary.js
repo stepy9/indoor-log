@@ -73,6 +73,8 @@ function renderPlan() {
   const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
   list.append(...rows, Object.assign(document.createElement("p"), { className: "field-note", textContent: [...(plan.lighter ? [t("planLighter")] : []), t(chosenDays ? "planDaysChosen" : "planDaysAuto")].join(" · ") }));
+  // How the training focus steers the week, as on the fitness page.
+  if (plan.focus) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`nextFocus_${plan.focus}`) }));
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
   const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });
   body.append(list, side);
