@@ -54,7 +54,8 @@ const trimpWeight = (fraction) => fraction * 0.64 * Math.exp(1.92 * fraction);
 // Banister's TRIMP from the heart rate, scaled so an hour at the threshold makes 100.
 export function heartRateLoad(entry, { maxHeartRate, restHeartRate }) {
   if (!(maxHeartRate > restHeartRate)) return null;
-  const { seconds, heartRate = [] } = entry.records;
+  const { seconds } = entry.records;
+  const heartRate = heartRateOf(entry);
   const dts = steps(seconds);
   let trimp = 0;
   for (let index = 0; index < seconds.length; index += 1) {
@@ -344,7 +345,7 @@ export function timeInZones(entries, by, allSettings) {
     const reference = by === "power" ? settings.ftp : settings.maxHeartRate;
     if (!(reference > 0)) continue;
     const { seconds } = entry.records;
-    const values = entry.records[by] ?? [];
+    const values = by === "heartRate" ? heartRateOf(entry) : entry.records[by] ?? [];
     const dts = steps(seconds);
     for (let index = 0; index < seconds.length; index += 1) {
       const value = values[index];
@@ -479,7 +480,8 @@ const decouplingMinimum = 1200;
 
 export function decoupling(entry) {
   if (workoutKind(entry) !== "steady") return null;
-  const { seconds, heartRate = [] } = entry.records;
+  const { seconds } = entry.records;
+  const heartRate = heartRateOf(entry);
   const field = coverage(entry, "power") >= 0.5 ? "power" : "speed";
   const output = entry.records[field] ?? [];
   if (coverage(entry, "heartRate") < 0.5) return null;
@@ -542,5 +544,30 @@ export function withoutHeartRateDropouts(records) {
   return changed ? { ...records, heartRate: values } : records;
 }
 
-// The activity as the analysis reads it: without the heart rate a watch read too low. The library keeps it as saved.
-export const withCleanHeartRate = (entry) => (entry.records ? { ...entry, records: withoutHeartRateDropouts(entry.records) } : entry);
+// The heart rate the loads, zones and averages count: without what a watch read too low. The charts and the saved
+// activity keep it as recorded. Kept per recording, so each is cleaned once.
+const cleanHeartRates = new WeakMap();
+
+export function heartRateOf(entry) {
+  const { records } = entry;
+  if (!records?.heartRate) return [];
+  if (!cleanHeartRates.has(records)) cleanHeartRates.set(records, withoutHeartRateDropouts(records).heartRate);
+  return cleanHeartRates.get(records);
+}
+
+// The activity as the analysis reads it: its average heart rate over the clean readings, the records as recorded.
+export function withCleanHeartRate(entry) {
+  if (!entry.records?.heartRate || !entry.summary) return entry;
+  const values = heartRateOf(entry);
+  if (values === entry.records.heartRate) return entry;
+  const dts = steps(entry.records.seconds);
+  let sum = 0;
+  let time = 0;
+  values.forEach((value, index) => {
+    if (value > 0) {
+      sum += value * dts[index];
+      time += dts[index];
+    }
+  });
+  return time ? { ...entry, summary: { ...entry.summary, avgHeartRate: Math.round(sum / time) } } : entry;
+}

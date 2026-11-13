@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts, withCleanHeartRate, heartRateOf } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -59,9 +59,9 @@ test("fitness builds slowly and fatigue fast, and form is yesterday's difference
 });
 
 test("time in zones counts seconds against the maximum heart rate or the FTP", () => {
-  const halves = entry({ minutes: 10, heartRate: (second) => (second <= 300 ? 110 : 175), power: (second) => (second <= 300 ? 100 : 220) });
+  const halves = entry({ minutes: 10, heartRate: (second) => (second <= 300 ? 115 : 145), power: (second) => (second <= 300 ? 100 : 220) });
   const heart = timeInZones([halves], "heartRate", { maxHeartRate: 200 });
-  assert.deepEqual(heart, [300, 0, 0, 300, 0]);
+  assert.deepEqual(heart, [300, 0, 300, 0, 0]);
   const power = timeInZones([halves], "power", { ftp: { cycling: 200 } });
   assert.deepEqual(power, [300, 0, 0, 0, 300, 0]);
 });
@@ -256,4 +256,12 @@ test("a heart rate read too low until a jump of over 30 bpm is left out, a stead
   assert.equal(cleaned[200], 110);
   const warmUp = { seconds, heartRate: seconds.map((second) => 80 + Math.min(60, second / 3)) };
   assert.equal(withoutHeartRateDropouts(warmUp), warmUp);
+});
+
+test("the clean heart rate leaves the records as recorded and lifts the average", () => {
+  const stuck = entry({ minutes: 10, heartRate: (second) => (second < 120 ? 70 : 150) });
+  const cleaned = withCleanHeartRate(stuck);
+  assert.equal(cleaned.records, stuck.records);
+  assert.equal(cleaned.summary.avgHeartRate, 150);
+  assert.equal(heartRateOf(stuck)[0], null);
 });
