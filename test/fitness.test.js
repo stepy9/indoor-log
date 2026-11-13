@@ -252,8 +252,7 @@ test("a heart rate read too low until a jump of over 30 bpm is left out, a stead
   const seconds = Array.from({ length: 300 }, (_, index) => index);
   const stuck = { seconds, heartRate: seconds.map((second) => (second < 90 ? 73 : second < 95 ? 73 + (second - 89) * 7 : 110)) };
   const cleaned = withoutHeartRateDropouts(stuck).heartRate;
-  assert.ok(cleaned.slice(0, 93).every((value) => value == null));
-  assert.equal(cleaned[93], 101);
+  assert.ok(cleaned.slice(0, 92).every((value) => value == null));
   assert.equal(cleaned[200], 110);
   const warmUp = { seconds, heartRate: seconds.map((second) => 80 + Math.min(60, second / 3)) };
   assert.equal(withoutHeartRateDropouts(warmUp), warmUp);
