@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts, withCleanHeartRate, heartRateOf } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts, withCleanHeartRate, heartRateOf, trainingFocus } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -264,4 +264,13 @@ test("the clean heart rate leaves the records as recorded and lifts the average"
   assert.equal(cleaned.records, stuck.records);
   assert.equal(cleaned.summary.avgHeartRate, 150);
   assert.equal(heartRateOf(stuck)[0], null);
+});
+
+test("the training focus splits the load by the benefit's group and counts each benefit", () => {
+  const settings = { ftp: { cycling: 200 } };
+  const focus = trainingFocus([entry({ power: () => 130 }), entry({ power: () => 165 }), entry({ minutes: 2 })], settings);
+  assert.deepEqual(focus.counts, { base: 1, tempo: 1 });
+  assert.ok(focus.load.highAerobic > focus.load.lowAerobic);
+  assert.equal(focus.load.anaerobic, 0);
+  assert.ok(Math.abs(focus.total - focus.load.lowAerobic - focus.load.highAerobic) < 1e-9);
 });

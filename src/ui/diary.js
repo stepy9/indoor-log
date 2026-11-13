@@ -1,7 +1,7 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
-import { aerobicEffect, benefitGroup, primaryBenefit, withCleanHeartRate } from "../fitness.js";
+import { aerobicEffect, benefitGroup, benefitGroups, benefits, primaryBenefit, trainingFocus, withCleanHeartRate } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
@@ -560,6 +560,47 @@ function renderLegend(entries) {
 }
 
 // Time in the heart rate and power zones over the period, each zone set against the period it is compared with.
+// How the period's load splits by the primary benefit's group, against the period before, with the count of
+// each benefit and a note when the base is missing or the high aerobic load outweighs the rest.
+function renderFocus(current, previous) {
+  const card = byId("diaryFocusCard");
+  const settings = settingsFor(view.entries);
+  const focus = trainingFocus(current, settings);
+  card.hidden = !focus.total;
+  if (card.hidden) return;
+  if (!card.querySelector(".tile-info")) card.append(infoHint());
+  card.querySelector(".tile-info").set(t("diaryFocusInfo"));
+  const before = trainingFocus(previous, settings);
+  const share = (value, total) => (total ? (value / total) * 100 : 0);
+  const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
+  const rows = benefitGroups.map((group) => {
+    const now = share(focus.load[group], focus.total);
+    const difference = before.total ? now - share(before.load[group], before.total) : null;
+    const row = Object.assign(document.createElement("div"), { className: `diary-focus-row is-${group}` });
+    const track = Object.assign(document.createElement("div"), { className: "fitness-zone-track" });
+    const fill = Object.assign(document.createElement("div"), { className: "fitness-zone-fill" });
+    fill.style.width = `${now}%`;
+    track.append(fill);
+    const name = span(`diary-activity-benefit diary-focus-name is-${group}`, "");
+    name.append(Object.assign(document.createElement("i"), { ariaHidden: "true" }), t(`benefitGroup_${group}`));
+    row.append(
+      name,
+      track,
+      span("fitness-zone-time", displayNumber(focus.load[group])),
+      span("fitness-zone-share", `${displayNumber(now)} %`),
+      span("fitness-zone-change", difference == null ? "" : Math.abs(difference) < 1 ? "=" : `${difference > 0 ? "+" : "−"}${displayNumber(Math.abs(difference))} %`),
+    );
+    return row;
+  });
+  const counts = benefits.filter((benefit) => focus.counts[benefit]).map((benefit) => `${t(`benefit_${benefit}`)} ${focus.counts[benefit]}`).join(" · ");
+  const notes = [
+    ...(!focus.counts.base ? [t("diaryFocusNoBase")] : []),
+    ...(share(focus.load.highAerobic, focus.total) > 50 ? [t("diaryFocusTooHigh")] : []),
+  ];
+  const note = (text, extra = "") => Object.assign(document.createElement("p"), { className: `field-note${extra}`, textContent: text });
+  byId("diaryFocus").replaceChildren(...rows, note(`${counts} · ${t("estimate")}`), ...notes.map((text) => note(text, " diary-focus-note")));
+}
+
 function renderZones(current, previous) {
   byId("diaryZonesCard").hidden = !current.length;
   if (!current.length) return;
@@ -590,6 +631,7 @@ function render() {
   renderLegend(current);
   renderCalendar(range, current);
   renderZones(current, previous);
+  renderFocus(current, previous);
   renderPlan();
 }
 

@@ -571,3 +571,21 @@ export function withCleanHeartRate(entry) {
   });
   return time ? { ...entry, summary: { ...entry.summary, avgHeartRate: Math.round(sum / time) } } : entry;
 }
+
+// The load of the activities split by the primary benefit's group, with how many activities each benefit had:
+// { load: { lowAerobic, highAerobic, anaerobic }, total, counts: { benefit: n } }. Activities without a benefit
+// are left out.
+export const benefitGroups = ["lowAerobic", "highAerobic", "anaerobic"];
+
+export function trainingFocus(entries, allSettings) {
+  const load = Object.fromEntries(benefitGroups.map((group) => [group, 0]));
+  const counts = {};
+  for (const entry of entries) {
+    const benefit = primaryBenefit(entry, allSettings);
+    if (!benefit) continue;
+    counts[benefit.benefit] = (counts[benefit.benefit] ?? 0) + 1;
+    load[benefitGroup[benefit.benefit]] += activityLoad(entry, allSettings)?.load ?? 0;
+  }
+  const total = benefitGroups.reduce((sum, group) => sum + load[group], 0);
+  return { load, total, counts };
+}
