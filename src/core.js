@@ -249,11 +249,24 @@ export function estimateOffset(kinomap, fit, options = {}) {
   };
 }
 
-// Calories from the average heart rate by Keytel et al. (2005), the men's and women's equations averaged,
-// for an age of 35 and 75 kg, as the app knows neither sex nor age: kcal a minute, none below a resting rate.
-export function heartRateCalories(avgHeartRate, seconds) {
+// Calories from the average heart rate by Keytel et al. (2005), in kcal a minute: the men's or the women's equation,
+// both averaged without a sex; 35 years and 75 kg without an age or a weight.
+const keytel = {
+  male: (hr, kg, age) => -55.0969 + 0.6309 * hr + 0.1988 * kg + 0.2017 * age,
+  female: (hr, kg, age) => -20.4022 + 0.4472 * hr - 0.1263 * kg + 0.074 * age,
+};
+
+// Who trains on a given moment ({ sex, age, weight }, each optional); the settings register theirs.
+let calorieProfile = () => ({});
+export const setCalorieProfile = (provider) => { calorieProfile = provider; };
+export const calorieProfileOn = (ms) => calorieProfile(ms) ?? {};
+
+export function heartRateCalories(avgHeartRate, seconds, { sex, age, weight } = {}) {
   if (!(avgHeartRate > 0) || !(seconds > 0)) return 0;
-  const perMinute = (-37.7496 + 0.53905 * avgHeartRate + 0.03625 * 75 + 0.13785 * 35) / 4.184;
+  const kg = weight > 0 ? weight : 75;
+  const years = age > 0 ? age : 35;
+  const equations = keytel[sex] ? [keytel[sex]] : Object.values(keytel);
+  const perMinute = equations.reduce((sum, equation) => sum + equation(avgHeartRate, kg, years), 0) / equations.length / 4.184;
   return Math.max(0, perMinute) * seconds / 60;
 }
 
@@ -579,7 +592,7 @@ export function buildWorkout(kinomap, fit = null, options = {}) {
   // Without the trainer's calories, an estimate from the power, or from the heart rate without power.
   const calories = kinomap.calories != null ? kinomap.calories * timerSeconds / sourceTimer
     : mean(values(records, "power")) > 0 ? mean(values(records, "power")) * timerSeconds * 0.0012
-    : heartRateCalories(mean(values(records, "heartRate")), timerSeconds);
+    : heartRateCalories(mean(values(records, "heartRate")), timerSeconds, calorieProfileOn(startMs));
   const summary = {
     ...summaryFor(records, durationSeconds, calories, kinomap.sport),
     workoutFeel: feelValue(options.workoutFeel, defaultFeel.workoutFeel),

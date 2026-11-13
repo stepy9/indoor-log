@@ -558,3 +558,10 @@ test("calories come from the heart rate when neither the trainer nor the power g
   assert.equal(Math.round(heartRateCalories(140, 1800)), 325);
   assert.equal(heartRateCalories(null, 1800), 0);
 });
+
+test("the heart rate calories follow the sex, age and weight given", () => {
+  const male = heartRateCalories(140, 1800, { sex: "male", age: 40, weight: 85 });
+  const female = heartRateCalories(140, 1800, { sex: "female", age: 40, weight: 85 });
+  assert.ok(male > female);
+  assert.ok(heartRateCalories(140, 1800, { sex: "male", age: 40, weight: 95 }) > male);
+});

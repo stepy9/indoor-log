@@ -8,6 +8,7 @@ import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
+import { setCalorieProfile } from "../core.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -38,6 +39,13 @@ function savedWeights() {
 
 // The body weight on the day of the moment, for the power per kilogram anywhere in the app; null without one.
 export const weightOnDay = (ms) => weightOn({ weightHistory: savedWeights(), timeZone: zone }, ms);
+
+// Sex, age in the moment's year and weight on its day, for the calories estimated from the heart rate.
+setCalorieProfile((ms) => {
+  const saved = remembered();
+  const year = new Date(ms).getUTCFullYear();
+  return { sex: saved.sex ?? null, age: saved.birthYear ? year - saved.birthYear : null, weight: weightOnDay(ms) };
+});
 
 // Power per kilogram as text by the weight on the day, empty without a weight.
 export function perKgText(watts, ms) {
@@ -199,7 +207,20 @@ function generalPane() {
     saveFitness({ restHeartRate: value });
     changed();
   }, { min: 30, max: 100 }));
-  pane.append(grid, weightBlock(), cloudBlock(), backupBlock());
+  const sexField = node("label", { class: "settings-field" });
+  const sex = node("select", { "data-key": "sex" });
+  sex.append(...[["", t("settingsSexUnset")], ["male", t("settingsSexMale")], ["female", t("settingsSexFemale")]].map(([value, label]) => new Option(label, value)));
+  sex.value = remembered().sex ?? "";
+  sex.addEventListener("change", () => {
+    saveFitness({ sex: sex.value || null });
+    changed();
+  });
+  sexField.append(node("span", {}, t("settingsSex")), sex);
+  grid.append(sexField, numberField(t("settingsBirthYear"), remembered().birthYear, "—", (value) => {
+    saveFitness({ birthYear: value });
+    changed();
+  }, { min: 1920, max: new Date().getFullYear() }));
+  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), cloudBlock(), backupBlock());
   return pane;
 }
 

@@ -1,4 +1,4 @@
-import { heartRateCalories } from "./core.js";
+import { calorieProfileOn, heartRateCalories } from "./core.js";
 import { cleanTitle } from "./files.js";
 import { isExportedFit, levelFromFit } from "./fit.js";
 
@@ -341,7 +341,7 @@ export async function addEntries(entries) {
 function withCalories(entry) {
   const { summary } = entry;
   if (!summary || summary.calories > 0 || !(summary.avgHeartRate > 0)) return entry;
-  return { ...entry, summary: { ...summary, calories: Math.round(heartRateCalories(summary.avgHeartRate, summary.timerSeconds)) } };
+  return { ...entry, summary: { ...summary, calories: Math.round(heartRateCalories(summary.avgHeartRate, summary.timerSeconds, calorieProfileOn(entry.startMs))) } };
 }
 
 export async function listEntries() {
