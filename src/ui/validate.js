@@ -29,6 +29,8 @@ export function markField(input, message) {
     hint.hidden = !message;
     hint.textContent = message ?? "";
   }
+  // For a form around it to enable or disable its save button.
+  input.dispatchEvent(new Event("field-check", { bubbles: true }));
   return !message;
 }
 

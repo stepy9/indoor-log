@@ -87,6 +87,17 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
     return sorted;
   };
 
+  // Saving waits until no field is marked wrong.
+  const wrongField = () => dialog.querySelector('input[aria-invalid="true"]:not([hidden])');
+  const updateSave = () => {
+    const button = byId("intervalsSave");
+    button.disabled = Boolean(wrongField());
+    button.title = button.disabled ? t("fieldsInvalid") : "";
+  };
+  if (dialog._fieldCheck) dialog.removeEventListener("field-check", dialog._fieldCheck);
+  dialog._fieldCheck = updateSave;
+  dialog.addEventListener("field-check", updateSave);
+
   const renderRows = () => {
     draft = normalized();
     const body = byId("intervalsRows");
@@ -226,6 +237,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
       return row;
     }));
     byId("intervalsCount").textContent = t("segmentCount", { count: draft.length });
+    updateSave();
   };
 
   byId("addSegmentButton").onclick = () => {
@@ -268,12 +280,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
   };
   byId("intervalsCancel").onclick = () => dialog.close();
   byId("intervalsSave").onclick = () => {
-    // A field still marked wrong keeps the dialog open on it.
-    const wrong = dialog.querySelector('input[aria-invalid="true"]:not([hidden])');
-    if (wrong) {
-      wrong.focus();
-      return;
-    }
+    if (wrongField()) return;
     onSave(normalized());
     dialog.close();
   };

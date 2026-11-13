@@ -129,7 +129,16 @@ const snapshot = () => {
   return { fitness: fitness ?? {}, trainers: list ?? [] };
 };
 
+// Saving needs a change and no field still marked wrong; the button says which field holds it back.
+function updateSaveButton() {
+  const button = byId("settingsSave");
+  const wrong = byId("settingsDialog").querySelector('input[aria-invalid="true"]');
+  button.disabled = !state.dirty || Boolean(wrong);
+  button.title = wrong ? t("fieldsInvalid") : "";
+}
+
 function save() {
+  if (byId("settingsDialog").querySelector('input[aria-invalid="true"]')) return;
   state.saved = true;
   byId("settingsDialog").close();
   if (!state.dirty) return;
@@ -173,7 +182,7 @@ function dateField(key, value, onChange) {
 const autoHint = (value) => (value ? `${t("fitnessAuto")} ${value}` : "—");
 
 function renderNav() {
-  byId("settingsSave").disabled = !state.dirty;
+  updateSaveButton();
   const nav = byId("settingsNav");
   const button = (pane, label) => {
     const element = node("button", { type: "button", "aria-pressed": String(state.pane === pane) }, label);
@@ -726,6 +735,8 @@ function render() {
   fitHeight();
   panes.replaceChildren(state.pane === "general" ? generalPane() : sportPane(state.pane));
   panes.scrollTop = scroll;
+  // Fields drawn anew hold no wrong values, so the button follows the new pane.
+  updateSaveButton();
   if (focused) panes.querySelector(`[data-key="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
 }
 
@@ -798,6 +809,7 @@ export function setupSettings({ onTrainers, currentSport }) {
   byId("settingsClose").addEventListener("click", () => dialog.close());
   byId("settingsCancel").addEventListener("click", () => dialog.close());
   byId("settingsSave").addEventListener("click", save);
+  dialog.addEventListener("field-check", updateSaveButton);
   dialog.addEventListener("close", () => {
     if (!state.saved && state.dirty) saveDefaults(state.before);
     keepUndo(null);
