@@ -765,7 +765,7 @@ function renderWeeks(history, entries, settings) {
   const days = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
   const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
   const weeks = new Map();
-  const weekOf = (monday) => weeks.get(monday) ?? weeks.set(monday, { monday, workouts: 0, seconds: 0, meters: 0, load: 0, fitness: null }).get(monday);
+  const weekOf = (monday) => weeks.get(monday) ?? weeks.set(monday, { monday, workouts: 0, seconds: 0, meters: 0, calories: 0, load: 0, fitness: null }).get(monday);
   for (const day of days) {
     const week = weekOf(mondayOf(day.day));
     week.load += day.load;
@@ -778,6 +778,7 @@ function renderWeeks(history, entries, settings) {
     week.workouts += 1;
     week.seconds += entry.summary?.timerSeconds ?? 0;
     week.meters += entry.summary?.distance ?? 0;
+    week.calories += entry.summary?.calories ?? 0;
   }
   // The fitness the week started from: the day before its Monday.
   const fitnessBefore = (monday) => history.find((day) => day.day === addDays(monday, -1))?.fitness ?? null;
@@ -786,7 +787,7 @@ function renderWeeks(history, entries, settings) {
   table.hidden = !list.length;
   const highest = Math.max(1, ...list.map((week) => week.load));
   const head = node("tr");
-  head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), ...(target ? [t("fitnessOfTarget", { target: formatDuration(target) })] : []), t("fitnessDistance"), ...(targetKm ? [t("fitnessOfTarget", { target: km(targetKm * 1000) })] : []), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
+  head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), ...(target ? [t("fitnessOfTarget", { target: formatDuration(target) })] : []), t("fitnessDistance"), ...(targetKm ? [t("fitnessOfTarget", { target: km(targetKm * 1000) })] : []), t("calories"), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
   const thisMonday = mondayOf(today());
   const rows = list.map((week) => {
     const row = node("tr");
@@ -811,6 +812,7 @@ function renderWeeks(history, entries, settings) {
       ...(target ? [targetCell(week.seconds, target, week.monday === thisMonday, formatDuration)] : []),
       node("td", {}, week.meters ? `${displayNumber(week.meters / 1000, 1)} km` : "—"),
       ...(targetKm ? [targetCell(week.meters, targetKm * 1000, week.monday === thisMonday, km)] : []),
+      node("td", {}, week.calories ? `${displayNumber(Math.round(week.calories))} kcal` : "—"),
       loadCell,
       node("td", { class: rampClass }, ramp == null ? "—" : Math.abs(ramp) < 0.05 ? "±0" : `${ramp > 0 ? "+" : ""}${displayNumber(ramp, 1)}`),
     );

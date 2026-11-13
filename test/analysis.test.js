@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bestAverage, bestTime, downsample, inLengthRange, invertedMetric, paceFrom, series, trendIsTime, trendValue, workoutKind } from "../src/analysis.js";
+import { bestAverage, bestTime, downsample, groupTrend, inLengthRange, invertedMetric, paceFrom, series, trendIsTime, trendValue, workoutKind } from "../src/analysis.js";
 
 // Ten minutes at 1 Hz: 4 m/s with 200 W, except a minute at 5 m/s and 300 W from 5:00.
 function entry(sport = "rowing") {
@@ -141,4 +141,11 @@ test("the trend puts activities together by week, keeps the best effort and the 
   assert.deepEqual(recordFlags([120, 118, 121], -1), [false, true, false]);
   assert.deepEqual(recordFlags([120], -1), [false]);
   assert.deepEqual(recordFlags([140, 150], 0), [false, false]);
+});
+
+test("calories add up by week in the trend", () => {
+  const at = (day, calories) => ({ entry: { summary: { timerSeconds: 600, calories } }, x: Date.parse(`${day}T12:00:00Z`), y: calories });
+  const [week] = groupTrend([at("2026-11-09", 200), at("2026-11-11", 300)], "week", "calories", "rowing", "UTC");
+  assert.equal(week.y, 500);
+  assert.equal(trendValue({ summary: { calories: 0 } }, "calories"), null);
 });

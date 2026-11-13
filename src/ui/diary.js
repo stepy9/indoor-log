@@ -23,8 +23,8 @@ const view = {
   day: null,
   // Sports or kinds turned off in the chart's legend.
   hidden: new Set(),
-  // What the chart's bars add up: "distance" or "seconds".
-  barMetric: remembered.barMetric === "seconds" ? "seconds" : "distance",
+  // What the chart's bars add up: "distance", "seconds" or "calories".
+  barMetric: ["seconds", "calories"].includes(remembered.barMetric) ? remembered.barMetric : "distance",
   // What the period is set against: "previous", "lastYear" (a week or a month only) or "pick", the period picked by hand.
   basis: ["lastYear", "pick"].includes(remembered.basis) ? remembered.basis : "previous",
   // While the period runs, the other one counts "whole" or only as many days as have gone by ("same").
@@ -165,6 +165,7 @@ function barGroups() {
   }));
 }
 const km = (meters, digits = 1) => `${displayNumber(meters / 1000, digits)} km`;
+const kcal = (value) => `${displayNumber(Math.round(value))} kcal`;
 const hours = (seconds) => (seconds >= 3600 ? `${displayNumber(seconds / 3600, 1)} h` : `${Math.round(seconds / 60)} min`);
 
 function periodTitle([from, to]) {
@@ -284,6 +285,7 @@ function renderTiles(current, previous, entries) {
       ? [t("diaryDistance"), distanceBySport(entries).join("\n") || "0 km", "", "is-split"]
       : [t("diaryDistance"), km(current.distance), change(current.distance, previous.distance, (value) => km(value), true)],
     [t("diaryTime"), hours(current.seconds), change(current.seconds, previous.seconds, hours, true)],
+    [t("calories"), kcal(current.calories), change(current.calories, previous.calories, kcal, true)],
     [t("lapPower"), current.avgPower == null ? "—" : `${displayNumber(current.avgPower)} W`, change(current.avgPower, previous.avgPower, (value) => `${displayNumber(value)} W`)],
     [t("lapHeartRate"), current.avgHeartRate == null ? "—" : `${displayNumber(current.avgHeartRate)} bpm`, change(current.avgHeartRate, previous.avgHeartRate, (value) => `${displayNumber(value)} bpm`)],
   ];
@@ -305,8 +307,9 @@ function renderTiles(current, previous, entries) {
   }));
 }
 
-const barValue = (entries, metric) => entries.reduce((sum, entry) => sum + ((metric === "distance" ? entry.summary.distance : entry.summary.timerSeconds) ?? 0), 0);
-const barText = (value, metric) => (metric === "distance" ? km(value) : hours(value));
+const barField = { distance: "distance", seconds: "timerSeconds", calories: "calories" };
+const barValue = (entries, metric) => entries.reduce((sum, entry) => sum + (entry.summary[barField[metric]] ?? 0), 0);
+const barText = (value, metric) => (metric === "distance" ? km(value) : metric === "calories" ? kcal(value) : hours(value));
 
 const svgNode = (name, attributes, text) => {
   const element = document.createElementNS(svgNs, name);
@@ -319,13 +322,13 @@ const svgNode = (name, attributes, text) => {
 // whole minutes or hours in time.
 function axisStep(max, metric) {
   const rough = max / 3;
-  const steps = metric === "distance"
+  const steps = metric !== "seconds"
     ? [1, 2, 2.5, 5].flatMap((factor) => [1, 10, 100, 1000, 10_000, 100_000].map((power) => factor * power))
     : [5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 600, 1200, 1800, 3000, 6000].map((minutes) => minutes * 60);
   return steps.sort((a, b) => a - b).find((step) => step >= rough) ?? rough;
 }
 
-const axisText = (value, metric) => (metric === "distance"
+const axisText = (value, metric) => (metric === "calories" ? kcal(value) : metric === "distance"
   ? (value >= 1000 ? `${displayNumber(value / 1000, value % 1000 ? 1 : 0)} km` : `${displayNumber(value)} m`)
   : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
 

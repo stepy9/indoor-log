@@ -561,7 +561,7 @@ function trendLabel(metric, sport) {
   if (metric === "bestShort") return t("compareBestTime", { distance: distance(short) });
   if (metric === "bestLong") return t("compareBestTime", { distance: distance(long) });
   if (metric === "bestPower") return t("compareBestPower", { duration: formatDuration(300) });
-  return t({ avgPower: "compareAvgPower", avgHeartRate: "compareAvgHeartRate", efficiency: "trendEfficiency", powerPerKg: "trendPowerPerKg" }[metric]);
+  return t({ avgPower: "compareAvgPower", avgHeartRate: "compareAvgHeartRate", efficiency: "trendEfficiency", powerPerKg: "trendPowerPerKg", calories: "calories" }[metric]);
 }
 
 function trendText(value, metric, sport) {
@@ -570,7 +570,7 @@ function trendText(value, metric, sport) {
   if (trendIsTime(metric, sport)) return formatDuration(value);
   if (metric === "efficiency") return `${displayNumber(value, 2)} W/bpm`;
   if (metric === "powerPerKg") return `${displayNumber(value, 2)} W/kg`;
-  return `${displayNumber(value)} ${metric === "avgHeartRate" ? "bpm" : "W"}`;
+  return `${displayNumber(value)} ${metric === "avgHeartRate" ? "bpm" : metric === "calories" ? "kcal" : "W"}`;
 }
 
 const dayDate = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
@@ -757,7 +757,7 @@ function renderTrendTable() {
     let tone = "";
     if (Number.isFinite(value) && Number.isFinite(previous)) {
       const delta = value - previous;
-      const better = metric === "avgHeartRate" ? null : isTime ? delta < 0 : delta > 0;
+      const better = metric === "avgHeartRate" || metric === "calories" ? null : isTime ? delta < 0 : delta > 0;
       change = `${delta > 0 ? "+" : delta < 0 ? "−" : "±"}${isTime ? formatDuration(Math.abs(delta)) : displayNumber(Math.abs(delta), twoDecimals(metric) ? 2 : 0)}`;
       tone = delta === 0 || better == null ? "" : better ? "is-better" : "is-worse";
     }

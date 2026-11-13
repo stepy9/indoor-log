@@ -26,7 +26,7 @@ test("totals add up the period and average power and heart rate over their time"
   const entry = (day, seconds, distance, avgPower, avgHeartRate) => ({ startMs: Date.parse(`${day}T08:00:00Z`), summary: { timerSeconds: seconds, distance, avgPower, avgHeartRate } });
   const entries = [entry("2026-10-28", 600, 2000, 100, 130), entry("2026-10-30", 1200, 4000, 130, null), entry("2026-11-02", 600, 2000, 90, 120)];
   const week = inPeriod(entries, periodRange("week", "2026-10-28"), zone);
-  assert.deepEqual(totals(week), { count: 2, seconds: 1800, distance: 6000, avgPower: 120, avgHeartRate: 130 });
+  assert.deepEqual(totals(week), { count: 2, seconds: 1800, distance: 6000, calories: 0, avgPower: 120, avgHeartRate: 130 });
   const year = periodBuckets("year", periodRange("year", "2026-10-28"), entries, zone);
   assert.equal(year.length, 12);
   assert.deepEqual(year.map((bucket) => bucket.entries.length).slice(9), [2, 1, 0]);

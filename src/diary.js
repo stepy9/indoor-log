@@ -78,13 +78,14 @@ export const inPeriod = (entries, [from, to], timeZone) => entries.filter((entry
   return day >= from && day < to;
 });
 
-// Sessions, distance and moving time added up; power and heart rate averaged over the time they were recorded for.
+// Sessions, distance, moving time and calories added up; power and heart rate averaged over the time they were recorded for.
 export function totals(entries) {
-  const sums = { seconds: 0, distance: 0, power: 0, powerSeconds: 0, heartRate: 0, heartRateSeconds: 0 };
+  const sums = { seconds: 0, distance: 0, calories: 0, power: 0, powerSeconds: 0, heartRate: 0, heartRateSeconds: 0 };
   for (const { summary } of entries) {
     const seconds = summary.timerSeconds ?? 0;
     sums.seconds += seconds;
     sums.distance += summary.distance ?? 0;
+    sums.calories += summary.calories ?? 0;
     if (summary.avgPower != null) {
       sums.power += summary.avgPower * seconds;
       sums.powerSeconds += seconds;
@@ -98,6 +99,7 @@ export function totals(entries) {
     count: entries.length,
     seconds: sums.seconds,
     distance: sums.distance,
+    calories: sums.calories,
     avgPower: sums.powerSeconds ? sums.power / sums.powerSeconds : null,
     avgHeartRate: sums.heartRateSeconds ? sums.heartRate / sums.heartRateSeconds : null,
   };

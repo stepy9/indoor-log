@@ -189,7 +189,7 @@ export function inLengthRange(entry, filter) {
 }
 
 // One number per activity for the trend over time.
-export const trendMetrics = ["avgPower", "powerPerKg", "pace", "avgHeartRate", "efficiency", "bestShort", "bestLong", "bestPower"];
+export const trendMetrics = ["avgPower", "powerPerKg", "pace", "avgHeartRate", "efficiency", "bestShort", "bestLong", "bestPower", "calories"];
 
 // The short and long best-effort distances the trend follows: 500 m and 2 km for rowing.
 export const trendDistances = (sport) => {
@@ -210,6 +210,7 @@ export function trendValue(entry, metric, weight = null) {
     case "bestShort": return bestTime(entry, trendDistances(sport).short);
     case "bestLong": return bestTime(entry, trendDistances(sport).long);
     case "bestPower": return bestAverage(entry, "power", 300);
+    case "calories": return summary.calories || null;
     default: return null;
   }
 }
@@ -285,7 +286,7 @@ export function levelValues(entry, metric, sport) {
 }
 
 // Which way the trend improves: up, down for times and paces other than cycling's speed, or neither for heart rate.
-export const trendDirection = (metric, sport) => (metric === "avgHeartRate" ? 0 : trendIsTime(metric, sport) ? -1 : 1);
+export const trendDirection = (metric, sport) => (metric === "avgHeartRate" || metric === "calories" ? 0 : trendIsTime(metric, sport) ? -1 : 1);
 
 // Best efforts take the period's best; averages weigh each activity by its moving time, and a pace comes from the totals.
 const bestMetrics = new Set(["bestShort", "bestLong", "bestPower"]);
@@ -304,6 +305,9 @@ export function groupTrend(points, period, metric, sport, timeZone) {
     if (bestMetrics.has(metric)) {
       const values = list.map((point) => point.y);
       y = trendDirection(metric, sport) < 0 ? Math.min(...values) : Math.max(...values);
+    } else if (metric === "calories") {
+      // A week's or a month's calories add up.
+      y = list.reduce((sum, point) => sum + point.y, 0);
     } else if (metric === "pace") {
       const seconds = entries.reduce((sum, entry) => sum + (entry.summary.timerSeconds ?? 0), 0);
       const distance = entries.reduce((sum, entry) => sum + (entry.summary.distance ?? 0), 0);
