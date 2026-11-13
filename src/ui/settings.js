@@ -146,8 +146,19 @@ function numberField(label, value, placeholder, apply, { min, max } = {}) {
   const input = node("input", { type: "number", inputmode: "numeric", "data-key": label, ...(min ? { min } : {}), ...(max ? { max } : {}) });
   input.value = value ?? "";
   input.placeholder = placeholder;
-  input.addEventListener("change", () => apply(typedNumber(input)));
-  field.append(node("span", {}, label), input);
+  // A number outside the field's range is marked and left unsaved.
+  const hint = node("span", { class: "settings-field-error", role: "alert" });
+  hint.hidden = true;
+  input.addEventListener("change", () => {
+    const typed = typedNumber(input);
+    const outside = typed != null && ((min && typed < min) || (max && typed > max));
+    input.classList.toggle("is-invalid", Boolean(outside));
+    input.setAttribute("aria-invalid", String(Boolean(outside)));
+    hint.hidden = !outside;
+    hint.textContent = outside ? t("settingsOutOfRange", { min, max }) : "";
+    if (!outside) apply(typed);
+  });
+  field.append(node("span", {}, label), input, hint);
   return field;
 }
 
