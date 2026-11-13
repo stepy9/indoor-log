@@ -604,6 +604,8 @@ function goalBlock(sport) {
   return block;
 }
 
+const weightRange = { min: 30, max: 250 };
+
 function weightBlock() {
   const block = node("div", { class: "settings-ftp" });
   const title = node("div", { class: "panel-title-row" });
@@ -632,10 +634,17 @@ function weightBlock() {
     // Text with a decimal keyboard, as a number field drops a comma under some browser languages.
     const kg = node("input", { type: "text", inputmode: "decimal", pattern: "[0-9]+([.,][0-9])?", class: "level-input", "data-key": `weight-value-${index}`, "aria-label": t("settingsWeightLabel") });
     kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
+    // A weight outside the range, or no number, is marked and left unsaved, as in the other number fields.
+    const hint = node("span", { class: "settings-field-error", role: "alert" });
+    hint.hidden = true;
     kg.addEventListener("change", () => {
       const value = Math.round(Number(kg.value.replace(",", ".")) * 10) / 10;
-      if (value >= 30) update({ kg: value });
-      else kg.value = displayNumber(record.kg, record.kg % 1 ? 1 : 0);
+      const valid = value >= weightRange.min && value <= weightRange.max;
+      kg.classList.toggle("is-invalid", !valid);
+      kg.setAttribute("aria-invalid", String(!valid));
+      hint.hidden = valid;
+      hint.textContent = valid ? "" : t("settingsOutOfRange", weightRange);
+      if (valid) update({ kg: value });
     });
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
@@ -643,11 +652,11 @@ function weightBlock() {
     const fromCell = node("td");
     fromCell.append(from);
     if (!record.from) fromCell.append(node("span", { class: "settings-ftp-start" }, t("settingsFtpStart")));
-    row.append(fromCell, ...[kg, remove].map((control) => {
-      const cell = node("td");
-      cell.append(control);
-      return cell;
-    }));
+    const kgCell = node("td", { class: "settings-weight-cell" });
+    kgCell.append(kg, hint);
+    const removeCell = node("td");
+    removeCell.append(remove);
+    row.append(fromCell, kgCell, removeCell);
     table.tBodies[0].append(row);
   }
   block.append(table);
