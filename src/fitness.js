@@ -501,3 +501,46 @@ export function decoupling(entry) {
   const efficiency = ((halves[0].output + halves[1].output) / (halves[0].heart + halves[1].heart)) * (field === "speed" ? 60 : 1);
   return { percent: ((first - second) / first) * 100, by: field, efficiency };
 }
+
+// A watch that lost the strap's contact reads the heart rate far too low until it is set right, which shows as a
+// jump of over 30 bpm within 15 seconds. The readings before such a jump that lie more than 15 bpm under the
+// level it reached are left out (null), back to where the heart rate last was near that level or to the start.
+const dropoutJumpBpm = 30;
+const dropoutJumpSeconds = 15;
+const dropoutMargin = 15;
+
+export function withoutHeartRateDropouts(records) {
+  const { seconds = [], heartRate } = records ?? {};
+  if (!heartRate?.length) return records;
+  const values = heartRate.slice();
+  let changed = false;
+  let next = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    if (!(values[index] > 0)) continue;
+    next = Math.max(next, index + 1);
+    while (next < values.length && seconds[next] - seconds[index] <= dropoutJumpSeconds) next += 1;
+    let peak = -1;
+    for (let ahead = index + 1; ahead < next; ahead += 1) if (values[ahead] > 0 && (peak < 0 || values[ahead] > values[peak])) peak = ahead;
+    if (peak < 0 || values[peak] - values[index] <= dropoutJumpBpm) continue;
+    const level = values[peak] - dropoutMargin;
+    // The rise itself, then the low readings before it.
+    for (let ahead = index; ahead < peak; ahead += 1) {
+      if (values[ahead] != null && values[ahead] < level) {
+        values[ahead] = null;
+        changed = true;
+      }
+    }
+    for (let back = index - 1; back >= 0; back -= 1) {
+      if (values[back] >= level) break;
+      if (values[back] != null) {
+        values[back] = null;
+        changed = true;
+      }
+    }
+    index = peak - 1;
+  }
+  return changed ? { ...records, heartRate: values } : records;
+}
+
+// The activity as the analysis reads it: without the heart rate a watch read too low. The library keeps it as saved.
+export const withCleanHeartRate = (entry) => (entry.records ? { ...entry, records: withoutHeartRateDropouts(entry.records) } : entry);

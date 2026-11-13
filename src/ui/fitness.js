@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -1008,7 +1008,7 @@ function render() {
 }
 
 export async function showFitness() {
-  view.entries = await listEntries().catch(() => []);
+  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
   render();
 }
 

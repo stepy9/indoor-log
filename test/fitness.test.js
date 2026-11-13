@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules, aerobicEffect, withoutHeartRateDropouts } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -246,4 +246,15 @@ test("the aerobic Training Effect rises with the logarithm of the load, Garmin's
   assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.4, level: "improving" });
   assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "some");
   assert.equal(aerobicEffect(entry(), {}), null);
+});
+
+test("a heart rate read too low until a jump of over 30 bpm is left out, a steady rise is kept", () => {
+  const seconds = Array.from({ length: 300 }, (_, index) => index);
+  const stuck = { seconds, heartRate: seconds.map((second) => (second < 90 ? 73 : second < 95 ? 73 + (second - 89) * 7 : 110)) };
+  const cleaned = withoutHeartRateDropouts(stuck).heartRate;
+  assert.ok(cleaned.slice(0, 93).every((value) => value == null));
+  assert.equal(cleaned[93], 101);
+  assert.equal(cleaned[200], 110);
+  const warmUp = { seconds, heartRate: seconds.map((second) => 80 + Math.min(60, second / 3)) };
+  assert.equal(withoutHeartRateDropouts(warmUp), warmUp);
 });

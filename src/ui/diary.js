@@ -1,6 +1,7 @@
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
+import { withCleanHeartRate } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
@@ -577,7 +578,7 @@ function render() {
 }
 
 export async function showDiary() {
-  view.entries = await listEntries().catch(() => []);
+  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
   render();
 }
 

@@ -9,7 +9,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
-import { aerobicEffect, benefitGroup, primaryBenefit, workKilojoules } from "../fitness.js";
+import { aerobicEffect, benefitGroup, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -98,7 +98,7 @@ function svg(tag, attributes = {}) {
 }
 
 async function refresh() {
-  view.entries = await listEntries().catch(() => []);
+  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
   const ids = new Set(view.entries.map((entry) => entry.id));
   for (const id of view.slots.keys()) if (!ids.has(id)) view.slots.delete(id);
   const sports = [...new Set(view.entries.map((entry) => entry.sport))];
