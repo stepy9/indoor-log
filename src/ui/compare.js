@@ -8,7 +8,8 @@ import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
-import { perKgText, weightOnDay } from "./settings.js";
+import { perKgText, settingsFor, weightOnDay } from "./settings.js";
+import { primaryBenefit, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -494,6 +495,7 @@ function renderTables() {
   // Watts with the W/kg by the weight on the workout's day.
   const watts = (value, entry) => (!Number.isFinite(value) ? "—" : [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · "));
   const cadence = sport === "running" ? "spm" : "rpm";
+  const settings = settingsFor(view.entries);
   renderTable("compareSummary", [
     [t("lapTime"), (entry) => formatDuration(entry.summary.timerSeconds)],
     [t("lapDistanceColumn"), (entry) => unit(entry.summary.distance / 1000, "km", 2)],
@@ -504,6 +506,11 @@ function renderTables() {
     [t("compareMaxHeartRate"), (entry) => unit(entry.summary.maxHeartRate, "bpm")],
     [t("compareAvgCadence"), (entry) => unit(entry.summary.avgCadence, cadence)],
     [t("compareCalories"), (entry) => unit(entry.summary.calories, "kcal")],
+    [t("compareWork"), (entry) => unit(workKilojoules(entry), "kJ")],
+    [t("compareBenefit"), (entry) => {
+      const result = primaryBenefit(entry, settings);
+      return result ? `${t(`benefit_${result.benefit}`)} · ${t(result.by === "power" ? "benefitByPower" : "benefitByHeartRate")}` : "—";
+    }],
     [t("resistance"), (entry) => (entry.resistance ? String(entry.resistance) : "—")],
   ], picked);
   const distanceLabel = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000, 1)} km` : `${meters} m`);

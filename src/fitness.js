@@ -358,6 +358,43 @@ export function timeInZones(entries, by, allSettings) {
   return totals;
 }
 
+// The workout's primary benefit, as Garmin names it, from its time in zones: by power when the sport's FTP is known
+// and most of it has power, else by heart rate. The hardest zone held long enough wins; a short or easy workout is a
+// recovery. Returns { benefit, by } with benefit one of benefits, or null without zones to go by.
+export const benefits = ["recovery", "base", "tempo", "threshold", "vo2max", "anaerobic"];
+
+export function primaryBenefit(entry, allSettings) {
+  const settings = forSport(allSettings, entry.sport, entry.startMs);
+  const by = settings.ftp > 0 && coverage(entry, "power") >= 0.5 ? "power"
+    : settings.maxHeartRate > 0 && coverage(entry, "heartRate") >= 0.5 ? "heartRate" : null;
+  if (!by) return null;
+  const zones = timeInZones([entry], by, allSettings);
+  const total = zones.reduce((sum, value) => sum + value, 0);
+  if (total < 300) return null;
+  const from = (index) => zones.slice(index).reduce((sum, value) => sum + value, 0);
+  // Power has six zones, the sixth anaerobic, heart rate five; the zone below the anaerobic one (or the top heart
+  // rate zone) is VO2max, the one below it the threshold, then tempo.
+  const top = zones.length - 1;
+  const vo2max = by === "power" ? top - 1 : top;
+  const benefit = by === "power" && zones[top] >= 120 ? "anaerobic"
+    : from(vo2max) >= 300 ? "vo2max"
+    : from(vo2max - 1) >= 600 ? "threshold"
+    : from(vo2max - 2) >= Math.max(600, total * 0.3) ? "tempo"
+    : total >= 1200 && from(1) >= total * 0.5 ? "base"
+    : "recovery";
+  return { benefit, by };
+}
+
+// The work done in kilojoules: the power summed over the time, or null without power.
+export function workKilojoules(entry) {
+  if (coverage(entry, "power") < 0.5) return null;
+  const { seconds, power = [] } = entry.records;
+  const dts = steps(seconds);
+  let joules = 0;
+  for (let index = 0; index < seconds.length; index += 1) if (isPower(power[index])) joules += power[index] * dts[index];
+  return joules / 1000;
+}
+
 // Where a value falls against the sport's reference: a share of the FTP, of the maximum heart rate,
 // or of the reserve between the resting and the maximum heart rate.
 function zoneFraction(value, by, settings) {

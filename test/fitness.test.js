@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones } from "../src/fitness.js";
+import { criticalPower, ftpSuggestion, ftpTimeline, forSport, activityLoad, decoupling, estimateFtp, estimateMaxHeartRate, formState, formSummary, freshInDays, goalForecast, goalPlan, heartRateLoad, loadHistory, normalizedPower, powerCurve, weightOn, timeInZones, primaryBenefit, workKilojoules } from "../src/fitness.js";
 
 // A steady workout at 1 Hz: power and heart rate from the functions given, each of the second.
 function entry({ minutes = 60, power = () => 200, heartRate = () => 150, startMs = Date.UTC(2026, 9, 1, 8), sport = "cycling", laps = [] } = {}) {
@@ -218,4 +218,23 @@ test("zone bounds above the limit fall back to the defaults", () => {
   assert.deepEqual(silly.powerZones, forSport({}, "cycling").powerZones);
   assert.deepEqual(fine.heartRateZones, [0, 0.6, 0.7, 0.8, 0.9]);
   assert.deepEqual(fine.powerZones, [0, 0.55, 0.75, 0.9, 1.05, 1.5]);
+});
+
+test("the primary benefit is the hardest zone held long enough, by power before heart rate", () => {
+  const power = { ftp: { cycling: 200 }, maxHeartRate: 200 };
+  assert.deepEqual(primaryBenefit(entry({ minutes: 12, power: () => 90 }), power), { benefit: "recovery", by: "power" });
+  assert.equal(primaryBenefit(entry({ power: () => 130 }), power).benefit, "base");
+  assert.equal(primaryBenefit(entry({ power: () => 165 }), power).benefit, "tempo");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second < 1200 ? 200 : 120) }), power).benefit, "threshold");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 230 : 120) }), power).benefit, "vo2max");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 20 ? 400 : 120) }), power).benefit, "anaerobic");
+  // Without an FTP the heart rate decides, and it knows no anaerobic benefit.
+  assert.deepEqual(primaryBenefit(entry({ heartRate: () => 185 }), { maxHeartRate: 200 }), { benefit: "vo2max", by: "heartRate" });
+  assert.equal(primaryBenefit(entry({ heartRate: () => 130 }), { maxHeartRate: 200 }).benefit, "base");
+  assert.equal(primaryBenefit(entry(), {}), null);
+});
+
+test("the work sums the power over the time in kilojoules", () => {
+  assert.ok(Math.abs(workKilojoules(entry({ minutes: 10, power: () => 100 })) - 60) < 0.01);
+  assert.equal(workKilojoules(entry({ power: () => null })), null);
 });
