@@ -227,7 +227,8 @@ test("the primary benefit is the hardest zone held long enough, by power before 
   assert.equal(primaryBenefit(entry({ power: () => 165 }), power).benefit, "tempo");
   assert.equal(primaryBenefit(entry({ power: (second) => (second < 1200 ? 200 : 120) }), power).benefit, "threshold");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 230 : 120) }), power).benefit, "vo2max");
-  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 20 ? 400 : 120) }), power).benefit, "anaerobic");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 20 ? 400 : 120) }), power).benefit, "sprint");
+  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 300 : 120) }), power).benefit, "anaerobic");
   // Without an FTP the heart rate decides, and it knows no anaerobic benefit.
   assert.deepEqual(primaryBenefit(entry({ heartRate: () => 185 }), { maxHeartRate: 200 }), { benefit: "vo2max", by: "heartRate" });
   assert.equal(primaryBenefit(entry({ heartRate: () => 130 }), { maxHeartRate: 200 }).benefit, "base");

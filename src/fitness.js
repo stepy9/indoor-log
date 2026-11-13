@@ -361,7 +361,24 @@ export function timeInZones(entries, by, allSettings) {
 // The workout's primary benefit, as Garmin names it, from its time in zones: by power when the sport's FTP is known
 // and most of it has power, else by heart rate. The hardest zone held long enough wins; a short or easy workout is a
 // recovery. Returns { benefit, by } with benefit one of benefits, or null without zones to go by.
-export const benefits = ["recovery", "base", "tempo", "threshold", "vo2max", "anaerobic"];
+export const benefits = ["recovery", "base", "tempo", "threshold", "vo2max", "anaerobic", "sprint"];
+// Garmin's groups of the benefits.
+export const benefitGroup = { recovery: "lowAerobic", base: "lowAerobic", tempo: "highAerobic", threshold: "highAerobic", vo2max: "highAerobic", anaerobic: "anaerobic", sprint: "anaerobic" };
+
+// The longest stretch in seconds the power stayed at or above the watts, a dip of up to two seconds not ending it.
+function longestAbove(entry, watts) {
+  const { seconds, power = [] } = entry.records;
+  let longest = 0;
+  let start = null;
+  let lastAbove = null;
+  for (let index = 0; index < seconds.length; index += 1) {
+    if (!(power[index] >= watts)) continue;
+    if (lastAbove == null || seconds[index] - lastAbove > 3) start = seconds[index];
+    lastAbove = seconds[index];
+    longest = Math.max(longest, lastAbove - start + 1);
+  }
+  return longest;
+}
 
 export function primaryBenefit(entry, allSettings) {
   const settings = forSport(allSettings, entry.sport, entry.startMs);
@@ -376,12 +393,14 @@ export function primaryBenefit(entry, allSettings) {
   // rate zone) is VO2max, the one below it the threshold, then tempo.
   const top = zones.length - 1;
   const vo2max = by === "power" ? top - 1 : top;
-  const benefit = by === "power" && zones[top] >= 120 ? "anaerobic"
-    : from(vo2max) >= 300 ? "vo2max"
+  // Anaerobic efforts none longer than half a minute make a sprint workout.
+  const anaerobic = by === "power" && zones[top] >= 120
+    ? (longestAbove(entry, settings.ftp * settings.powerZones[top]) <= 30 ? "sprint" : "anaerobic") : null;
+  const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
     : from(vo2max - 1) >= 600 ? "threshold"
     : from(vo2max - 2) >= Math.max(600, total * 0.3) ? "tempo"
     : total >= 1200 && from(1) >= total * 0.5 ? "base"
-    : "recovery";
+    : "recovery");
   return { benefit, by };
 }
 

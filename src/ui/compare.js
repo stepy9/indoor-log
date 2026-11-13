@@ -9,7 +9,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
-import { primaryBenefit, workKilojoules } from "../fitness.js";
+import { benefitGroup, primaryBenefit, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -509,7 +509,7 @@ function renderTables() {
     [t("compareWork"), (entry) => unit(workKilojoules(entry), "kJ")],
     [t("compareBenefit"), (entry) => {
       const result = primaryBenefit(entry, settings);
-      return result ? `${t(`benefit_${result.benefit}`)} · ${t(result.by === "power" ? "benefitByPower" : "benefitByHeartRate")}` : "—";
+      return result ? `${t(`benefit_${result.benefit}`)} (${t(`benefitGroup_${benefitGroup[result.benefit]}`)}) · ${t(result.by === "power" ? "benefitByPower" : "benefitByHeartRate")}` : "—";
     }],
     [t("resistance"), (entry) => (entry.resistance ? String(entry.resistance) : "—")],
   ], picked);
