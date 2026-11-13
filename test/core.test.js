@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { Decoder, Stream } from "@garmin/fitsdk";
-import { buildWorkout, decodeGarminFit, detectIntervals, estimateOffset, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../src/core.js";
+import { buildWorkout, decodeGarminFit, detectIntervals, estimateOffset, heartRateCalories, kinomapPlanText, parseKinomap, parseKinomapPlan } from "../src/core.js";
 import { translations } from "../src/i18n.js";
 import { exportSerialNumber } from "../src/fit.js";
 
@@ -552,4 +552,9 @@ test("a trainer's resistance goes into every record of the FIT and comes back as
   assert.deepEqual(entry.laps.map((lap) => lap.resistance), [11, 6]);
   // Without a trainer the FIT carries no resistance.
   assert.ok(decodeGarminFit(buildWorkout(kinomap, null, { resistance: 6 }).fitBytes).records.every((record) => record.resistance == null));
+});
+
+test("calories come from the heart rate when neither the trainer nor the power gives them", () => {
+  assert.equal(Math.round(heartRateCalories(140, 1800)), 325);
+  assert.equal(heartRateCalories(null, 1800), 0);
 });

@@ -1,3 +1,4 @@
+import { heartRateCalories } from "./core.js";
 import { cleanTitle } from "./files.js";
 import { isExportedFit, levelFromFit } from "./fit.js";
 
@@ -336,7 +337,14 @@ export async function addEntries(entries) {
   return { skipped: entries.filter((entry) => !saved.has(entry.id)).length };
 }
 
+// Activities saved without calories (no power and none from the trainer) get them from the heart rate as they are read.
+function withCalories(entry) {
+  const { summary } = entry;
+  if (!summary || summary.calories > 0 || !(summary.avgHeartRate > 0)) return entry;
+  return { ...entry, summary: { ...summary, calories: Math.round(heartRateCalories(summary.avgHeartRate, summary.timerSeconds)) } };
+}
+
 export async function listEntries() {
   const entries = await run("readonly", (store) => store.getAll());
-  return entries.sort((a, b) => b.startMs - a.startMs);
+  return entries.map(withCalories).sort((a, b) => b.startMs - a.startMs);
 }

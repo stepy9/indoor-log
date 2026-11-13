@@ -249,6 +249,14 @@ export function estimateOffset(kinomap, fit, options = {}) {
   };
 }
 
+// Calories from the average heart rate by Keytel et al. (2005), the men's and women's equations averaged,
+// for an age of 35 and 75 kg, as the app knows neither sex nor age: kcal a minute, none below a resting rate.
+export function heartRateCalories(avgHeartRate, seconds) {
+  if (!(avgHeartRate > 0) || !(seconds > 0)) return 0;
+  const perMinute = (-37.7496 + 0.53905 * avgHeartRate + 0.03625 * 75 + 0.13785 * 35) / 4.184;
+  return Math.max(0, perMinute) * seconds / 60;
+}
+
 const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 const values = (records, field) => records.map((record) => record[field]).filter(Number.isFinite);
 
@@ -568,9 +576,10 @@ export function buildWorkout(kinomap, fit = null, options = {}) {
   const durationSeconds = (endMs - startMs) / 1000;
   const timerSeconds = movingSeconds(records);
   const sourceTimer = Math.max(1, movingSeconds(kinomap.records));
-  const calories = kinomap.calories == null
-    ? (mean(values(records, "power")) ?? 0) * timerSeconds * 0.0012
-    : kinomap.calories * timerSeconds / sourceTimer;
+  // Without the trainer's calories, an estimate from the power, or from the heart rate without power.
+  const calories = kinomap.calories != null ? kinomap.calories * timerSeconds / sourceTimer
+    : mean(values(records, "power")) > 0 ? mean(values(records, "power")) * timerSeconds * 0.0012
+    : heartRateCalories(mean(values(records, "heartRate")), timerSeconds);
   const summary = {
     ...summaryFor(records, durationSeconds, calories, kinomap.sport),
     workoutFeel: feelValue(options.workoutFeel, defaultFeel.workoutFeel),
