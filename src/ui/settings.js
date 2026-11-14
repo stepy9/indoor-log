@@ -1,7 +1,10 @@
 import { zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { saveTrainers, trainers } from "./trainers.js";
+import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.js";
+
+// Trainers whose percentage conversion is unfolded in the settings, kept across re-renders.
+const openConversions = new Set();
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
 import { openDatePicker } from "./datepicker.js";
@@ -284,18 +287,59 @@ function trainersBlock(sport) {
       state.dirty = true;
       render();
     });
+    const open = openConversions.has(trainer.id);
+    const toggle = node("button", { type: "button", class: "link-button", "aria-expanded": String(open) }, t("trainerConversion"));
+    toggle.addEventListener("click", () => {
+      if (open) openConversions.delete(trainer.id);
+      else openConversions.add(trainer.id);
+      render();
+    });
+    const actions = node("span", { class: "trainer-actions" });
+    actions.append(toggle, remove);
     const row = node("tr");
-    row.append(...[name, levels, usual, remove].map((control) => {
+    row.append(...[name, levels, usual, actions].map((control) => {
       const cell = node("td");
       cell.append(control);
       return cell;
     }));
     table.tBodies[0].append(row);
+    if (open) table.tBodies[0].append(conversionRow(trainer, update));
   }
   const scroll = node("div", { class: "laps-scroll" });
   scroll.append(table);
   block.append(scroll);
   return block;
+}
+
+// The level a Kinomap plan's percentage becomes, every 5 %, filled from the formula until changed.
+function conversionRow(trainer, update) {
+  const row = node("tr", { class: "trainer-conversion" });
+  const cell = node("td", { colspan: "4" });
+  const grid = node("div", { class: "conversion-grid" });
+  const levels = percentTable(trainer);
+  percentSteps.forEach((percent, index) => {
+    const input = node("input", { type: "number", class: "level-input", min: "1", max: String(trainer.levels), "aria-label": `${percent} %`, "data-key": `${trainer.id}-pct-${percent}` });
+    input.value = String(levels[index]);
+    input.addEventListener("change", () => {
+      const next = checkNumber(input, { min: 1, max: trainer.levels, required: true });
+      if (next === undefined) return;
+      const table = percentTable(trainer);
+      table[index] = next;
+      update({ percentLevels: table });
+    });
+    const field = node("label", { class: "conversion-step" });
+    field.append(node("span", {}, `${percent} %`), input);
+    grid.append(field);
+  });
+  const note = node("p", { class: "field-note" }, t(trainer.percentLevels ? "trainerConversionOwn" : "trainerConversionFormula"));
+  cell.append(note, grid);
+  if (trainer.percentLevels) {
+    const reset = node("button", { type: "button", class: "link-button" }, t("trainerConversionReset"));
+    reset.addEventListener("click", () => update({ percentLevels: undefined }));
+    cell.append(reset);
+  }
+  row.append(cell);
+  return row;
 }
 
 // The zones' lower bounds in percent, each with the beats or watts it comes to; Z1 always starts at 0.
