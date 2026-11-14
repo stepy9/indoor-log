@@ -24,9 +24,9 @@ export function rememberTrainer(sport, id) {
   saveDefaults({ trainerBySport: { ...savedDefaults().trainerBySport, [sport]: id } });
 }
 
-// Kinomap plans give resistance as a percentage. The trainer splits it into one step more than its levels and
-// starts from the first: a 15-level rower sets 50 % as 9, 70 % as 12 and 80 % as 13, as it showed.
+// Kinomap plans give resistance as a percentage. The trainer spreads 0-100 % over the steps between its first and
+// last level and rounds down: a 15-level rower sets 5 % as 1, 50 % as 8, 70 % as 10 and 80 % as 12, as tried on it.
 export const levelFromPercent = (percent, trainer) => (trainer && percent > 0
-  ? Math.max(1, Math.min(trainer.levels, Math.floor((percent / 100) * (trainer.levels + 1) + 1e-9) + 1))
+  ? Math.max(1, Math.min(trainer.levels, Math.floor((percent / 100) * (trainer.levels - 1) + 1e-9) + 1))
   : null);
 
