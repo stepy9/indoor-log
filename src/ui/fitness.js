@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, focusAdvice, trainingFocus } from "../fitness.js";
+import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -176,7 +176,11 @@ export function trainingPlan(entries, chosen = "all") {
       level: entry.resistance ?? null,
       lapLevels: (entry.laps ?? []).map((lap) => lap.resistance).filter((level) => level > 0),
       avgHeartRate: entry.summary?.avgHeartRate ?? null,
-      laps: (entry.laps ?? []).map((lap) => ({ offset: (lap.startMs - entry.startMs) / 1000, heartRate: lap.avgHeartRate, power: lap.avgPower })),
+      // The laps' heart rate over the clean readings, without the watch's dropouts and jumps.
+      laps: (() => {
+        const rates = lapHeartRates(entry);
+        return (entry.laps ?? []).map((lap, index) => ({ offset: (lap.startMs - entry.startMs) / 1000, heartRate: rates[index], power: lap.avgPower }));
+      })(),
     };
   });
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.

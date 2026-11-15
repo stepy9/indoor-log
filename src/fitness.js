@@ -573,6 +573,29 @@ export function withCleanHeartRate(entry) {
   return time ? { ...entry, summary: { ...entry.summary, avgHeartRate: Math.round(sum / time) } } : entry;
 }
 
+// Each lap's average heart rate over the clean readings (the records' seconds counted from the activity's start),
+// the lap's own when there are no records or no clean reading in it.
+export function lapHeartRates(entry) {
+  const laps = entry.laps ?? [];
+  if (!entry.records?.heartRate) return laps.map((lap) => lap.avgHeartRate ?? null);
+  const values = heartRateOf(entry);
+  const { seconds } = entry.records;
+  const dts = steps(seconds);
+  return laps.map((lap) => {
+    const from = (lap.startMs - entry.startMs) / 1000;
+    const to = (lap.endMs - entry.startMs) / 1000;
+    let sum = 0;
+    let time = 0;
+    seconds.forEach((second, index) => {
+      if (second > from && second <= to && values[index] > 0) {
+        sum += values[index] * dts[index];
+        time += dts[index];
+      }
+    });
+    return time ? Math.round(sum / time) : lap.avgHeartRate ?? null;
+  });
+}
+
 // The load of the activities split by the primary benefit's group, with how many activities each benefit had:
 // { load: { lowAerobic, highAerobic, anaerobic }, total, counts: { benefit: n } }. Activities without a benefit
 // are left out.
