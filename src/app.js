@@ -943,6 +943,10 @@ byId("kinomapButton").addEventListener("click", async () => {
     if (error.name !== "AbortError") elements.kinomapInput.click();
   }
 });
+// iOS knows no file types for .tcx, .pwx or .fit, so an accept list greys them out in its picker; there every file can be picked and is checked after.
+if (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
+  for (const input of document.querySelectorAll("input[type=file][accept]")) input.removeAttribute("accept");
+}
 byId("continueButton").addEventListener("click", () => showView("workspace"));
 byId("changeFilesButton").addEventListener("click", () => showView("setup"));
 byId("fitButton").addEventListener("click", () => elements.fitInput.click());
