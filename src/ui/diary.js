@@ -5,7 +5,7 @@ import { aerobicEffect, benefitGroup, benefitGroups, benefits, focusAdvice, focu
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
-import { trainingPlan, zoneGroups } from "./fitness.js";
+import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
 import { infoHint } from "./info.js";
 
@@ -47,10 +47,9 @@ function renderPlan() {
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
-  const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
   // The trainer's resistance, a level or a range of them.
   const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
-  const steady = watts(plan.steadyWatts) + beats(plan.steadyHeartRate) + level(plan.levels?.steady);
+  const steady = steadyGuide(plan, sport);
   const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
     : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
     : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady);

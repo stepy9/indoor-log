@@ -206,3 +206,33 @@ export function suggestedLevels(workouts, heartRange, today) {
   const intervals = hard.length ? [Math.round(median(hard.map((levels) => Math.min(...levels)))), Math.round(median(hard.map((levels) => Math.max(...levels))))] : null;
   return { steady, intervals };
 }
+
+// The power to start a steady workout at, from the laps of the last four weeks' steady workouts: the heart rate
+// against the power of the laps from the fifth minute on (before that the heart is still catching up) whose heart
+// rate came within 10 beats of the range given (zone 2), leaving out a strap's dropouts and all-out efforts; a
+// straight line through them, read at the range's middle and rounded to 5 W. Kept within the powers
+// the laps ran at, and null with fewer than four such laps over two workouts or when the heart does not rise with
+// the power. workouts as nextStep's, with laps [{ offset, heartRate, power }] (offset in seconds from the start).
+export function steadyStartWatts(workouts, heartRange, today) {
+  if (!heartRange) return null;
+  const since = addDays(today, -28);
+  const near = (rate) => rate >= heartRange[0] - 10 && rate <= heartRange[1] + 10;
+  const used = workouts.filter((workout) => workout.day > since && workout.kind === "steady")
+    .map((workout) => (workout.laps ?? []).filter((lap) => lap.offset >= 300 && near(lap.heartRate) && lap.power > 0))
+    .filter((laps) => laps.length);
+  const points = used.flat();
+  if (points.length < 4 || used.length < 2) return null;
+  const mean = (pick) => points.reduce((sum, lap) => sum + pick(lap), 0) / points.length;
+  const power = mean((lap) => lap.power);
+  const heart = mean((lap) => lap.heartRate);
+  const spread = points.reduce((sum, lap) => sum + (lap.power - power) ** 2, 0);
+  const slope = spread ? points.reduce((sum, lap) => sum + (lap.power - power) * (lap.heartRate - heart), 0) / spread : 0;
+  if (!(slope > 0)) return null;
+  const at = power + ((heartRange[0] + heartRange[1]) / 2 - heart) / slope;
+  const powers = points.map((lap) => lap.power);
+  return Math.round(Math.min(Math.max(at, Math.min(...powers)), Math.max(...powers) * 1.1) / 5) * 5;
+}
+
+// The cadence to keep steady workouts at, by sport: strokes a minute on the rower, turns of the pedals on the bike.
+// The effort changes with the force of each stroke or the resistance, not with a faster cadence.
+export const steadyCadence = { rowing: [20, 24], cycling: [80, 95] };

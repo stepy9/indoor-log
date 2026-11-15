@@ -1,6 +1,6 @@
 import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
-import { longestByWeek, nextStep, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
+import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
@@ -176,6 +176,7 @@ export function trainingPlan(entries, chosen = "all") {
       level: entry.resistance ?? null,
       lapLevels: (entry.laps ?? []).map((lap) => lap.resistance).filter((level) => level > 0),
       avgHeartRate: entry.summary?.avgHeartRate ?? null,
+      laps: (entry.laps ?? []).map((lap) => ({ offset: (lap.startMs - entry.startMs) / 1000, heartRate: lap.avgHeartRate, power: lap.avgPower })),
     };
   });
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
@@ -189,8 +190,24 @@ export function trainingPlan(entries, chosen = "all") {
   plan.steadyHeartRate = bounds.every(Number.isFinite) ? bounds.map(Math.round) : null;
   // The trainer's resistance for them, from the levels used before.
   plan.levels = suggestedLevels(workouts, plan.steadyHeartRate, today());
+  // The power to start at, from the laps whose heart rate settled near zone 2's middle, else the middle of the
+  // FTP's range; the heart rate leads once it has caught up. And the cadence to hold meanwhile.
+  plan.startWatts = steadyStartWatts(workouts, plan.steadyHeartRate, today())
+    ?? (plan.steadyWatts ? Math.round((plan.steadyWatts[0] + plan.steadyWatts[1]) / 10) * 5 : null);
+  plan.cadence = steadyCadence[sport] ?? null;
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+}
+
+// How to ride a steady workout: the heart rate to hold, the power to start at, the cadence and the resistance.
+export function steadyGuide(plan, sport) {
+  const parts = [];
+  if (plan.steadyHeartRate) parts.push(t("planHeart", { from: plan.steadyHeartRate[0], to: plan.steadyHeartRate[1] }));
+  if (plan.startWatts) parts.push(t("planStartWatts", { watts: plan.startWatts }));
+  if (plan.cadence) parts.push(`${plan.cadence[0]}–${plan.cadence[1]} ${sport === "rowing" ? "SPM" : "RPM"}`);
+  const level = plan.levels?.steady;
+  if (level != null) parts.push(t("planLevel", { level }));
+  return parts.map((part) => ` · ${part}`).join("");
 }
 
 function renderNextStep() {
@@ -201,7 +218,6 @@ function renderNextStep() {
   const { sport, plan } = result;
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
-  const beats = (range) => (range ? ` · ${range[0]}–${range[1]} bpm` : "");
   const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
   const line = (title, text, className = "") => {
     const row = node("div", { class: `fitness-next-row ${className}` });
@@ -209,11 +225,12 @@ function renderNextStep() {
     return row;
   };
   const rows = [];
+  const steady = steadyGuide(plan, sport);
   // The longer workout, or the note that this week's is done.
   rows.push(plan.doneLong
     ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
     : line(t("nextLong"), t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
-  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + watts(plan.steadyWatts) + beats(plan.steadyHeartRate) + level(plan.levels?.steady)));
+  rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
   rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))

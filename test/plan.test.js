@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { longestByWeek, mondayOf, nextStep, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -147,4 +147,18 @@ test("the suggested resistance is the steady level nearest zone 2's middle and t
   ];
   assert.deepEqual(suggestedLevels(workouts, [127, 141], "2026-11-10"), { steady: 6, intervals: [12, 14] });
   assert.deepEqual(suggestedLevels([], null, "2026-11-10"), { steady: null, intervals: null });
+});
+
+test("the steady start power is where the laps from the fifth minute put the heart rate at zone 2's middle", () => {
+  const laps = (pairs) => pairs.map(([heartRate, power], index) => ({ offset: index * 170, heartRate, power }));
+  const steady = (day, pairs) => ({ day, kind: "steady", laps: laps(pairs) });
+  const workouts = [
+    steady("2026-11-10", [[103, 77], [117, 86], [124, 89], [129, 88]]),
+    steady("2026-11-13", [[105, 85], [133, 90], [137, 91], [144, 91]]),
+    steady("2026-11-15", [[107, 67], [116, 68], [126, 72], [127, 70], [127, 70], [75, 112]]),
+  ];
+  // The first lap of each is left out, being before the fifth minute, and so is the strap's dropout to 75.
+  assert.equal(steadyStartWatts(workouts, [127, 141], "2026-11-16"), 90);
+  assert.equal(steadyStartWatts(workouts.slice(0, 1), [127, 141], "2026-11-16"), null);
+  assert.equal(steadyStartWatts(workouts, null, "2026-11-16"), null);
 });
