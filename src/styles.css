@@ -1431,3 +1431,46 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .fitness-body-chip[aria-pressed="true"] .fitness-swatch { opacity: 1; }
 .fitness-body-dot.is-faint { opacity: .45; }
 .fitness-body-load { fill: var(--subtle); opacity: .35; }
+
+/* Stretching after a rowing workout: the set's card, and its player, full screen on a phone. */
+.diary-stretched { color: var(--success); font-weight: 700; }
+.recovery-status { margin: 6px 0 0; color: var(--success); font-size: 13px; font-weight: 600; }
+.recovery-details { margin-top: 10px; }
+.recovery-details summary { color: var(--accent-ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.recovery-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 12px 0; padding: 0; list-style: none; }
+.recovery-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.recovery-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.recovery-text p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.recovery-dose { color: var(--accent-ink); font-size: 12px; font-weight: 600; }
+.recovery-figure { flex: none; width: 110px; height: 85px; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.recovery-figure .mat { fill: var(--line-strong); stroke: none; }
+.recovery-figure .limb, .recovery-figure .trunk, .recovery-figure .neck { stroke: color-mix(in srgb, var(--ink) 80%, var(--surface)); }
+.recovery-figure .limb { stroke-width: 11; }
+.recovery-figure .leg { stroke-width: 12; }
+.recovery-figure .trunk { stroke-width: 18; }
+.recovery-figure .neck { stroke-width: 10; }
+.recovery-figure .head { fill: color-mix(in srgb, var(--ink) 80%, var(--surface)); stroke: none; }
+.recovery-figure .focus { stroke: var(--orange); stroke-width: 5; }
+.recovery-player { width: min(480px, 100vw); max-width: 100vw; padding: 20px; border: 0; border-radius: var(--radius); color: var(--ink); background: var(--surface); text-align: center; }
+.recovery-player::backdrop { background: rgba(11, 18, 32, .6); }
+.recovery-player-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
+.recovery-player-phase { display: block; min-height: 20px; margin-top: 8px; color: var(--accent-ink); font-weight: 700; }
+.recovery-player h2 { margin: 4px 0 0; font-size: 22px; }
+.recovery-player-figure .recovery-figure { width: 100%; height: auto; max-height: 34vh; }
+.recovery-player-clock { margin: 8px 0; font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.recovery-player.is-rest .recovery-player-clock { color: var(--muted); }
+.recovery-player.is-rest .recovery-player-figure { opacity: .45; }
+.recovery-player.is-paused .recovery-player-clock { opacity: .4; }
+.recovery-player.is-done .recovery-player-clock { color: var(--success); }
+.recovery-player.is-done .recovery-player-actions { display: none; }
+.recovery-player-how { min-height: 3em; margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+.recovery-player-actions { display: flex; gap: 10px; justify-content: center; }
+.recovery-player-actions button { flex: 1; min-height: 48px; }
+@media (max-width: 640px) {
+  .recovery-player { width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; display: none; flex-direction: column; }
+  .recovery-player[open] { display: flex; }
+  .recovery-player-how { flex: 1; }
+  .recovery-card .panel-title-row { flex-wrap: wrap; }
+  .recovery-card #compareRecoveryStart { width: 100%; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .recovery-figure animate { display: none; } }

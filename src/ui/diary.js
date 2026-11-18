@@ -579,6 +579,8 @@ function activityButton(entry, settings) {
   const name = Object.assign(document.createElement("span"), { className: "diary-activity-name", textContent: entry.name.replace(/^Kinomap - /, "") });
   // With several sports shown, each activity also names its sport by an icon.
   if (mixedSports()) name.prepend(Object.assign(document.createElement("span"), { className: "diary-sport", textContent: `${sportIcon[entry.sport]} `, ariaHidden: "true" }));
+  // Stretched after it, through the set in the activity's detail.
+  if (entry.stretched) name.append(Object.assign(document.createElement("span"), { className: "diary-stretched", textContent: " ✓", title: t("recoveryStretched") }));
   button.append(
     name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
