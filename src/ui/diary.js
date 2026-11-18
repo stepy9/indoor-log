@@ -6,7 +6,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
-import { answerReminder, remindersDue, settingsFor } from "./settings.js";
+import { bodyToday, enterBodyValue, settingsFor } from "./settings.js";
 import { checkNumber } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
@@ -751,40 +751,63 @@ function renderZones(current, previous) {
   byId("diaryZones").replaceChildren(...zoneGroups(current, settingsFor(view.entries), view.sport, previous));
 }
 
-// The weight and resting heart rate not touched for a while, each with a field for the new value and a button
-// keeping the one set; either answer puts the reminder off for another while.
-const reminderRanges = { weight: { min: 30, max: 250, decimals: 1 }, restHeartRate: { min: 30, max: 100 } };
+// The weight and the resting heart rate, to be entered quickly any day: each with how long ago it was entered
+// and a field for today's value. One not touched for a while is asked about, the card then tinted, with a
+// button keeping the value as it was; either answer puts the question off for another while.
+const bodyRanges = { weight: { min: 30, max: 250, decimals: 1 }, restHeartRate: { min: 30, max: 100 } };
+const bodyUnits = { weight: "kg", restHeartRate: "bpm" };
+// What was entered here since the page opened, shown in place of the value's age: { key: text }.
+const entered = {};
+
+const bodyNumber = (value) => displayNumber(value, value % 1 ? 1 : 0);
+
+function ageText(days) {
+  if (days === null) return "";
+  return days === 0 ? t("bodyToday") : days === 1 ? t("bodyYesterday") : t("bodyDaysAgo", { days });
+}
 
 function renderReminders() {
   const box = byId("diaryReminders");
-  const due = remindersDue();
-  box.hidden = !due.length;
-  box.replaceChildren(...due.map(({ key, value, days }) => {
+  const status = bodyToday();
+  box.hidden = false;
+  box.classList.toggle("is-due", status.some((item) => item.due));
+  const firstDay = view.entries.length ? dayKey(Math.min(...view.entries.map((entry) => entry.startMs)), zone) : null;
+  box.replaceChildren(...status.map(({ key, value, days, due }) => {
     const row = document.createElement("div");
-    row.className = "diary-reminder";
+    row.className = `diary-reminder${due ? " is-due" : ""}`;
     row.dataset.fieldRow = "";
-    const number = displayNumber(value, value % 1 ? 1 : 0);
-    const shown = `${number} ${key === "weight" ? "kg" : "bpm"}`;
+    const shown = value === null ? "" : `${bodyNumber(value)} ${bodyUnits[key]}`;
     const text = document.createElement("span");
-    text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
-    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: number });
+    if (due) text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
+    else {
+      const name = Object.assign(document.createElement("strong"), { textContent: t(`body_${key}`) });
+      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days)].filter(Boolean).join(" · "));
+      text.append(name, " ", Object.assign(document.createElement("span"), { className: entered[key] ? "diary-reminder-done" : "diary-reminder-age", textContent: rest }));
+    }
+    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: value === null ? bodyUnits[key] : bodyNumber(value) });
     input.setAttribute("inputmode", key === "weight" ? "decimal" : "numeric");
     input.setAttribute("aria-label", t(key === "weight" ? "settingsWeightLabel" : "fitnessRestHrLabel"));
     const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
-    const keep = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("reminderKeep") });
     const answer = (next) => {
-      answerReminder(key, next);
+      enterBodyValue(key, next, firstDay);
+      const change = next !== null && value !== null && next !== value ? next - value : null;
+      entered[key] = next === null || next === value ? t("bodyConfirmed", { value: shown })
+        : t("bodyEntered", { value: `${bodyNumber(next)} ${bodyUnits[key]}`, change: change === null ? "" : ` (${change > 0 ? "+" : "−"}${bodyNumber(Math.round(Math.abs(change) * 10) / 10)})` });
       render();
     };
     save.addEventListener("click", () => {
-      const next = checkNumber(input, { ...reminderRanges[key], required: true });
+      const next = checkNumber(input, { ...bodyRanges[key], required: true });
       if (next !== undefined) answer(next);
     });
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") save.click();
     });
-    keep.addEventListener("click", () => answer(null));
-    row.append(text, input, save, keep);
+    row.append(text, input, save);
+    if (due) {
+      const keep = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("reminderKeep") });
+      keep.addEventListener("click", () => answer(null));
+      row.append(keep);
+    }
     return row;
   }));
 }

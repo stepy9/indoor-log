@@ -532,6 +532,24 @@
             <p class="field-note info-note" data-i18n="fitnessFtpNote"></p>
           </section>
           <section class="card">
+            <div class="panel-title-row">
+              <span class="field-label" data-i18n="bodyChartTitle">Hmotnost a klidový tep</span>
+            </div>
+            <div class="fitness-body-charts">
+              <div class="fitness-body-chart">
+                <span class="estimate-note" data-i18n="body_weight">Hmotnost</span>
+                <svg class="diary-chart" id="fitnessWeightChart" role="img" aria-label="Hmotnost" data-i18n-aria="body_weight"></svg>
+                <div class="diary-tooltip" id="fitnessWeightTooltip" role="tooltip" hidden></div>
+              </div>
+              <div class="fitness-body-chart">
+                <span class="estimate-note" data-i18n="body_restHeartRate">Klidový tep</span>
+                <svg class="diary-chart" id="fitnessRestChart" role="img" aria-label="Klidový tep" data-i18n-aria="body_restHeartRate"></svg>
+                <div class="diary-tooltip" id="fitnessRestTooltip" role="tooltip" hidden></div>
+              </div>
+            </div>
+            <p class="field-note" id="fitnessBodyEmpty" data-i18n="bodyChartEmpty" hidden></p>
+          </section>
+          <section class="card">
             <span class="field-label" data-i18n="fitnessEfficiencyTitle">Aerobní efektivita</span>
             <svg class="diary-chart" id="fitnessEfficiencyChart" role="img" aria-label="Aerobní efektivita" data-i18n-aria="fitnessEfficiencyTitle"></svg>
             <p class="field-note" id="fitnessEfficiencySummary"></p>

@@ -21,3 +21,18 @@ test("the resting heart rate is asked for only when set, after a month or when i
   assert.deepEqual(dueReminders({ restHeartRate: 52 }, rest, "2026-11-15"), []);
   assert.equal(dueReminders({ restHeartRate: 52 }, rest, "2026-11-19").length, 1);
 });
+
+import { bodyPoints, bodyStatus } from "../src/reminders.js";
+
+test("every value is listed, the one never entered without a value and never due", () => {
+  assert.deepEqual(bodyStatus({}, history, "2026-11-03"), [
+    { key: "weight", value: 78, since: "2026-11-01", days: 2, due: false },
+    { key: "restHeartRate", value: null, since: null, days: null, due: false },
+  ]);
+});
+
+test("a chart's points are the days entered, the value before the range holding from its first day", () => {
+  const list = [{ from: "0000-00-00", value: 80, at: 0 }, { from: "2026-10-01", value: 79, at: 1 }, { from: "2026-11-02", value: 78, at: 2 }, { from: "2026-11-05", deleted: true, at: 3 }];
+  assert.deepEqual(bodyPoints(list, "2026-10-15", "2026-11-18"), [{ day: "2026-10-15", value: 79, carried: true }, { day: "2026-11-02", value: 78 }]);
+  assert.deepEqual(bodyPoints(list, "2026-09-01", "2026-11-18").map((point) => point.value), [80, 79, 78]);
+});

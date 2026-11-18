@@ -2,7 +2,8 @@ import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, f
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
-import { goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
+import { bodyPoints } from "../reminders.js";
+import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses } from "./excuse.js";
@@ -767,6 +768,100 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
+// The weight and the resting heart rate over the range, each in its own chart: the values entered as dots
+// joined by a line, the one entered before the range holding from its first day.
+const bodyCharts = [
+  { key: "weight", chart: "fitnessWeightChart", tooltip: "fitnessWeightTooltip", unit: "kg", color: "var(--compare-1)" },
+  { key: "restHeartRate", chart: "fitnessRestChart", tooltip: "fitnessRestTooltip", unit: "bpm", color: "var(--compare-2)" },
+];
+
+function renderBodyCharts() {
+  const end = today();
+  const days = ranges[view.range];
+  const history = bodyHistory();
+  // The whole period starts with the first workout or the first value entered, whichever is earlier.
+  const firstWorkout = view.entries.length ? dayKey(Math.min(...view.entries.map((entry) => entry.startMs)), zone) : end;
+  const earliest = [firstWorkout, ...bodyCharts.flatMap((item) => bodyPoints(history[item.key], "0000-00-01", end).filter((point) => !point.carried).map((point) => point.day))].sort()[0];
+  const from = Number.isFinite(days) ? addDays(end, -(days - 1)) : earliest;
+  let any = false;
+  view.bodyLayouts = {};
+  for (const item of bodyCharts) {
+    const chart = byId(item.chart);
+    const points = bodyPoints(history[item.key], from, end);
+    const has = points.some((point) => !point.carried);
+    chart.parentElement.hidden = !has;
+    if (!has) continue;
+    any = true;
+    const width = Math.max(260, Math.round(chart.parentElement.getBoundingClientRect().width) || 400);
+    const height = 170;
+    const margin = { left: 44, right: 12, top: 12, bottom: 26 };
+    const values = points.map((point) => point.value);
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    const yStep = [0.5, 1, 2, 5, 10, 20].find((size) => (high - low) / size <= 4) ?? 20;
+    const minY = Math.floor(low / yStep) * yStep - yStep;
+    const maxY = Math.ceil(high / yStep) * yStep + yStep;
+    const axisStart = Date.parse(`${from}T00:00:00Z`);
+    const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
+    const xForKey = (key) => margin.left + ((Date.parse(`${key}T12:00:00Z`) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
+    const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
+    const children = [];
+    for (let value = minY; value <= maxY + 1e-9; value += yStep) {
+      children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
+      children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value, yStep % 1 ? 1 : 0)));
+    }
+    children.push(...dateTicks(from, end, xForKey, { margin, width, height }));
+    // The line goes on to today at the last value, as it still holds.
+    const path = [...points, { day: end, value: points.at(-1).value }].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
+    children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
+    for (const point of points.filter((point) => !point.carried)) {
+      children.push(node("circle", { cx: xForKey(point.day), cy: yFor(point.value), r: 3, class: "fitness-body-dot", style: `fill: ${item.color}` }));
+    }
+    const guide = node("g");
+    children.push(guide);
+    view.bodyLayouts[item.key] = { item, points, from, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
+    chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    chart.style.height = `${height}px`;
+    chart.replaceChildren(...children);
+  }
+  byId("fitnessBodyEmpty").hidden = any;
+}
+
+// The day under the pointer with the value that held on it, and whether it was entered on that day.
+function showBodyTooltip(key, event) {
+  const layout = view.bodyLayouts?.[key];
+  if (!layout) return;
+  const { item } = layout;
+  const tooltip = byId(item.tooltip);
+  const box = byId(item.chart).getBoundingClientRect();
+  const x = ((event.clientX - box.left) / box.width) * layout.width;
+  const plotWidth = layout.width - layout.margin.left - layout.margin.right;
+  const ms = layout.axisStart + ((x - layout.margin.left) / plotWidth) * (layout.axisEnd - layout.axisStart);
+  const pointed = new Date(Math.min(layout.axisEnd - 1, Math.max(layout.axisStart, ms))).toISOString().slice(0, 10);
+  const day = pointed < layout.from ? layout.from : pointed > layout.end ? layout.end : pointed;
+  const held = layout.points.filter((point) => point.day <= day).at(-1);
+  if (!held) return;
+  const at = layout.xForKey(day);
+  layout.guide.replaceChildren(node("line", { x1: at, x2: at, y1: layout.margin.top, y2: layout.height - layout.margin.bottom, class: "fitness-guide" }));
+  const row = node("div", { class: "diary-tooltip-row" });
+  const swatch = node("span", { class: "fitness-swatch" });
+  swatch.style.background = item.color;
+  const enteredThen = held.day === day && !held.carried;
+  row.append(swatch, node("span", {}, enteredThen ? t("bodyEnteredOn") : t("bodyHeld")), node("strong", {}, `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${item.unit}`));
+  tooltip.replaceChildren(node("div", { class: "diary-tooltip-when" }, dayText(day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })), row);
+  tooltip.hidden = false;
+  const card = tooltip.offsetParent.getBoundingClientRect();
+  const left = (at / layout.width) * box.width + box.left - card.left;
+  const right = left + 14;
+  tooltip.style.left = `${Math.max(8, right + tooltip.offsetWidth > card.width - 8 ? left - tooltip.offsetWidth - 14 : right)}px`;
+  tooltip.style.top = `${box.top - card.top + 12}px`;
+}
+
+function hideBodyTooltip(key) {
+  byId(bodyCharts.find((item) => item.key === key).tooltip).hidden = true;
+  view.bodyLayouts?.[key]?.guide.replaceChildren();
+}
+
 // The activity a best came from: its name without the "Kinomap - " every conversion starts with, and its date kept on one line.
 const fromText = (entry) => `${(entry.name ?? sportLabel(entry.sport)).replace(/^Kinomap - /, "")} · ${dayText(dayKey(entry.startMs, zone)).replaceAll(" ", " ")}`;
 
@@ -1073,6 +1168,7 @@ function render() {
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
+  renderBodyCharts();
   renderSummary(history);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
@@ -1111,6 +1207,7 @@ export function setupFitness({ onOpen }) {
   const chart = byId("fitnessLoadChart");
   hoverable(chart, showLoadTooltip, hideLoadTooltip);
   hoverable(byId("fitnessFtpChart"), showFtpTooltip, hideFtpTooltip);
+  for (const { key, chart } of bodyCharts) hoverable(byId(chart), (event) => showBodyTooltip(key, event), () => hideBodyTooltip(key));
   let width = 0;
   new ResizeObserver(([item]) => {
     const next = Math.round(item.contentRect.width);

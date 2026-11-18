@@ -6,7 +6,7 @@ import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.j
 // Trainers whose percentage conversion is unfolded in the settings, kept across re-renders.
 const openConversions = new Set();
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
-import { dayKey } from "../diary.js";
+import { addDays, dayKey } from "../diary.js";
 import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
@@ -16,7 +16,7 @@ import { setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapWorkouts } from "../training.js";
-import { dueReminders } from "../reminders.js";
+import { bodyStatus } from "../reminders.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -96,18 +96,23 @@ export function perKgText(watts, ms) {
   return kg && Number.isFinite(watts) ? `${displayNumber(watts / kg, 2)} W/kg` : "";
 }
 
-// The weight and resting heart rate due to be checked again, for the reminder in the diary.
-export const remindersDue = () => dueReminders(remembered(), savedHistory(), dayKey(Date.now(), zone));
+// The weight and resting heart rate as they stand today, for the quick entry in the diary.
+export const bodyToday = () => bodyStatus(remembered(), savedHistory(), dayKey(Date.now(), zone));
 
-// A value from the reminder: a new one is written from today; the same one, or none, only marks it checked today.
-export function answerReminder(key, value) {
+// The general histories, for the charts of the weight and the resting heart rate.
+export const bodyHistory = () => savedHistory();
+
+// A value entered in the diary: a new one is written from today; the same one, or none, only marks it checked
+// today. The first weight ever holds from the first workout (firstDay), so the whole library gets its W/kg.
+export function enterBodyValue(key, value, firstDay = null) {
   const saved = remembered();
   const today = dayKey(Date.now(), zone);
   const reminders = { ...saved.reminders, [key]: today };
   if (key === "weight") {
     const current = weightOn({ history: savedHistory(), timeZone: zone }, Date.now());
     if (value > 0 && value !== current) {
-      const list = [...savedWeights().filter((item) => item.from !== today), { from: today, kg: value }];
+      const from = !savedWeights().length && firstDay && firstDay < today ? firstDay : today;
+      const list = [...savedWeights().filter((item) => item.from !== from), { from, kg: value }];
       saveFitness({ reminders, history: { ...savedHistory(), weight: withRecords(savedHistory().weight, list, "kg") }, weightHistory: undefined, weight: undefined });
       return;
     }
@@ -831,7 +836,11 @@ function weightBlock() {
   table.append(node("thead"), node("tbody"));
   table.tHead.append(head);
   const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
-  for (const { record, index } of order) {
+  // Entered day by day the list grows long: the last week's records show (at least the latest), the rest on demand.
+  const weekAgo = addDays(dayKey(Date.now(), zone), -6);
+  const recent = order.filter(({ record }, at) => !at || (record.from && record.from >= weekAgo));
+  const shown = showAllWeights ? order : recent;
+  for (const { record, index } of shown) {
     const update = (patch) => write(history.map((item, at) => (at === index ? { ...item, ...patch } : item)));
     const from = dateField(`weight-from-${index}`, record.from, (value) => update({ from: value }));
     // Text with a decimal keyboard, as a number field drops a comma under some browser languages.
@@ -856,8 +865,19 @@ function weightBlock() {
     table.tBodies[0].append(row);
   }
   block.append(table);
+  if (order.length > recent.length) {
+    const toggle = node("button", { type: "button", class: "link-button settings-show-all" }, showAllWeights ? t("settingsShowRecent") : t("settingsShowAll", { count: order.length }));
+    toggle.addEventListener("click", () => {
+      showAllWeights = !showAllWeights;
+      render();
+    });
+    block.append(toggle);
+  }
   return block;
 }
+
+// Whether the whole weight history is unfolded, kept across re-renders.
+let showAllWeights = false;
 
 function ftpBlock(sport, settings, estimate) {
   const block = node("div", { class: "settings-ftp" });
