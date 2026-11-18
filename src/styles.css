@@ -574,6 +574,12 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 /* A question, not a card of figures: tinted, with an accent edge, its answer right after the text. */
 .diary-reminders { display: grid; gap: 6px; padding: 10px 14px; border: 1px solid transparent; border-left: 3px solid var(--accent); background: var(--accent-soft); box-shadow: none; }
 .diary-reminder { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--accent-ink); }
+/* Side by side, the fields and buttons of each question line up in columns. */
+@media (min-width: 641px) {
+  .diary-reminders { grid-template-columns: max-content auto auto auto; justify-content: start; align-items: center; column-gap: 10px; }
+  .diary-reminder { display: contents; }
+  .diary-reminder > .field-error { grid-column: 1 / -1; }
+}
 .diary-reminder > span:first-child { margin-right: 4px; }
 .diary-reminder .outline-button { margin-top: 0; height: 28px; padding: 0 10px; }
 .diary-reminder .link-button { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
