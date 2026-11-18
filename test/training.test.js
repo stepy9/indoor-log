@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -241,4 +241,17 @@ test("the extras are known by name and scored by their own measure", () => {
   assert.equal(progression.as, "progression");
   assert.equal(progression.score, 100);
   assert.equal(progression.swapped, false);
+});
+
+test("an FTP test with laps by distance only is found by its minutes at the most power", () => {
+  // 30 minutes at 90 W with 5 minutes at 140 W from the 18th, a little stronger in their second half; laps of 500 m.
+  const seconds = Array.from({ length: 1800 }, (_, index) => index + 1);
+  const power = seconds.map((second) => (second > 1080 && second <= 1380 ? (second <= 1230 ? 138 : 142) : 90));
+  const laps = Array.from({ length: 12 }, (_, index) => ({ timerSeconds: 150, avgPower: 95, startMs: index * 150_000, endMs: (index + 1) * 150_000 }));
+  const entry = { name: "Kinomap - FTP test 5 min", startMs: 0, laps, records: { seconds, power } };
+  for (const minutes of [5, null]) {
+    const part = testPart(entry, minutes);
+    assert.equal(part.minutes, 5);
+    assert.deepEqual(part.halves, [138, 142]);
+  }
 });

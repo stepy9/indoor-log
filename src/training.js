@@ -373,3 +373,48 @@ export function pickWorkouts(names, intervals) {
     wanted: intervals ? `${intervals.repeats}x${intervals.minutes} min` : null,
   };
 }
+
+// The stretch of the minutes given at the highest average power, as [from, to] seconds; null without power.
+function bestStretch(entry, minutes) {
+  const { seconds = [], power = [] } = entry.records ?? {};
+  const span = minutes * 60;
+  let best = null;
+  let sum = 0;
+  let count = 0;
+  let start = 0;
+  for (let end = 0; end < seconds.length; end += 1) {
+    if (Number.isFinite(power[end])) { sum += power[end]; count += 1; }
+    while (seconds[end] - seconds[start] >= span) {
+      if (Number.isFinite(power[start])) { sum -= power[start]; count -= 1; }
+      start += 1;
+    }
+    if (seconds[end] - seconds[start] >= span - 2 && count && (!best || sum / count > best.average)) best = { average: sum / count, from: seconds[start] - 1, to: seconds[end] };
+  }
+  return best ? [best.from, best.to] : null;
+}
+
+// An FTP test's all-out part: the lap nearest the planned length (or of four minutes or more at the most power),
+// with its two halves' average power. Laps by distance, none as long as the test, leave the stretch of the test's
+// minutes (as planned, or by the workout's name) at the most power. { minutes, halves } or nulls.
+export function testPart(entry, minutes) {
+  const laps = (entry.laps ?? []).filter((lap) => lap.timerSeconds >= 180 && lap.avgPower > 0);
+  const length = minutes ?? Number((entry.name ?? "").match(/(\d+)\s*min/i)?.[1]) ?? null;
+  const lap = !laps.length ? null : minutes
+    ? laps.reduce((best, item) => (Math.abs(item.timerSeconds - minutes * 60) < Math.abs(best.timerSeconds - minutes * 60) ? item : best))
+    : laps.reduce((best, item) => (item.avgPower > best.avgPower ? item : best));
+  const fits = lap && (!length || Math.abs(lap.timerSeconds - length * 60) <= length * 60 * 0.25);
+  const stretch = fits ? [(lap.startMs - entry.startMs) / 1000, (lap.endMs - entry.startMs) / 1000] : length > 0 ? bestStretch(entry, length) : null;
+  if (!stretch) return { minutes: null, halves: null };
+  const { seconds, power = [] } = entry.records;
+  const [from, to] = stretch;
+  const middle = (from + to) / 2;
+  const sums = [[0, 0], [0, 0]];
+  seconds.forEach((second, index) => {
+    if (second <= from || second > to || !Number.isFinite(power[index])) return;
+    const half = sums[second <= middle ? 0 : 1];
+    half[0] += power[index];
+    half[1] += 1;
+  });
+  const halves = sums.every(([, count]) => count) ? sums.map(([sum, count]) => sum / count) : null;
+  return { minutes: (to - from) / 60, halves };
+}

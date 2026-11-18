@@ -109,7 +109,7 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       mark.textContent = "–";
     }
     const text = item.status === "done"
-      ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${kindLabel(workout.kind, sport)}`).join(", ")
+      ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${workout.ftpTest ? t("scoreAs_ftpTest") : kindLabel(workout.kind, sport)}`).join(", ")
       : excuse ? excuseText(excuse) : item.status === "missed" ? t("planMissed") : planned(item.type);
     row.append(mark, when);
     // The scores in a column of their own after the day, empty on the days not ridden, so the text lines up.

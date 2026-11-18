@@ -2,7 +2,7 @@ import { workoutKind } from "../analysis.js";
 import { dayKey } from "../diary.js";
 import { decoupling, forSport, heartRateAt, heartRateOf, steps } from "../fitness.js";
 import { valueOn } from "../history.js";
-import { logPlan, plannedDay, progressionBuild, scoreWorkout, workoutFromName } from "../training.js";
+import { logPlan, plannedDay, progressionBuild, scoreWorkout, testPart, workoutFromName } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { zone } from "./context.js";
 
@@ -21,29 +21,6 @@ export function keepPlan(sport, days, plan, today) {
 // Whether the sport has the Training section filled in: then it gets the Training tab and its workouts a score.
 export const hasTraining = (settings, sport) => Boolean(settings.sports?.[sport]?.plan);
 export const anyTraining = (settings) => Object.keys(settings.sports ?? {}).some((sport) => hasTraining(settings, sport));
-
-// An FTP test's all-out part: the lap nearest the planned length (or of four minutes or more at the most power),
-// with its two halves' average power. { minutes, halves } or nulls.
-function testPart(entry, minutes) {
-  const laps = (entry.laps ?? []).filter((lap) => lap.timerSeconds >= 180 && lap.avgPower > 0);
-  if (!laps.length) return { minutes: null, halves: null };
-  const lap = minutes
-    ? laps.reduce((best, item) => (Math.abs(item.timerSeconds - minutes * 60) < Math.abs(best.timerSeconds - minutes * 60) ? item : best))
-    : laps.reduce((best, item) => (item.avgPower > best.avgPower ? item : best));
-  const { seconds, power = [] } = entry.records;
-  const from = (lap.startMs - entry.startMs) / 1000;
-  const to = (lap.endMs - entry.startMs) / 1000;
-  const middle = (from + to) / 2;
-  const sums = [[0, 0], [0, 0]];
-  seconds.forEach((second, index) => {
-    if (second <= from || second > to || !Number.isFinite(power[index])) return;
-    const half = sums[second <= middle ? 0 : 1];
-    half[0] += power[index];
-    half[1] += 1;
-  });
-  const halves = sums.every(([, count]) => count) ? sums.map(([sum, count]) => sum / count) : null;
-  return { minutes: lap.timerSeconds / 60, halves };
-}
 
 // What scoring reads from a workout: its time, kind, the heart rate against the zone 2 range after the first three
 // minutes, the drift, the laps and an FTP test's all-out part.
