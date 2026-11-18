@@ -17,6 +17,7 @@ import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapWorkouts } from "../training.js";
 import { bodyStatus } from "../reminders.js";
+import { parseGarminCsv } from "../garmin-csv.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -325,7 +326,7 @@ function generalPane() {
   remindBox.checked = !remembered().reminders?.off;
   remindBox.addEventListener("change", () => saveFitness({ reminders: { ...remembered().reminders, off: !remindBox.checked } }));
   remind.append(remindBox, " ", node("span", {}, t("settingsReminders")));
-  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), remind, node("p", { class: "field-note" }, t("settingsRemindersNote")), cloudBlock(), backupBlock());
+  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), remind, node("p", { class: "field-note" }, t("settingsRemindersNote")), garminBlock(), cloudBlock(), backupBlock());
   return pane;
 }
 
@@ -633,6 +634,65 @@ function cloudBlock() {
   draw();
   // Kept current while the dialog is open; the listener goes with the block.
   const stop = onCloudStatus(() => (block.isConnected ? draw() : stop()));
+  return block;
+}
+
+// The days' values from Garmin Connect's CSV files written into their histories: a day already there takes the
+// file's value, the others stay. The resting heart rate in force becomes that of the latest day it has.
+export function importBodyValues(found) {
+  const saved = remembered();
+  const history = { ...savedHistory() };
+  const at = Date.now();
+  for (const key of ["hrv", "sleep", "restHeartRate"]) {
+    const days = found[key] ?? {};
+    if (!Object.keys(days).length) continue;
+    let kept = (history[key] ?? []).filter((record) => !(record.from in days));
+    // The resting heart rate keeps the one set before for the days before the first record.
+    if (key === "restHeartRate" && !kept.some((record) => record.from === "0000-00-00")) kept = [...kept, { from: "0000-00-00", value: saved.restHeartRate ?? null, at: 0 }];
+    history[key] = [...kept, ...Object.entries(days).map(([from, value]) => ({ from, value, at }))].sort((a, b) => a.from.localeCompare(b.from));
+  }
+  const rest = valueOn(history.restHeartRate, "9999-12-31", saved.restHeartRate);
+  // Written as it is: the resting heart rate's history is already whole, no change from today to add to it.
+  saveDefaults({ fitness: { ...saved, history, ...(rest ? { restHeartRate: rest } : {}) } });
+}
+
+// What the last import read, shown until the dialog is opened again.
+let garminMessage = "";
+
+// Importing Garmin Connect's CSV exports: the HRV status, the sleep, the resting heart rate.
+function garminBlock() {
+  const block = node("div", { class: "settings-block" });
+  const pick = node("input", { type: "file", accept: ".csv,text/csv", multiple: "", class: "visually-hidden" });
+  const load = node("button", { type: "button", class: "outline-button" }, t("garminImport"));
+  const message = node("p", { class: "field-note" }, garminMessage);
+  message.hidden = !garminMessage;
+  load.addEventListener("click", () => pick.click());
+  pick.addEventListener("change", async () => {
+    const today = dayKey(Date.now(), zone);
+    const found = { hrv: {}, sleep: {}, restHeartRate: {} };
+    for (const file of pick.files) {
+      const read = parseGarminCsv(await file.text(), today);
+      for (const key of Object.keys(found)) Object.assign(found[key], read[key]);
+    }
+    pick.value = "";
+    const counts = Object.entries(found).filter(([, days]) => Object.keys(days).length);
+    message.hidden = false;
+    if (!counts.length) {
+      message.textContent = t("garminImportNone");
+      return;
+    }
+    // As a restore: what was imported is where Cancel goes back to, as it came from a file.
+    importBodyValues(found);
+    const all = counts.flatMap(([, days]) => Object.keys(days)).sort();
+    garminMessage = t("garminImportDone", {
+      what: counts.map(([key, days]) => `${t(`body_${key}`)} ${Object.keys(days).length}`).join(", "),
+      from: formatDay(all[0], appState.language),
+      to: formatDay(all.at(-1), appState.language),
+    });
+    state.before = snapshot();
+    changed();
+  });
+  block.append(node("span", { class: "settings-label" }, t("garminImportTitle")), node("p", { class: "field-note" }, t("garminImportNote")), load, pick, message);
   return block;
 }
 
@@ -981,6 +1041,7 @@ function fitHeight() {
 
 // Opens on the pane given, or on the sport of the open activity or analysis, or where it was left.
 export async function openSettings(pane) {
+  garminMessage = "";
   const sport = typeof pane === "string" ? pane : state.sport();
   if (sports.includes(sport) || sport === "general") state.pane = sport;
   state.entries = await listEntries().catch(() => []);
