@@ -205,6 +205,9 @@ function summaryCard(scored, workouts, log, sport) {
 function suggestionsButton(result, entries, type) {
   const rides = entries.map((entry) => ({ name: entry.name.replace(/^Kinomap - /, ""), km: (entry.summary?.distance ?? 0) / 1000, day: dayKey(entry.startMs, zone), kind: workoutKind(entry), workout: /\bftp\b/i.test(entry.name ?? "") }));
   const plan = result.plan;
+  // The creator's workouts are no routes, even the steady ones.
+  const made = new Set([...(plan.kinomap?.extras ?? []), plan.kinomap?.minimal].filter(Boolean));
+  for (const ride of rides) if (made.has(ride.name)) ride.workout = true;
   const when = (day) => format(day, { day: "numeric", month: "numeric", year: "numeric" });
   const steady = type === "usual" || type === "long";
   const range = type === "long" ? [plan.long.fromKm, plan.long.toKm] : [plan.usual.km * 0.9, plan.usual.km * 1.1];
