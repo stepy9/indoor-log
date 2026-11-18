@@ -207,3 +207,47 @@ test("weekPlan lays two longer workouts on the days set, or apart with a weekend
   assert.equal(left.doneLong, false);
   assert.equal(weekPlan(left, oneDone, "2026-11-03", every).filter((item) => item.type === "long" && item.day < "2026-11-09").length, 1);
 });
+
+test("the lighter week comes as often and as light as set, or never", () => {
+  // The week of 26 October is the fourth from 5 October, the third with every three weeks set.
+  assert.equal(nextStep({ workouts: weeks(3), today: "2026-10-28" }).lighter, true);
+  assert.equal(nextStep({ workouts: weeks(3), today: "2026-10-28", prefs: { lighterEvery: 0 } }).lighter, false);
+  assert.equal(nextStep({ workouts: weeks(2), today: "2026-10-21", prefs: { lighterEvery: 3 } }).lighter, true);
+  // 8 km last week, 30 % lighter: 5.6.
+  assert.equal(nextStep({ workouts: weeks(3), today: "2026-10-28", prefs: { lighterPercent: 30 } }).weekKm, 5.6);
+});
+
+test("the interval kind sets the work, the rest, the repeats and the power", () => {
+  const of = (intervalType) => nextStep({ workouts: weeks(4), today: "2026-11-04", ftp: 100, prefs: { intervalType } }).intervals;
+  // Four interval workouts in the last eight weeks: two steps of growth.
+  assert.deepEqual([of("short").minutes, of("short").rest, of("short").repeats, of("short").watts], [1, 1, 8, [115, 125]]);
+  assert.deepEqual([of("medium").minutes, of("medium").repeats, of("medium").watts], [2, 6, [100, 110]]);
+  assert.deepEqual([of("tempo").minutes, of("tempo").rest, of("tempo").repeats, of("tempo").watts], [10, 3, 2, [88, 95]]);
+  assert.equal(of(null).kind, "medium");
+});
+
+test("the least workout is ten minutes unless set, and none with 0", () => {
+  assert.deepEqual(nextStep({ workouts: weeks(4), today: "2026-11-04" }).minimal, { minutes: 10 });
+  assert.deepEqual(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { minimalMinutes: 8 } }).minimal, { minutes: 8 });
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { minimalMinutes: 0 } }).minimal, null);
+});
+
+test("the FTP test is due every so many weeks, laid out short first and the 20 minutes rested two days later", () => {
+  const every = [0, 1, 2, 3, 4, 5, 6];
+  // Never tested: due now, and no intervals that week.
+  const due = nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { ftpTestWeeks: 6, longPerWeek: 2, longDays: [3, 6] } });
+  assert.equal(due.ftpTest.due, true);
+  assert.equal(due.intervals.max, 0);
+  const days = weekPlan(due, [], "2026-11-02", every);
+  assert.deepEqual(days.filter((item) => item.type.startsWith("ftpTest")).map((item) => [item.day, item.type]), [["2026-11-02", "ftpTestShort"], ["2026-11-04", "ftpTest"]]);
+  assert.equal(days.filter((item) => item.type === "intervals").length, 0);
+  // The short one done on Monday: the 20 minutes still due, from Wednesday.
+  const short = [{ day: "2026-11-02", km: 1.5, seconds: 600, kind: "intervals", ftpTest: true }];
+  const left = nextStep({ workouts: weeks(4).filter((workout) => workout.day < "2026-11-02").concat(short), today: "2026-11-03", prefs: { ftpTestWeeks: 6 } });
+  assert.equal(left.ftpTest.due, true);
+  assert.equal(weekPlan(left, short, "2026-11-03", every).find((item) => item.type === "ftpTest").day, "2026-11-04");
+  // Tested three weeks ago by an FTP typed then: not due; off without the setting.
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { ftpTestWeeks: 6 }, lastFtpTest: "2026-10-12" }).ftpTest.due, false);
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-02" }).ftpTest, null);
+  assert.equal(weekChecklist(left, short, "2026-11-03", every)[0].type, "ftpTest");
+});

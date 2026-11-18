@@ -50,8 +50,10 @@ function renderPlan() {
   // The trainer's resistance, a level or a range of them.
   const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
   const steady = steadyGuide(plan, sport);
-  const planned = (type) => (type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
-    : type === "intervals" ? t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
+  const planned = (type) => (type === "ftpTestShort" ? t("planFtpTestShort")
+    : type === "ftpTest" ? t("planFtpTest")
+    : type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
+    : type === "intervals" ? t(`planIntervalsKind_${plan.intervals.kind}`) + t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
     : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady);
   const rows = checklist.map((item) => {
     const row = Object.assign(document.createElement("div"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
@@ -69,10 +71,12 @@ function renderPlan() {
   head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: `${t("planTitle")} · ${sportLabel(sport)}` }));
   const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
   // What the days ahead add, an interval workout counted as a usual one.
-  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : plan.usual.km), 0);
+  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : item.type === "ftpTestShort" || item.type === "ftpTest" ? 0 : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
   list.append(...rows, Object.assign(document.createElement("p"), { className: "field-note", textContent: [...(plan.lighter ? [t("planLighter")] : []), t(chosenDays ? "planDaysChosen" : "planDaysAuto")].join(" · ") }));
   // How the training focus steers the week, as on the fitness page.
+  // The least to ride on a day without the will: easy, for the habit.
+  if (plan.minimal) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planMinimal", { minutes: plan.minimal.minutes }) }));
   if (plan.focus) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`nextFocus_${plan.focus}`) }));
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
   const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });

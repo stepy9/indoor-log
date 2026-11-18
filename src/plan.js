@@ -25,10 +25,24 @@ const tenthUp = (km) => Math.ceil(km * 10 - 1e-9) / 10;
 // intensity) or null when balanced; intense allows one interval workout a week, easy asks for two.
 // prefs: the sport's training settings, each null or missing for the plan to work it out itself:
 // { longPerWeek: 1–3, longDays: [weekday], longTargetMinutes, longStepMinutes, usualMinutes, intervalsPerWeek: 0–3,
-// weeklyHours, weeklyKm }. A step makes the longer workouts grow by minutes, not by 10 %; the target caps them.
-export const planPrefLimits = { longPerWeek: [1, 3], longTargetMinutes: [10, 240], longStepMinutes: [1, 30], usualMinutes: [5, 120], intervalsPerWeek: [0, 3] };
+// intervalType: "short" | "medium" | "tempo", lighterEvery: 3–5 or 0 for never, lighterPercent: 10–40,
+// minimalMinutes: 0 for none, ftpTestWeeks: 4–12, weeklyHours, weeklyKm }. A step makes the longer workouts grow
+// by minutes, not by 10 %; the target caps them.
+export const planPrefLimits = { longPerWeek: [1, 3], longTargetMinutes: [10, 240], longStepMinutes: [1, 30], usualMinutes: [5, 120], intervalsPerWeek: [0, 3], minimalMinutes: [0, 30] };
 
-export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {} }) {
+// The interval workouts by kind: the work and rest in minutes, the repeats from the first to the most (one more
+// every two done in the last eight weeks), and the power as shares of the FTP.
+export const intervalKinds = {
+  short: { minutes: 1, rest: 1, repeats: [6, 12], power: [1.15, 1.25] },
+  medium: { minutes: 2, rest: 2, repeats: [4, 8], power: [1.0, 1.1] },
+  tempo: { minutes: 8, rest: 3, repeats: [2, 2], grow: 1, most: 15, power: [0.88, 0.95] },
+};
+
+// The FTP test: a short all-out one first, the 20 minutes two days or more after it, each told by "FTP" in the
+// workout's name (or an FTP typed by hand on the day).
+export const ftpTestGap = 2;
+
+export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
   const recentSteady = steady.filter((workout) => workout.day > since(14));
@@ -47,10 +61,24 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const lastWeekKm = kmOf(inWeek(lastMonday));
   const thisWeek = inWeek(thisMonday);
 
-  // Every fourth week of training is lighter, counted from the first week with a workout.
+  // Every fourth week of training is lighter (or as set, or never), counted from the first week with a workout,
+  // by a fifth (or the share set).
   const firstMonday = mondayOf(workouts.reduce((first, workout) => (workout.day < first ? workout.day : first), today));
   const weekNumber = Math.round((noon(thisMonday) - noon(firstMonday)) / (7 * dayMs));
-  const lighter = weekNumber % 4 === 3;
+  const every = Number.isInteger(prefs.lighterEvery) ? prefs.lighterEvery : 4;
+  const lighter = every > 0 && weekNumber % every === every - 1;
+  const lighterBy = (prefs.lighterPercent > 0 ? prefs.lighterPercent : 20) / 100;
+
+  // The FTP test, every so many weeks when set: due from that many weeks after the last one (now, without one),
+  // and the 20 minutes still due in a week with only the short one done.
+  const testsThisWeek = thisWeek.filter((workout) => workout.ftpTest).length;
+  const lastTest = [lastFtpTest, ...workouts.filter((workout) => workout.ftpTest).map((workout) => workout.day)].filter(Boolean).sort().at(-1) ?? null;
+  const ftpTest = prefs.ftpTestWeeks > 0 ? {
+    every: prefs.ftpTestWeeks,
+    last: lastTest,
+    done: testsThisWeek,
+    due: testsThisWeek === 1 || (testsThisWeek === 0 && (!lastTest || lastTest <= addDays(today, -7 * prefs.ftpTestWeeks))),
+  } : null;
 
   // What holds the build back, most telling first.
   const drifts = recentSteady.map((workout) => workout.decoupling).filter(Number.isFinite).slice(-3);
@@ -80,29 +108,37 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // The week's distance: at most 10 % over the last full week, 20 % under it in a lighter week; with a weekly
   // volume set, growing towards it and no further.
   const goalKm = prefs.weeklyHours > 0 ? prefs.weeklyHours * 3600 * speed : prefs.weeklyKm > 0 ? prefs.weeklyKm : null;
-  const grownWeek = lastWeekKm * (lighter ? 0.8 : holds.length ? 1 : 1.1);
-  const weekFrom = goalKm ? (lastWeekKm > 0 ? Math.min(grownWeek, lighter ? goalKm * 0.8 : goalKm) : goalKm) : grownWeek;
+  const grownWeek = lastWeekKm * (lighter ? 1 - lighterBy : holds.length ? 1 : 1.1);
+  const weekFrom = goalKm ? (lastWeekKm > 0 ? Math.min(grownWeek, lighter ? goalKm * (1 - lighterBy) : goalKm) : goalKm) : grownWeek;
   const weekKm = weekFrom > 0 ? Math.round(weekFrom * 10) / 10 : null;
   const longDone = thisWeek.filter((workout) => workout.kind === "steady" && workout.km >= long.fromKm - 0.05).length;
   const doneLong = longDone >= long.count;
 
-  // Intervals: one or two a week; a repeat more every two done in the last eight weeks, from four of two minutes.
+  // Intervals: one or two a week, of the kind set (two minutes by default); a repeat more every two done in the last
+  // eight weeks, or for the tempo ones a minute more to each of the two. None in a week of the FTP test.
   const intervalsDone = workouts.filter((workout) => workout.kind === "intervals" && workout.day > since(56)).length;
-  const intervalsThisWeek = thisWeek.filter((workout) => workout.kind === "intervals").length;
-  const repeats = Math.min(8, 4 + Math.floor(intervalsDone / 2) - (lighter ? 1 : 0));
+  const intervalsThisWeek = thisWeek.filter((workout) => workout.kind === "intervals" && !workout.ftpTest).length;
+  const kind = intervalKinds[prefs.intervalType] ? prefs.intervalType : "medium";
+  const shape = intervalKinds[kind];
+  const grownBy = Math.floor(intervalsDone / 2) - (lighter ? 1 : 0);
+  const repeats = Math.max(shape.repeats[0] - 1, Math.min(shape.repeats[1], shape.repeats[0] + (shape.grow ? 0 : grownBy)));
+  const minutes = shape.grow ? Math.max(shape.minutes - 1, Math.min(shape.most, shape.minutes + grownBy * shape.grow)) : shape.minutes;
   // The number set holds, one at most in a lighter week; else by the focus.
   const intervalsSet = Number.isInteger(prefs.intervalsPerWeek);
-  const intervalsMax = intervalsSet ? (lighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : lighter || focus === "intense" ? 1 : 2;
+  const intervalsMax = ftpTest?.due ? 0 : intervalsSet ? (lighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : lighter || focus === "intense" ? 1 : 2;
   const intervals = {
-    set: intervalsSet,
+    set: intervalsSet || Boolean(ftpTest?.due),
+    kind,
     due: intervalsThisWeek < intervalsMax && !holds.includes("tired"),
     done: intervalsThisWeek,
     max: intervalsMax,
     repeats,
-    minutes: 2,
-    rest: 2,
-    watts: ftp ? [Math.round(ftp * 1.0), Math.round(ftp * 1.1)] : null,
+    minutes,
+    rest: shape.rest,
+    watts: ftp ? shape.power.map((share) => Math.round(ftp * share)) : null,
   };
+  // The least to ride on a day without the will or the strength: easy, for the habit. Ten minutes unless set; 0 is none.
+  const minimal = prefs.minimalMinutes === 0 ? null : { minutes: prefs.minimalMinutes > 0 ? prefs.minimalMinutes : 10 };
 
   return {
     usual,
@@ -118,6 +154,8 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     tooHard,
     focus,
     intervals,
+    minimal,
+    ftpTest,
     steadyWatts: ftp ? [Math.round(ftp * 0.56), Math.round(ftp * 0.75)] : null,
   };
 }
@@ -175,6 +213,18 @@ export function weekPlan(plan, workouts, today, days) {
   }
   for (const day of longPicks) types.set(day, "long");
   const nearLong = (day) => longPicks.some((taken) => day === addDays(taken, 1) || day === addDays(taken, -1));
+  // The FTP test when due: the short one on the first usual day not after a longer workout, the 20 minutes
+  // ftpTestGap days or more after it (or after the short one done), rested, so not the day after a longer one either.
+  if (plan.ftpTest?.due) {
+    const rested = (day) => types.get(day) === "usual" && !longPicks.includes(addDays(day, -1));
+    let after = plan.ftpTest.done ? plan.ftpTest.last : null;
+    for (const test of plan.ftpTest.done ? ["ftpTest"] : ["ftpTestShort", "ftpTest"]) {
+      const day = open.find((candidate) => rested(candidate) && (!after || candidate >= addDays(after, ftpTestGap)));
+      if (!day) break;
+      types.set(day, test);
+      after = day;
+    }
+  }
   // Intervals: once a week, twice with five days or more to train on (once in a lighter week or when the training
   // is too intense), never leaving the week without a usual workout, on open days away from the longer one.
   // A number set by hand holds whatever the days left, as long as a usual workout stays.
@@ -205,7 +255,7 @@ export function weekChecklist(plan, workouts, today, days) {
   const ahead = new Map(weekPlan(plan, workouts, today, days).map((item) => [item.day, item.type]));
   return week.flatMap((day) => {
     const done = workouts.filter((workout) => workout.day === day);
-    if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
+    if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.ftpTest) ? "ftpTest" : done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
     if (!days.includes(weekday(day))) return [];
     if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
     return [{ day, status: "planned", type: ahead.get(day) ?? "usual", workouts: [] }];

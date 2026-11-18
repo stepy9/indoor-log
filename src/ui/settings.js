@@ -607,11 +607,13 @@ function goalBlock(sport) {
   return block;
 }
 
-// Segmented buttons for one choice: "auto" (null) and the values given; onPick gets the value or null.
+// Segmented buttons for one choice: "auto" (null) and the values given, each a value or { value, label };
+// onPick gets the value or null.
 function choiceRow(key, label, values, current, onPick, autoLabel = t("settingsPlanAuto")) {
   const row = node("div", { class: "segmented settings-days", role: "group", "aria-label": label });
-  for (const value of [null, ...values]) {
-    const button = node("button", { type: "button", "aria-pressed": String((current ?? null) === value), "data-key": `${key}-${value ?? "auto"}` }, value == null ? autoLabel : String(value));
+  for (const item of [{ value: null, label: autoLabel }, ...values.map((value) => (typeof value === "object" ? value : { value, label: String(value) }))]) {
+    const { value } = item;
+    const button = node("button", { type: "button", "aria-pressed": String((current ?? null) === value), "data-key": `${key}-${value ?? "auto"}` }, item.label);
     button.addEventListener("click", () => onPick(value));
     row.append(button);
   }
@@ -702,7 +704,21 @@ function trainingBlock(sport) {
     label(t("settingsPlanIntervals")),
     choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value })),
     node("p", { class: "field-note" }, t("settingsPlanIntervalsNote")),
+    label(t("settingsPlanIntervalType")),
+    choiceRow(`plan-interval-type-${sport}`, t("settingsPlanIntervalType"), ["short", "medium", "tempo"].map((value) => ({ value, label: t(`settingsPlanIntervalType_${value}`) })), prefs.intervalType, (value) => writePlan({ intervalType: value })),
+    node("p", { class: "field-note" }, t("settingsPlanIntervalTypeNote")),
+    label(t("settingsPlanFtpTest")),
+    choiceRow(`plan-ftp-test-${sport}`, t("settingsPlanFtpTest"), [6, 8, 10].map((value) => ({ value, label: t("settingsPlanWeeks", { weeks: value }) })), prefs.ftpTestWeeks, (value) => writePlan({ ftpTestWeeks: value }), t("settingsPlanOff")),
+    node("p", { class: "field-note" }, t("settingsPlanFtpTestNote")),
+    label(t("settingsPlanLighter")),
+    choiceRow(`plan-lighter-${sport}`, t("settingsPlanLighter"), [3, 5].map((value) => ({ value, label: t("settingsPlanLighterEvery", { weeks: value }) })).concat({ value: 0, label: t("settingsPlanNever") }), prefs.lighterEvery, (value) => writePlan({ lighterEvery: value }), t("settingsPlanLighterAuto")),
+    label(t("settingsPlanLighterBy")),
+    choiceRow(`plan-lighter-by-${sport}`, t("settingsPlanLighterBy"), [10, 30, 40].map((value) => ({ value, label: `${value} %` })), prefs.lighterPercent, (value) => writePlan({ lighterPercent: value }), t("settingsPlanLighterByAuto")),
+    node("p", { class: "field-note" }, t("settingsPlanLighterNote")),
   );
+  const least = node("div", { class: "fitness-settings" });
+  least.append(numberField(t("settingsPlanMinimal"), prefs.minimalMinutes, "10", (value) => writePlan({ minimalMinutes: value }), { min: planPrefLimits.minimalMinutes[0], max: planPrefLimits.minimalMinutes[1] }));
+  block.append(least, node("p", { class: "field-note" }, t("settingsPlanMinimalNote")));
   return block;
 }
 

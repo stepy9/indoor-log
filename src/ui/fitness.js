@@ -171,6 +171,8 @@ export function trainingPlan(entries, chosen = "all") {
       km: (entry.summary?.distance ?? 0) / 1000,
       seconds: entry.summary?.timerSeconds ?? 0,
       kind: workoutKind(entry),
+      // An FTP test, by its name: the Kinomap workouts made for it carry "FTP" in theirs.
+      ftpTest: /ftp/i.test(entry.name ?? ""),
       decoupling: decoupling(entry)?.percent ?? null,
       hardShare: total ? (zones[3] + zones[4]) / total : null,
       level: entry.resistance ?? null,
@@ -186,7 +188,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport) }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport) }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -207,6 +209,11 @@ export function trainingPlan(entries, chosen = "all") {
 function planPrefs(settings, sport) {
   const own = settings.sports[sport] ?? {};
   return { ...(own.plan ?? {}), weeklyHours: own.weeklyHours ?? null, weeklyKm: own.weeklyKm ?? null };
+}
+
+// The day the latest FTP was typed by hand, an FTP test's result as the plan counts it; null without one.
+function lastFtpTyped(settings, sport) {
+  return (settings.sports[sport]?.ftpHistory ?? []).map((record) => record.from).filter(Boolean).sort().at(-1) ?? null;
 }
 
 // How to ride a steady workout: the heart rate to hold, the power to start at, the cadence and the resistance.
@@ -242,8 +249,11 @@ function renderNextStep() {
     : line(t("nextLong"), (plan.long.count > 1 ? t("nextLongCount", { done: plan.longDone, count: plan.long.count }) : "") + t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
   rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
-  rows.push(plan.intervals.due
-    ? line(t("nextIntervals"), t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
+  // The FTP test when due, in place of the intervals that week.
+  if (plan.ftpTest?.due) rows.push(line(t("nextFtpTest"), t(plan.ftpTest.done ? "nextFtpTestLong" : "nextFtpTestText")));
+  if (plan.minimal) rows.push(line(t("nextMinimal"), t("nextMinimalText", { minutes: plan.minimal.minutes })));
+  if (!plan.ftpTest?.due) rows.push(plan.intervals.due
+    ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
     : line(t("nextIntervals"), t(plan.holds.includes("tired") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   // Why it holds back, or that this is a lighter week.
   const notes = [
