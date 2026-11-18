@@ -448,18 +448,10 @@ export function kinomapPlanText(text) {
     .join("\n");
 }
 
-// A plan from Kinomap Creator ("00:00  10:00  37%": start, length, resistance) has a length after each start, skipped;
-// without targets or type codes its steps go by the resistance: the higher ones are the work.
 export function parseKinomapPlan(text, startMs = 0) {
   const steps = [];
-  let afterTime = false;
   for (const token of kinomapPlanText(String(text)).split(/\s+/).filter(Boolean)) {
     const time = token.match(/^(?:(\d+):)?(\d{1,2}):(\d{2})$/);
-    if (time && afterTime) {
-      afterTime = false;
-      continue;
-    }
-    afterTime = Boolean(time);
     if (time) {
       const [hours, minutes, seconds] = time.slice(1).map((part) => Number(part ?? 0));
       steps.push({ startMs: startMs + ((hours * 60 + minutes) * 60 + seconds) * 1000 });
@@ -477,15 +469,12 @@ export function parseKinomapPlan(text, startMs = 0) {
     .sort((a, b) => a.startMs - b.startMs)
     .filter((step, index, list) => index === 0 || step.startMs > list[index - 1].startMs);
   const highest = Math.max(0, ...segments.map((segment) => segment.target ?? 0));
-  // Without targets, the steps above the middle of the resistances are the work.
-  const levels = segments.map((segment) => segment.resistancePercent).filter(Number.isFinite);
-  const middle = !highest && levels.length && Math.max(...levels) > Math.min(...levels) ? (Math.max(...levels) + Math.min(...levels)) / 2 : null;
   for (const [index, segment] of segments.entries()) {
     if (!(segment.target > 0)) {
       delete segment.target;
       delete segment.targetType;
     }
-    const hard = highest > 0 ? segment.target === highest : middle != null && segment.resistancePercent > middle;
+    const hard = highest > 0 && segment.target === highest;
     segment.intensity = segment.code ?? (hard ? "active" : index === 0 ? "warmup" : index === segments.length - 1 && segment.target == null ? "cooldown" : "recovery");
     delete segment.code;
   }
