@@ -265,3 +265,10 @@ test("the outlook grows the longer workouts by the step up to the target, with t
   assert.equal(plan.outlook[3].intervals, 0);
   assert.equal(plan.outlook[0].intervals, 1);
 });
+
+test("after illness or injury the plan holds the longer workouts and leaves out the intervals", () => {
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", unwell: true });
+  assert.ok(plan.holds.includes("unwell"));
+  assert.equal(plan.long.fromKm, 2);
+  assert.equal(plan.intervals.due, false);
+});

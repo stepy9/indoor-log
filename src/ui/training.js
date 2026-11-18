@@ -10,6 +10,7 @@ import { openSettings, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { infoHint } from "./info.js";
+import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { kindLabel } from "./library.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
@@ -60,12 +61,13 @@ function adherenceCard(sport, workouts, log) {
   head.append(node("span", { class: "field-label" }, t("trainingAdherence")));
   card.append(head);
   const now = today();
-  const weeks = lastMondays(now, 8).map((monday) => weekAdherence(log, workouts, monday, now));
+  const excused = excuses();
+  const weeks = lastMondays(now, 8).map((monday) => weekAdherence(log, workouts, monday, now, excused));
   const recent = weeks.slice(-4);
   const share = adherenceShare(recent);
   const scores = workouts.filter((workout) => workout.day > addDays(now, -28) && Number.isFinite(workout.score)).map((workout) => workout.score);
   const average = scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null;
-  const streak = dayStreak(workouts.map((workout) => workout.day), now);
+  const streak = dayStreak(workouts.map((workout) => workout.day), now, excused);
   const tiles = node("div", { class: "diary-tiles training-tiles" });
   const tile = (label, value, note) => {
     const box = node("div", { class: "diary-tile" });
@@ -93,7 +95,7 @@ function adherenceCard(sport, workouts, log) {
     const pair = ([done, planned]) => (planned || done ? `${done}/${planned}` : "—");
     row.append(
       node("td", {}, `${weekNumber(week.monday)} · ${format(week.monday, { day: "numeric", month: "numeric" })}`),
-      node("td", {}, `${week.ridden}/${week.planned}${week.extra ? ` +${week.extra}` : ""}`),
+      node("td", {}, `${week.ridden}/${week.planned}${week.extra ? ` +${week.extra}` : ""}${week.excused ? ` (${t("weeksExcused", { days: week.excused })})` : ""}`),
       node("td", {}, pair(week.long)),
       node("td", {}, pair(week.intervals)),
     );
@@ -141,6 +143,7 @@ function workoutsCard(sport, scored) {
 // Monday until the week's first workout, folded to one line for the rest of the week.
 function summaryCard(scored, workouts, log, sport) {
   const now = today();
+  const excused = excuses();
   const monday = lastMondays(now, 2)[0];
   const sunday = addDays(monday, 6);
   const card = node("details", { class: "card training-summary" });
@@ -152,7 +155,8 @@ function summaryCard(scored, workouts, log, sport) {
     const planned = log[day];
     if (!ridden.length && !planned) continue;
     const status = ridden.length ? "done" : "missed";
-    const row = node("div", { class: `diary-plan-row has-score is-${status}` });
+    const excuse = !ridden.length ? excused[day] : null;
+    const row = node("div", { class: `diary-plan-row has-score is-${status}${excuse ? " is-excused" : ""}` });
     const mark = node("span", { class: "diary-plan-mark" }, status === "done" ? "✓" : "–");
     mark.setAttribute("aria-label", t(`planStatus_${status}`));
     const score = node("span", { class: "diary-plan-score" });
@@ -160,16 +164,23 @@ function summaryCard(scored, workouts, log, sport) {
     const km = (entry) => displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
     const text = ridden.length
       ? ridden.map((item) => `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`).join(", ")
-      : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
-    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, node("span", { class: "diary-plan-text" }, text));
+      : excuse ? `${excuseText(excuse)} · ${t("summaryPlanned", { planned: t(`scorePlanned_${planned.type}`) })}` : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
+    const textCell = node("span", { class: "diary-plan-text" }, text);
+    if (!ridden.length) {
+      const why = node("button", { type: "button", class: "link-button diary-plan-why" }, excuse ? t("excuseEdit") : t("excuseAsk"));
+      why.addEventListener("click", () => openExcuse(day, render));
+      textCell.append(" ", why);
+    }
+    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell);
     list.append(row);
   }
   // The week as a whole in the line that folds, in the rows' columns: a fold mark for the tick, the week for the day,
   // its score (the plan kept and the workouts' average) under theirs; what makes it up in the score's title.
-  const week = weekAdherence(log, workouts, monday, sunday);
+  const week = weekAdherence(log, workouts, monday, sunday, excused);
   const overall = weekScore(week);
   const numbers = [
     ...(week.planned ? [t("summaryDays", { ridden: week.ridden, planned: week.planned })] : []),
+    ...(week.excused ? [t("summaryExcused", { days: week.excused })] : []),
     ...(week.long[1] ? [t("summaryLong", { done: week.long[0], planned: week.long[1] })] : []),
     ...(week.intervals[1] ? [t("summaryIntervals", { done: week.intervals[0], planned: week.intervals[1] })] : []),
     ...(week.score != null ? [t("summaryScore", { score: week.score })] : []),
@@ -192,13 +203,16 @@ function summaryCard(scored, workouts, log, sport) {
 function todayCard(result, scored, fatigue) {
   const card = node("section", { class: "card training-today" });
   const now = today();
-  const item = result.checklist.find((entry) => entry.day === now);
+  const excused = excuses();
+  // Today excused: the reason, and the next day not excused instead of today's workout.
+  const item = excused[now] ? null : result.checklist.find((entry) => entry.day === now);
   const done = item?.status === "done";
-  const next = result.checklist.find((entry) => entry.status === "planned" && entry.day > now) ?? result.days.find((entry) => entry.day > now);
+  const next = result.checklist.find((entry) => entry.status === "planned" && entry.day > now && !excused[entry.day]) ?? result.days.find((entry) => entry.day > now && !excused[entry.day]);
   const showing = item?.status === "planned" ? item : next;
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, t(item?.status === "planned" ? "trainingToday" : "trainingNext", { day: showing ? format(showing.day, { weekday: "long", day: "numeric", month: "numeric" }) : "" })));
   card.append(head);
+  if (excused[now]) card.append(node("p", { class: "training-today-done is-excused" }, t("trainingTodayExcused", { reason: excuseText(excused[now]) })));
   if (done) {
     const line = node("p", { class: "training-today-done" }, t("trainingTodayDone"));
     for (const scoredItem of scored.filter((entry) => entry.day === now && entry.result)) line.append(" ", scoreBadge(scoredItem.result.score));
@@ -365,7 +379,7 @@ function render() {
   if (week) {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay, withNextStep: true });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render) });
   }
 }
 

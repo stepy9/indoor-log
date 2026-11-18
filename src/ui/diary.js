@@ -9,6 +9,7 @@ import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
+import { excuseText } from "./excuse.js";
 
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
@@ -74,7 +75,7 @@ export function plannedText(plan, sport, type, { detail = false } = {}) {
 
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
-export function drawPlanCard(card, result, { scores = null, withNextStep = false } = {}) {
+export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -85,9 +86,14 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
     const mark = Object.assign(document.createElement("span"), { className: "diary-plan-mark", textContent: { done: "✓", missed: "–", planned: "" }[item.status] });
     mark.setAttribute("aria-label", t(`planStatus_${item.status}`));
     const when = Object.assign(document.createElement("span"), { className: "diary-plan-day", textContent: format(item.day, { weekday: "short", day: "numeric", month: "numeric" }) });
+    const excuse = item.status !== "done" ? excused?.[item.day] : null;
+    if (excuse) {
+      row.classList.add("is-excused");
+      mark.textContent = "–";
+    }
     const text = item.status === "done"
       ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${kindLabel(workout.kind, sport)}`).join(", ")
-      : item.status === "missed" ? t("planMissed") : planned(item.type);
+      : excuse ? excuseText(excuse) : item.status === "missed" ? t("planMissed") : planned(item.type);
     row.append(mark, when);
     // The scores in a column of their own after the day, empty on the days not ridden, so the text lines up.
     if (scores) {
@@ -96,7 +102,14 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       row.append(cell);
       row.classList.add("has-score");
     }
-    row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+    const textCell = Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text });
+    // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness).
+    if (onExcuse && item.status !== "done") {
+      const why = Object.assign(document.createElement("button"), { type: "button", className: "link-button diary-plan-why", textContent: excuse ? t("excuseEdit") : t("excuseAsk") });
+      why.addEventListener("click", () => onExcuse(item.day));
+      textCell.append(" ", why);
+    }
+    row.append(textCell);
     return row;
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });

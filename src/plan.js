@@ -45,7 +45,7 @@ export const ftpTestGap = 2;
 // How many weeks the outlook shows, this one included.
 export const outlookWeeks = 6;
 
-export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null }) {
+export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null, unwell = false }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
   const recentSteady = steady.filter((workout) => workout.day > since(14));
@@ -86,6 +86,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // What holds the build back, most telling first.
   const drifts = recentSteady.map((workout) => workout.decoupling).filter(Number.isFinite).slice(-3);
   const holds = [];
+  if (unwell) holds.push("unwell");
   if (form < -20) holds.push("tired");
   if (ramp > 5) holds.push("ramp");
   if (drifts.length && drifts.reduce((sum, value) => sum + value, 0) / drifts.length > 5) holds.push("drift");
@@ -132,7 +133,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const intervals = {
     set: intervalsSet || Boolean(ftpTest?.due),
     kind,
-    due: intervalsThisWeek < intervalsMax && !holds.includes("tired"),
+    due: intervalsThisWeek < intervalsMax && !holds.includes("tired") && !holds.includes("unwell"),
     done: intervalsThisWeek,
     max: intervalsMax,
     repeats,

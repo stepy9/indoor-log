@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, recentlyUnwell, setExcuse, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -146,4 +146,20 @@ test("a week's score weighs the plan kept and the workouts' average", () => {
   // Without a plan kept: the workouts' average alone.
   assert.equal(weekScore({ planned: 0, ridden: 0, long: [0, 0], intervals: [0, 0], score: 71 }), 71);
   assert.equal(weekScore({ planned: 0, ridden: 0, long: [0, 0], intervals: [0, 0], score: null }), null);
+});
+
+test("an excused day leaves the week's plan and keeps the streak, illness holds the plan", () => {
+  const log = { "2026-11-16": plannedDay("usual", plan), "2026-11-17": plannedDay("usual", plan), "2026-11-18": plannedDay("usual", plan) };
+  const excuses = setExcuse({}, "2026-11-17", "2026-11-18", { reason: "illness", note: "chřipka" });
+  assert.deepEqual(Object.keys(excuses), ["2026-11-17", "2026-11-18"]);
+  assert.equal(excuses["2026-11-17"].note, "chřipka");
+  const week = weekAdherence(log, [{ day: "2026-11-16", minutes: 13, kind: "steady", score: 90 }], "2026-11-16", "2026-11-19", excuses);
+  assert.equal(week.planned, 1);
+  assert.equal(week.ridden, 1);
+  assert.equal(week.excused, 2);
+  // Ridden on the 14th to 16th, ill on the 17th and 18th: three days, unbroken.
+  assert.deepEqual(dayStreak(["2026-11-14", "2026-11-15", "2026-11-16"], "2026-11-19", excuses), { days: 3, today: false });
+  assert.equal(recentlyUnwell(excuses, "2026-11-19"), true);
+  assert.equal(recentlyUnwell(setExcuse({}, "2026-11-17", null, { reason: "travel" }), "2026-11-19"), false);
+  assert.deepEqual(setExcuse(excuses, "2026-11-17", "2026-11-18", null), {});
 });

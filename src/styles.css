@@ -1360,3 +1360,16 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-summary[open] .training-summary-fold { transform: rotate(90deg); }
 .training-summary-head .diary-plan-text { color: var(--muted); }
 .training-summary .diary-plan-list { margin-top: 2px; }
+
+/* Why a day went unridden. */
+.diary-plan-why { margin-left: 6px; font-size: 12px; text-decoration: underline; }
+.diary-plan-row.is-excused .diary-plan-text { color: var(--muted); }
+.excuse-dialog { width: min(480px, calc(100vw - 32px)); }
+.excuse-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.excuse-reasons button { padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; cursor: pointer; }
+.excuse-reasons button[aria-pressed="true"] { border-color: #4d8dff; color: #fff; background: #4d8dff; }
+.excuse-other { width: 100%; height: 34px; margin-top: 10px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; }
+.excuse-other[hidden] { display: none; }
+.excuse-range { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.excuse-range input { height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; }
+.training-today-done.is-excused { color: var(--muted); }

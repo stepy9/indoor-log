@@ -10,6 +10,27 @@ const mondayOf = (key) => addDays(key, -((new Date(noon(key)).getUTCDay() + 6) %
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const round = (value) => Math.round(value);
 
+// Why a day went without its workout: the usual reasons, "other" with words of one's own. Illness and injury hold
+// the plan back for the week after; the others are no reason to ease off.
+export const excuseReasons = ["illness", "injury", "fatigue", "work", "travel", "family", "time", "rest", "other"];
+export const healthReasons = new Set(["illness", "injury"]);
+
+// The excuses with the days from to (both kept) set to the reason, or cleared with none.
+// excuses: { "YYYY-MM-DD": { reason, note } }.
+export function setExcuse(excuses, from, to, excuse) {
+  const next = { ...(excuses ?? {}) };
+  for (let day = from; day <= (to ?? from); day = addDays(day, 1)) {
+    if (excuse) next[day] = { reason: excuse.reason, ...(excuse.note ? { note: excuse.note } : {}) };
+    else delete next[day];
+  }
+  return next;
+}
+
+// Whether illness or injury kept off training on a day of the week before today: the plan holds then.
+export function recentlyUnwell(excuses, today) {
+  return Object.entries(excuses ?? {}).some(([day, excuse]) => day < today && day >= addDays(today, -7) && healthReasons.has(excuse.reason));
+}
+
 // The plan's days kept this long, in days.
 export const logDays = 26 * 7;
 
@@ -133,10 +154,12 @@ export function scoreWorkout(facts, planned, fallback = null) {
 // interval workouts planned and done (a longer one counted as one of at least 90 % of its planned time), and the
 // average score. log: the plan's days; workouts: [{ day, minutes, kind, ftpTest, score }]. Today counts only once
 // ridden, as it is still open; the days after it not at all. { monday, planned, ridden, long: [done, planned], intervals: [done, planned], score }.
-export function weekAdherence(log, workouts, monday, today) {
+export function weekAdherence(log, workouts, monday, today, excuses = {}) {
   const days = Array.from({ length: 7 }, (_, index) => addDays(monday, index)).filter((day) => day <= today);
   const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7) && workout.day <= today);
-  const plannedDays = days.filter((day) => log[day] && (day < today || inWeek.some((workout) => workout.day === day)));
+  const riddenOn = (day) => inWeek.some((workout) => workout.day === day);
+  // A day excused and not ridden is no day missed: it leaves the plan.
+  const plannedDays = days.filter((day) => log[day] && (riddenOn(day) || (day < today && !excuses[day])));
   const ridden = new Set(inWeek.map((workout) => workout.day));
   const count = (type) => plannedDays.filter((day) => log[day].type === type).length;
   const longPlanned = count("long");
@@ -148,6 +171,7 @@ export function weekAdherence(log, workouts, monday, today) {
     planned: plannedDays.length,
     ridden: plannedDays.filter((day) => ridden.has(day)).length,
     extra: [...ridden].filter((day) => !log[day]).length,
+    excused: days.filter((day) => log[day] && excuses[day] && !riddenOn(day)).length,
     long: [Math.min(longDone, Math.max(longPlanned, longDone)), longPlanned],
     intervals: [intervalsDone, count("intervals")],
     score: scores.length ? round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null,
@@ -166,16 +190,18 @@ export function adherenceShare(weeks) {
   return planned ? round((weeks.reduce((sum, week) => sum + week.ridden, 0) / planned) * 100) : null;
 }
 
-// The run of days in a row with a workout, up to today (or yesterday while today is still to ride):
-// { days, today: whether today is ridden }.
-export function dayStreak(rideDays, today) {
+// The run of days in a row with a workout, up to today (or yesterday while today is still to ride); a day excused
+// neither breaks it nor adds to it. { days, today: whether today is ridden }.
+export function dayStreak(rideDays, today, excused = {}) {
   const set = new Set(rideDays);
   const ridden = set.has(today);
   let day = ridden ? today : addDays(today, -1);
   let days = 0;
-  while (set.has(day)) {
-    days += 1;
+  for (;;) {
+    if (set.has(day)) days += 1;
+    else if (!excused[day]) break;
     day = addDays(day, -1);
+    if (day < addDays(today, -logDays)) break;
   }
   return { days, today: ridden };
 }

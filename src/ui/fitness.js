@@ -5,6 +5,8 @@ import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
+import { excuses } from "./excuse.js";
+import { recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { infoHint, renderInfo } from "./info.js";
 import { renderLimited } from "./more.js";
@@ -189,7 +191,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport) }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()) }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
