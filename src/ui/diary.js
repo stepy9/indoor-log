@@ -74,7 +74,7 @@ export function plannedText(plan, sport, type, { detail = false } = {}) {
 
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
-export function drawPlanCard(card, result, { scores = null } = {}) {
+export function drawPlanCard(card, result, { scores = null, withNextStep = false } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -105,15 +105,16 @@ export function drawPlanCard(card, result, { scores = null } = {}) {
   // What the days ahead add, an interval workout counted as a usual one.
   const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : item.type === "ftpTestShort" || item.type === "ftpTest" ? 0 : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
-  list.append(...rows, Object.assign(document.createElement("p"), { className: "field-note", textContent: [...(plan.lighter ? [t("planLighter")] : []), t(chosenDays ? "planDaysChosen" : "planDaysAuto")].join(" · ") }));
+  list.append(...rows);
+  if (plan.lighter) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planLighter") }));
   // How the training focus steers the week, as on the fitness page.
   // The least to ride on a day without the will: easy, for the habit.
   if (plan.minimal) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planMinimal", { minutes: plan.minimal.minutes }) }));
-  if (plan.focus) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`nextFocus_${plan.focus}`) }));
+  if (plan.focus && !withNextStep) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`nextFocus_${plan.focus}`) }));
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
   const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });
   body.append(list, side);
-  card.replaceChildren(head, body, infoHint(t("planInfo")));
+  card.replaceChildren(head, body, infoHint(`${t("planInfo")}\n${t(chosenDays ? "planDaysChosen" : "planDaysAuto")}`));
   // Drawn at the column's own width, so the text keeps its size.
   const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
   side.append(weekBar(done, ahead, plan.weekKm, km, width), longestChart(longest, plan.long.fromKm, km, width));

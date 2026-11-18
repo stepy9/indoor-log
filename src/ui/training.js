@@ -243,7 +243,7 @@ function progressCard(sport, entries, plan, settings) {
     const middle = shown.reduce((sum, point) => sum + dayNumber(point.day), 0) / shown.length;
     line = [mean + slope * (dayNumber(shown[0].day) - middle), mean + slope * (dayNumber(shown.at(-1).day) - middle)];
   }
-  const trendNote = trend.perFourWeeks == null ? t("trainingZoneTwoNote") : t("trainingZoneTwoTrend", { watts: `${trend.perFourWeeks > 0 ? "+" : ""}${displayNumber(trend.perFourWeeks, 1)}` });
+  const trendNote = trend.perFourWeeks == null ? "" : t("trainingZoneTwoTrend", { watts: `${trend.perFourWeeks > 0 ? "+" : ""}${displayNumber(trend.perFourWeeks, 1)}` });
   const label = (point, index) => (index === 0 || index === shown.length - 1 ? format(point.day, { day: "numeric", month: "numeric" }) : "");
   grid.append(figure(t("trainingZoneTwo"), trendNote, shown.length >= 2 ? smallChart(shown.map((point, index) => ({ label: label(point, index), value: point.watts, kind: "point" })), { line }) : null));
   // The longest workout of each week, the target dashed.
@@ -264,7 +264,7 @@ function progressCard(sport, entries, plan, settings) {
   const ftps = months.map((month) => ({ label: month.label, value: ftpOn(settings, sport, month.ms) ?? 0, kind: "point" }));
   const typed = ftpSourceOn(settings, sport, Date.now())?.method === "manual";
   grid.append(figure(t("trainingFtp"), t(typed ? "trainingFtpTyped" : "trainingFtpEstimated"), ftps.some((item) => item.value > 0) ? smallChart(ftps, { unit: " W" }) : null));
-  card.append(grid);
+  card.append(grid, infoHint([t("trainingZoneTwoNote"), t("trainingLongestNote")].join("\n")));
   return card;
 }
 
@@ -310,7 +310,7 @@ function render() {
   if (week) {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true });
   }
 }
 

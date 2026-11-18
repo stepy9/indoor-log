@@ -6,7 +6,7 @@ import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, 
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { listEntries } from "../library.js";
-import { renderInfo } from "./info.js";
+import { infoHint, renderInfo } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
@@ -269,7 +269,7 @@ export function renderNextStep(card, entries, sport = "all") {
   ];
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
-  card.replaceChildren(head, ...rows, ...notes.map((text) => node("p", { class: "field-note fitness-next-note" }, text)), node("p", { class: "field-note" }, t("nextNote")));
+  card.replaceChildren(head, ...rows, ...notes.map((text) => node("p", { class: "field-note fitness-next-note" }, text)), infoHint(t("nextNote")));
 }
 
 function renderTiles(history, settings) {
