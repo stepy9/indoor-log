@@ -1,7 +1,7 @@
 import { workoutKind } from "../analysis.js";
 import { dayKey } from "../diary.js";
 import { decoupling, heartRateOf, steps } from "../fitness.js";
-import { logPlan, plannedDay, scoreWorkout } from "../training.js";
+import { logPlan, plannedDay, progressionBuild, scoreWorkout, workoutFromName } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { zone } from "./context.js";
 
@@ -48,16 +48,20 @@ function testPart(entry, minutes) {
 // minutes, the drift, the laps and an FTP test's all-out part.
 export function workoutFacts(entry, heart, planned) {
   const ftpTest = /\bftp\b/i.test(entry.name ?? "");
+  const named = workoutFromName(entry.name ?? "");
+  const extra = named.kind === "extra" ? named.extra : null;
   let heartTimes = null;
   if (heart && entry.records?.heartRate) {
     const { seconds } = entry.records;
     const values = heartRateOf(entry);
     const dts = steps(seconds);
     const start = (seconds[0] ?? 0) + 180;
+    // A progression's last minutes go above zone 2 on purpose: left out.
+    const end = extra === "progression" ? (seconds.at(-1) ?? 0) - progressionBuild * 60 : Infinity;
     const times = { inside: 0, below: 0, above: 0 };
     seconds.forEach((second, index) => {
       const value = values[index];
-      if (second < start || !(value > 0)) return;
+      if (second < start || second > end || !(value > 0)) return;
       times[value < heart[0] ? "below" : value > heart[1] ? "above" : "inside"] += dts[index];
     });
     // Too little heart rate to go by (a strap off most of the time): left out.
@@ -66,6 +70,8 @@ export function workoutFacts(entry, heart, planned) {
   const test = ftpTest ? testPart(entry, planned?.type === "ftpTestShort" ? 5 : planned?.type === "ftpTest" ? 20 : null) : null;
   return {
     minutes: (entry.summary?.timerSeconds ?? 0) / 60,
+    extra,
+    extraMinutes: extra === "progression" || extra === "technique" ? named.minutes : null,
     kind: workoutKind(entry),
     ftpTest,
     heart: heartTimes,

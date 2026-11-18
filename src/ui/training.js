@@ -296,6 +296,17 @@ function ftpTestCard(sport, entries, settings, onOpen) {
   return card;
 }
 
+// An extra for a change in place of the day's workout, now and then: the technique drill on a usual day, the
+// progression on a longer one in even weeks, the pyramid on an interval day in odd weeks.
+function extraFor(kinomap, item) {
+  if (!kinomap) return null;
+  const week = weekNumber(item.day);
+  if (item.type === "usual") return kinomap.technique;
+  if (item.type === "long" && week % 2 === 0) return kinomap.progression;
+  if (item.type === "intervals" && week % 2 === 1) return kinomap.pyramid;
+  return null;
+}
+
 // What to ride today, large: today's planned workout, or with today done or free the next one; the least workout
 // under it, and a warning when the last workouts felt harder than usual.
 function todayCard(result, scored, fatigue, entries) {
@@ -321,6 +332,8 @@ function todayCard(result, scored, fatigue, entries) {
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
       node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
     );
+    const alternative = extraFor(result.plan.kinomap, showing);
+    if (alternative) card.append(node("p", { class: "field-note" }, t("trainingAlternative", { name: alternative })));
     const suggestions = showing.type === "usual" || showing.type === "long" ? suggestionsButton(result, entries, showing.type) : null;
     if (suggestions) card.append(suggestions);
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));

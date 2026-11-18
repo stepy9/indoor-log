@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -214,7 +214,7 @@ test("the plan's Kinomap workouts are picked from their names", () => {
   const missing = pickWorkouts(defaultKinomapWorkouts.rowing, { repeats: 9, minutes: 2 });
   assert.equal(missing.intervals, null);
   assert.equal(missing.wanted, "9x2 min");
-  assert.deepEqual(pickWorkouts([], null), { intervals: null, ftpTestShort: null, ftpTest: null, minimal: null, extras: [], wanted: null });
+  assert.deepEqual(pickWorkouts([], null), { intervals: null, ftpTestShort: null, ftpTest: null, minimal: null, extras: [], pyramid: null, progression: null, technique: null, wanted: null });
 });
 
 test("the FTP from the latest 20-minute test after the one typed is 95 % of its best 20 minutes", () => {
@@ -222,4 +222,23 @@ test("the FTP from the latest 20-minute test after the one typed is 95 % of its 
   assert.deepEqual(ftpFromTest(tests, "2026-11-01"), { day: "2026-11-21", best20: 124, ftp: 118 });
   assert.equal(ftpFromTest(tests, "2026-11-21"), null);
   assert.equal(ftpFromTest([], null), null);
+});
+
+test("the extras are known by name and scored by their own measure", () => {
+  assert.deepEqual(workoutFromName("Pyramida 1-2-3-2-1 min"), { kind: "extra", extra: "pyramid", minutes: 1 });
+  assert.deepEqual(workoutFromName("Progrese 30 min"), { kind: "extra", extra: "progression", minutes: 30 });
+  assert.equal(workoutFromName("Technika tempo záběrů 20 min").extra, "technique");
+  const picked = pickWorkouts(defaultKinomapWorkouts.rowing, null);
+  assert.deepEqual([picked.pyramid, picked.progression, picked.technique], ["Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min"]);
+  // A pyramid on an interval day: five efforts of 1 to 3 minutes, no swap.
+  const laps = [{ seconds: 600, power: 70 }, ...[1, 2, 3, 2, 1].flatMap((minutes) => [{ seconds: minutes * 60, power: 105 }, { seconds: minutes * 60, power: 60 }])];
+  const pyramid = scoreWorkout({ minutes: 32, kind: "intervals", extra: "pyramid", heart: null, drift: null, laps }, plannedDay("intervals", plan));
+  assert.equal(pyramid.as, "pyramid");
+  assert.equal(pyramid.parts[0].done, 5);
+  assert.equal(pyramid.swapped, false);
+  // A progression on a long day: by its own 30 minutes, its build left out, no drift, no swap.
+  const progression = scoreWorkout({ minutes: 33, kind: "steady", extra: "progression", extraMinutes: 30, heart: { inside: 1200, below: 0, above: 0 }, drift: 12, laps: [] }, plannedDay("long", plan));
+  assert.equal(progression.as, "progression");
+  assert.equal(progression.score, 100);
+  assert.equal(progression.swapped, false);
 });

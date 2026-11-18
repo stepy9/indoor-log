@@ -102,9 +102,10 @@ export function scoreWorkout(facts, planned, fallback = null) {
     const even = part("even", fade == null ? null : clamp(1 - (Math.abs(fade) - 0.05) / 0.15), { fade: fade == null ? null : round(fade * 100) });
     const time = part("time", minutes && facts.testMinutes ? clamp(facts.testMinutes / minutes) : null, { done: facts.testMinutes ? round(facts.testMinutes) : null, planned: minutes });
     score = weighted("ftpTest", { even, time });
-  } else if (facts.kind === "intervals" && targets.intervals) {
-    as = "intervals";
-    const plan = targets.intervals;
+  } else if ((facts.kind === "intervals" || facts.extra === "pyramid") && targets.intervals) {
+    // A pyramid's efforts are of 1 to 3 minutes, five of them: counted from the shortest.
+    as = facts.extra === "pyramid" ? "pyramid" : "intervals";
+    const plan = as === "pyramid" ? { ...targets.intervals, repeats: 5, minutes: 1, rest: 1 } : targets.intervals;
     // Work laps: at least 80 % of the planned length and harder than the workout's middle.
     const powers = facts.laps.map((lap) => lap.power).filter((value) => value > 0).sort((a, b) => a - b);
     const middle = powers.length ? powers[Math.floor(powers.length / 2)] : 0;
@@ -134,19 +135,25 @@ export function scoreWorkout(facts, planned, fallback = null) {
       const time = part("time", clamp(facts.minutes / minimal), { done: round(facts.minutes), planned: minimal });
       score = weighted("minimal", { easy, time });
     } else {
-      as = type === "long" ? "long" : "usual";
-      const plannedMinutes = as === "long" ? targets.longMinutes : targets.usualMinutes;
+      // A progression and a technique drill by their own length, without the drift (built on purpose, or the
+      // stroke rate changing); the progression's build left out of its zone 2 by the facts.
+      as = facts.extra === "progression" || facts.extra === "technique" ? facts.extra : type === "long" ? "long" : "usual";
+      const plannedMinutes = facts.extraMinutes ?? (as === "long" ? targets.longMinutes : targets.usualMinutes);
       // In zone 2 counts whole, below it half (easy, if not the aim), above it nothing.
       const zone = part("zone", heartTotal ? (facts.heart.inside + facts.heart.below * 0.5) / heartTotal : null, { inside: heartTotal ? round((facts.heart.inside / heartTotal) * 100) : null, above: heartTotal ? round((facts.heart.above / heartTotal) * 100) : null });
       const time = part("time", plannedMinutes ? clamp(facts.minutes / plannedMinutes) : null, { done: round(facts.minutes), planned: plannedMinutes });
       // The heart drifting up to 5 % is fine, from 10 % on it is the full loss.
-      const drift = part("drift", facts.drift == null ? null : clamp(1 - (facts.drift - 5) / 5), { drift: facts.drift == null ? null : Math.round(facts.drift * 10) / 10 });
+      const driftValue = facts.extra ? null : facts.drift;
+      const drift = part("drift", driftValue == null ? null : clamp(1 - (driftValue - 5) / 5), { drift: driftValue == null ? null : Math.round(driftValue * 10) / 10 });
       score = weighted("steady", { zone, time, drift });
     }
   }
   if (score == null) return null;
   // Another kind than planned is no fault: scored as ridden, only told.
-  const swapped = Boolean(type) && !(type === as || (as === "minimal" && (type === "usual" || type === "long")) || (as === "ftpTest" && type.startsWith("ftpTest")));
+  // An extra in place of its kind is no swap: a pyramid for intervals, a progression or a drill for a steady day.
+  const inPlace = (as === "minimal" || as === "progression" || as === "technique") ? type === "usual" || type === "long"
+    : as === "pyramid" ? type === "intervals" : as === "ftpTest" ? type?.startsWith("ftpTest") : false;
+  const swapped = Boolean(type) && type !== as && !inPlace;
   return { score, as, planned: type, swapped, approx: !planned, parts };
 }
 
@@ -338,8 +345,15 @@ export function workoutFromName(name) {
   if (/\bftp\b/i.test(name)) return /\b20\s*min/i.test(name) ? { kind: "ftpTest" } : /\b5\s*min/i.test(name) ? { kind: "ftpTestShort" } : { kind: "extra" };
   if (/minim/i.test(name)) return { kind: "minimal" };
   const efforts = effortsInName(name);
-  return efforts ? { kind: "intervals", ...efforts } : { kind: "extra" };
+  if (efforts) return { kind: "intervals", ...efforts };
+  // The extras the plan knows: a pyramid of efforts, a steady ride building at its end, a drill of stroke rates.
+  const minutes = Number(/(\d+)\s*min\s*$/i.exec(name)?.[1]) || null;
+  const extra = /pyramid/i.test(name) ? "pyramid" : /progres/i.test(name) ? "progression" : /techni/i.test(name) ? "technique" : null;
+  return { kind: "extra", extra, minutes };
 }
+
+// The last minutes of a progression, built up above zone 2 on purpose: left out of its time in zone 2.
+export const progressionBuild = 8;
 
 // The workouts to ride for the plan, from the names of those made: the interval workout of the planned efforts, the
 // two FTP tests, the least workout, and the rest as extras; each null when none fits. intervals: the plan's
@@ -353,6 +367,9 @@ export function pickWorkouts(names, intervals) {
     ftpTest: first((item) => item.kind === "ftpTest"),
     minimal: first((item) => item.kind === "minimal"),
     extras: list.filter((item) => item.kind === "extra").map((item) => item.name),
+    pyramid: first((item) => item.extra === "pyramid"),
+    progression: first((item) => item.extra === "progression"),
+    technique: first((item) => item.extra === "technique"),
     wanted: intervals ? `${intervals.repeats}x${intervals.minutes} min` : null,
   };
 }
