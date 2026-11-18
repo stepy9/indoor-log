@@ -9,7 +9,7 @@ import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
-import { excuses, excuseText } from "./excuse.js";
+import { excuses, excuseText, openExcuse } from "./excuse.js";
 
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
@@ -616,6 +616,25 @@ function renderCalendar(range, entries) {
       off.append(Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: `${excuseIcons[excuse.reason] ?? excuseIcons.other} ${excuseText(excuse)}` }));
       cell.append(off);
     }
+    // This week's days ahead: the planned workout, faint, a click to take the day off instead.
+    if (!ridden.length && !excuse) {
+      for (const item of (view.planned ?? []).filter((item) => item.day === day)) {
+        const text = plannedText(item.plan, item.sport, item.type);
+        const planned = Object.assign(document.createElement("button"), { type: "button", className: "diary-day-planned" });
+        planned.title = `${text}\n${t("diaryPlannedSkip")}`;
+        planned.append(Object.assign(document.createElement("span"), { className: "diary-day-planned-name", textContent: text.split(" · ")[0] }));
+        planned.addEventListener("click", () => openExcuse(day, render));
+        cell.append(planned);
+      }
+    }
+    // Today or a day ahead off: a click changes or cancels it.
+    if (excuse && day >= today) {
+      const off = cell.querySelector(".diary-day-off");
+      off.classList.add("is-editable");
+      off.setAttribute("role", "button");
+      off.tabIndex = 0;
+      off.addEventListener("click", () => openExcuse(day, render));
+    }
     return cell;
   });
   // Each row opens with its week number, which opens that week.
@@ -721,7 +740,11 @@ function render() {
   view.day ??= dayKey(Date.now(), zone);
   // Each sport's current plan, for its workouts' scores; drawn anew, as the settings or the library may have changed.
   const settings = settingsFor(view.entries);
-  view.plans = new Map(Object.keys(settings.sports).filter((sport) => hasTraining(settings, sport)).map((sport) => [sport, trainingPlan(view.entries, sport)?.plan ?? null]));
+  const results = Object.keys(settings.sports).filter((sport) => hasTraining(settings, sport)).map((sport) => [sport, trainingPlan(view.entries, sport)]);
+  view.plans = new Map(results.map(([sport, result]) => [sport, result?.plan ?? null]));
+  // The days ahead of this week with what the plan lays on them, for the calendar.
+  view.planned = results.filter(([sport, result]) => result?.plan && (view.sport === "all" || view.sport === sport))
+    .flatMap(([sport, result]) => result.checklist.filter((item) => item.status === "planned" && item.type !== "off").map((item) => ({ ...item, sport, plan: result.plan })));
   scoreCache = new WeakMap();
   const range = periodRange(view.period, view.day);
   const entries = shown();

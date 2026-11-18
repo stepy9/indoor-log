@@ -1395,3 +1395,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-ftp-result { margin: 6px 0 2px; font-size: 18px; font-weight: 700; }
 .training-ftp-test .fitness-suggestion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
 .training-ftp-test .outline-button { margin-top: 0; }
+.shell > section:not([hidden]) { margin-bottom: 24px; }
+.diary-day-planned { display: block; width: 100%; padding: 4px 6px; border: 1px dashed var(--accent); border-radius: 5px; background: transparent; color: var(--muted); font: inherit; text-align: left; cursor: pointer; opacity: .8; }
+.diary-day-planned:hover, .diary-day-off.is-editable:hover { opacity: 1; background: var(--accent-soft); }
+.diary-day-planned-name { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.diary-day-off.is-editable { cursor: pointer; }
