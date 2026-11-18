@@ -359,8 +359,9 @@ export function timeInZones(entries, by, allSettings) {
   return totals;
 }
 
-// The workout's primary benefit, as Garmin names it, from its time in zones: by power when the sport's FTP is known
-// and most of it has power, else by heart rate. The hardest zone held long enough wins; a workout under 25 minutes
+// The workout's primary benefit, as Garmin names it, from its time in zones: by heart rate when the maximum is known
+// and most of it has heart rate, as Garmin does, else by power; short anaerobic efforts still by power, which the
+// heart rate lags behind. The hardest zone held long enough wins; a workout under 25 minutes
 // that wins none is a recovery. Bounds fitted to Garmin's labels of 57 runs and rowing workouts, 44 of them matching.
 // Returns { benefit, by } with benefit one of benefits, or null without zones to go by.
 export const benefits = ["recovery", "base", "tempo", "threshold", "vo2max", "anaerobic", "sprint"];
@@ -384,8 +385,8 @@ function longestAbove(entry, watts) {
 
 export function primaryBenefit(entry, allSettings) {
   const settings = forSport(allSettings, entry.sport, entry.startMs);
-  const by = settings.ftp > 0 && coverage(entry, "power") >= 0.5 ? "power"
-    : settings.maxHeartRate > 0 && coverage(entry, "heartRate") >= 0.5 ? "heartRate" : null;
+  const hasPower = settings.ftp > 0 && coverage(entry, "power") >= 0.5;
+  const by = settings.maxHeartRate > 0 && coverage(entry, "heartRate") >= 0.5 ? "heartRate" : hasPower ? "power" : null;
   if (!by) return null;
   const zones = timeInZones([entry], by, allSettings);
   const total = zones.reduce((sum, value) => sum + value, 0);
@@ -396,8 +397,9 @@ export function primaryBenefit(entry, allSettings) {
   const top = zones.length - 1;
   const vo2max = by === "power" ? top - 1 : top;
   // Anaerobic efforts none longer than half a minute make a sprint workout.
-  const anaerobic = by === "power" && zones[top] >= 120
-    ? (longestAbove(entry, settings.ftp * settings.powerZones[top]) <= 30 ? "sprint" : "anaerobic") : null;
+  const powerZoneTimes = hasPower ? (by === "power" ? zones : timeInZones([entry], "power", allSettings)) : null;
+  const anaerobic = powerZoneTimes && powerZoneTimes.at(-1) >= 120
+    ? (longestAbove(entry, settings.ftp * settings.powerZones.at(-1)) <= 30 ? "sprint" : "anaerobic") : null;
   const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
     : from(vo2max - 1) >= Math.max(900, total * 0.45) ? "threshold"
     : from(vo2max - 2) >= Math.max(300, total * 0.5) ? "tempo"
@@ -411,9 +413,12 @@ export function primaryBenefit(entry, allSettings) {
 export const teLevels = ["none", "some", "maintaining", "improving", "highlyImproving", "overreaching"];
 
 export function aerobicEffect(entry, allSettings) {
-  const result = activityLoad(entry, allSettings);
-  if (!result || !(result.load > 0)) return null;
-  const value = Math.round(Math.min(5, Math.max(0, 0.43 + 0.73 * Math.log(result.load))) * 10) / 10;
+  // From the heart rate when most of the workout has one, as Garmin's own: a low FTP estimate would inflate a load from power.
+  const settings = forSport(allSettings, entry.sport, entry.startMs);
+  const fromHeartRate = settings.maxHeartRate > 0 && coverage(entry, "heartRate") >= 0.5 ? heartRateLoad(entry, settings) : null;
+  const load = fromHeartRate ?? activityLoad(entry, allSettings)?.load;
+  if (!(load > 0)) return null;
+  const value = Math.round(Math.min(5, Math.max(0, 0.43 + 0.73 * Math.log(load))) * 10) / 10;
   return { value, level: teLevels[Math.min(5, Math.floor(value))] };
 }
 

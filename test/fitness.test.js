@@ -220,8 +220,8 @@ test("zone bounds above the limit fall back to the defaults", () => {
   assert.deepEqual(fine.powerZones, [0, 0.55, 0.75, 0.9, 1.05, 1.5]);
 });
 
-test("the primary benefit is the hardest zone held long enough, by power before heart rate", () => {
-  const power = { ftp: { cycling: 200 }, maxHeartRate: 200 };
+test("the primary benefit is the hardest zone held long enough, by heart rate before power", () => {
+  const power = { ftp: { cycling: 200 } };
   assert.deepEqual(primaryBenefit(entry({ minutes: 12, power: () => 90 }), power), { benefit: "recovery", by: "power" });
   assert.equal(primaryBenefit(entry({ power: () => 130 }), power).benefit, "base");
   assert.equal(primaryBenefit(entry({ power: () => 165 }), power).benefit, "tempo");
@@ -229,7 +229,11 @@ test("the primary benefit is the hardest zone held long enough, by power before 
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 230 : 120) }), power).benefit, "vo2max");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 20 ? 400 : 120) }), power).benefit, "sprint");
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 300 : 120) }), power).benefit, "anaerobic");
-  // Without an FTP the heart rate decides, and it knows no anaerobic benefit.
+  // With a maximum heart rate the heart rate decides, as in Garmin: easy beats at a power over the FTP stay easy;
+  // short anaerobic efforts still come from the power.
+  const both = { ftp: { cycling: 200 }, maxHeartRate: 200 };
+  assert.deepEqual(primaryBenefit(entry({ power: () => 230, heartRate: () => 130 }), both), { benefit: "base", by: "heartRate" });
+  assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 300 : 120), heartRate: () => 130 }), both).benefit, "anaerobic");
   assert.deepEqual(primaryBenefit(entry({ heartRate: () => 185 }), { maxHeartRate: 200 }), { benefit: "vo2max", by: "heartRate" });
   assert.equal(primaryBenefit(entry({ heartRate: () => 130 }), { maxHeartRate: 200 }).benefit, "base");
   assert.equal(primaryBenefit(entry(), {}), null);
@@ -246,6 +250,9 @@ test("the aerobic Training Effect rises with the logarithm of the load, Garmin's
   assert.deepEqual(aerobicEffect(entry(), settings), { value: 3.8, level: "improving" });
   assert.equal(aerobicEffect(entry({ minutes: 10, power: () => 100 }), settings).level, "some");
   assert.equal(aerobicEffect(entry(), {}), null);
+  // With a maximum heart rate it comes from the heart rate, as Garmin's does, whatever the FTP says.
+  const easy = entry({ power: () => 400, heartRate: () => 120 });
+  assert.ok(aerobicEffect(easy, { ftp: { cycling: 200 }, maxHeartRate: 190, restHeartRate: 50 }).value < aerobicEffect(easy, { ftp: { cycling: 200 } }).value);
 });
 
 test("a heart rate read too low until a jump of over 30 bpm is left out, a steady rise is kept", () => {
