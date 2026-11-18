@@ -6,7 +6,8 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
-import { settingsFor } from "./settings.js";
+import { answerReminder, remindersDue, settingsFor } from "./settings.js";
+import { checkNumber } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
@@ -750,6 +751,44 @@ function renderZones(current, previous) {
   byId("diaryZones").replaceChildren(...zoneGroups(current, settingsFor(view.entries), view.sport, previous));
 }
 
+// The weight and resting heart rate not touched for a while, each with a field for the new value and a button
+// keeping the one set; either answer puts the reminder off for another while.
+const reminderRanges = { weight: { min: 30, max: 250, decimals: 1 }, restHeartRate: { min: 30, max: 100 } };
+
+function renderReminders() {
+  const box = byId("diaryReminders");
+  const due = remindersDue();
+  box.hidden = !due.length;
+  box.replaceChildren(...due.map(({ key, value, days }) => {
+    const row = document.createElement("div");
+    row.className = "diary-reminder";
+    row.dataset.fieldRow = "";
+    const number = displayNumber(value, value % 1 ? 1 : 0);
+    const shown = `${number} ${key === "weight" ? "kg" : "bpm"}`;
+    const text = document.createElement("span");
+    text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
+    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: number });
+    input.setAttribute("inputmode", key === "weight" ? "decimal" : "numeric");
+    input.setAttribute("aria-label", t(key === "weight" ? "settingsWeightLabel" : "fitnessRestHrLabel"));
+    const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
+    const keep = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("reminderKeep") });
+    const answer = (next) => {
+      answerReminder(key, next);
+      render();
+    };
+    save.addEventListener("click", () => {
+      const next = checkNumber(input, { ...reminderRanges[key], required: true });
+      if (next !== undefined) answer(next);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") save.click();
+    });
+    keep.addEventListener("click", () => answer(null));
+    row.append(text, input, save, keep);
+    return row;
+  }));
+}
+
 function render() {
   if (byId("diaryView").hidden) return;
   saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span, showPlan: view.showPlan } });
@@ -774,6 +813,7 @@ function render() {
   // With no day of the period gone by, the range before is never cut.
   const whole = previousRange(view.period, view.day, "", basis, picked);
   byId("diaryEmpty").hidden = view.entries.length > 0;
+  renderReminders();
   renderControls(range);
   renderTiles(totals(current), { ...totals(previous), range: before, partial: before[1] !== whole[1] }, current);
   renderBars(range, current);

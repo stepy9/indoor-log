@@ -16,6 +16,7 @@ import { setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapWorkouts } from "../training.js";
+import { dueReminders } from "../reminders.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -93,6 +94,28 @@ setCalorieProfile((ms) => {
 export function perKgText(watts, ms) {
   const kg = weightOnDay(ms);
   return kg && Number.isFinite(watts) ? `${displayNumber(watts / kg, 2)} W/kg` : "";
+}
+
+// The weight and resting heart rate due to be checked again, for the reminder in the diary.
+export const remindersDue = () => dueReminders(remembered(), savedHistory(), dayKey(Date.now(), zone));
+
+// A value from the reminder: a new one is written from today; the same one, or none, only marks it checked today.
+export function answerReminder(key, value) {
+  const saved = remembered();
+  const today = dayKey(Date.now(), zone);
+  const reminders = { ...saved.reminders, [key]: today };
+  if (key === "weight") {
+    const current = weightOn({ history: savedHistory(), timeZone: zone }, Date.now());
+    if (value > 0 && value !== current) {
+      const list = [...savedWeights().filter((item) => item.from !== today), { from: today, kg: value }];
+      saveFitness({ reminders, history: { ...savedHistory(), weight: withRecords(savedHistory().weight, list, "kg") }, weightHistory: undefined, weight: undefined });
+      return;
+    }
+  } else if (value > 0 && value !== saved.restHeartRate) {
+    saveFitness({ reminders, restHeartRate: value });
+    return;
+  }
+  saveFitness({ reminders });
 }
 
 // A weekly goal changed holds from this week's Monday on; the weeks before keep the goal they had
@@ -284,7 +307,13 @@ function generalPane() {
     saveFitness({ birthYear: value });
     changed();
   }, { min: 1920, max: new Date().getFullYear() }));
-  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), cloudBlock(), backupBlock());
+  // The diary asks for the weight and the resting heart rate again after a while, unless turned off here.
+  const remind = node("label", { class: "check-field" });
+  const remindBox = node("input", { type: "checkbox", "data-key": "reminders" });
+  remindBox.checked = !remembered().reminders?.off;
+  remindBox.addEventListener("change", () => saveFitness({ reminders: { ...remembered().reminders, off: !remindBox.checked } }));
+  remind.append(remindBox, " ", node("span", {}, t("settingsReminders")));
+  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), remind, node("p", { class: "field-note" }, t("settingsRemindersNote")), cloudBlock(), backupBlock());
   return pane;
 }
 
