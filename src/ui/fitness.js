@@ -1,4 +1,4 @@
-import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
+import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -227,7 +227,7 @@ function planPrefs(settings, sport) {
 
 // The day the latest FTP was typed by hand, an FTP test's result as the plan counts it; null without one.
 export function lastFtpTyped(settings, sport) {
-  return (settings.sports[sport]?.ftpHistory ?? []).map((record) => record.from).filter(Boolean).sort().at(-1) ?? null;
+  return ftpRecords(settings.sports[sport]).map((record) => record.from).filter(Boolean).sort().at(-1) ?? null;
 }
 
 // How to ride a steady workout: the heart rate to hold, the power to start at, the cadence and the resistance.
@@ -778,7 +778,7 @@ function labelCells(table) {
 
 function renderCurveTable(curve, before, settings) {
   // Each best in W/kg by the weight on the day it was ridden.
-  const weighed = (settings.weightHistory ?? []).length > 0;
+  const weighed = weightRecords(settings).length > 0;
   const table = byId("fitnessCurveTable");
   const shown = curve.filter((point) => point.value != null);
   table.hidden = !shown.length;

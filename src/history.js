@@ -2,6 +2,7 @@ import { addDays } from "./diary.js";
 
 // Settings that change what is worked out hold from the day they change on; the days before keep what they had.
 // A history is [{ from: "YYYY-MM-DD", value, at }], sorted by from; at is when it was written, for merging.
+// A record removed stays as { from, deleted: true, at }, so a merge does not bring it back from another device.
 // The first change keeps the value before it from the start (from "0000-00-00").
 
 export const start = "0000-00-00";
@@ -21,7 +22,7 @@ export function mondayOf(day) {
 export function valueOn(history, day, fallback = null) {
   if (!Array.isArray(history) || !history.length) return fallback;
   let held = null;
-  for (const record of history) if ((record.from ?? start) <= day && (!held || (record.from ?? start) >= (held.from ?? start))) held = record;
+  for (const record of history) if (!record.deleted && (record.from ?? start) <= day && (!held || (record.from ?? start) >= (held.from ?? start))) held = record;
   return held ? held.value ?? null : fallback;
 }
 
@@ -48,6 +49,27 @@ export function mergeHistory(a, b) {
     if (!held || (record.at ?? 0) > (held.at ?? 0)) byDay.set(key, { ...record, from: key });
   }
   return [...byDay.values()].sort((a, b) => a.from.localeCompare(b.from));
+}
+
+const day = (record) => record.from ?? start;
+
+// The records listed by hand (the FTP and the weight: [{ from: "YYYY-MM-DD" | null, [field] }], null from the start)
+// and their history: each way.
+export const toRecords = (history, field) => (history ?? []).filter((record) => !record.deleted)
+  .map((record) => ({ from: day(record) === start ? null : record.from, [field]: record.value }));
+export const fromRecords = (list, field, at = 0) => (list ?? []).map((record) => ({ from: day(record), value: record[field] ?? null, at }))
+  .sort((a, b) => a.from.localeCompare(b.from));
+
+// The history after the records were edited to the list given: a record gone is kept as removed, one unchanged
+// keeps its time.
+export function withRecords(history, list, field, at = Date.now()) {
+  const next = new Map(fromRecords(list, field, at).map((record) => [record.from, record]));
+  const kept = (history ?? []).filter((record) => !next.has(day(record))).map((record) => (record.deleted ? record : { from: day(record), deleted: true, at }));
+  const written = [...next.values()].map((record) => {
+    const old = (history ?? []).find((item) => !item.deleted && day(item) === record.from);
+    return old && same(old.value, record.value) ? old : record;
+  });
+  return [...kept, ...written].sort((a, b) => a.from.localeCompare(b.from));
 }
 
 // The weekly goals as the first version of their history kept them, [{ from, weeklyHours, weeklyKm }], as two histories.

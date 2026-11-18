@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { changeDay, fromGoalHistory, mergeHistory, mondayOf, setValue, start, valueOn } from "../src/history.js";
-import { activityLoad, forSport } from "../src/fitness.js";
-import { mergeSettings } from "../src/sync.js";
+import { changeDay, fromGoalHistory, fromRecords, mergeHistory, toRecords, withRecords, mondayOf, setValue, start, valueOn } from "../src/history.js";
+import { activityLoad, forSport, ftpOn, ftpSourceOn, weightOn } from "../src/fitness.js";
+import { mergeSettings, syncSummary } from "../src/sync.js";
 
 test("valueOn gives the value in force on the day, the fallback without a history", () => {
   const history = [{ from: start, value: 180 }, { from: "2026-11-10", value: 190 }];
@@ -86,4 +86,43 @@ test("mergeSettings keeps the history changes of both devices", () => {
   assert.equal(merged.sports.rowing.weeklyHours, 4);
   assert.equal(merged.sports.cycling.weeklyKm, 100);
   assert.deepEqual(mergeSettings(sideB, sideA).defaults.fitness.history, merged.history);
+});
+
+test("the FTP and weight records as earlier versions listed them become a history and back, nothing lost", () => {
+  const listed = [{ from: "2026-10-10", ftp: 250 }, { from: null, ftp: 200 }];
+  const history = fromRecords(listed, "ftp");
+  assert.deepEqual(history.map((record) => [record.from, record.value]), [[start, 200], ["2026-10-10", 250]]);
+  assert.deepEqual(toRecords(history, "ftp"), [{ from: null, ftp: 200 }, { from: "2026-10-10", ftp: 250 }]);
+  const settings = { timeZone: "UTC", sports: { cycling: { history: { ftp: history } } }, history: { weight: fromRecords([{ from: null, kg: 80 }, { from: "2026-10-01", kg: 76.5 }], "kg") } };
+  assert.equal(ftpOn(settings, "cycling", Date.parse("2026-10-09T12:00:00Z")), 200);
+  assert.deepEqual(ftpSourceOn(settings, "cycling", Date.parse("2026-10-11T12:00:00Z")), { ftp: 250, method: "manual", from: "2026-10-10" });
+  assert.equal(weightOn(settings, Date.parse("2026-09-30T12:00:00Z")), 80);
+  assert.equal(weightOn(settings, Date.parse("2026-10-02T12:00:00Z")), 76.5);
+});
+
+test("a record removed by hand stays removed, an unchanged one keeps its time", () => {
+  const history = fromRecords([{ from: null, ftp: 200 }, { from: "2026-10-10", ftp: 250 }], "ftp", 1);
+  const edited = withRecords(history, [{ from: null, ftp: 200 }], "ftp", 9);
+  assert.deepEqual(edited, [{ from: start, value: 200, at: 1 }, { from: "2026-10-10", deleted: true, at: 9 }]);
+  assert.equal(valueOn(edited, "2026-11-01"), 200);
+  assert.deepEqual(toRecords(edited, "ftp"), [{ from: null, ftp: 200 }]);
+});
+
+test("a sync keeps an FTP record removed on one device and the records added on both", () => {
+  const before = fromRecords([{ from: null, ftp: 200 }, { from: "2026-10-10", ftp: 250 }], "ftp", 1);
+  const here = withRecords(before, [{ from: null, ftp: 200 }, { from: "2026-11-01", ftp: 260 }], "ftp", 10);
+  const there = withRecords(before, [...toRecords(before, "ftp"), { from: "2026-11-15", ftp: 270 }], "ftp", 20);
+  const side = (history, at) => ({ defaults: { fitness: { sports: { cycling: { history: { ftp: history } } } } }, changedAt: { fitness: at } });
+  const merged = mergeSettings(side(here, 10), side(there, 20)).defaults.fitness.sports.cycling.history.ftp;
+  assert.deepEqual(toRecords(merged, "ftp"), [{ from: null, ftp: 200 }, { from: "2026-11-01", ftp: 260 }, { from: "2026-11-15", ftp: 270 }]);
+  // The same day changed on both: the later written holds.
+  const both = mergeSettings(side(withRecords(before, [{ from: null, ftp: 210 }], "ftp", 30), 30), side(there, 20)).defaults.fitness.sports.cycling.history.ftp;
+  assert.equal(valueOn(both, "2026-01-01"), 210);
+});
+
+test("the sync summary sees the weight in its history", () => {
+  const settings = { defaults: { fitness: { history: { weight: [{ from: start, value: 78, at: 1 }] } } }, changedAt: 1 };
+  assert.equal(syncSummary({ entries: [], settings }).weight, true);
+  const removed = { defaults: { fitness: { history: { weight: [{ from: start, deleted: true, at: 2 }] } } }, changedAt: 1 };
+  assert.equal(syncSummary({ entries: [], settings: removed }).weight, false);
 });

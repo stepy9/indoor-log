@@ -1,5 +1,5 @@
 import { mergeDuplicates } from "./library.js";
-import { mergeHistory, valueOn } from "./history.js";
+import { mergeHistory, toRecords, trackedGeneral, trackedSport, valueOn } from "./history.js";
 
 // Keeping the library and the settings the same on every device through one file in the cloud.
 // A state is { entries, deleted, settings }: the activities, each with changedAt (when it was last saved here),
@@ -60,19 +60,19 @@ const blank = (value) => value == null || (typeof value === "object" && Object.k
 const clearable = new Set(["trainingExcuses"]);
 
 // The histories of two sides joined (see history.js), each value now in force set as the one of the joined history.
-function withHistories(older, newer) {
+function withHistories(older, newer, tracked) {
   const history = { ...older?.history, ...newer?.history };
   for (const key of Object.keys(history)) history[key] = mergeHistory(older?.history?.[key], newer?.history?.[key]);
-  const now = Object.fromEntries(Object.entries(history).map(([key, list]) => [key, valueOn(list, "9999-12-31")]));
+  const now = Object.fromEntries(Object.entries(history).filter(([key]) => tracked.includes(key)).map(([key, list]) => [key, valueOn(list, "9999-12-31")]));
   return { ...newer, ...(Object.keys(history).length ? { ...now, history } : {}) };
 }
 
 // The newer side's fitness settings with both sides' histories, the general ones and each sport's.
 export function mergeFitness(older, newer) {
-  const result = withHistories(older, newer);
+  const result = withHistories(older, newer, trackedGeneral);
   const sports = { ...older?.sports, ...newer?.sports };
   if (Object.keys(sports).length) {
-    result.sports = Object.fromEntries(Object.keys(sports).map((sport) => [sport, withHistories(older?.sports?.[sport], newer?.sports?.[sport] ?? older.sports[sport])]));
+    result.sports = Object.fromEntries(Object.keys(sports).map((sport) => [sport, withHistories(older?.sports?.[sport], newer?.sports?.[sport] ?? older.sports[sport], trackedSport)]));
   }
   return result;
 }
@@ -162,7 +162,7 @@ export function parseSettingsFile(text) {
 export function syncSummary(state) {
   const defaults = normalizeSettings(state?.settings)?.defaults ?? {};
   const fitness = defaults.fitness ?? {};
-  const weight = (fitness.weightHistory ?? []).some((record) => record?.kg > 0) || fitness.weight > 0;
+  const weight = (fitness.history?.weight ? toRecords(fitness.history.weight, "kg") : fitness.weightHistory ?? []).some((record) => record?.kg > 0) || fitness.weight > 0;
   const heartRate = fitness.restHeartRate > 0 || fitness.maxHeartRate > 0;
   const thresholds = Object.values(fitness.sports ?? {}).some((sport) => sport && Object.values(sport).some((value) => !blank(value)));
   return {

@@ -1,6 +1,10 @@
 import { bestAverage, workoutKind } from "./analysis.js";
 import { addDays, dayKey } from "./diary.js";
-import { valueOn } from "./history.js";
+import { toRecords, valueOn } from "./history.js";
+
+// The FTP and weight records, from their history or as older settings listed them.
+export const ftpRecords = (own) => (own?.history?.ftp ? toRecords(own.history.ftp, "ftp") : own?.ftpHistory ?? []);
+export const weightRecords = (settings) => (settings?.history?.weight ? toRecords(settings.history.weight, "kg") : settings?.weightHistory ?? []);
 
 // Training load, fitness and form, time in zones, the power curve and aerobic decoupling, from library entries.
 
@@ -101,10 +105,10 @@ export function ftpOn(settings, sport, atMs) {
 }
 
 // The body weight on the moment: the latest record of the history up to that day, one without a date holding
-// from the start; null without any. settings.weightHistory is [{ from: "YYYY-MM-DD" | null, kg }].
+// from the start; null without any. see weightRecords.
 export function weightOn(settings, atMs) {
   const day = dayKey(atMs, settings.timeZone ?? "UTC");
-  const records = (settings.weightHistory ?? []).filter((record) => record.kg > 0 && (!record.from || record.from <= day));
+  const records = weightRecords(settings).filter((record) => record.kg > 0 && (!record.from || record.from <= day));
   if (!records.length) return null;
   return records.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest)).kg;
 }
@@ -114,7 +118,7 @@ export function weightOn(settings, atMs) {
 export function ftpSourceOn(settings, sport, atMs) {
   const own = settings.sports?.[sport] ?? {};
   const day = dayKey(atMs, settings.timeZone ?? "UTC");
-  const history = (own.ftpHistory ?? []).filter((record) => record.ftp > 0 && (!record.from || record.from <= day));
+  const history = ftpRecords(own).filter((record) => record.ftp > 0 && (!record.from || record.from <= day));
   if (history.length) {
     const record = history.reduce((latest, item) => ((item.from ?? "") >= (latest.from ?? "") ? item : latest));
     return { ftp: record.ftp, method: "manual", from: record.from ?? null };
@@ -187,7 +191,7 @@ export function ftpTimeline(entries) {
 export function ftpSuggestion(settings, sport, nowMs = Date.now()) {
   const timeZone = settings.timeZone ?? "UTC";
   const today = dayKey(nowMs, timeZone);
-  const records = (settings.sports?.[sport]?.ftpHistory ?? []).filter((record) => record.ftp > 0 && (!record.from || record.from <= today));
+  const records = ftpRecords(settings.sports?.[sport]).filter((record) => record.ftp > 0 && (!record.from || record.from <= today));
   if (!records.length) return null;
   const current = records.reduce((latest, record) => ((record.from ?? "") >= (latest.from ?? "") ? record : latest));
   const later = (settings.estimatedFtp?.[sport] ?? []).filter((point) => !current.from || dayKey(point.ms, timeZone) > current.from);

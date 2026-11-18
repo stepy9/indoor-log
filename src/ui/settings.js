@@ -1,4 +1,4 @@
-import { zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
+import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.js";
@@ -7,7 +7,7 @@ import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.j
 const openConversions = new Set();
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
-import { changeDay, fromGoalHistory, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
+import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
@@ -29,7 +29,7 @@ const sameValue = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? nu
 // Each change of a setting with a history is kept from the day it holds from, the days before keeping theirs.
 function withHistory(own, patch, keys) {
   const today = dayKey(Date.now(), zone);
-  const history = { ...own.history };
+  const history = { ...own.history, ...patch.history };
   for (const key of keys) {
     if (!(key in patch) || sameValue(own[key], patch[key])) continue;
     history[key] = setValue(history[key], own[key], patch[key], changeDay(key, today));
@@ -40,7 +40,7 @@ function withHistory(own, patch, keys) {
 function saveFitness(patch) {
   const saved = remembered();
   const tracked = trackedGeneral.some((key) => key in patch);
-  saveDefaults({ fitness: { ...saved, ...patch, ...(tracked ? { history: withHistory(saved, patch, trackedGeneral) } : {}) } });
+  saveDefaults({ fitness: { ...saved, ...patch, ...(tracked ? { history: withHistory({ ...saved, history: savedHistory() }, patch, trackedGeneral) } : {}) } });
 }
 
 // One sport's typed values, with what older settings kept for every sport folded in.
@@ -50,10 +50,15 @@ function savedSport(sport) {
   // A sport's own maximum overrides the general one; a copy of the general one, as earlier versions saved, is none.
   if (own.maxHeartRate === saved.maxHeartRate) own.maxHeartRate = null;
   // A single FTP, as earlier versions kept it, is a history holding from the start.
-  if (!own.ftpHistory && own.ftp) own.ftpHistory = [{ from: null, ftp: own.ftp }];
-  delete own.ftp;
-  // The weekly goals' own history, as the first version kept it, becomes theirs in the shared one.
   own.history = { ...own.history };
+  // The FTP records as earlier versions listed them, or a single FTP from the start, become the FTP's history.
+  if (!own.history.ftp) {
+    const listed = own.ftpHistory ?? (own.ftp ? [{ from: null, ftp: own.ftp }] : []);
+    if (listed.length) own.history.ftp = fromRecords(listed, "ftp");
+  }
+  delete own.ftp;
+  delete own.ftpHistory;
+  // The weekly goals' own history, as the first version kept it, becomes theirs in the shared one.
   if (own.goalHistory) {
     for (const key of ["weeklyHours", "weeklyKm"]) if (!own.history[key]) own.history[key] = fromGoalHistory(own.goalHistory, key);
   }
@@ -61,14 +66,21 @@ function savedSport(sport) {
   return own;
 }
 
-// The weight history; a single weight, as the first version kept it, holds from the start.
-function savedWeights() {
+// The general histories; the weight records as earlier versions listed them, or a single weight from the start, as the weight's.
+function savedHistory() {
   const saved = remembered();
-  return saved.weightHistory ?? (saved.weight ? [{ from: null, kg: saved.weight }] : []);
+  const history = { ...saved.history };
+  if (!history.weight) {
+    const listed = saved.weightHistory ?? (saved.weight ? [{ from: null, kg: saved.weight }] : []);
+    if (listed.length) history.weight = fromRecords(listed, "kg");
+  }
+  return history;
 }
 
+const savedWeights = () => weightRecords({ history: savedHistory() });
+
 // The body weight on the day of the moment, for the power per kilogram anywhere in the app; null without one.
-export const weightOnDay = (ms) => weightOn({ weightHistory: savedWeights(), timeZone: zone }, ms);
+export const weightOnDay = (ms) => weightOn({ history: savedHistory(), timeZone: zone }, ms);
 
 // Sex, age in the moment's year and weight on its day, for the calories estimated from the heart rate.
 setCalorieProfile((ms) => {
@@ -110,8 +122,7 @@ export function settingsFor(entries) {
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
     defaultRestHeartRate,
     typedMaxHeartRate: remembered().maxHeartRate || null,
-    history: remembered().history ?? {},
-    weightHistory: savedWeights(),
+    history: savedHistory(),
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
       return [sport, { ...saved, typedMaxHeartRate: saved.maxHeartRate || null, maxHeartRate: saved.maxHeartRate || generalMax }];
@@ -126,9 +137,14 @@ export function dismiss(key) {
   saveFitness({ dismissed: [...dismissed(), key].slice(-200) });
 }
 
+// The FTP records listed by hand, written as the FTP's history.
+function writeFtp(sport, list) {
+  const own = savedSport(sport);
+  saveSport(sport, { history: { ...own.history, ftp: withRecords(own.history.ftp, list, "ftp") } });
+}
+
 export function addFtpRecord(sport, record) {
-  const history = savedSport(sport).ftpHistory ?? [];
-  saveSport(sport, { ftpHistory: [...history.filter((item) => item.from !== record.from), record] });
+  writeFtp(sport, [...ftpRecords(savedSport(sport)).filter((item) => item.from !== record.from), record]);
 }
 
 export function setMaxHeartRate(sport, value) {
@@ -144,7 +160,7 @@ export const currentFtp = (settings, sport) => ftpOn(settings, sport, Date.now()
 
 // Whether the sport's value was typed rather than estimated; the FTP by a record in force today.
 export const setByHand = (sport, field) => (field === "ftp"
-  ? (savedSport(sport).ftpHistory ?? []).some((record) => record.ftp > 0 && (!record.from || record.from <= dayKey(Date.now(), zone)))
+  ? ftpRecords(savedSport(sport)).some((record) => record.ftp > 0 && (!record.from || record.from <= dayKey(Date.now(), zone)))
   : Boolean(savedSport(sport)[field]));
 
 const state = { pane: "general", entries: [], onTrainers: () => {}, sport: () => null };
@@ -770,7 +786,7 @@ function weightBlock() {
   const add = node("button", { type: "button", class: "outline-button" }, t("settingsWeightAdd"));
   const history = savedWeights();
   const write = (list) => {
-    saveFitness({ weightHistory: list, weight: null });
+    saveFitness({ history: { ...savedHistory(), weight: withRecords(savedHistory().weight, list, "kg") }, weightHistory: undefined, weight: undefined });
     changed();
   };
   // The first weight holds from the first workout, so the whole library gets its W/kg; later ones from today.
@@ -818,9 +834,9 @@ function ftpBlock(sport, settings, estimate) {
   const block = node("div", { class: "settings-ftp" });
   const title = node("div", { class: "panel-title-row" });
   const add = node("button", { type: "button", class: "outline-button" }, t("settingsFtpAdd"));
-  const history = savedSport(sport).ftpHistory ?? [];
+  const history = ftpRecords(savedSport(sport));
   const write = (list) => {
-    saveSport(sport, { ftpHistory: list });
+    writeFtp(sport, list);
     changed();
   };
   add.addEventListener("click", () => write([...history, { from: dayKey(Date.now(), zone), ftp: currentFtp(settings, sport) || 200 }]));
