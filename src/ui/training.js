@@ -134,11 +134,12 @@ function workoutsCard(sport, scored) {
   return card;
 }
 
-// Monday's look back and ahead in one card: how last week went against its plan, and what this week brings
-// (the longer workouts' change, a lighter week, the FTP test's days).
+// The look back and ahead in one card: how last week went against its plan, and what this week brings
+// (the longer workouts' change, a lighter week, the FTP test's days). Open from Monday until the week's first
+// workout, folded to one line for the rest of the week.
 function summaryCard(result, workouts, log) {
   const now = today();
-  if (!showsWeekSummary(workouts.map((workout) => workout.day), now)) return null;
+  const open = showsWeekSummary(workouts.map((workout) => workout.day), now);
   const monday = lastMondays(now, 2)[0];
   const sunday = addDays(monday, 6);
   const last = weekAdherence(log, workouts, monday, sunday);
@@ -162,8 +163,10 @@ function summaryCard(result, workouts, log) {
   for (const item of result.days.filter((day) => day.type.startsWith("ftpTest"))) {
     ahead.push(t(item.type === "ftpTestShort" ? "summaryTestShort" : "summaryTest", { day: format(item.day, { weekday: "long" }) }));
   }
-  const card = node("section", { class: "card training-summary" });
+  const card = node("details", { class: "card training-summary" });
+  card.open = open;
   card.append(
+    node("summary", { class: "field-label" }, t("summaryTitle")),
     node("p", {}, `${t("summaryLast")}: ${back.join(", ")}.`),
     node("p", {}, `${t("summaryThis")}: ${ahead.join(", ")}.`),
   );

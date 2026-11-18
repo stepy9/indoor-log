@@ -1353,5 +1353,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-chart-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .training-chart-value { fill: var(--ink); font-size: 10px; text-anchor: middle; }
 .training-chart-label { fill: var(--muted); font-size: 10px; text-anchor: middle; }
-.training-summary { display: grid; gap: 4px; border-left: 4px solid #4d8dff; }
-.training-summary p { margin: 0; font-size: 15px; }
+.training-summary { border-left: 4px solid #4d8dff; }
+.training-summary > summary { cursor: pointer; }
+.training-summary[open] > summary { margin-bottom: 6px; }
+.training-summary p { margin: 4px 0 0; font-size: 15px; }
