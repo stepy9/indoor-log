@@ -4,7 +4,7 @@ import { start, toRecords } from "./history.js";
 // it has not been touched for a while: the weight after two weeks, the resting heart rate after a month.
 // The HRV is entered day by day without a reminder: a night left out does not make it wrong.
 export const reminderDays = { weight: 14, restHeartRate: 30 };
-export const bodyKeys = ["weight", "restHeartRate", "hrv"];
+export const bodyKeys = ["weight", "restHeartRate", "hrv", "sleep"];
 
 const daysBetween = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000);
 
@@ -32,6 +32,7 @@ export function bodyStatus(fitness, history, today) {
     weight: { value: weights.at(-1)?.kg ?? null, last: [lastDay(history?.weight), confirmed.weight] },
     restHeartRate: { value: fitness?.restHeartRate > 0 ? fitness.restHeartRate : null, last: [lastDay(history?.restHeartRate), confirmed.restHeartRate] },
     hrv: { value: latestDated(history?.hrv), last: [lastDay(history?.hrv)] },
+    sleep: { value: latestDated(history?.sleep), last: [lastDay(history?.sleep)] },
   };
   return bodyKeys.map((key) => {
     const { value, last } = values[key];

@@ -4,6 +4,8 @@ import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLeve
 import { axisTicks } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
 import { hrvDays, hrvOn, hrvSeries } from "../hrv.js";
+import { shortSleepHours, sleepOn } from "../sleep.js";
+import { sleepText } from "./diary.js";
 import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
@@ -193,7 +195,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low" }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -271,7 +273,7 @@ export function renderNextStep(card, entries, sport = "all") {
   if (plan.minimal) rows.push(line(t("nextMinimal"), t("nextMinimalText", { minutes: plan.minimal.minutes })));
   if (!plan.ftpTest?.due) rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
-    : line(t("nextIntervals"), t(plan.holds.includes("tired") || plan.holds.includes("hrvLow") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
+    : line(t("nextIntervals"), t(["tired", "hrvLow", "shortSleep"].some((hold) => plan.holds.includes(hold)) ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   // Why it holds back, or that this is a lighter week.
   const notes = [
     ...(plan.lighter ? [t("nextLighter")] : []),
@@ -775,6 +777,7 @@ const bodyCharts = [
   { key: "weight", chart: "fitnessWeightChart", tooltip: "fitnessWeightTooltip", unit: "kg", color: "var(--compare-1)" },
   { key: "restHeartRate", chart: "fitnessRestChart", tooltip: "fitnessRestTooltip", unit: "bpm", color: "var(--compare-2)" },
   { key: "hrv", chart: "fitnessHrvChart", tooltip: "fitnessHrvTooltip", unit: "ms", color: "var(--compare-3)" },
+  { key: "sleep", chart: "fitnessSleepChart", tooltip: "fitnessSleepTooltip", unit: "h", color: "var(--compare-4)", nightly: true },
 ];
 
 function renderBodyCharts() {
@@ -802,7 +805,7 @@ function renderBodyCharts() {
     const margin = { left: 44, right: 12, top: 12, bottom: 26 };
     // The HRV: each day of the chart with its week's average and the usual range then.
     const series = item.key === "hrv" ? hrvSeries(hrvDays(history.hrv), chartFrom, end) : null;
-    const values = [...points.map((point) => point.value), ...(series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite)];
+    const values = [...points.map((point) => point.value), ...(series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite), ...(item.nightly ? [shortSleepHours] : [])];
     const low = Math.min(...values);
     const high = Math.max(...values);
     const yStep = [0.5, 1, 2, 5, 10, 20].find((size) => (high - low) / size <= 4) ?? 20;
@@ -819,8 +822,10 @@ function renderBodyCharts() {
     }
     children.push(...dateTicks(chartFrom, end, xForKey, { margin, width, height }));
     if (series) children.push(...hrvLayers(series, xForKey, yFor, item.color));
+    // The sleep: the line under which a night is short, dashed.
+    if (item.nightly) children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(shortSleepHours), y2: yFor(shortSleepHours), class: "fitness-sleep-limit" }));
     // The line goes on to today at the last value, as it still holds.
-    const path = [...points, { day: end, value: points.at(-1).value }].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
+    const path = [...points, ...(item.nightly ? [] : [{ day: end, value: points.at(-1).value }])].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
     if (!series) children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
     for (const point of points.filter((point) => !point.carried)) {
       children.push(node("circle", { cx: xForKey(point.day), cy: yFor(point.value), r: 3, class: "fitness-body-dot", style: `fill: ${item.color}` }));
@@ -869,6 +874,11 @@ function showBodyTooltip(key, event) {
     if (Number.isFinite(stood?.average)) add(t("hrvAverage"), `${displayNumber(stood.average)} ms`);
     if (Number.isFinite(stood?.low)) add(t("hrvRange"), `${displayNumber(stood.low)}–${displayNumber(stood.high)} ms`);
     if (stood?.status) add("", t(`hrvStatus_${stood.status}`));
+  } else if (item.nightly) {
+    // The sleep: the night ending on the day, or none entered.
+    const night = sleepOn(bodyHistory().sleep, day);
+    row.append(swatch, node("span", {}, t("body_sleep")), node("strong", {}, night ? sleepText(night) : "—"));
+    rows.push(row);
   } else {
     row.append(swatch, node("span", {}, enteredThen ? t("bodyEnteredOn") : t("bodyHeld")), node("strong", {}, `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${item.unit}`));
     rows.push(row);

@@ -29,6 +29,7 @@ test("every value is listed, the one never entered without a value and never due
     { key: "weight", value: 78, since: "2026-11-01", days: 2, due: false },
     { key: "restHeartRate", value: null, since: null, days: null, due: false },
     { key: "hrv", value: null, since: null, days: null, due: false },
+    { key: "sleep", value: null, since: null, days: null, due: false },
   ]);
 });
 

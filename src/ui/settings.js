@@ -108,10 +108,11 @@ export function enterBodyValue(key, value, firstDay = null) {
   const saved = remembered();
   const today = dayKey(Date.now(), zone);
   const reminders = { ...saved.reminders, [key]: today };
-  if (key === "hrv") {
+  // The HRV and the sleep: a value of each night, written for the day woken up on.
+  if (key === "hrv" || key === "sleep") {
     if (!(value > 0)) return;
-    const hrv = [...(savedHistory().hrv ?? []).filter((record) => record.from !== today), { from: today, value, at: Date.now() }].sort((a, b) => a.from.localeCompare(b.from));
-    saveFitness({ history: { ...savedHistory(), hrv } });
+    const list = [...(savedHistory()[key] ?? []).filter((record) => record.from !== today), { from: today, value, at: Date.now() }].sort((a, b) => a.from.localeCompare(b.from));
+    saveFitness({ history: { ...savedHistory(), [key]: list } });
     return;
   }
   if (key === "weight") {

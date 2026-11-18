@@ -8,7 +8,8 @@ import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.js";
 import { hrvDays, hrvOn } from "../hrv.js";
-import { checkNumber } from "./validate.js";
+import { parseSleep, shortSleepHours, sleepParts } from "../sleep.js";
+import { checkNumber, markField } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
@@ -761,6 +762,10 @@ const bodyUnits = { weight: "kg", restHeartRate: "bpm", hrv: "ms" };
 const entered = {};
 
 const bodyNumber = (value) => displayNumber(value, value % 1 ? 1 : 0);
+// The sleep as hours and minutes, "7 h 23 min".
+export const sleepText = (hours) => ((parts) => t("sleepValue", parts))(sleepParts(hours));
+// A value with its unit.
+const bodyText = (key, value) => (key === "sleep" ? sleepText(value) : `${bodyNumber(value)} ${bodyUnits[key]}`);
 
 function ageText(days) {
   if (days === null) return "";
@@ -777,28 +782,36 @@ function renderReminders() {
     const row = document.createElement("div");
     row.className = `diary-reminder${due ? " is-due" : ""}`;
     row.dataset.fieldRow = "";
-    const shown = value === null ? "" : `${bodyNumber(value)} ${bodyUnits[key]}`;
+    const shown = value === null ? "" : bodyText(key, value);
     const text = document.createElement("span");
     if (due) text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
     else {
       const name = Object.assign(document.createElement("strong"), { textContent: t(`body_${key}`) });
       // The HRV with how its week stands against the usual range, once there are days enough to tell.
       const standing = key === "hrv" ? hrvOn(hrvDays(bodyHistory().hrv), dayKey(Date.now(), zone))?.status : null;
-      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days), standing ? t(`hrvStatus_${standing}`) : ""].filter(Boolean).join(" · "));
+      // A short night entered for today: the day's intervals are put off.
+      const short = key === "sleep" && days === 0 && value < shortSleepHours;
+      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days), standing ? t(`hrvStatus_${standing}`) : "", short ? t("sleepShort") : ""].filter(Boolean).join(" · "));
       text.append(name, " ", Object.assign(document.createElement("span"), { className: entered[key] ? "diary-reminder-done" : "diary-reminder-age", textContent: rest }));
     }
-    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: value === null ? bodyUnits[key] : bodyNumber(value) });
-    input.setAttribute("inputmode", key === "weight" ? "decimal" : "numeric");
+    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: key === "sleep" ? t("sleepPlaceholder") : value === null ? bodyUnits[key] : bodyNumber(value) });
+    input.setAttribute("inputmode", key === "weight" ? "decimal" : key === "sleep" ? "text" : "numeric");
     input.setAttribute("aria-label", t(`body_${key}`));
     const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
     const answer = (next) => {
       enterBodyValue(key, next, firstDay);
       const change = next !== null && value !== null && next !== value ? next - value : null;
       entered[key] = next === null || next === value ? t("bodyConfirmed", { value: shown })
-        : t("bodyEntered", { value: `${bodyNumber(next)} ${bodyUnits[key]}`, change: change === null ? "" : ` (${change > 0 ? "+" : "−"}${bodyNumber(Math.round(Math.abs(change) * 10) / 10)})` });
+        : t("bodyEntered", { value: bodyText(key, next), change: change === null || key === "sleep" ? "" : ` (${change > 0 ? "+" : "−"}${bodyNumber(Math.round(Math.abs(change) * 10) / 10)})` });
       render();
     };
     save.addEventListener("click", () => {
+      // The sleep in hours and minutes ("7:23", "7h 23") or in hours ("7,5").
+      if (key === "sleep") {
+        const hours = parseSleep(input.value);
+        if (markField(input, hours === null ? t("sleepInvalid") : null)) answer(hours);
+        return;
+      }
       const next = checkNumber(input, { ...bodyRanges[key], required: true });
       if (next !== undefined) answer(next);
     });
