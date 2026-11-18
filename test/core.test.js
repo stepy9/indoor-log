@@ -565,3 +565,20 @@ test("the heart rate calories follow the sex, age and weight given", () => {
   assert.ok(male > female);
   assert.ok(heartRateCalories(140, 1800, { sex: "male", age: 40, weight: 95 }) > male);
 });
+
+test("a Kinomap Creator plan skips the lengths and finds the work by the resistance", () => {
+  const plan = `time duration resistance
+00:00 10:00 37%
+10:00 00:30 44%
+10:30 01:00 30%
+11:30 00:30 44%
+12:00 01:00 30%
+13:00 00:30 44%
+13:30 04:30 30%
+18:00 05:00 45%
+23:00 08:00 37%`;
+  const segments = parseKinomapPlan(plan);
+  assert.deepEqual(segments.map((segment) => segment.startMs / 1000), [0, 600, 630, 690, 720, 780, 810, 1080, 1380]);
+  assert.deepEqual(segments.map((segment) => segment.intensity), ["warmup", "active", "recovery", "active", "recovery", "active", "recovery", "active", "cooldown"]);
+  assert.deepEqual(segments.map((segment) => segment.resistancePercent), [37, 44, 30, 44, 30, 44, 30, 45, 37]);
+});

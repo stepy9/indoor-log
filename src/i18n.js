@@ -854,7 +854,7 @@ export const translations = {
     planNoTrainer: "odpor se nedoplní, u aktivity není vybraný trenažér",
     cancel: "Zrušit",
     save: "Uložit",
-    intensityCooldown: "Vyklusání",
+    intensityCooldown: "Zklidnění",
     lapStrokeDistance: "m/záběr",
     outputStart: "Čas aktivity",
     downloadFit: "Uložit a stáhnout FIT",
