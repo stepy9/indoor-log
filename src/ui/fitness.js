@@ -855,8 +855,9 @@ function renderBodyChart(load) {
   // The chart starts with the period, or with the first day either series has a value when that is later.
   const firsts = picked.map((item) => seriesData(item.key, rangeFrom, end, history, load).first).filter(Boolean).sort();
   const from = firsts.length ? (firsts[0] > rangeFrom ? firsts[0] : rangeFrom) : end;
-  const data = picked.map((item) => ({ item, ...seriesData(item.key, from, end, history, load) }));
-  const has = data.some((series) => series.points.length);
+  // Only the series with values in the period take a scale, the first of them the left one with the grid.
+  const data = picked.map((item) => ({ item, ...seriesData(item.key, from, end, history, load) })).filter((series) => series.points.length);
+  const has = data.length > 0;
   chart.parentElement.hidden = !has;
   byId("fitnessBodyEmpty").hidden = has;
   byId("fitnessHrvNote").hidden = !has || !picked.some((item) => item.key === "hrv");
