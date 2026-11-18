@@ -771,118 +771,174 @@ function hideFtpTooltip() {
   view.ftpLayout?.guide.replaceChildren();
 }
 
-// The weight and the resting heart rate over the range, each in its own chart: the values entered as dots
-// joined by a line, the one entered before the range holding from its first day.
-const bodyCharts = [
-  { key: "weight", chart: "fitnessWeightChart", tooltip: "fitnessWeightTooltip", unit: "kg", color: "var(--compare-1)" },
-  { key: "restHeartRate", chart: "fitnessRestChart", tooltip: "fitnessRestTooltip", unit: "bpm", color: "var(--compare-2)" },
-  { key: "hrv", chart: "fitnessHrvChart", tooltip: "fitnessHrvTooltip", unit: "ms", color: "var(--compare-3)" },
-  { key: "sleep", chart: "fitnessSleepChart", tooltip: "fitnessSleepTooltip", unit: "h", color: "var(--compare-4)", nightly: true },
+// Body and recovery in one chart: two series at most picked by the chips under it, the first on the left scale,
+// the second on the right, so how one goes with the other shows (a short night and the HRV, a hard day and the
+// resting heart rate). The weight and resting heart rate as entered, held until the next; the HRV's nights as dots
+// with the week's average as the line and the usual range as a band; the sleep's nights with the 6-hour line;
+// the day's training load as bars.
+const bodySeries = [
+  { key: "hrv", unit: "ms", color: "var(--compare-3)" },
+  { key: "sleep", unit: "h", color: "var(--compare-4)" },
+  { key: "restHeartRate", unit: "bpm", color: "var(--compare-2)" },
+  { key: "weight", unit: "kg", color: "var(--compare-1)" },
+  { key: "load", unit: "TSS", color: "var(--subtle)" },
 ];
+const defaultBodySeries = ["hrv", "sleep"];
 
-function renderBodyCharts() {
+const pickedSeries = () => {
+  const saved = (remembered().bodySeries ?? []).filter((key) => bodySeries.some((item) => item.key === key)).slice(0, 2);
+  return saved.length ? saved : defaultBodySeries;
+};
+
+// A series' values in [from, to] ({ day, value, carried? }), with the HRV's days and the first day it has a value.
+function seriesData(key, from, end, history, load) {
+  if (key === "load") {
+    const days = load.filter((day) => day.day >= from && day.day <= end && day.load > 0).map((day) => ({ day: day.day, value: day.load }));
+    return { points: days, first: load.find((day) => day.load > 0)?.day ?? null };
+  }
+  const first = bodyPoints(history[key], "0000-00-01", end).find((point) => !point.carried)?.day ?? null;
+  if (key === "hrv") {
+    const series = hrvSeries(hrvDays(history.hrv), from, end);
+    return { points: series.filter((day) => day.value).map((day) => ({ day: day.day, value: day.value })), series, first };
+  }
+  const points = bodyPoints(history[key], from, end);
+  return { points: key === "sleep" ? points.filter((point) => !point.carried) : points, first };
+}
+
+// A scale over the values: { min, max, step }, from 0 for the load.
+function bodyScale(values, fromZero) {
+  const low = fromZero ? 0 : Math.min(...values);
+  const high = Math.max(...values);
+  const step = [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200].find((size) => (high - low) / size <= 4) ?? 200;
+  return { min: fromZero ? 0 : Math.floor(low / step) * step - step, max: Math.ceil(high / step) * step + step, step };
+}
+
+function renderBodyChips() {
+  const picked = pickedSeries();
+  byId("fitnessBodyChips").replaceChildren(...bodySeries.map((item) => {
+    const on = picked.includes(item.key);
+    const chip = node("button", { type: "button", class: "fitness-body-chip", "aria-pressed": String(on) });
+    const swatch = node("span", { class: "fitness-swatch" });
+    swatch.style.background = item.color;
+    chip.append(swatch, node("span", {}, t(`body_${item.key}`)));
+    // A third series takes the place of the one picked longest ago; the last one stays.
+    chip.addEventListener("click", () => {
+      const next = on ? picked.filter((key) => key !== item.key) : [...picked, item.key].slice(-2);
+      if (!next.length) return;
+      save({ bodySeries: next });
+      render();
+    });
+    return chip;
+  }));
+}
+
+function renderBodyChart(load) {
+  renderBodyChips();
+  const chart = byId("fitnessBodyChart");
   const end = today();
   const days = ranges[view.range];
   const history = bodyHistory();
-  // The whole period starts with the first workout or the first value entered, whichever is earlier.
-  const firstWorkout = view.entries.length ? dayKey(Math.min(...view.entries.map((entry) => entry.startMs)), zone) : end;
-  const earliest = [firstWorkout, ...bodyCharts.flatMap((item) => bodyPoints(history[item.key], "0000-00-01", end).filter((point) => !point.carried).map((point) => point.day))].sort()[0];
-  const from = Number.isFinite(days) ? addDays(end, -(days - 1)) : earliest;
-  let any = false;
-  view.bodyLayouts = {};
-  for (const item of bodyCharts) {
-    const chart = byId(item.chart);
-    // Each chart starts with the first value entered on a day, when that is later than the period's start.
-    const firstEntered = bodyPoints(history[item.key], "0000-00-01", end)[0]?.day;
-    const chartFrom = firstEntered && firstEntered > from ? firstEntered : from;
-    const points = bodyPoints(history[item.key], chartFrom, end);
-    const has = points.some((point) => !point.carried);
-    chart.parentElement.hidden = !has;
-    if (!has) continue;
-    any = true;
-    const width = Math.max(260, Math.round(chart.parentElement.getBoundingClientRect().width) || 400);
-    const height = 170;
-    const margin = { left: 44, right: 12, top: 12, bottom: 26 };
-    // The HRV: each day of the chart with its week's average and the usual range then.
-    const series = item.key === "hrv" ? hrvSeries(hrvDays(history.hrv), chartFrom, end) : null;
-    const values = [...points.map((point) => point.value), ...(series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite), ...(item.nightly ? [shortSleepHours] : [])];
-    const low = Math.min(...values);
-    const high = Math.max(...values);
-    const yStep = [0.5, 1, 2, 5, 10, 20].find((size) => (high - low) / size <= 4) ?? 20;
-    const minY = Math.floor(low / yStep) * yStep - yStep;
-    const maxY = Math.ceil(high / yStep) * yStep + yStep;
-    const axisStart = Date.parse(`${chartFrom}T00:00:00Z`);
-    const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
-    const xForKey = (key) => margin.left + ((Date.parse(`${key}T12:00:00Z`) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
-    const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
-    const children = [];
-    for (let value = minY; value <= maxY + 1e-9; value += yStep) {
-      children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
-      children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value, yStep % 1 ? 1 : 0)));
+  const picked = pickedSeries().map((key) => bodySeries.find((item) => item.key === key));
+  const rangeFrom = Number.isFinite(days) ? addDays(end, -(days - 1)) : "0000-00-01";
+  // The chart starts with the period, or with the first day either series has a value when that is later.
+  const firsts = picked.map((item) => seriesData(item.key, rangeFrom, end, history, load).first).filter(Boolean).sort();
+  const from = firsts.length ? (firsts[0] > rangeFrom ? firsts[0] : rangeFrom) : end;
+  const data = picked.map((item) => ({ item, ...seriesData(item.key, from, end, history, load) }));
+  const has = data.some((series) => series.points.length);
+  chart.parentElement.hidden = !has;
+  byId("fitnessBodyEmpty").hidden = has;
+  byId("fitnessHrvNote").hidden = !has || !picked.some((item) => item.key === "hrv");
+  view.bodyLayout = null;
+  if (!has) return;
+  const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
+  const height = 240;
+  const margin = { left: 44, right: data.length > 1 ? 44 : 14, top: 14, bottom: 26 };
+  const axisStart = Date.parse(`${from}T00:00:00Z`);
+  const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
+  const xForKey = (key) => margin.left + ((Date.parse(`${key}T12:00:00Z`) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
+  const dayWidth = (width - margin.left - margin.right) / ((axisEnd - axisStart) / 86_400_000);
+  const children = [];
+  const layers = [];
+  data.forEach((series, index) => {
+    const { item, points } = series;
+    if (!points.length) return;
+    const values = [...points.map((point) => point.value), ...(series.series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite), ...(item.key === "sleep" ? [shortSleepHours] : [])];
+    const scale = bodyScale(values, item.key === "load");
+    const yFor = (value) => margin.top + ((scale.max - value) / (scale.max - scale.min)) * (height - margin.top - margin.bottom);
+    series.yFor = yFor;
+    // The scale: the first series' on the left with the grid, the second's on the right, each in its colour.
+    const right = index === 1;
+    for (let value = scale.min; value <= scale.max + 1e-9; value += scale.step) {
+      if (!right) children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === scale.min ? "diary-axis" : "diary-grid" }));
+      const label = node("text", { x: right ? width - margin.right + 8 : margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label", style: `fill: ${item.color}${right ? "; text-anchor: start" : ""}` }, displayNumber(value, scale.step % 1 ? 1 : 0));
+      children.push(label);
     }
-    children.push(...dateTicks(chartFrom, end, xForKey, { margin, width, height }));
-    if (series) children.push(...hrvLayers(series, xForKey, yFor, item.color));
-    // The sleep: the line under which a night is short, dashed.
-    if (item.nightly) children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(shortSleepHours), y2: yFor(shortSleepHours), class: "fitness-sleep-limit" }));
-    // The line goes on to today at the last value, as it still holds.
-    const path = [...points, ...(item.nightly ? [] : [{ day: end, value: points.at(-1).value }])].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
-    if (!series) children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
+    if (item.key === "load") {
+      const barWidth = Math.max(2, Math.min(14, dayWidth * 0.6));
+      for (const point of points) layers.unshift(node("rect", { x: xForKey(point.day) - barWidth / 2, y: yFor(point.value), width: barWidth, height: yFor(0) - yFor(point.value), rx: 2, class: "fitness-body-load" }));
+      return;
+    }
+    if (series.series) layers.push(...hrvLayers(series.series, xForKey, yFor, item.color));
+    if (item.key === "sleep") layers.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(shortSleepHours), y2: yFor(shortSleepHours), class: "fitness-sleep-limit", style: `stroke: ${item.color}` }));
+    // The HRV's line is the week's average; the others join their values, the held ones going on to today.
+    if (!series.series) {
+      const held = item.key === "weight" || item.key === "restHeartRate";
+      const path = [...points, ...(held ? [{ day: end, value: points.at(-1).value }] : [])].map((point, at) => `${at ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
+      layers.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
+    }
     for (const point of points.filter((point) => !point.carried)) {
-      children.push(node("circle", { cx: xForKey(point.day), cy: yFor(point.value), r: 3, class: "fitness-body-dot", style: `fill: ${item.color}` }));
+      layers.push(node("circle", { cx: xForKey(point.day), cy: yFor(point.value), r: series.series ? 2.5 : 3, class: `fitness-body-dot${series.series ? " is-faint" : ""}`, style: `fill: ${item.color}` }));
     }
-    const guide = node("g");
-    children.push(guide);
-    view.bodyLayouts[item.key] = { item, series, points, from: chartFrom, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
-    chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    chart.style.height = `${height}px`;
-    chart.replaceChildren(...children);
-  }
-  byId("fitnessBodyEmpty").hidden = any;
-  byId("fitnessHrvNote").hidden = byId("fitnessHrvChart").parentElement.hidden;
+  });
+  children.push(...dateTicks(from, end, xForKey, { margin, width, height }), ...layers);
+  const guide = node("g");
+  children.push(guide);
+  view.bodyLayout = { data, from, end, axisStart, axisEnd, xForKey, margin, width, height, guide, history };
+  chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  chart.style.height = `${height}px`;
+  chart.replaceChildren(...children);
 }
 
-// The day under the pointer with the value that held on it, and whether it was entered on that day.
-function showBodyTooltip(key, event) {
-  const layout = view.bodyLayouts?.[key];
+// A series' value on the day as text, "—" without one.
+function bodyValueText(key, day, layout, series) {
+  if (key === "load") {
+    const point = series.points.find((item) => item.day === day);
+    return point ? `${displayNumber(point.value)} TSS` : "—";
+  }
+  if (key === "sleep") {
+    const night = sleepOn(layout.history.sleep, day);
+    return night ? sleepText(night) : "—";
+  }
+  if (key === "hrv") {
+    const stood = series.series?.find((item) => item.day === day);
+    const night = stood?.value ? `${displayNumber(stood.value)} ms` : "—";
+    return Number.isFinite(stood?.average) ? `${night} · ${t("hrvAverage")} ${displayNumber(stood.average)}` : night;
+  }
+  const held = series.points.filter((point) => point.day <= day).at(-1);
+  return held ? `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${series.item.unit}` : "—";
+}
+
+// The day under the pointer with each series' value on it.
+function showBodyTooltip(event) {
+  const layout = view.bodyLayout;
   if (!layout) return;
-  const { item } = layout;
-  const tooltip = byId(item.tooltip);
-  const box = byId(item.chart).getBoundingClientRect();
+  const tooltip = byId("fitnessBodyTooltip");
+  const box = byId("fitnessBodyChart").getBoundingClientRect();
   const x = ((event.clientX - box.left) / box.width) * layout.width;
   const plotWidth = layout.width - layout.margin.left - layout.margin.right;
   const ms = layout.axisStart + ((x - layout.margin.left) / plotWidth) * (layout.axisEnd - layout.axisStart);
-  const pointed = new Date(Math.min(layout.axisEnd - 1, Math.max(layout.axisStart, ms))).toISOString().slice(0, 10);
-  const day = pointed < layout.from ? layout.from : pointed > layout.end ? layout.end : pointed;
-  const held = layout.points.filter((point) => point.day <= day).at(-1);
-  if (!held) return;
+  const day = new Date(Math.min(layout.axisEnd - 1, Math.max(layout.axisStart, ms))).toISOString().slice(0, 10);
   const at = layout.xForKey(day);
   layout.guide.replaceChildren(node("line", { x1: at, x2: at, y1: layout.margin.top, y2: layout.height - layout.margin.bottom, class: "fitness-guide" }));
-  const row = node("div", { class: "diary-tooltip-row" });
-  const swatch = node("span", { class: "fitness-swatch" });
-  swatch.style.background = item.color;
-  const enteredThen = held.day === day && !held.carried;
-  const rows = [];
-  if (layout.series) {
-    // The HRV: the night's value, the week's average and the usual range.
-    const stood = layout.series.find((item) => item.day === day);
-    const add = (label, value) => {
-      const line = node("div", { class: "diary-tooltip-row" });
-      line.append(node("span", {}, label), node("strong", {}, value));
-      rows.push(line);
-    };
-    add(t("hrvNight"), stood?.value ? `${displayNumber(stood.value)} ms` : "—");
-    if (Number.isFinite(stood?.average)) add(t("hrvAverage"), `${displayNumber(stood.average)} ms`);
-    if (Number.isFinite(stood?.low)) add(t("hrvRange"), `${displayNumber(stood.low)}–${displayNumber(stood.high)} ms`);
-    if (stood?.status) add("", t(`hrvStatus_${stood.status}`));
-  } else if (item.nightly) {
-    // The sleep: the night ending on the day, or none entered.
-    const night = sleepOn(bodyHistory().sleep, day);
-    row.append(swatch, node("span", {}, t("body_sleep")), node("strong", {}, night ? sleepText(night) : "—"));
-    rows.push(row);
-  } else {
-    row.append(swatch, node("span", {}, enteredThen ? t("bodyEnteredOn") : t("bodyHeld")), node("strong", {}, `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${item.unit}`));
-    rows.push(row);
-  }
+  const rows = layout.data.map((series) => {
+    const row = node("div", { class: "diary-tooltip-row" });
+    const swatch = node("span", { class: "fitness-swatch" });
+    swatch.style.background = series.item.color;
+    row.append(swatch, node("span", {}, t(`body_${series.item.key}`)), node("strong", {}, bodyValueText(series.item.key, day, layout, series)));
+    return row;
+  });
+  const status = layout.data.find((series) => series.series)?.series.find((item) => item.day === day)?.status;
+  if (status) rows.push(node("div", { class: "diary-tooltip-row" }, `HRV ${t(`hrvStatus_${status}`)}`));
   tooltip.replaceChildren(node("div", { class: "diary-tooltip-when" }, dayText(day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })), ...rows);
   tooltip.hidden = false;
   const card = tooltip.offsetParent.getBoundingClientRect();
@@ -892,7 +948,12 @@ function showBodyTooltip(key, event) {
   tooltip.style.top = `${box.top - card.top + 12}px`;
 }
 
-// The HRV's layers: the usual range as a band, the nights as faint dots, the week's average as the line.
+function hideBodyTooltip() {
+  byId("fitnessBodyTooltip").hidden = true;
+  view.bodyLayout?.guide.replaceChildren();
+}
+
+// The HRV's layers: the usual range as a band and the week's average as the line.
 function hrvLayers(series, xForKey, yFor, color) {
   const layers = [];
   const ranged = series.filter((day) => Number.isFinite(day.low));
@@ -907,11 +968,6 @@ function hrvLayers(series, xForKey, yFor, color) {
     layers.push(node("path", { class: "fitness-line", d: line, style: `stroke: ${color}` }));
   }
   return layers;
-}
-
-function hideBodyTooltip(key) {
-  byId(bodyCharts.find((item) => item.key === key).tooltip).hidden = true;
-  view.bodyLayouts?.[key]?.guide.replaceChildren();
 }
 
 // The activity a best came from: its name without the "Kinomap - " every conversion starts with, and its date kept on one line.
@@ -1220,7 +1276,7 @@ function render() {
   renderEfficiency(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
-  renderBodyCharts();
+  renderBodyChart(loadHistory(ofSport(view.entries), settings, zone, today()));
   renderSummary(history);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }
@@ -1259,7 +1315,7 @@ export function setupFitness({ onOpen }) {
   const chart = byId("fitnessLoadChart");
   hoverable(chart, showLoadTooltip, hideLoadTooltip);
   hoverable(byId("fitnessFtpChart"), showFtpTooltip, hideFtpTooltip);
-  for (const { key, chart } of bodyCharts) hoverable(byId(chart), (event) => showBodyTooltip(key, event), () => hideBodyTooltip(key));
+  hoverable(byId("fitnessBodyChart"), showBodyTooltip, hideBodyTooltip);
   let width = 0;
   new ResizeObserver(([item]) => {
     const next = Math.round(item.contentRect.width);

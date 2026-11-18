@@ -1421,9 +1421,15 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-tooltip-detail { max-width: 260px; color: var(--muted); }
 #diaryCalendarCard { position: relative; }
 .settings-show-all { margin-top: 8px; }
-.fitness-body-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .fitness-body-chart { position: relative; display: grid; gap: 4px; min-width: 0; }
-.fitness-body-chart[hidden] { display: none; }
 .fitness-body-dot { stroke: var(--surface); stroke-width: 1.5; }
 .fitness-hrv-band { fill: var(--compare-3); opacity: .14; stroke: none; }
 .fitness-sleep-limit { stroke: var(--muted); stroke-dasharray: 4 4; opacity: .7; }
+.fitness-body-chart[hidden] { display: none; }
+.fitness-body-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.fitness-body-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 12px; font-weight: 600; cursor: pointer; }
+.fitness-body-chip .fitness-swatch { opacity: .35; }
+.fitness-body-chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.fitness-body-chip[aria-pressed="true"] .fitness-swatch { opacity: 1; }
+.fitness-body-dot.is-faint { opacity: .45; }
+.fitness-body-load { fill: var(--subtle); opacity: .35; }
