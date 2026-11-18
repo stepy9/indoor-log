@@ -6,7 +6,7 @@ import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, 
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses } from "./excuse.js";
-import { recentlyUnwell } from "../training.js";
+import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { infoHint, renderInfo } from "./info.js";
 import { renderLimited } from "./more.js";
@@ -204,11 +204,18 @@ export function trainingPlan(entries, chosen = "all") {
   plan.startWatts = steadyStartWatts(workouts, plan.steadyHeartRate, today())
     ?? (plan.steadyWatts ? Math.round((plan.steadyWatts[0] + plan.steadyWatts[1]) / 10) * 5 : null);
   plan.cadence = steadyCadence[sport] ?? null;
+  // The Kinomap creator's workouts to ride: the sport's list as set, the ones made for the plan until then.
+  plan.kinomap = pickWorkouts(kinomapWorkouts(settings, sport), plan.intervals);
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   const days = weekPlan(plan, workouts, today(), weekdays);
   // With the Training section filled in, each day's plan is kept as it stands before the day, to score it by.
   if (hasTraining(settings, sport)) keepPlan(sport, days, plan, today());
   return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+}
+
+// The names of the sport's workouts in the Kinomap creator: as typed in the Training section, else the ones made.
+export function kinomapWorkouts(settings, sport) {
+  return settings.sports[sport]?.plan?.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? [];
 }
 
 // The sport's training settings for the plan, with the weekly volume.

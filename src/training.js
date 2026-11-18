@@ -318,3 +318,33 @@ export function workoutSuggestions(rides, type, count = 3, intervals = null) {
   return [...byName.values()].map((item) => ({ ...item, exact: rank(item) === 0 }))
     .sort((a, b) => rank(a) - rank(b) || a.last.localeCompare(b.last)).slice(0, count);
 }
+
+// The Kinomap creator's workouts made for the plan, by name; a sport's list starts from these until changed.
+export const defaultKinomapWorkouts = {
+  rowing: ["FTP test 5 min", "FTP test 20 min", "Intervaly 4x2 min", "Intervaly 5x2 min", "Intervaly 6x2 min", "Intervaly 7x2 min", "Intervaly 8x2 min", "Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min", "Minimální jízda 10 min"],
+};
+
+// What a workout's name says it is: an FTP test by "FTP" and its minutes, intervals by "6x2 min", the least workout
+// by "minimální" or "minimal", anything else an extra to ride for a change. { kind, repeats?, minutes? }.
+export function workoutFromName(name) {
+  if (/\bftp\b/i.test(name)) return /\b20\s*min/i.test(name) ? { kind: "ftpTest" } : /\b5\s*min/i.test(name) ? { kind: "ftpTestShort" } : { kind: "extra" };
+  if (/minim/i.test(name)) return { kind: "minimal" };
+  const efforts = effortsInName(name);
+  return efforts ? { kind: "intervals", ...efforts } : { kind: "extra" };
+}
+
+// The workouts to ride for the plan, from the names of those made: the interval workout of the planned efforts, the
+// two FTP tests, the least workout, and the rest as extras; each null when none fits. intervals: the plan's
+// { repeats, minutes }. { intervals, ftpTestShort, ftpTest, minimal, extras: [name], wanted: "6x2 min" }.
+export function pickWorkouts(names, intervals) {
+  const list = (names ?? []).map((name) => name.trim()).filter(Boolean).map((name) => ({ name, ...workoutFromName(name) }));
+  const first = (test) => list.find(test)?.name ?? null;
+  return {
+    intervals: intervals ? first((item) => item.kind === "intervals" && item.repeats === intervals.repeats && item.minutes === intervals.minutes) : null,
+    ftpTestShort: first((item) => item.kind === "ftpTestShort"),
+    ftpTest: first((item) => item.kind === "ftpTest"),
+    minimal: first((item) => item.kind === "minimal"),
+    extras: list.filter((item) => item.kind === "extra").map((item) => item.name),
+    wanted: intervals ? `${intervals.repeats}x${intervals.minutes} min` : null,
+  };
+}

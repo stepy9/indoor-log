@@ -211,7 +211,7 @@ function suggestionsButton(result, entries, type) {
   const items = steady
     ? routeSuggestions(rides, range, 5).map((route) => ({ name: route.name, note: t("suggestRouteNote", { km: displayNumber(Math.round(route.km * 10) / 10, 1), last: when(route.last) }), exact: route.km >= range[0] - 0.05 && route.km <= range[1] + 0.05 }))
     : workoutSuggestions(rides, type, 5, plan.intervals).map((workout) => ({ name: workout.name, note: t("suggestWorkoutNote", { last: when(workout.last) }), exact: workout.exact || type !== "intervals" }));
-  if (steady && !items.length) return null;
+  if (steady && !items.length && !(plan.kinomap?.extras ?? []).length) return null;
   const button = node("button", { type: "button", class: "outline-button training-suggest-button" });
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute("viewBox", "0 0 24 24");
@@ -233,6 +233,17 @@ function suggestionsButton(result, entries, type) {
     }
     const body = [node("p", { class: "field-note" }, intro)];
     if (items.length) body.push(list);
+    // For a change instead of a steady workout: the workouts made that the plan does not lay out itself.
+    const extras = steady ? plan.kinomap?.extras ?? [] : [];
+    if (extras.length) {
+      const extraList = node("ul", { class: "suggest-list" });
+      for (const name of extras) {
+        const row = node("li");
+        row.append(node("strong", {}, name));
+        extraList.append(row);
+      }
+      body.push(node("p", { class: "field-label" }, t("suggestExtras")), extraList);
+    }
     if (!steady && !items.some((item) => item.exact)) body.push(node("p", { class: "field-note" }, t(type === "intervals" ? "suggestNoIntervals" : "suggestNoTest", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes })));
     if (!steady) body.push(node("a", { href: "https://creator.kinomap.com/workout", target: "_blank", rel: "noopener", class: "suggest-creator" }, t("suggestCreator")));
     const actions = node("div", { class: "dialog-actions" });
@@ -272,11 +283,14 @@ function todayCard(result, scored, fatigue, entries) {
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
       node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
     );
-    const suggestions = suggestionsButton(result, entries, showing.type);
+    const suggestions = showing.type === "usual" || showing.type === "long" ? suggestionsButton(result, entries, showing.type) : null;
     if (suggestions) card.append(suggestions);
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
   if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
-  if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) card.append(node("p", { class: "field-note" }, t("planMinimal", { minutes: result.plan.minimal.minutes })));
+  if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) {
+    const minimal = result.plan.kinomap?.minimal;
+    card.append(node("p", { class: "field-note" }, t("planMinimal", { minutes: result.plan.minimal.minutes }) + (minimal ? ` ${t("planKinomap", { name: minimal })}.` : "")));
+  }
   return card;
 }
 

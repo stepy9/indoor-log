@@ -60,6 +60,19 @@ function renderPlan() {
 
 // What a planned day asks for, in words: the workout, its length and how to ride it.
 export function plannedText(plan, sport, type, { detail = false } = {}) {
+  return plannedWords(plan, sport, type, detail) + kinomapPart(plan, type);
+}
+
+// The Kinomap workout for the day: its name, or for intervals none made yet, the name to give one.
+function kinomapPart(plan, type) {
+  const picked = plan.kinomap;
+  if (!picked || !(type === "intervals" || type.startsWith("ftpTest"))) return "";
+  const name = picked[type];
+  if (name) return ` · ${t("planKinomap", { name })}`;
+  return type === "intervals" ? ` · ${t("planKinomapMissing", { name: `Intervaly ${picked.wanted}` })}` : "";
+}
+
+function plannedWords(plan, sport, type, detail) {
   if (detail && type.startsWith("ftpTest")) return t(`plan${type[0].toUpperCase()}${type.slice(1)}Detail`);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");

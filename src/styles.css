@@ -1383,3 +1383,4 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .suggest-list li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
 .suggest-list li.is-exact { border-color: #4d8dff; }
 .suggest-creator { color: #4d8dff; font-weight: 600; }
+.settings-kinomap { width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; resize: vertical; }

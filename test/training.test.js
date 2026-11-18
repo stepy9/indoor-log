@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, fatigueByFeel, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -201,4 +201,18 @@ test("the interval workout whose name tells the planned efforts comes first", ()
   assert.equal(list[0].exact, true);
   assert.deepEqual(effortsInName("Tempo 2 x 10 min"), { repeats: 2, minutes: 10 });
   assert.equal(effortsInName("Lake A"), null);
+});
+
+test("the plan's Kinomap workouts are picked from their names", () => {
+  const picked = pickWorkouts(defaultKinomapWorkouts.rowing, { repeats: 6, minutes: 2 });
+  assert.equal(picked.intervals, "Intervaly 6x2 min");
+  assert.equal(picked.ftpTestShort, "FTP test 5 min");
+  assert.equal(picked.ftpTest, "FTP test 20 min");
+  assert.equal(picked.minimal, "Minimální jízda 10 min");
+  assert.deepEqual(picked.extras, ["Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min"]);
+  // Nine efforts planned and none made for them: none, and what to make.
+  const missing = pickWorkouts(defaultKinomapWorkouts.rowing, { repeats: 9, minutes: 2 });
+  assert.equal(missing.intervals, null);
+  assert.equal(missing.wanted, "9x2 min");
+  assert.deepEqual(pickWorkouts([], null), { intervals: null, ftpTestShort: null, ftpTest: null, minimal: null, extras: [], wanted: null });
 });

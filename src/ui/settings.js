@@ -14,6 +14,7 @@ import { formatDay, parseDay } from "../dates.js";
 import { setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
+import { defaultKinomapWorkouts } from "../training.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -719,6 +720,10 @@ function trainingBlock(sport) {
   const least = node("div", { class: "fitness-settings" });
   least.append(numberField(t("settingsPlanMinimal"), prefs.minimalMinutes, "10", (value) => writePlan({ minimalMinutes: value }), { min: planPrefLimits.minimalMinutes[0], max: planPrefLimits.minimalMinutes[1] }));
   block.append(least, node("p", { class: "field-note" }, t("settingsPlanMinimalNote")));
+  const workouts = node("textarea", { rows: "6", class: "settings-kinomap", "data-key": `plan-kinomap-${sport}`, "aria-label": t("settingsPlanKinomap") });
+  workouts.value = (prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? []).join("\n");
+  workouts.addEventListener("change", () => writePlan({ kinomapWorkouts: workouts.value.split("\n").map((line) => line.trim()).filter(Boolean) }));
+  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsPlanKinomap")), workouts, node("p", { class: "field-note" }, t("settingsPlanKinomapNote")));
   return block;
 }
 
