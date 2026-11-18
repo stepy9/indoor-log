@@ -561,7 +561,7 @@ let scoreCache = new WeakMap();
 function scoreNode(entry) {
   if (!scoreCache.has(entry)) {
     const plan = view.plans?.get(entry.sport) ?? null;
-    const scored = plan ? scoreFor(entry, plan) : null;
+    const scored = plan ? scoreFor(entry, plan, view.scoreSettings) : null;
     scoreCache.set(entry, scored ? scoreBadge(scored.score) : null);
   }
   return scoreCache.get(entry);
@@ -757,6 +757,7 @@ function render() {
   // Each sport's current plan, for its workouts' scores; drawn anew, as the settings or the library may have changed.
   const settings = settingsFor(view.entries);
   const results = Object.keys(settings.sports).filter((sport) => hasTraining(settings, sport)).map((sport) => [sport, trainingPlan(view.entries, sport)]);
+  view.scoreSettings = settings;
   view.plans = new Map(results.map(([sport, result]) => [sport, result?.plan ?? null]));
   // The days ahead of this week with what the plan lays on them, for the calendar.
   view.planned = results.filter(([sport, result]) => result?.plan && (view.sport === "all" || view.sport === sport))

@@ -1,6 +1,7 @@
 import { workoutKind } from "../analysis.js";
 import { dayKey } from "../diary.js";
-import { decoupling, heartRateOf, steps } from "../fitness.js";
+import { decoupling, forSport, heartRateAt, heartRateOf, steps } from "../fitness.js";
+import { valueOn } from "../history.js";
 import { logPlan, plannedDay, progressionBuild, scoreWorkout, workoutFromName } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { zone } from "./context.js";
@@ -82,13 +83,26 @@ export function workoutFacts(entry, heart, planned) {
   };
 }
 
+// The Training section and zone 2 as they stood on the workout's day; null when the section was not filled in then.
+export function dayTargets(settings, entry) {
+  const own = settings.sports?.[entry.sport] ?? {};
+  if (!valueOn(own.history?.plan, dayKey(entry.startMs, settings.timeZone ?? zone), own.plan)) return null;
+  const then = forSport(settings, entry.sport, entry.startMs);
+  const bounds = [then.heartRateZones[1], then.heartRateZones[2]].map((fraction) => heartRateAt(fraction, then));
+  return { heart: bounds.every(Number.isFinite) ? bounds.map(Math.round) : null };
+}
+
 // A workout's score against its day's plan, or against the current plan's targets for a day without one; null
 // for a sport without the Training section or with nothing to score by. plan: the sport's current plan.
-export function scoreFor(entry, plan) {
+// With the settings, a day without its plan goes by the settings of its day: no score before the Training section
+// was filled in, and zone 2 by the heart rate zones of then.
+export function scoreFor(entry, plan, settings = null) {
   if (!plan) return null;
   const day = dayKey(entry.startMs, zone);
   const planned = planLog(entry.sport)[day] ?? null;
-  const targets = planned ?? plannedDay(null, plan);
+  const then = planned || !settings ? {} : dayTargets(settings, entry);
+  if (!then) return null;
+  const targets = planned ?? { ...plannedDay(null, plan), ...then };
   return scoreWorkout(workoutFacts(entry, targets.heart, planned), planned, targets);
 }
 

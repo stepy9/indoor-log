@@ -1,5 +1,6 @@
 import { bestAverage, workoutKind } from "./analysis.js";
 import { addDays, dayKey } from "./diary.js";
+import { valueOn } from "./history.js";
 
 // Training load, fitness and form, time in zones, the power curve and aerobic decoupling, from library entries.
 
@@ -68,16 +69,27 @@ export function heartRateLoad(entry, { maxHeartRate, restHeartRate }) {
 
 // One sport's thresholds on the given moment (now by default): settings.sports[sport] holds them,
 // older settings kept one maximum heart rate and an FTP per sport.
+// Each value is the one in force on the moment's day (settings.history and each sport's history, see history.js);
+// a maximum not typed then is the general one, then the estimate.
 export function forSport(settings, sport, atMs = Date.now()) {
   const own = settings.sports?.[sport] ?? {};
+  const day = dayKey(atMs, settings.timeZone ?? "UTC");
+  const general = settings.history ?? {};
+  const mine = own.history ?? {};
+  const generalMax = "typedMaxHeartRate" in settings
+    ? valueOn(general.maxHeartRate, day, settings.typedMaxHeartRate) || settings.estimates?.maxHeartRate || settings.maxHeartRate || null
+    : settings.maxHeartRate ?? null;
+  const maxHeartRate = "typedMaxHeartRate" in own
+    ? valueOn(mine.maxHeartRate, day, own.typedMaxHeartRate) || generalMax
+    : own.maxHeartRate ?? generalMax;
   return {
-    restHeartRate: settings.restHeartRate,
-    maxHeartRate: own.maxHeartRate ?? settings.maxHeartRate ?? null,
+    restHeartRate: valueOn(general.restHeartRate, day, settings.restHeartRate) || settings.defaultRestHeartRate || settings.restHeartRate,
+    maxHeartRate,
     ftp: ftpOn(settings, sport, atMs),
-    heartRateZones: validZones(own.heartRateZones, heartRateZones, zoneLimits.heartRate),
+    heartRateZones: validZones(valueOn(mine.heartRateZones, day, own.heartRateZones), heartRateZones, zoneLimits.heartRate),
     // "max": zones as a share of the maximum; "reserve": of the reserve above the resting heart rate (Karvonen).
-    heartRateBasis: own.heartRateBasis === "reserve" ? "reserve" : "max",
-    powerZones: validZones(own.powerZones, powerZones, zoneLimits.power),
+    heartRateBasis: valueOn(mine.heartRateBasis, day, own.heartRateBasis) === "reserve" ? "reserve" : "max",
+    powerZones: validZones(valueOn(mine.powerZones, day, own.powerZones), powerZones, zoneLimits.power),
   };
 }
 

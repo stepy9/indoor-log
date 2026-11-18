@@ -7,6 +7,7 @@ import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.j
 const openConversions = new Set();
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { dayKey } from "../diary.js";
+import { changeDay, fromGoalHistory, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
@@ -23,7 +24,24 @@ const sports = ["rowing", "cycling", "running"];
 const defaultRestHeartRate = 60;
 
 const remembered = () => savedDefaults().fitness ?? {};
-const saveFitness = (patch) => saveDefaults({ fitness: { ...remembered(), ...patch } });
+const sameValue = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
+
+// Each change of a setting with a history is kept from the day it holds from, the days before keeping theirs.
+function withHistory(own, patch, keys) {
+  const today = dayKey(Date.now(), zone);
+  const history = { ...own.history };
+  for (const key of keys) {
+    if (!(key in patch) || sameValue(own[key], patch[key])) continue;
+    history[key] = setValue(history[key], own[key], patch[key], changeDay(key, today));
+  }
+  return history;
+}
+
+function saveFitness(patch) {
+  const saved = remembered();
+  const tracked = trackedGeneral.some((key) => key in patch);
+  saveDefaults({ fitness: { ...saved, ...patch, ...(tracked ? { history: withHistory(saved, patch, trackedGeneral) } : {}) } });
+}
 
 // One sport's typed values, with what older settings kept for every sport folded in.
 function savedSport(sport) {
@@ -34,6 +52,12 @@ function savedSport(sport) {
   // A single FTP, as earlier versions kept it, is a history holding from the start.
   if (!own.ftpHistory && own.ftp) own.ftpHistory = [{ from: null, ftp: own.ftp }];
   delete own.ftp;
+  // The weekly goals' own history, as the first version kept it, becomes theirs in the shared one.
+  own.history = { ...own.history };
+  if (own.goalHistory) {
+    for (const key of ["weeklyHours", "weeklyKm"]) if (!own.history[key]) own.history[key] = fromGoalHistory(own.goalHistory, key);
+  }
+  delete own.goalHistory;
   return own;
 }
 
@@ -60,29 +84,16 @@ export function perKgText(watts, ms) {
 }
 
 // A weekly goal changed holds from this week's Monday on; the weeks before keep the goal they had
-// (the first change keeps the one before it for all earlier weeks).
-function saveGoal(sport, key, value) {
-  const own = savedSport(sport);
-  const day = new Date();
-  day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
-  const monday = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-  let history = own.goalHistory ?? [];
-  if (!history.length) history = [{ from: "0000-00-00", weeklyHours: own.weeklyHours ?? null, weeklyKm: own.weeklyKm ?? null }];
-  const last = history.at(-1);
-  const next = { ...last, from: monday, [key]: value };
-  history = [...history.filter((item) => item.from !== monday), next].sort((a, b) => a.from.localeCompare(b.from));
-  saveSport(sport, { [key]: value, goalHistory: history });
-}
+// (the first change keeps the one before it for all earlier weeks), as every setting with a history.
+const saveGoal = (sport, key, value) => saveSport(sport, { [key]: value });
 
 // The weekly goal that held in the week from the Monday given.
-export function goalOn(own, key, monday) {
-  const held = (own?.goalHistory ?? []).filter((item) => item.from <= monday).at(-1);
-  return held ? held[key] ?? 0 : own?.[key] ?? 0;
-}
+export const goalOn = (own, key, monday) => valueOn(own?.history?.[key], monday, own?.[key]) ?? 0;
 
 function saveSport(sport, patch) {
   const saved = remembered();
-  saveFitness({ sports: { ...saved.sports, [sport]: { ...savedSport(sport), ...patch } } });
+  const own = savedSport(sport);
+  saveFitness({ sports: { ...saved.sports, [sport]: { ...own, ...patch, history: withHistory(own, patch, trackedSport) } } });
 }
 
 // What the user typed, the estimate from the library in its place; estimates kept apart to show as hints.
@@ -97,10 +108,13 @@ export function settingsFor(entries) {
     timeZone: zone,
     maxHeartRate: generalMax,
     restHeartRate: remembered().restHeartRate || defaultRestHeartRate,
+    defaultRestHeartRate,
+    typedMaxHeartRate: remembered().maxHeartRate || null,
+    history: remembered().history ?? {},
     weightHistory: savedWeights(),
     sports: Object.fromEntries(sports.map((sport) => {
       const saved = savedSport(sport);
-      return [sport, { ...saved, maxHeartRate: saved.maxHeartRate || generalMax }];
+      return [sport, { ...saved, typedMaxHeartRate: saved.maxHeartRate || null, maxHeartRate: saved.maxHeartRate || generalMax }];
     })),
   };
 }

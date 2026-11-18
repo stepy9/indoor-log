@@ -1,4 +1,5 @@
 import { mergeDuplicates } from "./library.js";
+import { mergeHistory, valueOn } from "./history.js";
 
 // Keeping the library and the settings the same on every device through one file in the cloud.
 // A state is { entries, deleted, settings }: the activities, each with changedAt (when it was last saved here),
@@ -58,6 +59,24 @@ const blank = (value) => value == null || (typeof value === "object" && Object.k
 // the last one empties them on purpose, so there the later change wins, blank or not.
 const clearable = new Set(["trainingExcuses"]);
 
+// The histories of two sides joined (see history.js), each value now in force set as the one of the joined history.
+function withHistories(older, newer) {
+  const history = { ...older?.history, ...newer?.history };
+  for (const key of Object.keys(history)) history[key] = mergeHistory(older?.history?.[key], newer?.history?.[key]);
+  const now = Object.fromEntries(Object.entries(history).map(([key, list]) => [key, valueOn(list, "9999-12-31")]));
+  return { ...newer, ...(Object.keys(history).length ? { ...now, history } : {}) };
+}
+
+// The newer side's fitness settings with both sides' histories, the general ones and each sport's.
+export function mergeFitness(older, newer) {
+  const result = withHistories(older, newer);
+  const sports = { ...older?.sports, ...newer?.sports };
+  if (Object.keys(sports).length) {
+    result.sports = Object.fromEntries(Object.keys(sports).map((sport) => [sport, withHistories(older?.sports?.[sport], newer?.sports?.[sport] ?? older.sports[sport])]));
+  }
+  return result;
+}
+
 export function mergeSettings(local, remote) {
   const a = normalizeSettings(local);
   const b = normalizeSettings(remote);
@@ -69,7 +88,11 @@ export function mergeSettings(local, remote) {
     const there = { value: b.defaults[key], at: b.changedAt[key] ?? 0 };
     const byTime = clearable.has(key) || blank(here.value) === blank(there.value);
     const pick = byTime ? (there.at > here.at ? there : here) : blank(here.value) ? there : here;
-    if (pick.value !== undefined) defaults[key] = pick.value;
+    // The fitness settings from the side changed last, but the histories of both: a change made on either holds.
+    const value = key === "fitness" && !blank(here.value) && !blank(there.value)
+      ? mergeFitness(pick === here ? there.value : here.value, pick.value)
+      : pick.value;
+    if (value !== undefined) defaults[key] = value;
     changedAt[key] = pick.at;
   }
   return { defaults, changedAt };
