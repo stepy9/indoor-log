@@ -643,7 +643,7 @@ export function importBodyValues(found) {
   const saved = remembered();
   const history = { ...savedHistory() };
   const at = Date.now();
-  for (const key of ["hrv", "sleep", "restHeartRate"]) {
+  for (const key of ["hrv", "sleep", "restHeartRate", "skinTemp"]) {
     const days = found[key] ?? {};
     if (!Object.keys(days).length) continue;
     let kept = (history[key] ?? []).filter((record) => !(record.from in days));
@@ -669,7 +669,7 @@ function garminBlock() {
   load.addEventListener("click", () => pick.click());
   pick.addEventListener("change", async () => {
     const today = dayKey(Date.now(), zone);
-    const found = { hrv: {}, sleep: {}, restHeartRate: {} };
+    const found = { hrv: {}, sleep: {}, restHeartRate: {}, skinTemp: {} };
     for (const file of pick.files) {
       const read = parseGarminCsv(await file.text(), today);
       for (const key of Object.keys(found)) Object.assign(found[key], read[key]);

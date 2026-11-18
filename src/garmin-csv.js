@@ -1,13 +1,14 @@
 import { addDays } from "./diary.js";
 
 // The CSV files Garmin Connect exports from its health reports (HRV status, sleep, resting heart rate), read for
-// the values the app keeps day by day: { hrv, sleep, restHeartRate }, each { "YYYY-MM-DD": value }.
+// the values the app keeps day by day: { hrv, sleep, restHeartRate, skinTemp }, each { "YYYY-MM-DD": value }.
 // Each column is told by its header, in Czech or English; the other columns are left out.
 
 const columns = [
   { key: "hrv", match: /^(noční vst|overnight hrv)$/i },
   { key: "sleep", match: /^(trvání|duration)$/i },
   { key: "restHeartRate", match: /^(klidový srdeční tep|klidový|resting heart rate|resting)$/i },
+  { key: "skinTemp", match: /^(změna teploty pokožky|skin temp(erature)? change)$/i },
 ];
 
 const months = {
@@ -34,6 +35,11 @@ export function csvDay(text, today) {
 // A value of a column: a number with or without its unit ("70ms", "47"), the sleep's "7h 23min" in hours.
 function cellValue(key, text) {
   const cell = text.trim();
+  // The skin's temperature as its change, "'+0.3°", "0°" or "'-0.2°", in °C.
+  if (key === "skinTemp") {
+    const number = parseFloat(cell.replace(/^'/, "").replace("°", "").replace(",", "."));
+    return Number.isFinite(number) && Math.abs(number) < 5 ? number : null;
+  }
   if (key === "sleep") {
     const parts = cell.match(/^(\d+)\s*h(?:\s*(\d+)\s*min)?$/i);
     return parts ? Math.round((Number(parts[1]) + Number(parts[2] ?? 0) / 60) * 100) / 100 : null;
@@ -59,7 +65,7 @@ function splitLine(line) {
 
 export function parseGarminCsv(text, today) {
   const lines = String(text ?? "").replace(/^﻿/, "").split(/\r?\n/).filter((line) => line.trim());
-  const result = { hrv: {}, sleep: {}, restHeartRate: {} };
+  const result = { hrv: {}, sleep: {}, restHeartRate: {}, skinTemp: {} };
   if (lines.length < 2) return result;
   const header = splitLine(lines[0]).map((cell) => cell.trim());
   const found = columns.map((column) => ({ ...column, index: header.findIndex((name) => column.match.test(name)) })).filter((column) => column.index > 0);

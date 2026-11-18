@@ -5,6 +5,7 @@ import { axisTicks } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
 import { hrvDays, hrvOn, hrvSeries } from "../hrv.js";
 import { shortSleepHours, sleepOn } from "../sleep.js";
+import { feverish, illnessSigns } from "../illness.js";
 import { sleepText } from "./diary.js";
 import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
@@ -195,7 +196,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours, illnessSigns: Boolean(illnessSigns(bodyHistory(), today())) }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -273,7 +274,7 @@ export function renderNextStep(card, entries, sport = "all") {
   if (plan.minimal) rows.push(line(t("nextMinimal"), t("nextMinimalText", { minutes: plan.minimal.minutes })));
   if (!plan.ftpTest?.due) rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
-    : line(t("nextIntervals"), t(["tired", "hrvLow", "shortSleep"].some((hold) => plan.holds.includes(hold)) ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
+    : line(t("nextIntervals"), t(["tired", "hrvLow", "shortSleep", "illnessSigns"].some((hold) => plan.holds.includes(hold)) ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   // Why it holds back, or that this is a lighter week.
   const notes = [
     ...(plan.lighter ? [t("nextLighter")] : []),
@@ -781,6 +782,7 @@ const bodySeries = [
   { key: "sleep", unit: "h", color: "var(--compare-4)" },
   { key: "restHeartRate", unit: "bpm", color: "var(--compare-2)" },
   { key: "weight", unit: "kg", color: "var(--compare-1)" },
+  { key: "skinTemp", unit: "°C", color: "var(--compare-5, var(--danger-ink))" },
   { key: "load", unit: "TSS", color: "var(--subtle)" },
 ];
 const defaultBodySeries = ["hrv", "sleep"];
@@ -795,6 +797,12 @@ function seriesData(key, from, end, history, load) {
   if (key === "load") {
     const days = load.filter((day) => day.day >= from && day.day <= end && day.load > 0).map((day) => ({ day: day.day, value: day.load }));
     return { points: days, first: load.find((day) => day.load > 0)?.day ?? null };
+  }
+  // The skin's temperature: its change each night, at or under zero too.
+  if (key === "skinTemp") {
+    const nights = (history.skinTemp ?? []).filter((record) => !record.deleted && Number.isFinite(record.value) && record.from && record.from !== "0000-00-00")
+      .map((record) => ({ day: record.from, value: record.value })).sort((a, b) => a.day.localeCompare(b.day));
+    return { points: nights.filter((night) => night.day >= from && night.day <= end), first: nights[0]?.day ?? null };
   }
   const first = bodyPoints(history[key], "0000-00-01", end).find((point) => !point.carried)?.day ?? null;
   if (key === "hrv") {
@@ -811,7 +819,7 @@ function bodyScale(values, fromZero) {
   const high = Math.max(...values);
   // Up to five steps, the scale ending on the steps around the values (a step more only where a value sits on the edge
   // of a scale with no room at all).
-  const step = [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200].find((size) => (high - low) / size <= 5) ?? 200;
+  const step = [0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200].find((size) => (high - low) / size <= 5) ?? 200;
   const min = fromZero ? 0 : Math.floor(low / step) * step;
   const max = Math.ceil(high / step) * step;
   return { min, max: max > min ? max : min + step, step };
@@ -866,7 +874,7 @@ function renderBodyChart(load) {
   data.forEach((series, index) => {
     const { item, points } = series;
     if (!points.length) return;
-    const values = [...points.map((point) => point.value), ...(series.series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite), ...(item.key === "sleep" ? [shortSleepHours] : [])];
+    const values = [...points.map((point) => point.value), ...(series.series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite), ...(item.key === "sleep" ? [shortSleepHours] : []), ...(item.key === "skinTemp" ? [0] : [])];
     const scale = bodyScale(values, item.key === "load");
     const yFor = (value) => margin.top + ((scale.max - value) / (scale.max - scale.min)) * (height - margin.top - margin.bottom);
     series.yFor = yFor;
@@ -874,7 +882,7 @@ function renderBodyChart(load) {
     const right = index === 1;
     for (let value = scale.min; value <= scale.max + 1e-9; value += scale.step) {
       if (!right) children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === scale.min ? "diary-axis" : "diary-grid" }));
-      const label = node("text", { x: right ? width - margin.right + 8 : margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label", style: `fill: ${item.color}${right ? "; text-anchor: start" : ""}` }, displayNumber(value, scale.step % 1 ? 1 : 0));
+      const label = node("text", { x: right ? width - margin.right + 8 : margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label", style: `fill: ${item.color}${right ? "; text-anchor: start" : ""}` }, displayNumber(value, scale.step % 1 ? (scale.step < 0.5 ? 2 - (scale.step * 10 % 1 ? 0 : 1) : 1) : 0));
       children.push(label);
     }
     if (item.key === "load") {
@@ -883,6 +891,7 @@ function renderBodyChart(load) {
       return;
     }
     if (series.series) layers.push(...hrvLayers(series.series, xForKey, yFor, item.color));
+    if (item.key === "skinTemp") layers.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(feverish), y2: yFor(feverish), class: "fitness-sleep-limit", style: `stroke: ${item.color}` }));
     if (item.key === "sleep") layers.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(shortSleepHours), y2: yFor(shortSleepHours), class: "fitness-sleep-limit", style: `stroke: ${item.color}` }));
     // The HRV's line is the week's average; the others join their values, the held ones going on to today.
     if (!series.series) {
@@ -908,6 +917,10 @@ function bodyValueText(key, day, layout, series) {
   if (key === "load") {
     const point = series.points.find((item) => item.day === day);
     return point ? `${displayNumber(point.value)} TSS` : "—";
+  }
+  if (key === "skinTemp") {
+    const night = series.points.find((item) => item.day === day);
+    return night ? `${night.value > 0 ? "+" : ""}${displayNumber(night.value, 1)} °C` : "—";
   }
   if (key === "sleep") {
     const night = sleepOn(layout.history.sleep, day);
