@@ -221,6 +221,8 @@ const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "
 // Each kind keeps its place in the categorical palette.
 const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
+// Each reason for a day off by an icon, in the calendar.
+const excuseIcons = { illness: "🤒", injury: "🩹", fatigue: "😴", work: "💼", travel: "✈️", family: "👪", time: "⏰", rest: "🛋️", other: "💬" };
 
 // Several sports at once: their distances do not add up, so the chart counts time and is split by sport.
 const mixedSports = () => view.sport === "all" && new Set(view.entries.map((entry) => entry.sport)).size > 1;
@@ -606,13 +608,12 @@ function renderCalendar(range, entries) {
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {
-      // Laid out as an activity: "Day off" for the name, the reason under it; the stripe by the kind of reason,
-      // red for health, amber for fatigue or rest, blue-grey for the rest of life.
-      const group = ["illness", "injury"].includes(excuse.reason) ? "health" : ["fatigue", "rest"].includes(excuse.reason) ? "rest" : "life";
-      const off = Object.assign(document.createElement("div"), { className: `diary-day-off is-${group}` });
+      // Unlike an activity: a dashed outline without a stripe, the reason's icon before "Day off" and the reason
+      // under it, so the kinds' colours stay the activities' own.
+      const off = Object.assign(document.createElement("div"), { className: "diary-day-off" });
       off.title = t("diaryDayOff", { reason: excuseText(excuse) });
       off.append(
-        Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: t("diaryDayOffTitle") }),
+        Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: `${excuseIcons[excuse.reason] ?? excuseIcons.other} ${t("diaryDayOffTitle")}` }),
         Object.assign(document.createElement("span"), { className: "diary-day-off-reason", textContent: excuseText(excuse) }),
       );
       cell.append(off);
