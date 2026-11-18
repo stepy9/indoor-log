@@ -2,7 +2,7 @@ import { workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
-import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
 import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
 import { renderNextStep, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
@@ -10,6 +10,7 @@ import { openSettings, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { infoHint } from "./info.js";
+import { kindLabel } from "./library.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -97,7 +98,8 @@ function adherenceCard(sport, workouts, log) {
       node("td", {}, pair(week.intervals)),
     );
     const scoreCell = node("td");
-    if (week.score != null) scoreCell.append(scoreBadge(week.score));
+    const overall = weekScore(week);
+    if (overall != null) scoreCell.append(scoreBadge(overall, t("weekScoreTitle", { score: overall })));
     row.append(scoreCell);
     table.tBodies[0].append(row);
   }
@@ -134,42 +136,47 @@ function workoutsCard(sport, scored) {
   return card;
 }
 
-// The look back and ahead in one card: how last week went against its plan, and what this week brings
-// (the longer workouts' change, a lighter week, the FTP test's days). Open from Monday until the week's first
-// workout, folded to one line for the rest of the week.
-function summaryCard(result, workouts, log) {
+// Last week day by day, as the week's plan shows this one: each day ridden ticked with its score and workouts,
+// a planned day not ridden with what was planned, a free day left out; under it the week's numbers. Open from
+// Monday until the week's first workout, folded to one line for the rest of the week.
+function summaryCard(scored, workouts, log, sport) {
   const now = today();
-  const open = showsWeekSummary(workouts.map((workout) => workout.day), now);
   const monday = lastMondays(now, 2)[0];
   const sunday = addDays(monday, 6);
-  const last = weekAdherence(log, workouts, monday, sunday);
-  const lastWorkouts = workouts.filter((workout) => workout.day >= monday && workout.day <= sunday);
-  const back = [];
-  if (last.planned) back.push(t("summaryDays", { ridden: last.ridden, planned: last.planned }));
-  else back.push(t("summaryRides", { count: new Set(lastWorkouts.map((workout) => workout.day)).size }));
-  if (last.long[1]) back.push(t("summaryLong", { done: last.long[0], planned: last.long[1] }));
-  if (last.intervals[1]) back.push(t("summaryIntervals", { done: last.intervals[0], planned: last.intervals[1] }));
-  if (last.score != null) back.push(t("summaryScore", { score: last.score }));
-  // Ahead: the longer workouts against last week's longest, the lighter week and the FTP test.
-  const plan = result.plan;
-  const ahead = [];
-  const week = plan.outlook?.[0];
-  const lastLongest = Math.round(Math.max(0, ...lastWorkouts.filter((workout) => workout.kind === "steady").map((workout) => workout.minutes)));
-  if (week) {
-    const change = week.longMinutes - lastLongest;
-    ahead.push(t(change > 0 && lastLongest ? "summaryLongUp" : "summaryLongAt", { count: week.longCount, minutes: week.longMinutes, change }));
-    if (week.lighter) ahead.push(t("summaryLighter"));
-  }
-  for (const item of result.days.filter((day) => day.type.startsWith("ftpTest"))) {
-    ahead.push(t(item.type === "ftpTestShort" ? "summaryTestShort" : "summaryTest", { day: format(item.day, { weekday: "long" }) }));
-  }
   const card = node("details", { class: "card training-summary" });
-  card.open = open;
-  card.append(
-    node("summary", { class: "field-label" }, t("summaryTitle")),
-    node("p", {}, `${t("summaryLast")}: ${back.join(", ")}.`),
-    node("p", {}, `${t("summaryThis")}: ${ahead.join(", ")}.`),
-  );
+  card.open = showsWeekSummary(workouts.map((workout) => workout.day), now);
+  const list = node("div", { class: "diary-plan-list" });
+  for (let index = 0; index < 7; index += 1) {
+    const day = addDays(monday, index);
+    const ridden = scored.filter((item) => item.day === day);
+    const planned = log[day];
+    if (!ridden.length && !planned) continue;
+    const status = ridden.length ? "done" : "missed";
+    const row = node("div", { class: `diary-plan-row has-score is-${status}` });
+    const mark = node("span", { class: "diary-plan-mark" }, status === "done" ? "✓" : "–");
+    mark.setAttribute("aria-label", t(`planStatus_${status}`));
+    const score = node("span", { class: "diary-plan-score" });
+    for (const item of ridden) if (item.result) score.append(scoreBadge(item.result.score));
+    const km = (entry) => displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
+    const text = ridden.length
+      ? ridden.map((item) => `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`).join(", ")
+      : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
+    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, node("span", { class: "diary-plan-text" }, text));
+    list.append(row);
+  }
+  // The week's numbers: the days against the plan when it was kept, else the days ridden; the longer workouts and
+  // intervals planned, and the average score.
+  const week = weekAdherence(log, workouts, monday, sunday);
+  const numbers = [week.planned ? t("summaryDays", { ridden: week.ridden, planned: week.planned }) : t("summaryRides", { count: new Set(workouts.filter((workout) => workout.day >= monday && workout.day <= sunday).map((workout) => workout.day)).size })];
+  if (week.long[1]) numbers.push(t("summaryLong", { done: week.long[0], planned: week.long[1] }));
+  if (week.intervals[1]) numbers.push(t("summaryIntervals", { done: week.intervals[0], planned: week.intervals[1] }));
+  if (week.score != null) numbers.push(t("summaryScore", { score: week.score }));
+  list.append(node("p", { class: "field-note" }, numbers.join(" · ")));
+  // The week as a whole in the line that folds: the plan kept and the workouts' average in one score.
+  const head = node("summary", { class: "field-label" }, `${t("summaryLast")} · ${weekNumber(monday)} `);
+  const overall = weekScore(week);
+  if (overall != null) head.append(scoreBadge(overall, t("weekScoreTitle", { score: overall })));
+  card.append(head, list);
   return card;
 }
 
@@ -331,7 +338,7 @@ function render() {
   const workouts = scored.map(({ entry, day, result: item }) => ({ day, minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry), ftpTest: item?.as === "ftpTest", score: item?.score ?? null }));
   const cards = [];
   const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
-  const summary = result ? summaryCard(result, workouts, log) : null;
+  const summary = summaryCard(scored, workouts, log, sport);
   if (summary) cards.push(summary);
   if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;

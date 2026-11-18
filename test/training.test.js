@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -137,4 +137,13 @@ test("the week's summary shows from Monday until the first workout, Wednesday at
   assert.equal(showsWeekSummary(["2026-11-22"], "2026-11-24"), true);
   assert.equal(showsWeekSummary(["2026-11-23"], "2026-11-24"), false);
   assert.equal(showsWeekSummary([], "2026-11-26"), false);
+});
+
+test("a week's score weighs the plan kept and the workouts' average", () => {
+  assert.equal(weekScore({ planned: 7, ridden: 7, long: [2, 2], intervals: [1, 1], score: 90 }), 97);
+  // Two days missed, one longer workout of two: lower.
+  assert.equal(weekScore({ planned: 7, ridden: 5, long: [1, 2], intervals: [1, 1], score: 90 }), 78);
+  // Without a plan kept: the workouts' average alone.
+  assert.equal(weekScore({ planned: 0, ridden: 0, long: [0, 0], intervals: [0, 0], score: 71 }), 71);
+  assert.equal(weekScore({ planned: 0, ridden: 0, long: [0, 0], intervals: [0, 0], score: null }), null);
 });

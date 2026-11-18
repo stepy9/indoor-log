@@ -228,3 +228,17 @@ export function fatigueByFeel(workouts, today) {
   if (!last.every((workout) => harder(workout) && calmHeart(workout))) return null;
   return { days: last.length, rpe: median(last.map((workout) => workout.rpe || null)), usualRpe };
 }
+
+// A week's overall score, 0–100: keeping to the plan (the planned days ridden 40, the longer workouts 15, the
+// intervals 10) and riding well (the workouts' average score 35); the parts without a plan or a score left out and
+// the rest weighed up. week: weekAdherence's. Null with nothing to go by.
+export function weekScore(week) {
+  const parts = [
+    [40, week.planned ? week.ridden / week.planned : null],
+    [15, week.long?.[1] ? Math.min(1, week.long[0] / week.long[1]) : null],
+    [10, week.intervals?.[1] ? Math.min(1, week.intervals[0] / week.intervals[1]) : null],
+    [35, week.score != null ? week.score / 100 : null],
+  ].filter(([, share]) => share != null);
+  const total = parts.reduce((sum, [weight]) => sum + weight, 0);
+  return total ? Math.round((parts.reduce((sum, [weight, share]) => sum + weight * share, 0) / total) * 100) : null;
+}

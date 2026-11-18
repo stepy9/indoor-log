@@ -1356,4 +1356,4 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-summary { border-left: 4px solid #4d8dff; }
 .training-summary > summary { cursor: pointer; }
 .training-summary[open] > summary { margin-bottom: 6px; }
-.training-summary p { margin: 4px 0 0; font-size: 15px; }
+.training-summary .diary-plan-list { margin-top: 2px; }
