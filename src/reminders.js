@@ -2,8 +2,9 @@ import { start, toRecords } from "./history.js";
 
 // The weight and the resting heart rate, entered by hand as often as wished; each is asked for again once
 // it has not been touched for a while: the weight after two weeks, the resting heart rate after a month.
+// The HRV is entered day by day without a reminder: a night left out does not make it wrong.
 export const reminderDays = { weight: 14, restHeartRate: 30 };
-export const bodyKeys = ["weight", "restHeartRate"];
+export const bodyKeys = ["weight", "restHeartRate", "hrv"];
 
 const daysBetween = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000);
 
@@ -11,6 +12,12 @@ const daysBetween = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z`) - Da
 function lastDay(history) {
   const days = (history ?? []).filter((record) => !record.deleted && record.from && record.from !== start).map((record) => record.from);
   return days.length ? days.sort().at(-1) : null;
+}
+
+// The value of the latest day entered, null without one.
+function latestDated(history) {
+  const day = lastDay(history);
+  return day ? history.find((record) => !record.deleted && record.from === day)?.value ?? null : null;
 }
 
 // Each value as it stands today: [{ key, value, since, days, due }]. value is null when never entered;
@@ -24,12 +31,13 @@ export function bodyStatus(fitness, history, today) {
   const values = {
     weight: { value: weights.at(-1)?.kg ?? null, last: [lastDay(history?.weight), confirmed.weight] },
     restHeartRate: { value: fitness?.restHeartRate > 0 ? fitness.restHeartRate : null, last: [lastDay(history?.restHeartRate), confirmed.restHeartRate] },
+    hrv: { value: latestDated(history?.hrv), last: [lastDay(history?.hrv)] },
   };
   return bodyKeys.map((key) => {
     const { value, last } = values[key];
     const since = value === null ? null : last.filter(Boolean).sort().at(-1) ?? null;
     const days = since ? daysBetween(since, today) : null;
-    const due = value !== null && !confirmed.off && (days === null || days >= reminderDays[key]);
+    const due = value !== null && key in reminderDays && !confirmed.off && (days === null || days >= reminderDays[key]);
     return { key, value, since, days, due };
   });
 }

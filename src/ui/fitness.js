@@ -3,6 +3,7 @@ import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
+import { hrvDays, hrvOn, hrvSeries } from "../hrv.js";
 import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
@@ -192,7 +193,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()) }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low" }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -270,7 +271,7 @@ export function renderNextStep(card, entries, sport = "all") {
   if (plan.minimal) rows.push(line(t("nextMinimal"), t("nextMinimalText", { minutes: plan.minimal.minutes })));
   if (!plan.ftpTest?.due) rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
-    : line(t("nextIntervals"), t(plan.holds.includes("tired") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
+    : line(t("nextIntervals"), t(plan.holds.includes("tired") || plan.holds.includes("hrvLow") ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   // Why it holds back, or that this is a lighter week.
   const notes = [
     ...(plan.lighter ? [t("nextLighter")] : []),
@@ -773,6 +774,7 @@ function hideFtpTooltip() {
 const bodyCharts = [
   { key: "weight", chart: "fitnessWeightChart", tooltip: "fitnessWeightTooltip", unit: "kg", color: "var(--compare-1)" },
   { key: "restHeartRate", chart: "fitnessRestChart", tooltip: "fitnessRestTooltip", unit: "bpm", color: "var(--compare-2)" },
+  { key: "hrv", chart: "fitnessHrvChart", tooltip: "fitnessHrvTooltip", unit: "ms", color: "var(--compare-3)" },
 ];
 
 function renderBodyCharts() {
@@ -798,7 +800,9 @@ function renderBodyCharts() {
     const width = Math.max(260, Math.round(chart.parentElement.getBoundingClientRect().width) || 400);
     const height = 170;
     const margin = { left: 44, right: 12, top: 12, bottom: 26 };
-    const values = points.map((point) => point.value);
+    // The HRV: each day of the chart with its week's average and the usual range then.
+    const series = item.key === "hrv" ? hrvSeries(hrvDays(history.hrv), chartFrom, end) : null;
+    const values = [...points.map((point) => point.value), ...(series ?? []).flatMap((day) => [day.average, day.low, day.high]).filter(Number.isFinite)];
     const low = Math.min(...values);
     const high = Math.max(...values);
     const yStep = [0.5, 1, 2, 5, 10, 20].find((size) => (high - low) / size <= 4) ?? 20;
@@ -814,20 +818,22 @@ function renderBodyCharts() {
       children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value, yStep % 1 ? 1 : 0)));
     }
     children.push(...dateTicks(chartFrom, end, xForKey, { margin, width, height }));
+    if (series) children.push(...hrvLayers(series, xForKey, yFor, item.color));
     // The line goes on to today at the last value, as it still holds.
     const path = [...points, { day: end, value: points.at(-1).value }].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
-    children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
+    if (!series) children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
     for (const point of points.filter((point) => !point.carried)) {
       children.push(node("circle", { cx: xForKey(point.day), cy: yFor(point.value), r: 3, class: "fitness-body-dot", style: `fill: ${item.color}` }));
     }
     const guide = node("g");
     children.push(guide);
-    view.bodyLayouts[item.key] = { item, points, from: chartFrom, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
+    view.bodyLayouts[item.key] = { item, series, points, from: chartFrom, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     chart.style.height = `${height}px`;
     chart.replaceChildren(...children);
   }
   byId("fitnessBodyEmpty").hidden = any;
+  byId("fitnessHrvNote").hidden = byId("fitnessHrvChart").parentElement.hidden;
 }
 
 // The day under the pointer with the value that held on it, and whether it was entered on that day.
@@ -850,14 +856,47 @@ function showBodyTooltip(key, event) {
   const swatch = node("span", { class: "fitness-swatch" });
   swatch.style.background = item.color;
   const enteredThen = held.day === day && !held.carried;
-  row.append(swatch, node("span", {}, enteredThen ? t("bodyEnteredOn") : t("bodyHeld")), node("strong", {}, `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${item.unit}`));
-  tooltip.replaceChildren(node("div", { class: "diary-tooltip-when" }, dayText(day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })), row);
+  const rows = [];
+  if (layout.series) {
+    // The HRV: the night's value, the week's average and the usual range.
+    const stood = layout.series.find((item) => item.day === day);
+    const add = (label, value) => {
+      const line = node("div", { class: "diary-tooltip-row" });
+      line.append(node("span", {}, label), node("strong", {}, value));
+      rows.push(line);
+    };
+    add(t("hrvNight"), stood?.value ? `${displayNumber(stood.value)} ms` : "—");
+    if (Number.isFinite(stood?.average)) add(t("hrvAverage"), `${displayNumber(stood.average)} ms`);
+    if (Number.isFinite(stood?.low)) add(t("hrvRange"), `${displayNumber(stood.low)}–${displayNumber(stood.high)} ms`);
+    if (stood?.status) add("", t(`hrvStatus_${stood.status}`));
+  } else {
+    row.append(swatch, node("span", {}, enteredThen ? t("bodyEnteredOn") : t("bodyHeld")), node("strong", {}, `${displayNumber(held.value, held.value % 1 ? 1 : 0)} ${item.unit}`));
+    rows.push(row);
+  }
+  tooltip.replaceChildren(node("div", { class: "diary-tooltip-when" }, dayText(day, { weekday: "long", day: "numeric", month: "numeric", year: "numeric" })), ...rows);
   tooltip.hidden = false;
   const card = tooltip.offsetParent.getBoundingClientRect();
   const left = (at / layout.width) * box.width + box.left - card.left;
   const right = left + 14;
   tooltip.style.left = `${Math.max(8, right + tooltip.offsetWidth > card.width - 8 ? left - tooltip.offsetWidth - 14 : right)}px`;
   tooltip.style.top = `${box.top - card.top + 12}px`;
+}
+
+// The HRV's layers: the usual range as a band, the nights as faint dots, the week's average as the line.
+function hrvLayers(series, xForKey, yFor, color) {
+  const layers = [];
+  const ranged = series.filter((day) => Number.isFinite(day.low));
+  if (ranged.length > 1) {
+    const top = ranged.map((day, index) => `${index ? "L" : "M"}${xForKey(day.day).toFixed(1)},${yFor(day.high).toFixed(1)}`).join("");
+    const bottom = [...ranged].reverse().map((day) => `L${xForKey(day.day).toFixed(1)},${yFor(day.low).toFixed(1)}`).join("");
+    layers.push(node("path", { class: "fitness-hrv-band", d: `${top}${bottom}Z` }));
+  }
+  const averaged = series.filter((day) => Number.isFinite(day.average));
+  if (averaged.length > 1) {
+    const line = averaged.map((day, index) => `${index ? "L" : "M"}${xForKey(day.day).toFixed(1)},${yFor(day.average).toFixed(1)}`).join("");
+    layers.push(node("path", { class: "fitness-line", d: line, style: `stroke: ${color}` }));
+  }
+  return layers;
 }
 
 function hideBodyTooltip(key) {

@@ -6,7 +6,8 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
-import { bodyToday, enterBodyValue, settingsFor } from "./settings.js";
+import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.js";
+import { hrvDays, hrvOn } from "../hrv.js";
 import { checkNumber } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
@@ -754,8 +755,8 @@ function renderZones(current, previous) {
 // The weight and the resting heart rate, to be entered quickly any day: each with how long ago it was entered
 // and a field for today's value. One not touched for a while is asked about, the card then tinted, with a
 // button keeping the value as it was; either answer puts the question off for another while.
-const bodyRanges = { weight: { min: 30, max: 250, decimals: 1 }, restHeartRate: { min: 30, max: 100 } };
-const bodyUnits = { weight: "kg", restHeartRate: "bpm" };
+const bodyRanges = { weight: { min: 30, max: 250, decimals: 1 }, restHeartRate: { min: 30, max: 100 }, hrv: { min: 5, max: 250 } };
+const bodyUnits = { weight: "kg", restHeartRate: "bpm", hrv: "ms" };
 // What was entered here since the page opened, shown in place of the value's age: { key: text }.
 const entered = {};
 
@@ -781,12 +782,14 @@ function renderReminders() {
     if (due) text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
     else {
       const name = Object.assign(document.createElement("strong"), { textContent: t(`body_${key}`) });
-      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days)].filter(Boolean).join(" · "));
+      // The HRV with how its week stands against the usual range, once there are days enough to tell.
+      const standing = key === "hrv" ? hrvOn(hrvDays(bodyHistory().hrv), dayKey(Date.now(), zone))?.status : null;
+      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days), standing ? t(`hrvStatus_${standing}`) : ""].filter(Boolean).join(" · "));
       text.append(name, " ", Object.assign(document.createElement("span"), { className: entered[key] ? "diary-reminder-done" : "diary-reminder-age", textContent: rest }));
     }
     const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: value === null ? bodyUnits[key] : bodyNumber(value) });
     input.setAttribute("inputmode", key === "weight" ? "decimal" : "numeric");
-    input.setAttribute("aria-label", t(key === "weight" ? "settingsWeightLabel" : "fitnessRestHrLabel"));
+    input.setAttribute("aria-label", t(`body_${key}`));
     const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
     const answer = (next) => {
       enterBodyValue(key, next, firstDay);

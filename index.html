@@ -533,7 +533,7 @@
           </section>
           <section class="card">
             <div class="panel-title-row">
-              <span class="field-label" data-i18n="bodyChartTitle">Hmotnost a klidový tep</span>
+              <span class="field-label" data-i18n="bodyChartTitle">Hmotnost, klidový tep a HRV</span>
             </div>
             <div class="fitness-body-charts">
               <div class="fitness-body-chart">
@@ -546,8 +546,14 @@
                 <svg class="diary-chart" id="fitnessRestChart" role="img" aria-label="Klidový tep" data-i18n-aria="body_restHeartRate"></svg>
                 <div class="diary-tooltip" id="fitnessRestTooltip" role="tooltip" hidden></div>
               </div>
+              <div class="fitness-body-chart">
+                <span class="estimate-note" data-i18n="body_hrv">HRV</span>
+                <svg class="diary-chart" id="fitnessHrvChart" role="img" aria-label="HRV" data-i18n-aria="body_hrv"></svg>
+                <div class="diary-tooltip" id="fitnessHrvTooltip" role="tooltip" hidden></div>
+              </div>
             </div>
             <p class="field-note" id="fitnessBodyEmpty" data-i18n="bodyChartEmpty" hidden></p>
+            <p class="field-note info-note" id="fitnessHrvNote" data-i18n="hrvNote" hidden></p>
           </section>
           <section class="card">
             <span class="field-label" data-i18n="fitnessEfficiencyTitle">Aerobní efektivita</span>

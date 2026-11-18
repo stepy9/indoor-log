@@ -108,6 +108,12 @@ export function enterBodyValue(key, value, firstDay = null) {
   const saved = remembered();
   const today = dayKey(Date.now(), zone);
   const reminders = { ...saved.reminders, [key]: today };
+  if (key === "hrv") {
+    if (!(value > 0)) return;
+    const hrv = [...(savedHistory().hrv ?? []).filter((record) => record.from !== today), { from: today, value, at: Date.now() }].sort((a, b) => a.from.localeCompare(b.from));
+    saveFitness({ history: { ...savedHistory(), hrv } });
+    return;
+  }
   if (key === "weight") {
     const current = weightOn({ history: savedHistory(), timeZone: zone }, Date.now());
     if (value > 0 && value !== current) {

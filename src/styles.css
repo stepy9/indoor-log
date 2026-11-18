@@ -1425,3 +1425,4 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .fitness-body-chart { position: relative; display: grid; gap: 4px; min-width: 0; }
 .fitness-body-chart[hidden] { display: none; }
 .fitness-body-dot { stroke: var(--surface); stroke-width: 1.5; }
+.fitness-hrv-band { fill: var(--compare-3); opacity: .14; stroke: none; }
