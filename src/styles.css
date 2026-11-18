@@ -1323,7 +1323,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .score-badge.is-good { --score: #1f9d55; }
 .score-badge.is-fair { --score: #d97706; }
 .score-badge.is-poor { --score: #dc2626; }
-.diary-plan-row .score-badge { margin-left: 6px; }
+.diary-plan-row.has-score { grid-template-columns: auto 90px 34px minmax(0, 1fr); }
+.diary-plan-score { display: flex; gap: 3px; }
 .diary-activity .score-badge { align-self: flex-start; height: 16px; min-width: 22px; margin-top: 1px; font-size: 10px; }
 @media (max-width: 640px) { .diary-calendar:not(.is-week) .diary-activity .score-badge { display: none; } }
 .training-tiles { margin: 10px 0; }
@@ -1337,3 +1338,5 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-workout-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .training-workout-why { margin: 0; }
 .training-view .fitness-content > .link-button { justify-self: start; }
+/* Shown only with the Training section: the tab, and the diary's plan switch only without it. */
+.app-nav button[hidden], .diary-plan-toggle[hidden] { display: none; }

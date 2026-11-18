@@ -932,7 +932,7 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     renderList();
   });
   nameTab("converter");
-  setupDiary({ onOpen: openInCompare, onTraining: () => showView("training") });
+  setupDiary({ onOpen: openInCompare });
   setupFitness({ onOpen: openInCompare });
   setupTraining({ onOpen: openInCompare });
   // The Training tab shows once a sport has the Training section filled in; on a phone it takes a sixth of the bar.
