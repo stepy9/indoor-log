@@ -2,7 +2,7 @@ import { activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, 
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
-import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
+import { goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses } from "./excuse.js";
@@ -810,6 +810,11 @@ function renderCurveTable(curve, before, settings) {
 // With a weekly time (or, for one sport, distance) set for the sports shown, each week tells how much of it was done, the running one what is left.
 // A week's share of its time target, the running week with what is left: done in green, short of half in red.
 // format writes what is left: a time or a distance.
+// A week without a goal then has an empty cell.
+function weekGoal(goal, cell) {
+  return goal > 0 ? cell(goal) : node("td", {}, "—");
+}
+
 function targetCell(done, target, running, format) {
   const share = (done / target) * 100;
   const left = target - done;
@@ -871,9 +876,9 @@ function renderWeeks(history, entries, settings) {
       node("td", {}, when),
       node("td", {}, String(week.workouts)),
       node("td", {}, week.seconds ? formatDuration(week.seconds) : "—"),
-      ...(target ? [targetCell(week.seconds, target, week.monday === thisMonday, formatDuration)] : []),
+      ...(target ? [weekGoal(shownSports.reduce((sum, sport) => sum + goalOn(settings.sports[sport], "weeklyHours", week.monday) * 3600, 0), (goal) => targetCell(week.seconds, goal, week.monday === thisMonday, formatDuration))] : []),
       node("td", {}, week.meters ? `${displayNumber(week.meters / 1000, 1)} km` : "—"),
-      ...(targetKm ? [targetCell(week.meters, targetKm * 1000, week.monday === thisMonday, km)] : []),
+      ...(targetKm ? [weekGoal(goalOn(settings.sports[view.sport], "weeklyKm", week.monday) * 1000, (goal) => targetCell(week.meters, goal, week.monday === thisMonday, km))] : []),
       node("td", {}, week.calories ? `${displayNumber(Math.round(week.calories))} kcal` : "—"),
       loadCell,
       node("td", { class: rampClass }, ramp == null ? "—" : Math.abs(ramp) < 0.05 ? "±0" : `${ramp > 0 ? "+" : ""}${displayNumber(ramp, 1)}`),

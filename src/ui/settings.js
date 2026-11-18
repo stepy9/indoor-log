@@ -59,6 +59,27 @@ export function perKgText(watts, ms) {
   return kg && Number.isFinite(watts) ? `${displayNumber(watts / kg, 2)} W/kg` : "";
 }
 
+// A weekly goal changed holds from this week's Monday on; the weeks before keep the goal they had
+// (the first change keeps the one before it for all earlier weeks).
+function saveGoal(sport, key, value) {
+  const own = savedSport(sport);
+  const day = new Date();
+  day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+  const monday = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  let history = own.goalHistory ?? [];
+  if (!history.length) history = [{ from: "0000-00-00", weeklyHours: own.weeklyHours ?? null, weeklyKm: own.weeklyKm ?? null }];
+  const last = history.at(-1);
+  const next = { ...last, from: monday, [key]: value };
+  history = [...history.filter((item) => item.from !== monday), next].sort((a, b) => a.from.localeCompare(b.from));
+  saveSport(sport, { [key]: value, goalHistory: history });
+}
+
+// The weekly goal that held in the week from the Monday given.
+export function goalOn(own, key, monday) {
+  const held = (own?.goalHistory ?? []).filter((item) => item.from <= monday).at(-1);
+  return held ? held[key] ?? 0 : own?.[key] ?? 0;
+}
+
 function saveSport(sport, patch) {
   const saved = remembered();
   saveFitness({ sports: { ...saved.sports, [sport]: { ...savedSport(sport), ...patch } } });
@@ -658,7 +679,7 @@ function trainingBlock(sport) {
   hours.addEventListener("change", () => {
     const value = checkNumber(hours, { min: 0.5, max: 40, decimals: 1 });
     if (value === undefined) return;
-    saveSport(sport, { weeklyHours: value });
+    saveGoal(sport, "weeklyHours", value);
     changed();
   });
   weekly.append(node("span", {}, t("settingsWeeklyHours")), hours);
@@ -670,7 +691,7 @@ function trainingBlock(sport) {
   kmInput.addEventListener("change", () => {
     const value = checkNumber(kmInput, { min: 1, max: 2000 });
     if (value === undefined) return;
-    saveSport(sport, { weeklyKm: value });
+    saveGoal(sport, "weeklyKm", value);
     changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
