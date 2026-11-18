@@ -319,6 +319,14 @@ export function workoutSuggestions(rides, type, count = 3, intervals = null) {
     .sort((a, b) => rank(a) - rank(b) || a.last.localeCompare(b.last)).slice(0, count);
 }
 
+// The FTP from a 20-minute test: 95 % of its best 20 minutes, the latest such test after the FTP typed last.
+// tests: [{ day, best20 }] (watts, null without power); typedFrom: the day of the FTP typed last, or null.
+// { day, best20, ftp } or null.
+export function ftpFromTest(tests, typedFrom) {
+  const latest = tests.filter((test) => test.best20 > 0 && (!typedFrom || test.day > typedFrom)).sort((a, b) => a.day.localeCompare(b.day)).at(-1);
+  return latest ? { day: latest.day, best20: Math.round(latest.best20), ftp: Math.round(latest.best20 * 0.95) } : null;
+}
+
 // The Kinomap creator's workouts made for the plan, by name; a sport's list starts from these until changed.
 export const defaultKinomapWorkouts = {
   rowing: ["FTP test 5 min", "FTP test 20 min", "Intervaly 4x2 min", "Intervaly 5x2 min", "Intervaly 6x2 min", "Intervaly 7x2 min", "Intervaly 8x2 min", "Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min", "Minimální jízda 10 min"],

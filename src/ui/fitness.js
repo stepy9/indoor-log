@@ -225,7 +225,7 @@ function planPrefs(settings, sport) {
 }
 
 // The day the latest FTP was typed by hand, an FTP test's result as the plan counts it; null without one.
-function lastFtpTyped(settings, sport) {
+export function lastFtpTyped(settings, sport) {
   return (settings.sports[sport]?.ftpHistory ?? []).map((record) => record.from).filter(Boolean).sort().at(-1) ?? null;
 }
 

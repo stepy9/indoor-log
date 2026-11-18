@@ -1391,3 +1391,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .diary-calendar:not(.is-week) .diary-day-off { align-items: center; padding: 2px 0; }
   .diary-calendar:not(.is-week) .diary-day-off-name { width: 1.4em; font-size: 12px; text-overflow: clip; }
 }
+.training-ftp-test { border-left: 4px solid #1f9d55; }
+.training-ftp-result { margin: 6px 0 2px; font-size: 18px; font-weight: 700; }
+.training-ftp-test .fitness-suggestion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.training-ftp-test .outline-button { margin-top: 0; }

@@ -1,12 +1,12 @@
-import { workoutKind } from "../analysis.js";
+import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
-import { adherenceShare, dayStreak, fatigueByFeel, routeSuggestions, workoutSuggestions, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
 import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
-import { renderNextStep, trainingPlan } from "./fitness.js";
+import { lastFtpTyped, renderNextStep, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
-import { openSettings, settingsFor } from "./settings.js";
+import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { infoHint } from "./info.js";
@@ -261,6 +261,41 @@ function suggestionsButton(result, entries, type) {
   return button;
 }
 
+// After a 20-minute FTP test newer than the FTP typed: its result, to take as the FTP or turn down.
+function ftpTestCard(sport, entries, settings, onOpen) {
+  const typedFrom = lastFtpTyped(settings, sport);
+  const tests = entries.filter((entry) => workoutFromName(entry.name ?? "").kind === "ftpTest")
+    .map((entry) => ({ entry, day: dayKey(entry.startMs, zone), best20: bestAverage(entry, "power", 1200) }));
+  const result = ftpFromTest(tests, typedFrom);
+  if (!result) return null;
+  const key = `ftptest-${sport}-${result.day}`;
+  if (dismissed().has(key)) return null;
+  const entry = tests.find((test) => test.day === result.day)?.entry;
+  const card = node("section", { class: "card training-ftp-test" });
+  const current = currentFtp(settings, sport);
+  card.append(
+    node("span", { class: "field-label" }, t("ftpTestTitle", { date: format(result.day, { day: "numeric", month: "numeric" }) })),
+    node("p", { class: "training-ftp-result" }, t("ftpTestResult", { best: result.best20, ftp: result.ftp })),
+    node("p", { class: "field-note" }, current ? t("ftpTestBefore", { ftp: current, change: `${result.ftp >= current ? "+" : ""}${result.ftp - current}` }) : t("ftpTestFirst")),
+  );
+  const actions = node("div", { class: "fitness-suggestion-actions" });
+  const open = node("button", { type: "button", class: "link-button" }, t("suggestOpen"));
+  open.addEventListener("click", () => onOpen(entry));
+  const ignore = node("button", { type: "button", class: "outline-button" }, t("suggestIgnore"));
+  ignore.addEventListener("click", () => {
+    dismiss(key);
+    render();
+  });
+  const save = node("button", { type: "button", class: "export-button" }, t("ftpTestSave"));
+  save.addEventListener("click", () => {
+    addFtpRecord(sport, { from: result.day, ftp: result.ftp });
+    window.dispatchEvent(new Event("settings-change"));
+  });
+  actions.append(open, ignore, save);
+  card.append(actions);
+  return card;
+}
+
 // What to ride today, large: today's planned workout, or with today done or free the next one; the least workout
 // under it, and a warning when the last workouts felt harder than usual.
 function todayCard(result, scored, fatigue, entries) {
@@ -427,6 +462,8 @@ function render() {
   const workouts = scored.map(({ entry, day, result: item }) => ({ day, minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry), ftpTest: item?.as === "ftpTest", score: item?.score ?? null }));
   const cards = [];
   const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
+  const ftpCard = ftpTestCard(sport, view.entries.filter((entry) => entry.sport === sport), settings, openActivity);
+  if (ftpCard) cards.push(ftpCard);
   const summary = summaryCard(scored, workouts, log, sport);
   if (summary) cards.push(summary);
   if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport)));

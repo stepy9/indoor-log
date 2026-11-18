@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -215,4 +215,11 @@ test("the plan's Kinomap workouts are picked from their names", () => {
   assert.equal(missing.intervals, null);
   assert.equal(missing.wanted, "9x2 min");
   assert.deepEqual(pickWorkouts([], null), { intervals: null, ftpTestShort: null, ftpTest: null, minimal: null, extras: [], wanted: null });
+});
+
+test("the FTP from the latest 20-minute test after the one typed is 95 % of its best 20 minutes", () => {
+  const tests = [{ day: "2026-10-01", best20: 110 }, { day: "2026-11-21", best20: 124.4 }, { day: "2026-11-22", best20: null }];
+  assert.deepEqual(ftpFromTest(tests, "2026-11-01"), { day: "2026-11-21", best20: 124, ftp: 118 });
+  assert.equal(ftpFromTest(tests, "2026-11-21"), null);
+  assert.equal(ftpFromTest([], null), null);
 });
