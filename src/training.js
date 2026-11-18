@@ -179,3 +179,46 @@ export function lastMondays(today, weeks) {
   const monday = mondayOf(today);
   return Array.from({ length: weeks }, (_, index) => addDays(monday, (index - weeks + 1) * 7));
 }
+
+// The longest steady workout of each of the last weeks in minutes, oldest first, this week last:
+// [{ monday, minutes }] with 0 for a week without one. workouts: [{ day, minutes, kind }].
+export function longestMinutesByWeek(workouts, today, weeks = 8) {
+  return lastMondays(today, weeks).map((monday) => {
+    const inWeek = workouts.filter((workout) => workout.kind === "steady" && workout.day >= monday && workout.day < addDays(monday, 7));
+    return { monday, minutes: inWeek.length ? Math.round(Math.max(...inWeek.map((workout) => workout.minutes))) : 0 };
+  });
+}
+
+// The power at a zone 2 heart rate over time: each steady workout's point, and the line through the last ones'
+// as watts gained per four weeks. points: [{ day, watts }]; { points, perFourWeeks } with perFourWeeks null
+// under four points or two weeks.
+export function zoneTwoTrend(points) {
+  const sorted = [...points].filter((point) => point.watts > 0).sort((a, b) => a.day.localeCompare(b.day));
+  if (sorted.length < 4) return { points: sorted, perFourWeeks: null };
+  const xs = sorted.map((point) => noon(point.day) / dayMs);
+  if (xs.at(-1) - xs[0] < 14) return { points: sorted, perFourWeeks: null };
+  const meanX = xs.reduce((sum, value) => sum + value, 0) / xs.length;
+  const meanY = sorted.reduce((sum, point) => sum + point.watts, 0) / sorted.length;
+  const slope = xs.reduce((sum, x, index) => sum + (x - meanX) * (sorted[index].watts - meanY), 0) / xs.reduce((sum, x) => sum + (x - meanX) ** 2, 0);
+  return { points: sorted, perFourWeeks: Math.round(slope * 28 * 10) / 10 };
+}
+
+// Fatigue by feel: the last three rated workouts each felt harder than usual (an effort 2 or more above the median
+// of the four weeks before them, or a weak feel) at a heart rate no higher than usual. workouts: [{ day, rpe, feel,
+// avgHeartRate }], rpe 1–10 and feel 0–100 or null. { days, rpe, usualRpe } or null.
+export function fatigueByFeel(workouts, today) {
+  const rated = workouts.filter((workout) => workout.day <= today && (workout.rpe > 0 || Number.isFinite(workout.feel))).sort((a, b) => a.day.localeCompare(b.day));
+  const last = rated.slice(-3);
+  if (last.length < 3 || last[0].day < addDays(today, -10)) return null;
+  const before = rated.filter((workout) => workout.day < last[0].day && workout.day >= addDays(last[0].day, -28));
+  const median = (values) => {
+    const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+    return sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+  };
+  const usualRpe = median(before.map((workout) => workout.rpe || null));
+  const usualHeart = median(before.map((workout) => workout.avgHeartRate));
+  const harder = (workout) => (usualRpe != null && workout.rpe >= usualRpe + 2) || (Number.isFinite(workout.feel) && workout.feel <= 25);
+  const calmHeart = (workout) => usualHeart == null || !(workout.avgHeartRate > usualHeart + 3);
+  if (!last.every((workout) => harder(workout) && calmHeart(workout))) return null;
+  return { days: last.length, rpe: median(last.map((workout) => workout.rpe || null)), usualRpe };
+}

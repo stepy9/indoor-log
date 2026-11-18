@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, lastMondays, logPlan, plannedDay, scoreWorkout, weekAdherence } from "../src/training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -107,4 +107,24 @@ test("intervals of another shape than the plan's, on a day without a plan kept, 
   assert.equal(scoreWorkout({ minutes: 12, kind: "intervals", heart: null, drift: null, laps }, null, plannedDay(null, plan)), null);
   // Planned that day: scored, and the efforts missed count.
   assert.equal(scoreWorkout({ minutes: 12, kind: "intervals", heart: null, drift: null, laps }, plannedDay("intervals", plan)).parts[0].done, 0);
+});
+
+test("the longest workouts by week, in minutes", () => {
+  const list = longestMinutesByWeek([{ day: "2026-11-10", minutes: 14.6, kind: "steady" }, { day: "2026-11-12", minutes: 30, kind: "intervals" }, { day: "2026-11-17", minutes: 20.2, kind: "steady" }], "2026-11-18", 3);
+  assert.deepEqual(list.map((week) => week.minutes), [0, 15, 20]);
+});
+
+test("the zone 2 power's trend is the watts gained per four weeks, from four points over two weeks", () => {
+  const points = [["2026-10-20", 80], ["2026-10-27", 82], ["2026-11-03", 84], ["2026-11-10", 86]].map(([day, watts]) => ({ day, watts }));
+  assert.equal(zoneTwoTrend(points).perFourWeeks, 8);
+  assert.equal(zoneTwoTrend(points.slice(0, 3)).perFourWeeks, null);
+});
+
+test("three workouts in a row felt harder than usual at a usual heart rate tell of fatigue", () => {
+  const usual = ["2026-11-01", "2026-11-03", "2026-11-05", "2026-11-07"].map((day) => ({ day, rpe: 3, feel: 50, avgHeartRate: 132 }));
+  const hard = ["2026-11-14", "2026-11-15", "2026-11-16"].map((day) => ({ day, rpe: 6, feel: 50, avgHeartRate: 131 }));
+  assert.deepEqual(fatigueByFeel([...usual, ...hard], "2026-11-17"), { days: 3, rpe: 6, usualRpe: 3 });
+  // Harder, but at a higher heart rate: ridden harder, not tired.
+  assert.equal(fatigueByFeel([...usual, ...hard.map((workout) => ({ ...workout, avgHeartRate: 145 }))], "2026-11-17"), null);
+  assert.equal(fatigueByFeel(usual, "2026-11-17"), null);
 });

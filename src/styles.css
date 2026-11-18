@@ -1340,3 +1340,16 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-view .fitness-content > .link-button { justify-self: start; }
 /* Shown only with the Training section: the tab, and the diary's plan switch only without it. */
 .app-nav button[hidden], .diary-plan-toggle[hidden] { display: none; }
+.training-today-title { display: block; margin-top: 8px; font-size: 20px; }
+.training-today-text { margin: 4px 0 6px; font-size: 15px; line-height: 1.45; }
+.training-today-done { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; color: var(--success); font-weight: 600; }
+.training-warning { margin: 8px 0 4px; padding: 8px 10px; border-left: 3px solid #d97706; border-radius: 6px; background: color-mix(in srgb, #d97706 12%, transparent); font-size: 13px; }
+.training-weeks tr.is-current td { font-weight: 600; }
+.training-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 10px; }
+.training-figure { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.training-chart { width: 100%; height: auto; }
+.training-chart-bar { fill: #4d8dff; }
+.training-chart-point { fill: #4d8dff; }
+.training-chart-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.training-chart-value { fill: var(--ink); font-size: 10px; text-anchor: middle; }
+.training-chart-label { fill: var(--muted); font-size: 10px; text-anchor: middle; }

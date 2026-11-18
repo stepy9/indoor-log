@@ -251,3 +251,17 @@ test("the FTP test is due every so many weeks, laid out short first and the 20 m
   assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-02" }).ftpTest, null);
   assert.equal(weekChecklist(left, short, "2026-11-03", every)[0].type, "ftpTest");
 });
+
+test("the outlook grows the longer workouts by the step up to the target, with the lighter weeks and the FTP tests", () => {
+  // From 2 km (11 min) by 5 minutes a week up to 25: from 5 October, the week of 23 November (index 3) is the 8th, lighter.
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { longStepMinutes: 5, longTargetMinutes: 25, ftpTestWeeks: 4, intervalsPerWeek: 1 }, lastFtpTest: "2026-10-26" });
+  assert.equal(plan.outlook.length, 6);
+  assert.deepEqual(plan.outlook.map((week) => week.lighter), [false, false, false, true, false, false]);
+  const minutes = plan.outlook.map((week) => week.longMinutes);
+  assert.ok(minutes[1] > minutes[0] && minutes[2] > minutes[1] && minutes[3] < minutes[2] && minutes[4] >= minutes[2], minutes.join());
+  assert.ok(Math.max(...minutes) <= 25, minutes.join());
+  // Tested on 26 October, every 4 weeks: the week of 23 November.
+  assert.deepEqual(plan.outlook.map((week) => week.ftpTest), [false, false, false, true, false, false]);
+  assert.equal(plan.outlook[3].intervals, 0);
+  assert.equal(plan.outlook[0].intervals, 1);
+});

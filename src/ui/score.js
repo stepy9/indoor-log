@@ -85,3 +85,21 @@ export function scoreFor(entry, plan) {
   const targets = planned ?? plannedDay(null, plan);
   return scoreWorkout(workoutFacts(entry, targets.heart, planned), planned, targets);
 }
+
+// The average power while the heart rate was in zone 2, from the fifth minute on (the heart catching up before);
+// null with under three minutes of it or without power.
+export function zoneTwoWatts(entry, heart) {
+  if (!heart || !entry.records?.heartRate || !entry.records?.power) return null;
+  const { seconds, power } = entry.records;
+  const values = heartRateOf(entry);
+  const dts = steps(seconds);
+  const start = (seconds[0] ?? 0) + 300;
+  let sum = 0;
+  let time = 0;
+  seconds.forEach((second, index) => {
+    if (second < start || !(values[index] >= heart[0] && values[index] <= heart[1]) || !Number.isFinite(power[index])) return;
+    sum += power[index] * dts[index];
+    time += dts[index];
+  });
+  return time >= 180 ? sum / time : null;
+}

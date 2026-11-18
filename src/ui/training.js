@@ -1,14 +1,14 @@
 import { workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
-import { withCleanHeartRate } from "../fitness.js";
-import { adherenceShare, dayStreak, lastMondays, weekAdherence } from "../training.js";
-import { drawPlanCard, scoreBadge } from "./diary.js";
+import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
+import { adherenceShare, dayStreak, fatigueByFeel, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
+import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
 import { renderNextStep, trainingPlan } from "./fitness.js";
-import { anyTraining, hasTraining, planLog, scoreFor } from "./score.js";
+import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
 import { openSettings, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { byId, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -124,10 +124,146 @@ function workoutsCard(sport, scored) {
       node("span", { class: "training-workout-name" }, `${entry.name.replace(/^Kinomap - /, "")} · ${t(`scoreAs_${result?.as ?? "none"}`)}`),
     );
     if (result) top.append(scoreBadge(result.score));
-    row.append(top, node("span", { class: "field-note training-workout-why" }, result ? partsText(result) : t("scoreNone")));
+    // How it felt, when rated: the feel and the effort (RPE).
+    const feel = [entry.summary?.workoutFeel != null ? t("trainingFeel", { feel: t(`feel${entry.summary.workoutFeel}`) }) : null, entry.summary?.workoutRpe ? t("trainingRpe", { rpe: entry.summary.workoutRpe }) : null].filter(Boolean).join(" · ");
+    row.append(top, node("span", { class: "field-note training-workout-why" }, [result ? partsText(result) : t("scoreNone"), feel].filter(Boolean).join(" · ")));
     list.append(row);
   }
   card.append(list, node("p", { class: "field-note" }, t("trainingScoreNote")));
+  return card;
+}
+
+// What to ride today, large: today's planned workout, or with today done or free the next one; the least workout
+// under it, and a warning when the last workouts felt harder than usual.
+function todayCard(result, scored, fatigue) {
+  const card = node("section", { class: "card training-today" });
+  const now = today();
+  const item = result.checklist.find((entry) => entry.day === now);
+  const done = item?.status === "done";
+  const next = result.checklist.find((entry) => entry.status === "planned" && entry.day > now) ?? result.days.find((entry) => entry.day > now);
+  const showing = item?.status === "planned" ? item : next;
+  const head = node("div", { class: "panel-title-row" });
+  head.append(node("span", { class: "field-label" }, t(item?.status === "planned" ? "trainingToday" : "trainingNext", { day: showing ? format(showing.day, { weekday: "long", day: "numeric", month: "numeric" }) : "" })));
+  card.append(head);
+  if (done) {
+    const line = node("p", { class: "training-today-done" }, t("trainingTodayDone"));
+    for (const scoredItem of scored.filter((entry) => entry.day === now && entry.result)) line.append(" ", scoreBadge(scoredItem.result.score));
+    card.append(line);
+  }
+  if (showing) {
+    card.append(
+      node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
+      node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type)),
+    );
+  } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
+  if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
+  if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) card.append(node("p", { class: "field-note" }, t("planMinimal", { minutes: result.plan.minimal.minutes })));
+  return card;
+}
+
+// The weeks ahead as the plan would go: the longer workouts' time, the intervals, the lighter weeks and FTP tests.
+function outlookCard(plan) {
+  const card = node("section", { class: "card training-outlook" });
+  card.append(node("span", { class: "field-label" }, t("trainingOutlook")));
+  const table = node("table", { class: "laps-table training-weeks" });
+  const headRow = node("tr");
+  headRow.append(...["trainingWeek", "trainingLong", "trainingIntervals", "trainingOutlookNote"].map((key) => node("th", {}, t(key))));
+  table.append(node("thead"), node("tbody"));
+  table.tHead.append(headRow);
+  plan.outlook.forEach((week, index) => {
+    const row = node("tr", { class: index === 0 ? "is-current" : "" });
+    const notes = [...(week.ftpTest ? [t("trainingOutlookTest")] : []), ...(week.lighter ? [t("trainingOutlookLighter")] : [])];
+    row.append(
+      node("td", {}, `${index === 0 ? t("planThisWeek") : weekNumber(week.monday)} · ${format(week.monday, { day: "numeric", month: "numeric" })}`),
+      node("td", {}, `${week.longCount > 1 ? `${week.longCount} × ` : ""}${week.longMinutes} min`),
+      node("td", {}, String(week.intervals)),
+      node("td", {}, notes.join(" · ")),
+    );
+    table.tBodies[0].append(row);
+  });
+  card.append(table, node("p", { class: "field-note" }, t("trainingOutlookInfo")));
+  return card;
+}
+
+// A small chart: bars or points over time with an optional dashed line (a target or a trend), values labelled.
+// items: [{ label, value, kind: "bar" | "point" }]; line: [from, to] values at the first and last item, or null.
+function smallChart(items, { line = null, unit = "" } = {}) {
+  const width = 320;
+  const height = 120;
+  const bottom = 16;
+  const svgNode = (tag, attributes = {}, text) => {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+    if (text != null) element.textContent = text;
+    return element;
+  };
+  const values = items.map((item) => item.value).filter((value) => value > 0).concat(line ?? []);
+  const top = Math.max(...values, 1) * 1.15;
+  const low = items.some((item) => item.kind === "point") ? Math.min(...values) * 0.85 : 0;
+  const yFor = (value) => height - bottom - ((value - low) / (top - low)) * (height - bottom - 12);
+  const slot = width / Math.max(1, items.length);
+  const xFor = (index) => index * slot + slot / 2;
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, class: "training-chart", role: "img" });
+  if (line) svg.append(svgNode("line", { x1: xFor(0), x2: xFor(items.length - 1), y1: yFor(line[0]), y2: yFor(line[1]), class: "training-chart-line" }));
+  items.forEach((item, index) => {
+    if (item.value > 0) {
+      if (item.kind === "bar") svg.append(svgNode("rect", { x: xFor(index) - slot * 0.3, y: yFor(item.value), width: slot * 0.6, height: yFor(low) - yFor(item.value), rx: 3, class: "training-chart-bar" }));
+      else svg.append(svgNode("circle", { cx: xFor(index), cy: yFor(item.value), r: 3.5, class: "training-chart-point" }));
+      svg.append(svgNode("text", { x: xFor(index), y: yFor(item.value) - 6, class: "training-chart-value" }, `${Math.round(item.value)}${unit}`));
+    }
+    if (item.label) svg.append(svgNode("text", { x: xFor(index), y: height - 3, class: "training-chart-label" }, item.label));
+  });
+  return svg;
+}
+
+// How the fitness moves: the power at a zone 2 heart rate, the longest workout of each week against the target,
+// and the FTP over time.
+function progressCard(sport, entries, plan, settings) {
+  const card = node("section", { class: "card training-progress" });
+  card.append(node("span", { class: "field-label" }, t("trainingProgress")));
+  const grid = node("div", { class: "training-progress-grid" });
+  const figure = (title, note, chart) => {
+    const box = node("div", { class: "training-figure" });
+    box.append(node("strong", {}, title), chart ?? node("p", { class: "field-note" }, t("trainingProgressFew")), node("span", { class: "field-note" }, note));
+    return box;
+  };
+  // Power in zone 2: the last 12 steady workouts' points, the trend through all of the last four months dashed.
+  const heart = plan.steadyHeartRate;
+  const points = entries.filter((entry) => workoutKind(entry) === "steady" && entry.startMs > Date.now() - 120 * 86_400_000)
+    .map((entry) => ({ day: dayKey(entry.startMs, zone), watts: zoneTwoWatts(entry, heart) })).filter((point) => point.watts);
+  const trend = zoneTwoTrend(points);
+  const shown = trend.points.slice(-12);
+  const dayNumber = (key) => Date.parse(`${key}T12:00:00Z`) / 86_400_000;
+  let line = null;
+  if (trend.perFourWeeks != null && shown.length > 1) {
+    // Through the shown points' mean, at the trend's slope, from the first shown to the last.
+    const slope = trend.perFourWeeks / 28;
+    const mean = shown.reduce((sum, point) => sum + point.watts, 0) / shown.length;
+    const middle = shown.reduce((sum, point) => sum + dayNumber(point.day), 0) / shown.length;
+    line = [mean + slope * (dayNumber(shown[0].day) - middle), mean + slope * (dayNumber(shown.at(-1).day) - middle)];
+  }
+  const trendNote = trend.perFourWeeks == null ? t("trainingZoneTwoNote") : t("trainingZoneTwoTrend", { watts: `${trend.perFourWeeks > 0 ? "+" : ""}${displayNumber(trend.perFourWeeks, 1)}` });
+  const label = (point, index) => (index === 0 || index === shown.length - 1 ? format(point.day, { day: "numeric", month: "numeric" }) : "");
+  grid.append(figure(t("trainingZoneTwo"), trendNote, shown.length >= 2 ? smallChart(shown.map((point, index) => ({ label: label(point, index), value: point.watts, kind: "point" })), { line }) : null));
+  // The longest workout of each week, the target dashed.
+  const workouts = entries.map((entry) => ({ day: dayKey(entry.startMs, zone), minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry) }));
+  const longest = longestMinutesByWeek(workouts, today(), 8);
+  const target = settings.sports[sport]?.plan?.longTargetMinutes ?? null;
+  grid.append(figure(t("trainingLongest"), target ? t("trainingLongestTarget", { minutes: target }) : t("trainingLongestNote"),
+    smallChart(longest.map((week, index) => ({ label: index === longest.length - 1 ? t("planThisWeek") : String(weekNumber(week.monday)), value: week.minutes, kind: "bar" })), { line: target ? [target, target] : null })));
+  // The FTP in force at the end of each of the last six months, typed or estimated.
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const start = new Date();
+    start.setUTCDate(1);
+    start.setUTCMonth(start.getUTCMonth() - 5 + index);
+    const end = new Date(start);
+    end.setUTCMonth(end.getUTCMonth() + 1);
+    return { label: start.toLocaleDateString(locale(), { month: "short", timeZone: "UTC" }), ms: Math.min(Date.now(), end.getTime() - 1) };
+  });
+  const ftps = months.map((month) => ({ label: month.label, value: ftpOn(settings, sport, month.ms) ?? 0, kind: "point" }));
+  const typed = ftpSourceOn(settings, sport, Date.now())?.method === "manual";
+  grid.append(figure(t("trainingFtp"), t(typed ? "trainingFtpTyped" : "trainingFtpEstimated"), ftps.some((item) => item.value > 0) ? smallChart(ftps, { unit: " W" }) : null));
+  card.append(grid);
   return card;
 }
 
@@ -154,11 +290,16 @@ function render() {
   const scored = view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ entry, day: dayKey(entry.startMs, zone), result: scoreFor(entry, plan) }));
   const workouts = scored.map(({ entry, day, result: item }) => ({ day, minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry), ftpTest: item?.as === "ftpTest", score: item?.score ?? null }));
   const cards = [];
+  const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
+  if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;
   if (week) cards.push(week);
   const next = node("section", { class: "card fitness-next" });
   cards.push(next);
-  cards.push(adherenceCard(sport, workouts, log), workoutsCard(sport, scored));
+  if (plan?.outlook) cards.push(outlookCard(plan));
+  cards.push(adherenceCard(sport, workouts, log));
+  if (plan) cards.push(progressCard(sport, view.entries.filter((entry) => entry.sport === sport), plan, settings));
+  cards.push(workoutsCard(sport, scored));
   const settingsLink = node("button", { type: "button", class: "link-button" }, t("trainingEditSettings"));
   settingsLink.addEventListener("click", () => openSettings(sport));
   cards.push(settingsLink);

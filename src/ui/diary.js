@@ -57,21 +57,27 @@ function renderPlan() {
   if (!card.hidden) drawPlanCard(card, result);
 }
 
+// What a planned day asks for, in words: the workout, its length and how to ride it.
+export function plannedText(plan, sport, type) {
+  const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
+  const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
+  // The trainer's resistance, a level or a range of them.
+  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
+  const steady = steadyGuide(plan, sport);
+  return type === "ftpTestShort" ? t("planFtpTestShort")
+    : type === "ftpTest" ? t("planFtpTest")
+    : type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
+    : type === "intervals" ? t(`planIntervalsKind_${plan.intervals.kind}`) + t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
+    : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady;
+}
+
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
 export function drawPlanCard(card, result, { scores = null } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
-  const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
-  // The trainer's resistance, a level or a range of them.
-  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
-  const steady = steadyGuide(plan, sport);
-  const planned = (type) => (type === "ftpTestShort" ? t("planFtpTestShort")
-    : type === "ftpTest" ? t("planFtpTest")
-    : type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
-    : type === "intervals" ? t(`planIntervalsKind_${plan.intervals.kind}`) + t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
-    : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady);
+  const planned = (type) => plannedText(plan, sport, type);
   const rows = checklist.map((item) => {
     const row = Object.assign(document.createElement("div"), { className: `diary-plan-row is-${item.status}${item.day === today ? " is-today" : ""}` });
     // A mark, not a checkbox: the app marks a day by the workouts in the library.

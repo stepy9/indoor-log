@@ -42,6 +42,9 @@ export const intervalKinds = {
 // workout's name (or an FTP typed by hand on the day).
 export const ftpTestGap = 2;
 
+// How many weeks the outlook shows, this one included.
+export const outlookWeeks = 6;
+
 export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
@@ -140,6 +143,29 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // The least to ride on a day without the will or the strength: easy, for the habit. Ten minutes unless set; 0 is none.
   const minimal = prefs.minimalMinutes === 0 ? null : { minutes: prefs.minimalMinutes > 0 ? prefs.minimalMinutes : 10 };
 
+  // The weeks ahead as the plan would go if each were kept and nothing held it back: this week first, then
+  // the next ones, each with its longer workouts' time, whether it is lighter, the FTP test and the intervals.
+  const minutesOf = (km) => Math.round(km / speed / 60);
+  const firstTestWeek = ftpTest ? (ftpTest.due ? thisMonday : mondayOf(addDays(lastTest, 7 * prefs.ftpTestWeeks))) : null;
+  const outlook = [];
+  let grownKm = longFrom;
+  let peakKm = lighter ? longest : longFrom;
+  for (let index = 0; index < outlookWeeks; index += 1) {
+    const monday = addDays(thisMonday, index * 7);
+    const isLighter = every > 0 && (weekNumber + index) % every === every - 1;
+    if (index > 0) {
+      if (isLighter) grownKm = step != null ? Math.max(usualFrom, peakKm - step) : usualFrom;
+      else {
+        grownKm = Math.min(Math.max(target, usualFrom), step != null ? peakKm + step : Number.isFinite(target) && !(prefs.longStepMinutes > 0) ? Math.max(target, peakKm) : peakKm * 1.1);
+        peakKm = grownKm;
+      }
+    }
+    const weeksSinceFirst = firstTestWeek ? Math.round((noon(monday) - noon(firstTestWeek)) / (7 * dayMs)) : -1;
+    const testWeek = weeksSinceFirst >= 0 && weeksSinceFirst % prefs.ftpTestWeeks === 0;
+    const intervalsCount = testWeek ? 0 : intervalsSet ? (isLighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : isLighter || focus === "intense" ? 1 : 2;
+    outlook.push({ monday, lighter: isLighter, longMinutes: minutesOf(tenthUp(grownKm)), longCount: long.count, ftpTest: testWeek, intervals: intervalsCount });
+  }
+
   return {
     usual,
     long,
@@ -156,6 +182,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     intervals,
     minimal,
     ftpTest,
+    outlook,
     steadyWatts: ftp ? [Math.round(ftp * 0.56), Math.round(ftp * 0.75)] : null,
   };
 }
