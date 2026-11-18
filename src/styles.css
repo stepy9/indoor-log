@@ -1386,10 +1386,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .settings-kinomap { width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; resize: vertical; }
 /* A day off in the diary's calendar: unlike an activity, a dashed outline and no stripe, the reason's icon. */
 .diary-day-off { display: flex; flex-direction: column; gap: 1px; padding: 4px 6px; border: 1px dashed var(--line-strong); border-radius: 5px; background: transparent; }
-.diary-day-off-name { overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.diary-day-off-reason { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.diary-day-off-name { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 640px) {
   .diary-calendar:not(.is-week) .diary-day-off { align-items: center; padding: 2px 0; }
   .diary-calendar:not(.is-week) .diary-day-off-name { width: 1.4em; font-size: 12px; text-overflow: clip; }
-  .diary-calendar:not(.is-week) .diary-day-off-reason { display: none; }
 }
