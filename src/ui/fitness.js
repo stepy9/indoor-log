@@ -251,7 +251,7 @@ export function renderNextStep(card, entries, sport = "all") {
   // The longer workout, or the note that this week's is done.
   rows.push(plan.doneLong
     ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
-    : line(t("nextLong"), (plan.long.count > 1 ? t("nextLongCount", { done: plan.longDone, count: plan.long.count }) : "") + t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
+    : line(t("nextLong"), (plan.long.count > 1 ? t("nextLongCount", { done: plan.longDone, count: plan.long.count }) : t("nextLongOnce")) + t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
   rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
   // The FTP test when due, in place of the intervals that week.

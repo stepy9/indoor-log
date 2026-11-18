@@ -86,6 +86,7 @@ test("a week's adherence counts the planned days ridden, the longer and interval
     { day: "2026-11-19", minutes: 24, kind: "steady", score: 100 },
   ];
   const week = weekAdherence(log, workouts, "2026-11-16", "2026-11-19");
+  // Wednesday gone by unridden counts; Thursday, today, is ridden.
   assert.equal(week.planned, 4);
   assert.equal(week.ridden, 3);
   assert.deepEqual(week.long, [1, 1]);
@@ -93,6 +94,8 @@ test("a week's adherence counts the planned days ridden, the longer and interval
   assert.equal(week.score, 90);
   assert.equal(adherenceShare([week, { planned: 4, ridden: 4 }]), 88);
   assert.equal(adherenceShare([]), null);
+  // Today still to ride: not counted against the week.
+  assert.equal(weekAdherence(log, workouts.slice(0, 2), "2026-11-16", "2026-11-19").planned, 3);
 });
 
 test("the streak counts days in a row up to today, or yesterday while today is still to ride", () => {

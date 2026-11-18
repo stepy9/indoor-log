@@ -153,7 +153,7 @@ function todayCard(result, scored, fatigue) {
   if (showing) {
     card.append(
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
-      node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type)),
+      node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
     );
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
   if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));

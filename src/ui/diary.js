@@ -58,7 +58,8 @@ function renderPlan() {
 }
 
 // What a planned day asks for, in words: the workout, its length and how to ride it.
-export function plannedText(plan, sport, type) {
+export function plannedText(plan, sport, type, { detail = false } = {}) {
+  if (detail && type.startsWith("ftpTest")) return t(`plan${type[0].toUpperCase()}${type.slice(1)}Detail`);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   // The trainer's resistance, a level or a range of them.

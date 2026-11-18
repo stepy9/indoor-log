@@ -131,12 +131,12 @@ export function scoreWorkout(facts, planned, fallback = null) {
 
 // One week of the plan against the workouts: the training days planned and ridden, the longer workouts and the
 // interval workouts planned and done (a longer one counted as one of at least 90 % of its planned time), and the
-// average score. log: the plan's days; workouts: [{ day, minutes, kind, ftpTest, score }]. Days after today count
-// only when ridden. { monday, planned, ridden, long: [done, planned], intervals: [done, planned], score }.
+// average score. log: the plan's days; workouts: [{ day, minutes, kind, ftpTest, score }]. Today counts only once
+// ridden, as it is still open; the days after it not at all. { monday, planned, ridden, long: [done, planned], intervals: [done, planned], score }.
 export function weekAdherence(log, workouts, monday, today) {
   const days = Array.from({ length: 7 }, (_, index) => addDays(monday, index)).filter((day) => day <= today);
-  const plannedDays = days.filter((day) => log[day]);
   const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7) && workout.day <= today);
+  const plannedDays = days.filter((day) => log[day] && (day < today || inWeek.some((workout) => workout.day === day)));
   const ridden = new Set(inWeek.map((workout) => workout.day));
   const count = (type) => plannedDays.filter((day) => log[day].type === type).length;
   const longPlanned = count("long");
