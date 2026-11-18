@@ -268,3 +268,53 @@ export function weekScore(week) {
   const total = parts.reduce((sum, [weight]) => sum + weight, 0);
   return total ? Math.round((parts.reduce((sum, [weight, share]) => sum + weight * share, 0) / total) * 100) : null;
 }
+
+// Kinomap routes ridden before that fit a planned distance, those ridden longest ago first: each route (by name)
+// with its usual distance and the last day ridden. rides: [{ name, km, day, kind }]; range: [fromKm, toKm].
+// [{ name, km, last }] up to count; the nearest in length when none fits.
+export function routeSuggestions(rides, range, count = 3) {
+  const routes = new Map();
+  for (const ride of rides) {
+    if (ride.kind !== "steady" || !ride.name || !(ride.km > 0) || ride.workout) continue;
+    const route = routes.get(ride.name) ?? { name: ride.name, kms: [], last: "" };
+    route.kms.push(ride.km);
+    if (ride.day > route.last) route.last = ride.day;
+    routes.set(ride.name, route);
+  }
+  const list = [...routes.values()].map((route) => ({ name: route.name, km: Math.max(...route.kms), last: route.last }));
+  const fits = list.filter((route) => route.km >= range[0] - 0.05 && route.km <= range[1] + 0.05).sort((a, b) => a.last.localeCompare(b.last));
+  if (fits.length) return fits.slice(0, count);
+  const middle = (range[0] + range[1]) / 2;
+  return list.sort((a, b) => Math.abs(a.km - middle) - Math.abs(b.km - middle)).slice(0, Math.min(count, 2));
+}
+
+// The efforts a workout's name tells: "6x2 min", "6× 2 min" or "2 x 10 min" as { repeats, minutes }, or null.
+export function effortsInName(name) {
+  const match = /(\d+)\s*[x×]\s*(\d+)\s*min/i.exec(name ?? "");
+  return match ? { repeats: Number(match[1]), minutes: Number(match[2]) } : null;
+}
+
+// The workouts made in the Kinomap creator, ridden before, for a planned day: the FTP test by "FTP" and its
+// minutes in the name, intervals by the other workouts of efforts; for intervals the one whose name tells the
+// planned efforts first, then those of the planned length, then the rest, each those ridden longest ago first.
+// rides as routeSuggestions'; type: the plan's day type; intervals: the plan's { repeats, minutes }. [{ name, last, exact }].
+export function workoutSuggestions(rides, type, count = 3, intervals = null) {
+  const byName = new Map();
+  for (const ride of rides) {
+    if (!ride.name) continue;
+    const isTest = /\bftp\b/i.test(ride.name);
+    const wanted = type === "ftpTestShort" ? isTest && /\b5\s*min/i.test(ride.name)
+      : type === "ftpTest" ? isTest && /\b20\s*min/i.test(ride.name)
+      : type === "intervals" ? !isTest && ride.kind === "intervals" : false;
+    if (!wanted) continue;
+    const last = byName.get(ride.name)?.last ?? "";
+    byName.set(ride.name, { name: ride.name, last: ride.day > last ? ride.day : last });
+  }
+  const rank = (item) => {
+    const efforts = effortsInName(item.name);
+    if (!intervals || !efforts) return 2;
+    return efforts.minutes === intervals.minutes ? (efforts.repeats === intervals.repeats ? 0 : 1) : 2;
+  };
+  return [...byName.values()].map((item) => ({ ...item, exact: rank(item) === 0 }))
+    .sort((a, b) => rank(a) - rank(b) || a.last.localeCompare(b.last)).slice(0, count);
+}

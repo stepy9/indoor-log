@@ -2,7 +2,7 @@ import { workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
-import { adherenceShare, dayStreak, fatigueByFeel, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, routeSuggestions, workoutSuggestions, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
 import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
 import { renderNextStep, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
@@ -199,9 +199,57 @@ function summaryCard(scored, workouts, log, sport) {
   return card;
 }
 
+// What to ride for a planned day: Kinomap routes of the length for a steady one, the creator's workouts for intervals
+// and the FTP test, those ridden longest ago first; for workouts not made yet, the way to the creator. A small
+// button with a play mark that opens them in a dialog, out of the way of the day's text.
+function suggestionsButton(result, entries, type) {
+  const rides = entries.map((entry) => ({ name: entry.name.replace(/^Kinomap - /, ""), km: (entry.summary?.distance ?? 0) / 1000, day: dayKey(entry.startMs, zone), kind: workoutKind(entry), workout: /\bftp\b/i.test(entry.name ?? "") }));
+  const plan = result.plan;
+  const when = (day) => format(day, { day: "numeric", month: "numeric", year: "numeric" });
+  const steady = type === "usual" || type === "long";
+  const range = type === "long" ? [plan.long.fromKm, plan.long.toKm] : [plan.usual.km * 0.9, plan.usual.km * 1.1];
+  const items = steady
+    ? routeSuggestions(rides, range, 5).map((route) => ({ name: route.name, note: t("suggestRouteNote", { km: displayNumber(Math.round(route.km * 10) / 10, 1), last: when(route.last) }), exact: route.km >= range[0] - 0.05 && route.km <= range[1] + 0.05 }))
+    : workoutSuggestions(rides, type, 5, plan.intervals).map((workout) => ({ name: workout.name, note: t("suggestWorkoutNote", { last: when(workout.last) }), exact: workout.exact || type !== "intervals" }));
+  if (steady && !items.length) return null;
+  const button = node("button", { type: "button", class: "outline-button training-suggest-button" });
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.innerHTML = '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>';
+  button.append(icon, node("span", {}, t(steady ? "suggestRoutesButton" : "suggestWorkoutsButton")));
+  button.addEventListener("click", () => {
+    const dialog = node("dialog", { class: "intervals-dialog suggest-dialog" });
+    const head = node("div", { class: "dialog-head" });
+    head.append(node("h2", {}, t(steady ? "suggestRoutesTitle" : "suggestWorkoutsTitle")));
+    const intro = steady
+      ? t("suggestRoutesIntro", { from: displayNumber(range[0], 1), to: displayNumber(range[1], 1) })
+      : t(type === "intervals" ? "suggestIntervalsIntro" : "suggestTestIntro", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes });
+    const list = node("ul", { class: "suggest-list" });
+    for (const item of items) {
+      const row = node("li", { class: item.exact ? "is-exact" : "" });
+      row.append(node("strong", {}, item.name), node("span", { class: "field-note" }, item.note));
+      list.append(row);
+    }
+    const body = [node("p", { class: "field-note" }, intro)];
+    if (items.length) body.push(list);
+    if (!steady && !items.some((item) => item.exact)) body.push(node("p", { class: "field-note" }, t(type === "intervals" ? "suggestNoIntervals" : "suggestNoTest", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes })));
+    if (!steady) body.push(node("a", { href: "https://creator.kinomap.com/workout", target: "_blank", rel: "noopener", class: "suggest-creator" }, t("suggestCreator")));
+    const actions = node("div", { class: "dialog-actions" });
+    const close = node("button", { type: "button", class: "outline-button" }, t("close"));
+    close.addEventListener("click", () => dialog.close());
+    actions.append(node("span", { class: "dialog-spacer" }), close);
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.append(head, ...body, actions);
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+  return button;
+}
+
 // What to ride today, large: today's planned workout, or with today done or free the next one; the least workout
 // under it, and a warning when the last workouts felt harder than usual.
-function todayCard(result, scored, fatigue) {
+function todayCard(result, scored, fatigue, entries) {
   const card = node("section", { class: "card training-today" });
   const now = today();
   const excused = excuses();
@@ -224,6 +272,8 @@ function todayCard(result, scored, fatigue) {
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
       node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
     );
+    const suggestions = suggestionsButton(result, entries, showing.type);
+    if (suggestions) card.append(suggestions);
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
   if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
   if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) card.append(node("p", { class: "field-note" }, t("planMinimal", { minutes: result.plan.minimal.minutes })));
@@ -362,7 +412,7 @@ function render() {
   const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
   const summary = summaryCard(scored, workouts, log, sport);
   if (summary) cards.push(summary);
-  if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue));
+  if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport)));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;
   if (week) cards.push(week);
   const next = node("section", { class: "card fitness-next" });

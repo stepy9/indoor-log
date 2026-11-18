@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, fatigueByFeel, recentlyUnwell, setExcuse, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, fatigueByFeel, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -162,4 +162,43 @@ test("an excused day leaves the week's plan and keeps the streak, illness holds 
   assert.equal(recentlyUnwell(excuses, "2026-11-19"), true);
   assert.equal(recentlyUnwell(setExcuse({}, "2026-11-17", null, { reason: "travel" }), "2026-11-19"), false);
   assert.deepEqual(setExcuse(excuses, "2026-11-17", "2026-11-18", null), {});
+});
+
+test("routes that fit the planned distance come ridden longest ago first, the nearest when none fits", () => {
+  const rides = [
+    { name: "Lake A", km: 4.6, day: "2026-11-10", kind: "steady" },
+    { name: "Lake B", km: 4.8, day: "2026-10-20", kind: "steady" },
+    { name: "Lake B", km: 4.8, day: "2026-10-01", kind: "steady" },
+    { name: "River C", km: 2.4, day: "2026-11-01", kind: "steady" },
+    { name: "Drill", km: 4.7, day: "2026-09-01", kind: "intervals" },
+  ];
+  assert.deepEqual(routeSuggestions(rides, [4.5, 4.9]).map((route) => [route.name, route.last]), [["Lake B", "2026-10-20"], ["Lake A", "2026-11-10"]]);
+  assert.deepEqual(routeSuggestions(rides, [3, 3.3]).map((route) => route.name), ["River C", "Lake A"]);
+});
+
+test("the creator's workouts are offered for the FTP tests by name and for intervals by kind", () => {
+  const rides = [
+    { name: "FTP test 5 min", day: "2026-11-18", kind: "intervals" },
+    { name: "FTP test 20 min", day: "2026-11-21", kind: "intervals" },
+    { name: "6x2 min", day: "2026-11-05", kind: "intervals" },
+    { name: "8x1 min", day: "2026-10-28", kind: "intervals" },
+    { name: "Lake A", day: "2026-11-10", kind: "steady" },
+  ];
+  assert.deepEqual(workoutSuggestions(rides, "ftpTestShort").map((item) => item.name), ["FTP test 5 min"]);
+  assert.deepEqual(workoutSuggestions(rides, "ftpTest").map((item) => item.name), ["FTP test 20 min"]);
+  assert.deepEqual(workoutSuggestions(rides, "intervals").map((item) => item.name), ["8x1 min", "6x2 min"]);
+  assert.deepEqual(workoutSuggestions(rides, "usual"), []);
+});
+
+test("the interval workout whose name tells the planned efforts comes first", () => {
+  const rides = [
+    { name: "Intervaly 4x2 min", day: "2026-10-01", kind: "intervals" },
+    { name: "Intervaly 6× 2 min", day: "2026-11-10", kind: "intervals" },
+    { name: "Krátké 8x1 min", day: "2026-09-01", kind: "intervals" },
+  ];
+  const list = workoutSuggestions(rides, "intervals", 3, { repeats: 6, minutes: 2 });
+  assert.deepEqual(list.map((item) => item.name), ["Intervaly 6× 2 min", "Intervaly 4x2 min", "Krátké 8x1 min"]);
+  assert.equal(list[0].exact, true);
+  assert.deepEqual(effortsInName("Tempo 2 x 10 min"), { repeats: 2, minutes: 10 });
+  assert.equal(effortsInName("Lake A"), null);
 });
