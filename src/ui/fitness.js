@@ -207,10 +207,11 @@ export function trainingPlan(entries, chosen = "all") {
   // The Kinomap creator's workouts to ride: the sport's list as set, the ones made for the plan until then.
   plan.kinomap = pickWorkouts(kinomapWorkouts(settings, sport), plan.intervals);
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
-  const days = weekPlan(plan, workouts, today(), weekdays);
+  const excused = excuses();
+  const days = weekPlan(plan, workouts, today(), weekdays, excused);
   // With the Training section filled in, each day's plan is kept as it stands before the day, to score it by.
   if (hasTraining(settings, sport)) keepPlan(sport, days, plan, today());
-  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays, excused), longest: longestByWeek(workouts, today()) };
 }
 
 // The names of the sport's workouts in the Kinomap creator: as typed in the Training section, else the ones made.

@@ -272,3 +272,18 @@ test("after illness or injury the plan holds the longer workouts and leaves out 
   assert.equal(plan.long.fromKm, 2);
   assert.equal(plan.intervals.due, false);
 });
+
+test("days excused are no training days: the longer workout and the FTP test move to the others", () => {
+  const every = [0, 1, 2, 3, 4, 5, 6];
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { longPerWeek: 1, ftpTestWeeks: 6 } });
+  // Without excuses the longer workout falls on Sunday the 8th; with the weekend off it moves to Friday.
+  assert.equal(weekPlan(plan, [], "2026-11-02", every).find((item) => item.type === "long").day, "2026-11-08");
+  const excused = { "2026-11-07": { reason: "travel" }, "2026-11-08": { reason: "travel" } };
+  const days = weekPlan(plan, [], "2026-11-02", every, excused);
+  assert.ok(!days.some((item) => item.day === "2026-11-07" || item.day === "2026-11-08"));
+  assert.equal(days.find((item) => item.type === "long").day, "2026-11-06");
+  // The FTP tests still both fit.
+  assert.equal(days.filter((item) => item.type.startsWith("ftpTest")).length, 2);
+  const list = weekChecklist(plan, [], "2026-11-02", every, excused);
+  assert.equal(list.find((item) => item.day === "2026-11-08").type, "off");
+});

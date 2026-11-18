@@ -209,11 +209,12 @@ export function trainingDays(workouts, today, chosen = null) {
 // longer workout on the last of them (a weekend day first), intervals mid-way and never the day after the longer
 // one, the usual workout on the rest. A longer workout already done this week moves to the next week's days.
 // [{ day, type: "long" | "intervals" | "usual" }]
-export function weekPlan(plan, workouts, today, days) {
+// Days excused ({ "YYYY-MM-DD": excuse }) are no training days: the workouts go to the others.
+export function weekPlan(plan, workouts, today, days, excused = {}) {
   if (!plan || !days.length) return [];
   const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const trained = new Set(workouts.map((workout) => workout.day));
-  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => days.includes(weekday(day)) && !trained.has(day));
+  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => days.includes(weekday(day)) && !trained.has(day) && !excused[day]);
   if (!open.length) return [];
   const nextMonday = addDays(mondayOf(today), 7);
   const types = new Map(open.map((day) => [day, "usual"]));
@@ -276,17 +277,18 @@ export function weekPlan(plan, workouts, today, days) {
 // This week, Monday to Sunday, as a checklist: each training day, and any other day trained on.
 // A day trained on is done, with its workouts; a training day gone by without one is missed; the days ahead
 // carry what weekPlan lays on them. [{ day, status: "done" | "missed" | "planned", type, workouts }]
-export function weekChecklist(plan, workouts, today, days) {
+// A training day excused and not ridden shows as off ("off" planned ahead, missed gone by, the excuse telling why).
+export function weekChecklist(plan, workouts, today, days, excused = {}) {
   const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
-  const ahead = new Map(weekPlan(plan, workouts, today, days).map((item) => [item.day, item.type]));
+  const ahead = new Map(weekPlan(plan, workouts, today, days, excused).map((item) => [item.day, item.type]));
   return week.flatMap((day) => {
     const done = workouts.filter((workout) => workout.day === day);
     if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.ftpTest) ? "ftpTest" : done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
     if (!days.includes(weekday(day))) return [];
     if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
-    return [{ day, status: "planned", type: ahead.get(day) ?? "usual", workouts: [] }];
+    return [{ day, status: "planned", type: excused[day] ? "off" : ahead.get(day) ?? "usual", workouts: [] }];
   });
 }
 
