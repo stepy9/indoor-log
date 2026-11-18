@@ -408,8 +408,7 @@ const axisText = (value, metric) => (metric === "calories" ? kcal(value) : metri
   : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
 
 // The bar's day or month, its total and what it is made of (the sessions are in the calendar), beside the bar under the pointer.
-function showTooltip(bar, { when, total, parts, hint }) {
-  const tooltip = byId("diaryTooltip");
+function showTooltip(bar, { when, total, parts, hint, detail }, tooltip = byId("diaryTooltip")) {
   const line = (className, text) => Object.assign(document.createElement("div"), { className, textContent: text });
   const rows = parts.length > 1 ? parts.map(({ label, color, value }) => {
     const row = Object.assign(document.createElement("div"), { className: "diary-tooltip-row" });
@@ -418,7 +417,7 @@ function showTooltip(bar, { when, total, parts, hint }) {
     row.append(swatch, Object.assign(document.createElement("span"), { textContent: label }), Object.assign(document.createElement("strong"), { textContent: value }));
     return row;
   }) : [];
-  tooltip.replaceChildren(line("diary-tooltip-when", when), line("diary-tooltip-total", total), ...rows, ...(hint ? [line("diary-tooltip-hint", hint)] : []));
+  tooltip.replaceChildren(line("diary-tooltip-when", when), line("diary-tooltip-total", total), ...(detail ? [line("diary-tooltip-detail", detail)] : []), ...rows, ...(hint ? [line("diary-tooltip-hint", hint)] : []));
   tooltip.hidden = false;
   // Beside the bar, flipped to its left near the right edge, and kept inside the card.
   const card = tooltip.offsetParent.getBoundingClientRect();
@@ -430,12 +429,19 @@ function showTooltip(bar, { when, total, parts, hint }) {
   tooltip.style.top = `${Math.max(8, box.top - card.top)}px`;
 }
 
+// The calendar's own tooltip, as the chart's, on hovering an activity, a planned workout or a day off.
+function calendarTip(element, content) {
+  element.addEventListener("pointerenter", () => showTooltip(element, content, byId("diaryCalendarTooltip")));
+  element.addEventListener("pointerleave", hideTooltip);
+}
+
 function hideTooltip() {
   byId("diaryTooltip").hidden = true;
+  byId("diaryCalendarTooltip").hidden = true;
 }
 
 document.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "mouse" && !event.target.closest?.(".diary-bar")) hideTooltip();
+  if (event.pointerType !== "mouse" && !event.target.closest?.(".diary-bar, .diary-day-planned, .diary-activity, .diary-day-off")) hideTooltip();
 });
 
 // One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
@@ -578,8 +584,11 @@ function activityButton(entry, settings) {
     // A phone's narrow day shows only the kilometres, to one decimal.
     Object.assign(document.createElement("span"), { className: "diary-activity-short", ariaHidden: "true", textContent: displayNumber((entry.summary.distance ?? 0) / 1000, 1) }),
   );
-  button.title = [entry.name, `${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}`, ...(effect ? [effect.text] : []), t("diaryOpen")].join("\n");
-  button.addEventListener("click", () => openActivity(entry));
+  calendarTip(button, { when: `${kindLabel(workoutKind(entry), entry.sport)} · ${sportLabel(entry.sport)}`, total: entry.name.replace(/^Kinomap - /, ""), detail: effect?.text ?? "", parts: [], hint: t("diaryOpen") });
+  button.addEventListener("click", () => {
+    hideTooltip();
+    openActivity(entry);
+  });
   return button;
 }
 
@@ -612,7 +621,7 @@ function renderCalendar(range, entries) {
       // Unlike an activity: a dashed outline without a stripe and one line, the reason by its icon and its words,
       // so the kinds' colours stay the activities' own.
       const off = Object.assign(document.createElement("div"), { className: "diary-day-off" });
-      off.title = t("diaryDayOff", { reason: excuseText(excuse) });
+      calendarTip(off, { when: format(day, { weekday: "long", day: "numeric", month: "numeric" }), total: t("diaryDayOff", { reason: excuseText(excuse) }), parts: [], hint: day >= today ? t("diaryOffChange") : "" });
       off.append(Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: `${excuseIcons[excuse.reason] ?? excuseIcons.other} ${excuseText(excuse)}` }));
       cell.append(off);
     }
@@ -621,9 +630,13 @@ function renderCalendar(range, entries) {
       for (const item of (view.planned ?? []).filter((item) => item.day === day)) {
         const text = plannedText(item.plan, item.sport, item.type);
         const planned = Object.assign(document.createElement("button"), { type: "button", className: "diary-day-planned" });
-        planned.title = `${text}\n${t("diaryPlannedSkip")}`;
-        planned.append(Object.assign(document.createElement("span"), { className: "diary-day-planned-name", textContent: text.split(" · ")[0] }));
-        planned.addEventListener("click", () => openExcuse(day, render));
+        const [name, ...rest] = text.split(" · ");
+        calendarTip(planned, { when: format(day, { weekday: "long", day: "numeric", month: "numeric" }), total: name, detail: rest.join(" · "), parts: [], hint: t("diaryPlannedSkip") });
+        planned.append(Object.assign(document.createElement("span"), { className: "diary-day-planned-name", textContent: name }));
+        planned.addEventListener("click", () => {
+          hideTooltip();
+          openExcuse(day, render);
+        });
         cell.append(planned);
       }
     }
@@ -633,7 +646,10 @@ function renderCalendar(range, entries) {
       off.classList.add("is-editable");
       off.setAttribute("role", "button");
       off.tabIndex = 0;
-      off.addEventListener("click", () => openExcuse(day, render));
+      off.addEventListener("click", () => {
+        hideTooltip();
+        openExcuse(day, render);
+      });
     }
     return cell;
   });
