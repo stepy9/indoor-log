@@ -24,6 +24,7 @@
         <span class="topbar-title" id="topbarTitle" aria-hidden="true"></span>
         <nav class="app-nav" aria-label="Sekce" data-i18n-aria="sections">
           <button type="button" data-app-view="diary" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/></svg><span data-i18n="navDiary">Deník</span></button>
+          <button type="button" data-app-view="training" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg><span data-i18n="navTraining">Trénink</span></button>
           <button type="button" data-app-view="trend" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8m-5 0h5v5"/></svg><span data-i18n="navTrend">Vývoj</span></button>
           <button type="button" data-app-view="fitness" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span data-i18n="navFitness">Analýza</span></button>
           <button type="button" data-app-view="compare" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10m7 10V4m7 16v-7"/></svg><span data-i18n="navCompare">Porovnání</span></button>
@@ -430,6 +431,15 @@
           </div>
           <div class="diary-calendar" id="diaryCalendar"></div>
         </section>
+      </section>
+      <section class="training-view" id="trainingView" hidden>
+        <div class="card diary-head">
+          <h2 class="fitness-title" data-i18n="navTraining">Trénink</h2>
+          <div class="diary-filters">
+            <select id="trainingSport" aria-label="Sport" data-i18n-aria="librarySport"></select>
+          </div>
+        </div>
+        <div class="fitness-content" id="trainingContent"></div>
       </section>
       <section class="fitness-view" id="fitnessView" hidden>
         <div class="card diary-head">

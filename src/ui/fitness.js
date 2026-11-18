@@ -4,6 +4,7 @@ import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLeve
 import { axisTicks } from "../dates.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey } from "../diary.js";
+import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { listEntries } from "../library.js";
 import { renderInfo } from "./info.js";
 import { renderLimited } from "./more.js";
@@ -202,7 +203,10 @@ export function trainingPlan(entries, chosen = "all") {
     ?? (plan.steadyWatts ? Math.round((plan.steadyWatts[0] + plan.steadyWatts[1]) / 10) * 5 : null);
   plan.cadence = steadyCadence[sport] ?? null;
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
-  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+  const days = weekPlan(plan, workouts, today(), weekdays);
+  // With the Training section filled in, each day's plan is kept as it stands before the day, to score it by.
+  if (hasTraining(settings, sport)) keepPlan(sport, days, plan, today());
+  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
 }
 
 // The sport's training settings for the plan, with the weekly volume.
@@ -227,12 +231,13 @@ export function steadyGuide(plan, sport) {
   return parts.map((part) => ` · ${part}`).join("");
 }
 
-function renderNextStep() {
-  const card = byId("fitnessNext");
-  const result = trainingPlan(view.entries, view.sport);
+// The next step drawn into the card given, for the sport given (or the one trained most).
+export function renderNextStep(card, entries, sport = "all") {
+  const result = trainingPlan(entries, sport);
   card.hidden = !result;
   if (!result) return;
-  const { sport, plan } = result;
+  const { plan } = result;
+  sport = result.sport;
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
@@ -1039,7 +1044,10 @@ function render() {
   const history = loadHistory(shown, settings, zone, today());
   renderSuggestions(settings);
   renderTiles(history, settings);
-  renderNextStep();
+  // The next step lives in the Training tab once a sport has the Training section filled in; here until then.
+  const card = byId("fitnessNext");
+  if (anyTraining(settings)) card.hidden = true;
+  else renderNextStep(card, view.entries, view.sport);
   renderLoadChart(history, settings);
   const current = inRange(shown);
   renderWeeks(history, current, settings);

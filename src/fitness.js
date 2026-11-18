@@ -6,7 +6,7 @@ import { addDays, dayKey } from "./diary.js";
 // A sample stands for the time since the one before it, but a pause does not count as riding on.
 const longestStep = 5;
 
-function steps(seconds) {
+export function steps(seconds) {
   return seconds.map((second, index) => (index ? Math.min(longestStep, Math.max(0, second - seconds[index - 1])) : 0));
 }
 

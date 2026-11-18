@@ -1317,3 +1317,23 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .export-actions { flex-wrap: nowrap; }
   .export-actions > * { flex: 1 1 0; justify-content: center; padding-inline: 12px; }
 }
+
+/* The Training tab: the workouts' scores against the plan. */
+.score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; background: var(--score); }
+.score-badge.is-good { --score: #1f9d55; }
+.score-badge.is-fair { --score: #d97706; }
+.score-badge.is-poor { --score: #dc2626; }
+.diary-plan-row .score-badge { margin-left: 6px; }
+.diary-activity .score-badge { align-self: flex-start; height: 16px; min-width: 22px; margin-top: 1px; font-size: 10px; }
+@media (max-width: 640px) { .diary-calendar:not(.is-week) .diary-activity .score-badge { display: none; } }
+.training-tiles { margin: 10px 0; }
+.training-weeks { width: 100%; }
+.training-weeks td:last-child, .training-weeks th:last-child { text-align: right; }
+.training-workout-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.training-workout { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; text-align: left; cursor: pointer; }
+.training-workout:hover { border-color: var(--line-strong); }
+.training-workout-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.training-workout-day { flex: none; color: var(--muted); font-size: 12px; }
+.training-workout-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.training-workout-why { margin: 0; }
+.training-view .fitness-content > .link-button { justify-self: start; }

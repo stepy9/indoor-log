@@ -8,6 +8,17 @@ import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
 import { infoHint } from "./info.js";
+import { anyTraining, hasTraining, scoreFor } from "./score.js";
+
+// A workout's score as a small coloured number: green from 80, amber from 50, red below.
+export function scoreBadge(score, title = "") {
+  const badge = Object.assign(document.createElement("span"), { className: `score-badge is-${score >= 80 ? "good" : score >= 50 ? "fair" : "poor"}`, textContent: String(score) });
+  badge.title = title || t("scoreTitle", { score });
+  return badge;
+}
+
+// Opens the Training tab; set by the app, which owns the switching between views.
+let openTraining = () => {};
 
 const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
@@ -36,13 +47,32 @@ const view = {
   showPlan: remembered.showPlan !== false,
 };
 
-// This week's plan as a checklist: each training day marked done by its workouts, missed, or what is planned.
+// This week's plan in the diary: whole until a sport has the Training section filled in, then the checklist alone
+// with a way to the Training tab, which shows it whole.
 function renderPlan() {
   const card = byId("diaryPlan");
   byId("diaryShowPlan").checked = view.showPlan;
   const result = view.showPlan ? trainingPlan(view.entries, view.sport) : null;
   card.hidden = !result?.checklist.length;
   if (card.hidden) return;
+  const compact = anyTraining(settingsFor(view.entries));
+  drawPlanCard(card, result, { compact, onTraining: compact ? () => openTraining() : null, scores: compact ? scoresByDay(result) : null });
+}
+
+// The day's workouts' scores, for the checklist: { "YYYY-MM-DD": [score] }.
+function scoresByDay(result) {
+  const byDay = {};
+  for (const entry of view.entries) {
+    if (entry.sport !== result.sport) continue;
+    const scored = scoreFor(entry, result.plan);
+    if (scored) (byDay[dayKey(entry.startMs, zone)] ??= []).push(scored.score);
+  }
+  return byDay;
+}
+
+// This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
+// missed, or what is planned; beside it the week's distance and the longest workouts, unless compact.
+export function drawPlanCard(card, result, { compact = false, onTraining = null, scores = null } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -65,6 +95,7 @@ function renderPlan() {
       ? item.workouts.map((workout) => `${km(Math.round(workout.km * 10) / 10)} km · ${kindLabel(workout.kind, sport)}`).join(", ")
       : item.status === "missed" ? t("planMissed") : planned(item.type);
     row.append(mark, when, Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+    for (const score of scores?.[item.day] ?? []) row.append(scoreBadge(score));
     return row;
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
@@ -80,6 +111,15 @@ function renderPlan() {
   if (plan.focus) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`nextFocus_${plan.focus}`) }));
   const side = Object.assign(document.createElement("div"), { className: "diary-plan-side" });
   const body = Object.assign(document.createElement("div"), { className: "diary-plan-body" });
+  if (onTraining) {
+    const link = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("planOpenTraining") });
+    link.addEventListener("click", onTraining);
+    head.append(link);
+  }
+  if (compact) {
+    card.replaceChildren(head, list);
+    return;
+  }
   body.append(list, side);
   card.replaceChildren(head, body, infoHint(t("planInfo")));
   // Drawn at the column's own width, so the text keeps its size.
@@ -483,6 +523,17 @@ function benefitLine(entry, settings) {
   return { node, text };
 }
 
+// The workout's score in the diary, for a sport with the Training section filled in.
+let scoreCache = new WeakMap();
+function scoreNode(entry) {
+  if (!scoreCache.has(entry)) {
+    const plan = view.plans?.get(entry.sport) ?? null;
+    const scored = plan ? scoreFor(entry, plan) : null;
+    scoreCache.set(entry, scored ? scoreBadge(scored.score) : null);
+  }
+  return scoreCache.get(entry);
+}
+
 function activityButton(entry, settings) {
   const effect = benefitLine(entry, settings);
   const button = Object.assign(document.createElement("button"), { type: "button", className: "diary-activity" });
@@ -496,6 +547,7 @@ function activityButton(entry, settings) {
     name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
     ...(effect ? [effect.node] : []),
+    ...(scoreNode(entry) ? [scoreNode(entry)] : []),
     // A phone's narrow day shows only the kilometres, to one decimal.
     Object.assign(document.createElement("span"), { className: "diary-activity-short", ariaHidden: "true", textContent: displayNumber((entry.summary.distance ?? 0) / 1000, 1) }),
   );
@@ -628,6 +680,10 @@ function render() {
   if (byId("diaryView").hidden) return;
   saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span, showPlan: view.showPlan } });
   view.day ??= dayKey(Date.now(), zone);
+  // Each sport's current plan, for its workouts' scores; drawn anew, as the settings or the library may have changed.
+  const settings = settingsFor(view.entries);
+  view.plans = new Map(Object.keys(settings.sports).filter((sport) => hasTraining(settings, sport)).map((sport) => [sport, trainingPlan(view.entries, sport)?.plan ?? null]));
+  scoreCache = new WeakMap();
   const range = periodRange(view.period, view.day);
   const entries = shown();
   const current = inPeriod(entries, range, zone);
@@ -656,7 +712,8 @@ export async function showDiary() {
 
 export const rerenderDiary = render;
 
-export function setupDiary({ onOpen }) {
+export function setupDiary({ onOpen, onTraining = () => {} }) {
+  openTraining = onTraining;
   byId("diaryShowPlan").addEventListener("change", (event) => {
     view.showPlan = event.target.checked;
     render();

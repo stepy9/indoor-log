@@ -1,4 +1,5 @@
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
+import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./training.js";
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
 import { weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -847,6 +848,7 @@ export function rerenderCompare() {
   render();
   rerenderDiary();
   rerenderFitness();
+  rerenderTraining();
 }
 
 // The view shown: "converter" (its setup or workspace, whichever was open), "compare", "diary" or "trend".
@@ -873,6 +875,7 @@ function showView(name) {
   }
   byId("diaryView").hidden = name !== "diary";
   byId("fitnessView").hidden = name !== "fitness";
+  byId("trainingView").hidden = name !== "training";
   document.body.classList.toggle("is-comparing", name !== "converter");
   for (const button of document.querySelectorAll("[data-app-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.appView === name));
@@ -882,6 +885,7 @@ function showView(name) {
   if (name === "compare" || name === "trend") refresh();
   if (name === "diary") showDiary();
   if (name === "fitness") showFitness();
+  if (name === "training") showTraining();
 }
 
 // The converter has no tab of its own: Add and the library's pencil open it, and saving goes back to the tab before.
@@ -928,12 +932,22 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     renderList();
   });
   nameTab("converter");
-  setupDiary({ onOpen: openInCompare });
+  setupDiary({ onOpen: openInCompare, onTraining: () => showView("training") });
   setupFitness({ onOpen: openInCompare });
+  setupTraining({ onOpen: openInCompare });
+  // The Training tab shows once a sport has the Training section filled in; on a phone it takes a sixth of the bar.
+  const trainingTab = document.querySelector('[data-app-view="training"]');
+  const showTrainingTab = async () => {
+    trainingTab.hidden = !trainingShown(await listEntries().catch(() => []));
+    if (trainingTab.hidden && currentView === "training") showView("diary");
+  };
+  showTrainingTab();
+  window.addEventListener("settings-change", showTrainingTab);
+  window.addEventListener("synced-settings-change", showTrainingTab);
   // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
   const remembered = savedDefaults().appView;
   // The page opens on the tab open last, the diary at first; adding an activity is a step of its own, not a place to open on.
-  queueMicrotask(() => showView(["compare", "diary", "trend", "fitness"].includes(remembered) ? remembered : "diary"));
+  queueMicrotask(() => showView(["compare", "diary", "trend", "fitness", "training"].includes(remembered) ? remembered : "diary"));
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;
@@ -991,6 +1005,7 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     if (!byId("compareView").hidden) refresh();
     if (!byId("diaryView").hidden) showDiary();
     if (!byId("fitnessView").hidden) showFitness();
+    if (!byId("trainingView").hidden) showTraining();
   };
   byId("libraryDialog").addEventListener("close", refreshShown);
   // What a sync brought from another device shows at once too.
