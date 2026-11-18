@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, planForName, defaultKinomapPlans, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, planForName, defaultKinomapPlans, segmentsFromSteps, stepsFromSegments, stepsFromCreator, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -256,20 +256,27 @@ test("an FTP test with laps by distance only is found by its minutes at the most
   }
 });
 
-test("a saved plan is found by the workout's name, with or without Kinomap's prefix", () => {
-  const plans = { "FTP test 5 min": "00:00  37%  WU\n18:00  44%  A", Empty: "  " };
+test("a saved workout is found by its name, with or without Kinomap's prefix", () => {
+  const plans = { "FTP test 5 min": defaultKinomapPlans.rowing["FTP test 5 min"], Empty: [] };
   assert.equal(planForName(plans, "Kinomap - FTP test 5 min").name, "FTP test 5 min");
-  assert.equal(planForName(plans, "ftp TEST 5 min").text, plans["FTP test 5 min"]);
+  assert.equal(planForName(plans, "ftp TEST 5 min").steps.length, 9);
   assert.equal(planForName(plans, "FTP test 20 min"), null);
   assert.equal(planForName(plans, "Empty"), null);
   assert.equal(planForName(null, "FTP test 5 min"), null);
 });
 
-test("the FTP test's saved steps read as its warm-up, three strides, the test and the cool-down", async () => {
-  const { parseKinomapPlan } = await import("../src/core.js");
-  const steps = parseKinomapPlan(defaultKinomapPlans.rowing["FTP test 5 min"]);
-  assert.deepEqual(steps.map((step) => step.startMs / 1000), [0, 600, 630, 690, 720, 780, 810, 1080, 1380]);
-  assert.deepEqual(steps.map((step) => step.intensity), ["warmup", "active", "recovery", "active", "recovery", "active", "recovery", "active", "cooldown"]);
-  assert.equal(steps[7].target, 27);
-  assert.equal(steps[7].resistancePercent, 44);
+test("the FTP test's steps follow one another: warm-up, three strides, the test and the cool-down", () => {
+  const segments = segmentsFromSteps(defaultKinomapPlans.rowing["FTP test 5 min"], 1000);
+  assert.deepEqual(segments.map((segment) => (segment.startMs - 1000) / 1000), [0, 600, 630, 690, 720, 780, 810, 1080, 1380]);
+  assert.deepEqual(segments.map((segment) => segment.intensity), ["warmup", "active", "recovery", "active", "recovery", "active", "recovery", "active", "cooldown"]);
+  assert.deepEqual([segments[7].resistancePercent, segments[7].targetType, segments[7].target], [44, "cadence", 27]);
+  assert.deepEqual(stepsFromSegments(segments, 1860), defaultKinomapPlans.rowing["FTP test 5 min"]);
+});
+
+test("a workout from Kinomap Creator gets its types by the resistance", () => {
+  const json = { data: { intervals: [{ order: 2, time: 30, value: 44 }, { order: 1, time: 600, value: 37 }, { order: 3, time: 60, value: 30 }, { order: 4, time: 480, value: 37, optimal_cadence: 20 }] } };
+  const steps = stepsFromCreator(json);
+  assert.deepEqual(steps.map((item) => [item.seconds, item.percent, item.intensity]), [[600, 37, "warmup"], [30, 44, "active"], [60, 30, "recovery"], [480, 37, "cooldown"]]);
+  assert.deepEqual([steps[3].targetType, steps[3].target], ["cadence", 20]);
+  assert.equal(stepsFromCreator({ data: {} }), null);
 });

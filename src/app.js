@@ -1,5 +1,6 @@
 import "./styles.css";
-import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap, parseKinomapPlan } from "./core.js";
+import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap } from "./core.js";
+import { segmentsFromSteps } from "./training.js";
 import { buildBatchWorkout, planBatch } from "./batch.js";
 import { checkWorkout } from "./checks.js";
 import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapFileName } from "./files.js";
@@ -127,7 +128,7 @@ function applySavedPlan() {
   state.savedPlan = null;
   if (!saved || !state.result) return false;
   const { startMs, endMs } = state.result;
-  const segments = parseKinomapPlan(saved.text, startMs).filter((segment) => segment.startMs < endMs - 1000);
+  const segments = segmentsFromSteps(saved.steps, startMs).filter((segment) => segment.startMs < endMs - 1000);
   if (segments.length < 2) return false;
   const trainer = trainerFor(elements.trainer.value);
   for (const segment of segments) {

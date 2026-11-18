@@ -339,22 +339,70 @@ export const defaultKinomapWorkouts = {
   rowing: ["FTP test 5 min", "FTP test 20 min", "Intervaly 4x2 min", "Intervaly 5x2 min", "Intervaly 6x2 min", "Intervaly 7x2 min", "Intervaly 8x2 min", "Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min", "Minimální jízda 10 min"],
 };
 
-// The steps of the user's own Kinomap workouts, by name, as plan text ("18:00  44%  27rpm  A" a step): Kinomap
-// Creator keeps no types, nor a cadence for rowing, so they are kept here; an import of the workout takes them.
+// The steps of the user's own Kinomap workouts, by name: Kinomap Creator keeps no types, nor a cadence for rowing,
+// so they are kept here, and an import of the workout splits its laps by them. A step is { seconds, percent
+// (resistance) | null, targetType: "cadence" | "power" | null, target | null, intensity }.
+const step = (seconds, percent, cadence, intensity) => ({ seconds, percent, targetType: "cadence", target: cadence, intensity });
 export const defaultKinomapPlans = {
   rowing: {
-    "FTP test 5 min": "00:00  37%  22rpm  WU\n10:00  44%  26rpm  A\n10:30  30%  20rpm  RY\n11:30  44%  26rpm  A\n12:00  30%  20rpm  RY\n13:00  44%  26rpm  A\n13:30  30%  20rpm  RY\n18:00  44%  27rpm  A\n23:00  37%  20rpm  CD",
+    "FTP test 5 min": [
+      step(600, 37, 22, "warmup"), step(30, 44, 26, "active"), step(60, 30, 20, "recovery"), step(30, 44, 26, "active"), step(60, 30, 20, "recovery"),
+      step(30, 44, 26, "active"), step(270, 30, 20, "recovery"), step(300, 44, 27, "active"), step(480, 37, 20, "cooldown"),
+    ],
   },
 };
 
 const plainName = (name) => String(name ?? "").replace(/^Kinomap\s*-\s*/i, "").trim().toLowerCase();
 
-// The saved plan of the workout of that name (the "Kinomap - " the converter puts before it left out), or null.
+// The saved steps of the workout of that name (the "Kinomap - " the converter puts before it left out):
+// { name, steps } or null.
 export function planForName(plans, name) {
   const wanted = plainName(name);
   if (!wanted) return null;
-  const found = Object.entries(plans ?? {}).find(([key, text]) => plainName(key) === wanted && String(text ?? "").trim());
-  return found ? { name: found[0], text: found[1] } : null;
+  const found = Object.entries(plans ?? {}).find(([key, steps]) => plainName(key) === wanted && Array.isArray(steps) && steps.length);
+  return found ? { name: found[0], steps: found[1] } : null;
+}
+
+// The steps as the converter's segments from startMs: one after another by their lengths.
+export function segmentsFromSteps(steps, startMs) {
+  let at = startMs;
+  return steps.map((item) => {
+    const segment = { startMs: at, intensity: item.intensity ?? "active" };
+    if (item.percent > 0) segment.resistancePercent = item.percent;
+    if (item.targetType && item.target > 0) Object.assign(segment, { targetType: item.targetType, target: item.target });
+    at += Math.max(1, item.seconds || 0) * 1000;
+    return segment;
+  });
+}
+
+// Steps from a pasted plan: Kinomap Creator's workout as its API returns it ({ data: { intervals: [{ time, value }] } },
+// time the length in seconds, value the resistance) or the steps' segments (each with its startMs) and the total
+// length. Creator's steps get their types by the resistance: the higher half the work, a lower first the warm-up, a
+// lower last the cool-down, the rest recovery. Null when nothing is read.
+export function stepsFromCreator(json) {
+  const intervals = json?.data?.intervals ?? json?.intervals;
+  if (!Array.isArray(intervals) || !intervals.length) return null;
+  const sorted = [...intervals].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const values = sorted.map((item) => Number(item.value)).filter(Number.isFinite);
+  const middle = (Math.max(...values) + Math.min(...values)) / 2;
+  return sorted.map((item, index) => {
+    const hard = Math.max(...values) > Math.min(...values) && item.value > middle;
+    const intensity = hard ? "active" : index === 0 ? "warmup" : index === sorted.length - 1 ? "cooldown" : "recovery";
+    const cadence = Number(item.optimal_cadence);
+    return { seconds: Number(item.time) || 60, percent: Number(item.value) || null, targetType: cadence > 0 ? "cadence" : null, target: cadence > 0 ? cadence : null, intensity };
+  });
+}
+export function stepsFromSegments(segments, totalSeconds) {
+  return segments.map((segment, index) => {
+    const next = segments[index + 1]?.startMs ?? segments[0].startMs + totalSeconds * 1000;
+    return {
+      seconds: Math.max(1, Math.round((next - segment.startMs) / 1000)),
+      percent: segment.resistancePercent ?? null,
+      targetType: segment.targetType ?? null,
+      target: segment.target ?? null,
+      intensity: segment.intensity ?? "active",
+    };
+  });
 }
 
 // What a workout's name says it is: an FTP test by "FTP" and its minutes, intervals by "6x2 min", the least workout

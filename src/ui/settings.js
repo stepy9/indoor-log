@@ -12,10 +12,11 @@ import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
-import { setCalorieProfile } from "../core.js";
+import { parseKinomapPlan, setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
-import { defaultKinomapPlans, defaultKinomapWorkouts, planForName } from "../training.js";
+import { defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
+import { workoutList } from "./workouts.js";
 import { bodyStatus } from "../reminders.js";
 import { parseGarminCsv } from "../garmin-csv.js";
 
@@ -872,47 +873,32 @@ function trainingBlock(sport) {
   const least = node("div", { class: "fitness-settings" });
   least.append(numberField(t("settingsPlanMinimal"), prefs.minimalMinutes, "10", (value) => writePlan({ minimalMinutes: value }), { min: planPrefLimits.minimalMinutes[0], max: planPrefLimits.minimalMinutes[1] }));
   block.append(least, node("p", { class: "field-note" }, t("settingsPlanMinimalNote")));
-  const workouts = node("textarea", { rows: "6", class: "settings-kinomap", "data-key": `plan-kinomap-${sport}`, "aria-label": t("settingsPlanKinomap") });
-  workouts.value = (prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? []).join("\n");
-  workouts.addEventListener("change", () => writePlan({ kinomapWorkouts: workouts.value.split("\n").map((line) => line.trim()).filter(Boolean) }));
-  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsPlanKinomap")), workouts, node("p", { class: "field-note" }, t("settingsPlanKinomapNote")));
-  // Each workout's steps, for the converter to split its laps by when the workout of that name is imported.
-  const plans = { ...(prefs.kinomapPlans ?? defaultKinomapPlans[sport] ?? {}) };
-  const steps = node("div", { class: "settings-kinomap-plans" });
-  const renderSteps = () => {
-    // The names as typed above, so a workout added there gets its steps at once.
-    const names = workouts.value.split("\n").map((line) => line.trim()).filter(Boolean);
-    steps.replaceChildren(...names.map((name) => {
-      const item = node("details", { class: "settings-kinomap-plan" });
-      const has = Boolean(String(plans[name] ?? "").trim());
-      item.append(node("summary", {}, `${name}${has ? " · ✓" : ""}`));
-      const text = node("textarea", { rows: "6", class: "settings-kinomap", "data-key": `plan-steps-${sport}-${name}`, "aria-label": `${t("settingsPlanSteps")} ${name}`, placeholder: "00:00  37%  22rpm  WU\n10:00  44%  26rpm  A" });
-      text.value = plans[name] ?? "";
-      text.addEventListener("change", () => {
-        const value = text.value.trim();
-        if (value) plans[name] = value;
-        else delete plans[name];
-        prefs.kinomapPlans = { ...plans };
-        writePlan({ kinomapPlans: { ...plans } });
-      });
-      item.append(text);
-      return item;
-    }));
-  };
-  renderSteps();
-  workouts.addEventListener("change", () => {
-    // Kept in prefs too, so saving the steps afterwards does not bring the old names back.
-    prefs.kinomapWorkouts = workouts.value.split("\n").map((line) => line.trim()).filter(Boolean);
-    renderSteps();
-  });
-  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsPlanSteps")), node("p", { class: "field-note" }, t("settingsPlanStepsNote")), steps);
+  // The own Kinomap workouts with their steps, in one list; the plan picks among them by name.
+  block.append(
+    node("span", { class: "settings-label settings-days-label" }, t("settingsPlanKinomap")),
+    node("p", { class: "field-note" }, t("settingsPlanKinomapNote")),
+    workoutList(prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? [], ownPlans(sport, prefs), ({ names, plans }) => {
+      // Kept in prefs too, as the other fields write theirs over them.
+      Object.assign(prefs, { kinomapWorkouts: names, kinomapPlans: plans });
+      writePlan({ kinomapWorkouts: names, kinomapPlans: plans });
+    }),
+  );
   return block;
+}
+
+// The sport's workouts' steps by name; steps kept as plan text by an earlier version read into steps.
+function ownPlans(sport, prefs = savedSport(sport).plan ?? {}) {
+  const plans = prefs.kinomapPlans ?? defaultKinomapPlans[sport] ?? {};
+  return Object.fromEntries(Object.entries(plans).map(([name, steps]) => {
+    if (Array.isArray(steps)) return [name, steps];
+    const segments = parseKinomapPlan(String(steps ?? ""), 0);
+    return [name, segments.length ? stepsFromSegments(segments, segments.at(-1).startMs / 1000 + 60) : []];
+  }));
 }
 
 // The saved steps of the sport's own Kinomap workout of that name, or null.
 export function kinomapPlanFor(sport, name) {
-  const prefs = savedSport(sport).plan ?? {};
-  return planForName(prefs.kinomapPlans ?? defaultKinomapPlans[sport], name);
+  return planForName(ownPlans(sport), name);
 }
 
 const weightRange = { min: 30, max: 250 };

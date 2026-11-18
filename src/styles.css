@@ -1474,3 +1474,13 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .recovery-card #compareRecoveryStart { width: 100%; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .recovery-figure animate { display: none; } }
+
+/* The own Kinomap workouts in the Training settings: a row each, and the steps' editor. */
+.workout-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 4px; }
+.workout-row { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.workout-row-text { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.workout-row-text strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.workout-row-text .field-note { margin: 0; }
+.workout-add { align-self: flex-start; margin-top: 4px; }
+.workout-dialog .workout-name { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
+.workout-dialog .workout-name input { max-width: 360px; }
