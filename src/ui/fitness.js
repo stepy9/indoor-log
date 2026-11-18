@@ -805,12 +805,16 @@ function seriesData(key, from, end, history, load) {
   return { points: key === "sleep" ? points.filter((point) => !point.carried) : points, first };
 }
 
-// A scale over the values: { min, max, step }, from 0 for the load.
+// A scale over the values: { min, max, step }, from 0 for the load, held close to them.
 function bodyScale(values, fromZero) {
   const low = fromZero ? 0 : Math.min(...values);
   const high = Math.max(...values);
-  const step = [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200].find((size) => (high - low) / size <= 4) ?? 200;
-  return { min: fromZero ? 0 : Math.floor(low / step) * step - step, max: Math.ceil(high / step) * step + step, step };
+  // Up to five steps, the scale ending on the steps around the values (a step more only where a value sits on the edge
+  // of a scale with no room at all).
+  const step = [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200].find((size) => (high - low) / size <= 5) ?? 200;
+  const min = fromZero ? 0 : Math.floor(low / step) * step;
+  const max = Math.ceil(high / step) * step;
+  return { min, max: max > min ? max : min + step, step };
 }
 
 function renderBodyChips() {
