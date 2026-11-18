@@ -59,6 +59,16 @@ test("a blank setting never wipes a filled one, and an old single time counts fo
   assert.equal(changesFor(state([], {}, merged), { entries: [], settings: merged }).settings, false);
 });
 
+test("the excuses emptied later win over filled ones, as removing the last is on purpose", () => {
+  const filled = { defaults: { trainingExcuses: { "2026-11-19": { reason: "rest" } } }, changedAt: { trainingExcuses: 1000 } };
+  const emptied = { defaults: { trainingExcuses: {} }, changedAt: { trainingExcuses: 2000 } };
+  assert.deepEqual(mergeStates(state([], {}, filled), state([], {}, emptied)).settings.defaults.trainingExcuses, {});
+  assert.deepEqual(mergeStates(state([], {}, emptied), state([], {}, filled)).settings.defaults.trainingExcuses, {});
+  // Filled later than emptied: filled.
+  const refilled = { defaults: { trainingExcuses: { "2026-11-20": { reason: "work" } } }, changedAt: { trainingExcuses: 3000 } };
+  assert.deepEqual(Object.keys(mergeStates(state([], {}, emptied), state([], {}, refilled)).settings.defaults.trainingExcuses), ["2026-11-20"]);
+});
+
 test("changesFor tells each side what to write and delete", () => {
   const here = state([activity("a", { changedAt: 1000 }), activity("c", { day: 3 })]);
   const there = state([activity("a", { changedAt: 2000 }), activity("b", { day: 2 })], { c: 5000 });

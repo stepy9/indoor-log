@@ -54,7 +54,10 @@ export function normalizeSettings(settings) {
 const blank = (value) => value == null || (typeof value === "object" && Object.keys(value).length === 0);
 
 // Each key from the side that changed it last; a blank value never wins over a filled one, whatever its time,
-// so a device that has not set anything up cannot wipe what another has.
+// so a device that has not set anything up cannot wipe what another has. The excuses are the exception: removing
+// the last one empties them on purpose, so there the later change wins, blank or not.
+const clearable = new Set(["trainingExcuses"]);
+
 export function mergeSettings(local, remote) {
   const a = normalizeSettings(local);
   const b = normalizeSettings(remote);
@@ -64,7 +67,8 @@ export function mergeSettings(local, remote) {
   for (const key of new Set([...Object.keys(a.defaults), ...Object.keys(b.defaults)])) {
     const here = { value: a.defaults[key], at: a.changedAt[key] ?? 0 };
     const there = { value: b.defaults[key], at: b.changedAt[key] ?? 0 };
-    const pick = blank(here.value) !== blank(there.value) ? (blank(here.value) ? there : here) : there.at > here.at ? there : here;
+    const byTime = clearable.has(key) || blank(here.value) === blank(there.value);
+    const pick = byTime ? (there.at > here.at ? there : here) : blank(here.value) ? there : here;
     if (pick.value !== undefined) defaults[key] = pick.value;
     changedAt[key] = pick.at;
   }
