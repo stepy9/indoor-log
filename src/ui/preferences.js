@@ -55,7 +55,7 @@ export function saveDefaults(patch) {
 // (a sport, a period, a range, the trainer used last) stays with each device, so browsing on one does not undo
 // a change on another.
 export const syncedKeys = ["fitness", "trainers", "trainingLog", "trainingExcuses"];
-const localFitness = ["sport", "range"];
+const localFitness = ["sport", "range", "bodySeries"];
 const syncedChangedKey = "kinomap-settings-changed";
 
 function syncedValue(key, defaults) {
