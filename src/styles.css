@@ -1354,6 +1354,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-chart-value { fill: var(--ink); font-size: 10px; text-anchor: middle; }
 .training-chart-label { fill: var(--muted); font-size: 10px; text-anchor: middle; }
 .training-summary { border-left: 4px solid #4d8dff; }
-.training-summary > summary { cursor: pointer; }
-.training-summary[open] > summary { margin-bottom: 6px; }
+.training-summary > summary { list-style: none; cursor: pointer; }
+.training-summary > summary::-webkit-details-marker { display: none; }
+.training-summary-fold { display: inline-grid; place-items: center; width: 20px; color: var(--muted); transition: transform .15s; }
+.training-summary[open] .training-summary-fold { transform: rotate(90deg); }
+.training-summary-head .diary-plan-text { color: var(--muted); }
 .training-summary .diary-plan-list { margin-top: 2px; }

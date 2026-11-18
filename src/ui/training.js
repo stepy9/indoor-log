@@ -164,18 +164,25 @@ function summaryCard(scored, workouts, log, sport) {
     row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, node("span", { class: "diary-plan-text" }, text));
     list.append(row);
   }
-  // The week's numbers: the days against the plan when it was kept, else the days ridden; the longer workouts and
-  // intervals planned, and the average score.
+  // The week as a whole in the line that folds, in the rows' columns: a fold mark for the tick, the week for the day,
+  // its score (the plan kept and the workouts' average) under theirs; what makes it up in the score's title.
   const week = weekAdherence(log, workouts, monday, sunday);
-  const numbers = [week.planned ? t("summaryDays", { ridden: week.ridden, planned: week.planned }) : t("summaryRides", { count: new Set(workouts.filter((workout) => workout.day >= monday && workout.day <= sunday).map((workout) => workout.day)).size })];
-  if (week.long[1]) numbers.push(t("summaryLong", { done: week.long[0], planned: week.long[1] }));
-  if (week.intervals[1]) numbers.push(t("summaryIntervals", { done: week.intervals[0], planned: week.intervals[1] }));
-  if (week.score != null) numbers.push(t("summaryScore", { score: week.score }));
-  list.append(node("p", { class: "field-note" }, numbers.join(" · ")));
-  // The week as a whole in the line that folds: the plan kept and the workouts' average in one score.
-  const head = node("summary", { class: "field-label" }, `${t("summaryLast")} · ${weekNumber(monday)} `);
   const overall = weekScore(week);
-  if (overall != null) head.append(scoreBadge(overall, t("weekScoreTitle", { score: overall })));
+  const numbers = [
+    ...(week.planned ? [t("summaryDays", { ridden: week.ridden, planned: week.planned })] : []),
+    ...(week.long[1] ? [t("summaryLong", { done: week.long[0], planned: week.long[1] })] : []),
+    ...(week.intervals[1] ? [t("summaryIntervals", { done: week.intervals[0], planned: week.intervals[1] })] : []),
+    ...(week.score != null ? [t("summaryScore", { score: week.score })] : []),
+  ];
+  const head = node("summary", { class: "diary-plan-row has-score training-summary-head" });
+  const score = node("span", { class: "diary-plan-score" });
+  if (overall != null) score.append(scoreBadge(overall, [t("weekScoreTitle", { score: overall }), numbers.join(" · ")].join("\n")));
+  head.append(
+    node("span", { class: "training-summary-fold", "aria-hidden": "true" }, "▸"),
+    node("span", { class: "field-label" }, t("summaryWeek", { week: weekNumber(monday) })),
+    score,
+    node("span", { class: "diary-plan-text" }, t("summaryLast")),
+  );
   card.append(head, list);
   return card;
 }
