@@ -9,7 +9,7 @@ import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { settingsFor } from "./settings.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
-import { excuseText } from "./excuse.js";
+import { excuses, excuseText } from "./excuse.js";
 
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
@@ -588,6 +588,7 @@ function renderCalendar(range, entries) {
   const days = view.period === "week" ? periodBuckets("week", range, [], zone).map((bucket) => bucket.key) : calendarDays(range[0]);
   const today = dayKey(Date.now(), zone);
   const settings = settingsFor(view.entries);
+  const excused = excuses();
   const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: format(day, { weekday: "short" }) }));
   const cells = days.map((day) => {
     const cell = Object.assign(document.createElement("div"), { className: "diary-day" });
@@ -600,7 +601,15 @@ function renderCalendar(range, entries) {
     cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: format(day, { day: "numeric" }) }));
     // A phone lists a week's days one under another, each named by its weekday and date.
     cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: format(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
-    cell.append(...entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).map((entry) => activityButton(entry, settings)));
+    const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
+    cell.append(...ridden.map((entry) => activityButton(entry, settings)));
+    // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
+    const excuse = !ridden.length ? excused[day] : null;
+    if (excuse) {
+      const off = Object.assign(document.createElement("span"), { className: "diary-day-off", textContent: `– ${excuseText(excuse)}` });
+      off.title = t("diaryDayOff", { reason: excuseText(excuse) });
+      cell.append(off);
+    }
     return cell;
   });
   // Each row opens with its week number, which opens that week.

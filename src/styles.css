@@ -1384,3 +1384,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .suggest-list li.is-exact { border-color: #4d8dff; }
 .suggest-creator { color: #4d8dff; font-weight: 600; }
 .settings-kinomap { width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; resize: vertical; }
+/* A day off in the diary's calendar, with its reason. */
+.diary-day-off { overflow: hidden; padding: 2px 6px; border-left: 4px solid var(--line-strong); border-radius: 5px; color: var(--muted); background: var(--surface-2); font-size: 11px; font-style: italic; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) { .diary-calendar:not(.is-week) .diary-day-off { padding: 2px 0; border-left: 0; font-size: 0; text-align: center; } .diary-calendar:not(.is-week) .diary-day-off::before { content: "–"; font-size: 11px; } }
