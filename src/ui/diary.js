@@ -606,8 +606,15 @@ function renderCalendar(range, entries) {
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {
-      const off = Object.assign(document.createElement("span"), { className: "diary-day-off", textContent: `– ${excuseText(excuse)}` });
+      // Laid out as an activity: "Day off" for the name, the reason under it; the stripe by the kind of reason,
+      // red for health, amber for fatigue or rest, blue-grey for the rest of life.
+      const group = ["illness", "injury"].includes(excuse.reason) ? "health" : ["fatigue", "rest"].includes(excuse.reason) ? "rest" : "life";
+      const off = Object.assign(document.createElement("div"), { className: `diary-day-off is-${group}` });
       off.title = t("diaryDayOff", { reason: excuseText(excuse) });
+      off.append(
+        Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: t("diaryDayOffTitle") }),
+        Object.assign(document.createElement("span"), { className: "diary-day-off-reason", textContent: excuseText(excuse) }),
+      );
       cell.append(off);
     }
     return cell;
