@@ -339,6 +339,24 @@ export const defaultKinomapWorkouts = {
   rowing: ["FTP test 5 min", "FTP test 20 min", "Intervaly 4x2 min", "Intervaly 5x2 min", "Intervaly 6x2 min", "Intervaly 7x2 min", "Intervaly 8x2 min", "Pyramida 1-2-3-2-1 min", "Progrese 30 min", "Technika tempo záběrů 20 min", "Minimální jízda 10 min"],
 };
 
+// The steps of the user's own Kinomap workouts, by name, as plan text ("18:00  44%  27rpm  A" a step): Kinomap
+// Creator keeps no types, nor a cadence for rowing, so they are kept here; an import of the workout takes them.
+export const defaultKinomapPlans = {
+  rowing: {
+    "FTP test 5 min": "00:00  37%  22rpm  WU\n10:00  44%  26rpm  A\n10:30  30%  20rpm  RY\n11:30  44%  26rpm  A\n12:00  30%  20rpm  RY\n13:00  44%  26rpm  A\n13:30  30%  20rpm  RY\n18:00  44%  27rpm  A\n23:00  37%  20rpm  CD",
+  },
+};
+
+const plainName = (name) => String(name ?? "").replace(/^Kinomap\s*-\s*/i, "").trim().toLowerCase();
+
+// The saved plan of the workout of that name (the "Kinomap - " the converter puts before it left out), or null.
+export function planForName(plans, name) {
+  const wanted = plainName(name);
+  if (!wanted) return null;
+  const found = Object.entries(plans ?? {}).find(([key, text]) => plainName(key) === wanted && String(text ?? "").trim());
+  return found ? { name: found[0], text: found[1] } : null;
+}
+
 // What a workout's name says it is: an FTP test by "FTP" and its minutes, intervals by "6x2 min", the least workout
 // by "minimální" or "minimal", anything else an extra to ride for a change. { kind, repeats?, minutes? }.
 export function workoutFromName(name) {

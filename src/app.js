@@ -1,13 +1,13 @@
 import "./styles.css";
-import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap } from "./core.js";
+import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap, parseKinomapPlan } from "./core.js";
 import { buildBatchWorkout, planBatch } from "./batch.js";
 import { checkWorkout } from "./checks.js";
 import { collectDirectoryFiles, fitFileName, kinomapExportKey, titleFromKinomapFileName } from "./files.js";
 import { renderBatchTabs } from "./ui/batch.js";
 import { drawChart, isTrimMode, setTrimMode, setupChartLegend, setupChartTrim } from "./ui/chart.js";
 import { rememberWorkout, renderKindOptions, setupLibrary } from "./ui/library.js";
-import { lastTrainerId, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
-import { perKgText, setupSettings } from "./ui/settings.js";
+import { lastTrainerId, levelFromPercent, rememberTrainer, trainerFor, trainers } from "./ui/trainers.js";
+import { kinomapPlanFor, perKgText, setupSettings } from "./ui/settings.js";
 import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout, workoutFromEntry } from "./library.js";
@@ -118,6 +118,27 @@ function rememberedSettings(sport) {
     workoutFeel: saved.workoutFeel,
     workoutRpe: saved.workoutRpe,
   };
+}
+
+// The saved steps of the workout, once: laps by them, from the start of the workout as built, each step's
+// resistance in the trainer's levels. True when they were applied and the workout needs building again.
+function applySavedPlan() {
+  const saved = state.savedPlan;
+  state.savedPlan = null;
+  if (!saved || !state.result) return false;
+  const { startMs, endMs } = state.result;
+  const segments = parseKinomapPlan(saved.text, startMs).filter((segment) => segment.startMs < endMs - 1000);
+  if (segments.length < 2) return false;
+  const trainer = trainerFor(elements.trainer.value);
+  for (const segment of segments) {
+    const level = levelFromPercent(segment.resistancePercent, trainer);
+    if (level) segment.resistance = level;
+  }
+  state.segments = segments;
+  state.planFrom = saved.name;
+  renderLapOptions(state.kinomap.sport, "intervals");
+  render();
+  return true;
 }
 
 function lapDistanceValue() {
@@ -549,6 +570,9 @@ async function loadKinomap(file, sourceDirectoryHandle = null, { keepBatch = fal
     elements.manualStart.value = "";
     parseCurrentKinomap();
     applySavedLapDistance(state.kinomap.sport);
+    // One of the user's own Kinomap workouts with its steps saved: the laps follow them once the workout is built.
+    state.planFrom = null;
+    state.savedPlan = keepBatch ? null : kinomapPlanFor(state.kinomap.sport, elements.activityName.value);
     updateFileRows();
     if (state.fit) offsetEstimate();
     else render();
@@ -795,10 +819,12 @@ function render() {
           resistanceLevels: trainerFor(elements.trainer.value)?.levels,
         },
       );
+      if (applySavedPlan()) return;
       const { segments } = state.result;
       elements.lapNote.textContent = segments
         ? segments.length ? t("lapCount", { count: state.result.laps.length }) : t("intervalsNone")
         : state.result.lapDistance > 0 ? t("lapCount", { count: state.result.laps.length }) : "";
+      if (state.planFrom && segments?.length) elements.lapNote.textContent += ` · ${t("planFromSaved", { name: state.planFrom })}`;
       renderSummary(state.result.summary, state.result.startMs, state.result.endMs, state.result.sport);
       renderLaps(state.result.laps, state.result.sport);
       // The automatic option shows the kind the library would give this workout.
@@ -990,6 +1016,7 @@ byId("editIntervalsButton").addEventListener("click", () => {
   if (!state.result) return;
   openIntervalsDialog(state.result, state.result.segments, (segments) => {
     state.segments = segments;
+    state.planFrom = null;
     render();
   }, { trainer: trainerFor(elements.trainer.value), resistance: Number(elements.resistance.value) || null });
 });
@@ -1007,6 +1034,9 @@ elements.lapDistance.addEventListener("input", () => {
 elements.lapPreset.addEventListener("change", () => {
   elements.lapCustomField.hidden = elements.lapPreset.value !== "custom";
   byId("editIntervalsButton").hidden = elements.lapPreset.value !== "intervals";
+  // Another lap split drops the saved steps; intervals again estimate them from the data.
+  state.segments = null;
+  state.planFrom = null;
   saveLapDistance();
   render();
 });

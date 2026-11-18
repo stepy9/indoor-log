@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, planForName, defaultKinomapPlans, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -254,4 +254,22 @@ test("an FTP test with laps by distance only is found by its minutes at the most
     assert.equal(part.minutes, 5);
     assert.deepEqual(part.halves, [138, 142]);
   }
+});
+
+test("a saved plan is found by the workout's name, with or without Kinomap's prefix", () => {
+  const plans = { "FTP test 5 min": "00:00  37%  WU\n18:00  44%  A", Empty: "  " };
+  assert.equal(planForName(plans, "Kinomap - FTP test 5 min").name, "FTP test 5 min");
+  assert.equal(planForName(plans, "ftp TEST 5 min").text, plans["FTP test 5 min"]);
+  assert.equal(planForName(plans, "FTP test 20 min"), null);
+  assert.equal(planForName(plans, "Empty"), null);
+  assert.equal(planForName(null, "FTP test 5 min"), null);
+});
+
+test("the FTP test's saved steps read as its warm-up, three strides, the test and the cool-down", async () => {
+  const { parseKinomapPlan } = await import("../src/core.js");
+  const steps = parseKinomapPlan(defaultKinomapPlans.rowing["FTP test 5 min"]);
+  assert.deepEqual(steps.map((step) => step.startMs / 1000), [0, 600, 630, 690, 720, 780, 810, 1080, 1380]);
+  assert.deepEqual(steps.map((step) => step.intensity), ["warmup", "active", "recovery", "active", "recovery", "active", "recovery", "active", "cooldown"]);
+  assert.equal(steps[7].target, 27);
+  assert.equal(steps[7].resistancePercent, 44);
 });
