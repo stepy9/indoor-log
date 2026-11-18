@@ -13,6 +13,7 @@ import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn
 import { formatDay, parseDay } from "../dates.js";
 import { setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
+import { planPrefLimits } from "../plan.js";
 
 // The Settings dialog: general values, then one section per sport with its trainers, thresholds and zones.
 // Everything is saved as it is typed and lives with the other remembered settings, so a backup carries it.
@@ -603,6 +604,48 @@ function goalBlock(sport) {
   });
   row.append(dateField(`goal-day-${sport}`, goal.day ?? null, (day) => write({ day })), name);
   block.append(row);
+  return block;
+}
+
+// Segmented buttons for one choice: "auto" (null) and the values given; onPick gets the value or null.
+function choiceRow(key, label, values, current, onPick, autoLabel = t("settingsPlanAuto")) {
+  const row = node("div", { class: "segmented settings-days", role: "group", "aria-label": label });
+  for (const value of [null, ...values]) {
+    const button = node("button", { type: "button", "aria-pressed": String((current ?? null) === value), "data-key": `${key}-${value ?? "auto"}` }, value == null ? autoLabel : String(value));
+    button.addEventListener("click", () => onPick(value));
+    row.append(button);
+  }
+  return row;
+}
+
+// The weekdays as toggles, Monday first; onChange gets the sorted list, or null with none picked.
+function daysRow(key, label, picked, onChange) {
+  const chosen = new Set(picked ?? []);
+  const row = node("div", { class: "segmented settings-days", role: "group", "aria-label": label });
+  for (let day = 0; day < 7; day += 1) {
+    const name = new Date(Date.UTC(2024, 0, 1 + day)).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ", { weekday: "short", timeZone: "UTC" });
+    const button = node("button", { type: "button", "aria-pressed": String(chosen.has(day)), "data-key": `${key}-${day}` }, name);
+    button.addEventListener("click", () => {
+      if (chosen.has(day)) chosen.delete(day);
+      else chosen.add(day);
+      onChange(chosen.size ? [...chosen].sort((a, b) => a - b) : null);
+    });
+    row.append(button);
+  }
+  return row;
+}
+
+// How the week's plan is built: the weekly volume, the days, the longer workouts (how many, on which days, up to
+// what time and by what step), the usual workout's time and the interval workouts a week. Empty is the plan's own.
+function trainingBlock(sport) {
+  const block = node("div", { class: "settings-block" });
+  const prefs = savedSport(sport).plan ?? {};
+  const writePlan = (patch) => {
+    const next = Object.fromEntries(Object.entries({ ...prefs, ...patch }).filter(([, value]) => value != null));
+    saveSport(sport, { plan: Object.keys(next).length ? next : null });
+    changed();
+  };
+  block.append(node("h4", {}, t("settingsTraining")), node("p", { class: "field-note" }, t("settingsTrainingNote")));
   // The time to train each week, in hours to the tenth, for the weekly summary to measure each week by.
   const weekly = node("label", { class: "settings-field settings-weekly" });
   // Number fields, so the arrows and the wheel step the value: half hours, whole kilometres.
@@ -632,20 +675,34 @@ function goalBlock(sport) {
   both.append(weekly, distance);
   block.append(both);
   // The days of the week trained on, for the week's plan; none picked lets the plan take the usual ones.
-  const chosen = new Set(savedSport(sport).trainingDays ?? []);
-  const daysRow = node("div", { class: "segmented settings-days", role: "group", "aria-label": t("settingsTrainingDays") });
-  for (let day = 0; day < 7; day += 1) {
-    const name = new Date(Date.UTC(2024, 0, 1 + day)).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ", { weekday: "short", timeZone: "UTC" });
-    const button = node("button", { type: "button", "aria-pressed": String(chosen.has(day)), "data-key": `training-day-${sport}-${day}` }, name);
-    button.addEventListener("click", () => {
-      if (chosen.has(day)) chosen.delete(day);
-      else chosen.add(day);
-      saveSport(sport, { trainingDays: chosen.size ? [...chosen].sort((a, b) => a - b) : null });
-      changed();
-    });
-    daysRow.append(button);
-  }
-  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsTrainingDays")), daysRow, node("p", { class: "field-note" }, t("settingsTrainingDaysNote")));
+  const days = daysRow(`training-day-${sport}`, t("settingsTrainingDays"), savedSport(sport).trainingDays, (list) => {
+    saveSport(sport, { trainingDays: list });
+    changed();
+  });
+  block.append(node("span", { class: "settings-label settings-days-label" }, t("settingsTrainingDays")), days, node("p", { class: "field-note" }, t("settingsTrainingDaysNote")));
+  // The longer workouts: how many a week and on which days.
+  const label = (text) => node("span", { class: "settings-label settings-days-label" }, text);
+  block.append(
+    label(t("settingsPlanLongCount")),
+    choiceRow(`plan-long-count-${sport}`, t("settingsPlanLongCount"), [1, 2, 3], prefs.longPerWeek, (value) => writePlan({ longPerWeek: value })),
+    label(t("settingsPlanLongDays")),
+    daysRow(`plan-long-day-${sport}`, t("settingsPlanLongDays"), prefs.longDays, (list) => writePlan({ longDays: list })),
+    node("p", { class: "field-note" }, t("settingsPlanLongDaysNote")),
+  );
+  // Minutes: the longer workouts' target and step, the usual workout's time.
+  const minutes = (key, labelKey, limits) => numberField(t(labelKey), prefs[key], t("settingsPlanAutoShort"), (value) => writePlan({ [key]: value }), { min: limits[0], max: limits[1] });
+  const times = node("div", { class: "fitness-settings" });
+  times.append(
+    minutes("longTargetMinutes", "settingsPlanLongTarget", planPrefLimits.longTargetMinutes),
+    minutes("longStepMinutes", "settingsPlanLongStep", planPrefLimits.longStepMinutes),
+    minutes("usualMinutes", "settingsPlanUsual", planPrefLimits.usualMinutes),
+  );
+  block.append(times, node("p", { class: "field-note" }, t("settingsPlanTimesNote")));
+  block.append(
+    label(t("settingsPlanIntervals")),
+    choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value })),
+    node("p", { class: "field-note" }, t("settingsPlanIntervalsNote")),
+  );
   return block;
 }
 
@@ -765,7 +822,7 @@ function sportPane(sport) {
   thresholds.append(grid, ftpBlock(sport, settings, estimate.ftp));
   const zones = node("div", { class: "settings-zone-grid" });
   zones.append(zonesBlock(sport, "heartRate", settings), zonesBlock(sport, "power", settings));
-  pane.append(thresholds, zones, goalBlock(sport));
+  pane.append(thresholds, zones, trainingBlock(sport), goalBlock(sport));
   return pane;
 }
 

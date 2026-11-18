@@ -186,7 +186,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport) }) : null;
   if (!plan) return null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
@@ -201,6 +201,12 @@ export function trainingPlan(entries, chosen = "all") {
   plan.cadence = steadyCadence[sport] ?? null;
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days: weekPlan(plan, workouts, today(), weekdays), checklist: weekChecklist(plan, workouts, today(), weekdays), longest: longestByWeek(workouts, today()) };
+}
+
+// The sport's training settings for the plan, with the weekly volume.
+function planPrefs(settings, sport) {
+  const own = settings.sports[sport] ?? {};
+  return { ...(own.plan ?? {}), weeklyHours: own.weeklyHours ?? null, weeklyKm: own.weeklyKm ?? null };
 }
 
 // How to ride a steady workout: the heart rate to hold, the power to start at, the cadence and the resistance.
@@ -233,7 +239,7 @@ function renderNextStep() {
   // The longer workout, or the note that this week's is done.
   rows.push(plan.doneLong
     ? line(t("nextLong"), t("nextLongDone", { km: km(plan.long.fromKm) }), "is-done")
-    : line(t("nextLong"), t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
+    : line(t("nextLong"), (plan.long.count > 1 ? t("nextLongCount", { done: plan.longDone, count: plan.long.count }) : "") + t("nextLongText", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes })));
   rows.push(line(t("nextUsual"), t("nextUsualText", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady));
   if (plan.weekKm) rows.push(line(t("nextWeek"), t("nextWeekText", { target: km(plan.weekKm), done: km(plan.thisWeekKm), last: km(plan.lastWeekKm) })));
   rows.push(plan.intervals.due

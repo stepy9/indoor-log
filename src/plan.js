@@ -23,7 +23,12 @@ const tenthUp = (km) => Math.ceil(km * 10 - 1e-9) / 10;
 // over the last week. ftp in watts or null. today: "YYYY-MM-DD". focus: how the last four weeks' training focus
 // leans, "intense" (too little low aerobic load, or too much high aerobic or anaerobic), "easy" (too little
 // intensity) or null when balanced; intense allows one interval workout a week, easy asks for two.
-export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null }) {
+// prefs: the sport's training settings, each null or missing for the plan to work it out itself:
+// { longPerWeek: 1–3, longDays: [weekday], longTargetMinutes, longStepMinutes, usualMinutes, intervalsPerWeek: 0–3,
+// weeklyHours, weeklyKm }. A step makes the longer workouts grow by minutes, not by 10 %; the target caps them.
+export const planPrefLimits = { longPerWeek: [1, 3], longTargetMinutes: [10, 240], longStepMinutes: [1, 30], usualMinutes: [5, 120], intervalsPerWeek: [0, 3] };
+
+export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {} }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
   const recentSteady = steady.filter((workout) => workout.day > since(14));
@@ -56,20 +61,40 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const hardShares = recentSteady.map((workout) => workout.hardShare).filter(Number.isFinite);
   const tooHard = hardShares.length > 0 && hardShares.reduce((sum, value) => sum + value, 0) / hardShares.length > 0.3;
 
-  // The longer workout: 10 % over the longest of late, held when something says so, the usual one in a lighter week.
-  const longFrom = lighter ? tenthUp(usualKm) : holds.length ? tenthUp(longestKm) : tenthUp(Math.max(longestKm, usualKm) * 1.1);
-  const long = { fromKm: longFrom, toKm: tenthUp(longFrom * 1.08), minutes: Math.round(longFrom / speed / 60) };
-  const usual = { km: Math.round(usualKm * 10) / 10, minutes: Math.round(usualKm / speed / 60) };
-  // The week's distance: at most 10 % over the last full week, 20 % under it in a lighter week.
-  const weekKm = lastWeekKm > 0 ? Math.round(lastWeekKm * (lighter ? 0.8 : holds.length ? 1 : 1.1) * 10) / 10 : null;
-  const doneLong = thisWeek.some((workout) => workout.kind === "steady" && workout.km >= long.fromKm - 0.05);
+  // The usual workout: the time set, else the median of late.
+  const kmFor = (minutes) => minutes * 60 * speed;
+  const usualFrom = prefs.usualMinutes > 0 ? kmFor(prefs.usualMinutes) : usualKm;
+  const usual = { km: Math.round(usualFrom * 10) / 10, minutes: Math.round(usualFrom / speed / 60) };
+  // The longer workout: 10 % over the longest of late, or the step set over it, up to the target set; held when
+  // something says so, the usual one in a lighter week (a step back with a step set). A target above the longest of
+  // late and no step: the target right away, as the steady pace is easy enough to go there.
+  const target = prefs.longTargetMinutes > 0 ? kmFor(prefs.longTargetMinutes) : Infinity;
+  const step = prefs.longStepMinutes > 0 ? kmFor(prefs.longStepMinutes) : null;
+  // The longest before this week: one done this week would otherwise raise its own target and never count as done.
+  const before = base.filter((workout) => workout.day < thisMonday);
+  const longest = Math.max(before.length ? Math.max(...before.map((workout) => workout.km)) : longestKm, usualFrom);
+  const grown = step != null ? longest + step : Number.isFinite(target) && !(prefs.longStepMinutes > 0) && target > longest ? target : longest * 1.1;
+  const longKm = lighter ? (step != null ? Math.max(usualFrom, longest - step) : usualFrom) : holds.length ? longest : grown;
+  const longFrom = tenthUp(Math.min(longKm, Math.max(target, usualFrom)));
+  const long = { fromKm: longFrom, toKm: tenthUp(longFrom * 1.08), minutes: Math.round(longFrom / speed / 60), count: prefs.longPerWeek > 0 ? prefs.longPerWeek : 1 };
+  // The week's distance: at most 10 % over the last full week, 20 % under it in a lighter week; with a weekly
+  // volume set, growing towards it and no further.
+  const goalKm = prefs.weeklyHours > 0 ? prefs.weeklyHours * 3600 * speed : prefs.weeklyKm > 0 ? prefs.weeklyKm : null;
+  const grownWeek = lastWeekKm * (lighter ? 0.8 : holds.length ? 1 : 1.1);
+  const weekFrom = goalKm ? (lastWeekKm > 0 ? Math.min(grownWeek, lighter ? goalKm * 0.8 : goalKm) : goalKm) : grownWeek;
+  const weekKm = weekFrom > 0 ? Math.round(weekFrom * 10) / 10 : null;
+  const longDone = thisWeek.filter((workout) => workout.kind === "steady" && workout.km >= long.fromKm - 0.05).length;
+  const doneLong = longDone >= long.count;
 
   // Intervals: one or two a week; a repeat more every two done in the last eight weeks, from four of two minutes.
   const intervalsDone = workouts.filter((workout) => workout.kind === "intervals" && workout.day > since(56)).length;
   const intervalsThisWeek = thisWeek.filter((workout) => workout.kind === "intervals").length;
   const repeats = Math.min(8, 4 + Math.floor(intervalsDone / 2) - (lighter ? 1 : 0));
-  const intervalsMax = lighter || focus === "intense" ? 1 : 2;
+  // The number set holds, one at most in a lighter week; else by the focus.
+  const intervalsSet = Number.isInteger(prefs.intervalsPerWeek);
+  const intervalsMax = intervalsSet ? (lighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : lighter || focus === "intense" ? 1 : 2;
   const intervals = {
+    set: intervalsSet,
     due: intervalsThisWeek < intervalsMax && !holds.includes("tired"),
     done: intervalsThisWeek,
     max: intervalsMax,
@@ -82,7 +107,9 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   return {
     usual,
     long,
+    longDone,
     doneLong,
+    longDays: prefs.longDays?.length ? [...prefs.longDays] : null,
     weekKm,
     lastWeekKm: Math.round(lastWeekKm * 10) / 10,
     thisWeekKm: Math.round(kmOf(thisWeek) * 10) / 10,
@@ -124,18 +151,38 @@ export function weekPlan(plan, workouts, today, days) {
   if (!open.length) return [];
   const nextMonday = addDays(mondayOf(today), 7);
   const types = new Map(open.map((day) => [day, "usual"]));
-  // The longer workout: this week's if not done, on a weekend day if there is one, else the last open day.
-  // Within this week unless it is done; the next week's days otherwise, or when this week has none left.
+  // The longer workouts: those of this week not yet done, on the weekdays set for them, else a weekend day first,
+  // then the last open day, the others as far from the taken ones as can be. Within this week unless all are done;
+  // the next week's days otherwise, or when this week has none left.
   const thisWeekOpen = open.filter((day) => day < nextMonday);
-  const longDays = plan.doneLong || !thisWeekOpen.length ? open.filter((day) => day >= nextMonday) : thisWeekOpen;
-  const longDay = [...longDays].reverse().find((day) => weekday(day) >= 5) ?? longDays.at(-1);
-  if (longDay) types.set(longDay, "long");
+  const count = plan.long.count ?? 1;
+  const toNextWeek = plan.doneLong || !thisWeekOpen.length;
+  const longDays = toNextWeek ? open.filter((day) => day >= nextMonday) : thisWeekOpen;
+  const wantedLong = Math.min(toNextWeek ? count : count - (plan.longDone ?? 0), Math.max(1, longDays.length - 1));
+  const longPicks = longDays.filter((day) => plan.longDays?.includes(weekday(day))).slice(0, wantedLong);
+  // Days apart counted round the week too, as next week's longer workouts fall on the same weekdays.
+  const gap = (day) => Math.min(...longPicks.map((taken) => {
+    const apart = Math.abs(weekday(taken) - weekday(day));
+    return Math.min(apart, 7 - apart);
+  }));
+  while (longPicks.length < wantedLong) {
+    const rest = longDays.filter((day) => !longPicks.includes(day));
+    if (!rest.length) break;
+    const pick = longPicks.length
+      ? rest.reduce((best, day) => (gap(day) > gap(best) || (gap(day) === gap(best) && day > best) ? day : best))
+      : [...rest].reverse().find((day) => weekday(day) >= 5) ?? rest.at(-1);
+    longPicks.push(pick);
+  }
+  for (const day of longPicks) types.set(day, "long");
+  const nearLong = (day) => longPicks.some((taken) => day === addDays(taken, 1) || day === addDays(taken, -1));
   // Intervals: once a week, twice with five days or more to train on (once in a lighter week or when the training
   // is too intense), never leaving the week without a usual workout, on open days away from the longer one.
-  const most = Math.min(plan.intervals.max ?? (plan.lighter ? 1 : 2), open.length < 5 ? 1 : 2);
+  // A number set by hand holds whatever the days left, as long as a usual workout stays.
+  const most = plan.intervals.set ? plan.intervals.max : Math.min(plan.intervals.max ?? (plan.lighter ? 1 : 2), open.length < 5 ? 1 : 2);
   const wanted = plan.intervals.due ? Math.max(0, most - plan.intervals.done) : 0;
-  const room = open.length >= 3 ? open.length - 2 : open.length === 2 ? 1 : 0;
-  const free = open.filter((day) => types.get(day) === "usual" && day !== addDays(longDay ?? "", 1) && day !== addDays(longDay ?? "", -1));
+  const usualLeft = open.filter((day) => types.get(day) === "usual").length;
+  const room = usualLeft >= 2 ? usualLeft - 1 : open.length === 2 && usualLeft === 1 ? 1 : 0;
+  const free = open.filter((day) => types.get(day) === "usual" && !nearLong(day));
   const picks = [];
   // Spread out: the middle open day first, then the one farthest from those taken.
   for (let count = 0; count < Math.min(wanted, free.length, room); count += 1) {

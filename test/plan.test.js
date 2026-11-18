@@ -162,3 +162,48 @@ test("the steady start power is where the laps from the fifth minute put the hea
   assert.equal(steadyStartWatts(workouts.slice(0, 1), [127, 141], "2026-11-16"), null);
   assert.equal(steadyStartWatts(workouts, null, "2026-11-16"), null);
 });
+
+test("the training settings set the usual and longer workouts' time, their number and the intervals", () => {
+  // 2 km in 660 s: 3.03 m/s, so 13 minutes is 2.4 km and 25 minutes 4.6 km.
+  const prefs = { usualMinutes: 13, longTargetMinutes: 25, longPerWeek: 2, intervalsPerWeek: 1 };
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", prefs });
+  assert.equal(plan.usual.km, 2.4);
+  assert.equal(plan.usual.minutes, 13);
+  // A target and no step: straight to the target.
+  assert.equal(plan.long.fromKm, 4.6);
+  assert.equal(plan.long.count, 2);
+  assert.equal(plan.intervals.max, 1);
+  // A step grows the longest of late by that time, never past the target.
+  const stepped = nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { longStepMinutes: 5, longTargetMinutes: 13 } });
+  assert.equal(stepped.long.fromKm, 2.4);
+  const free = nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { longStepMinutes: 5 } });
+  assert.equal(free.long.fromKm, 3);
+  // No intervals when set to none.
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { intervalsPerWeek: 0 } }).intervals.due, false);
+});
+
+test("a weekly volume set caps the week's distance, which grows towards it", () => {
+  // Last week 8 km at 3.03 m/s: 1 hour is 10.9 km, so the week grows 10 % to 8.8; half an hour caps it at 5.5.
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { weeklyHours: 1 } }).weekKm, 8.8);
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { weeklyHours: 0.5 } }).weekKm, 5.5);
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: { weeklyKm: 8.5 } }).weekKm, 8.5);
+});
+
+test("weekPlan lays two longer workouts on the days set, or apart with a weekend day, intervals away from them", () => {
+  const every = [0, 1, 2, 3, 4, 5, 6];
+  const set = nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { longPerWeek: 2, longDays: [3, 6], intervalsPerWeek: 1 } });
+  const days = weekPlan(set, [], "2026-11-02", every);
+  assert.deepEqual(days.filter((item) => item.type === "long").map((item) => item.day), ["2026-11-05", "2026-11-08"]);
+  const intervals = days.filter((item) => item.type === "intervals").map((item) => item.day);
+  assert.equal(intervals.length, 1);
+  assert.ok(!["2026-11-04", "2026-11-06", "2026-11-07"].includes(intervals[0]), intervals[0]);
+  // Without days set: Sunday, the last weekend day, first; the other mid-week, as far from it round the week as can be.
+  const auto = weekPlan(nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { longPerWeek: 2 } }), [], "2026-11-02", every);
+  assert.deepEqual(auto.filter((item) => item.type === "long").map((item) => item.day), ["2026-11-05", "2026-11-08"]);
+  // One of two done this week: one left.
+  const oneDone = [{ day: "2026-11-02", km: 5, seconds: 1650, kind: "steady" }];
+  const left = nextStep({ workouts: weeks(4).filter((workout) => workout.day < "2026-11-02").concat(oneDone), today: "2026-11-03", prefs: { longPerWeek: 2 } });
+  assert.equal(left.longDone, 1);
+  assert.equal(left.doneLong, false);
+  assert.equal(weekPlan(left, oneDone, "2026-11-03", every).filter((item) => item.type === "long" && item.day < "2026-11-09").length, 1);
+});
