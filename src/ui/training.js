@@ -9,6 +9,7 @@ import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./sco
 import { openSettings, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
+import { infoHint } from "./info.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -100,7 +101,7 @@ function adherenceCard(sport, workouts, log) {
     row.append(scoreCell);
     table.tBodies[0].append(row);
   }
-  card.append(table, node("p", { class: "field-note" }, t("trainingWeeksNote")));
+  card.append(table, infoHint(t("trainingWeeksNote")));
   return card;
 }
 
@@ -129,7 +130,7 @@ function workoutsCard(sport, scored) {
     row.append(top, node("span", { class: "field-note training-workout-why" }, [result ? partsText(result) : t("scoreNone"), feel].filter(Boolean).join(" · ")));
     list.append(row);
   }
-  card.append(list, node("p", { class: "field-note" }, t("trainingScoreNote")));
+  card.append(list, infoHint(t("trainingScoreNote")));
   return card;
 }
 
@@ -181,7 +182,7 @@ function outlookCard(plan) {
     );
     table.tBodies[0].append(row);
   });
-  card.append(table, node("p", { class: "field-note" }, t("trainingOutlookInfo")));
+  card.append(table, infoHint(t("trainingOutlookInfo")));
   return card;
 }
 
