@@ -39,12 +39,12 @@ export const dueReminders = (fitness, history, today) => bodyStatus(fitness, his
   .filter((item) => item.due).map(({ key, value, since, days }) => ({ key, value, since, days }));
 
 // The values entered on their days within [from, to], for a chart: [{ day, value }], with the value holding
-// on the first day when it was entered before it. history is one value's history ({ from, value } records).
+// on the first day when it was entered on a day before it (the value kept from the start does not count). history is one value's history ({ from, value } records).
 export function bodyPoints(history, from, to) {
   const records = (history ?? []).filter((record) => !record.deleted && record.value > 0);
   const dated = records.filter((record) => record.from && record.from !== start && record.from >= from && record.from <= to)
     .map((record) => ({ day: record.from, value: record.value }));
-  const before = records.filter((record) => (record.from ?? start) < from).sort((a, b) => (a.from ?? start).localeCompare(b.from ?? start)).at(-1);
+  const before = records.filter((record) => record.from && record.from !== start && record.from < from).sort((a, b) => (a.from ?? start).localeCompare(b.from ?? start)).at(-1);
   const points = before && dated[0]?.day !== from ? [{ day: from, value: before.value, carried: true }, ...dated] : dated;
   return points.sort((a, b) => a.day.localeCompare(b.day));
 }

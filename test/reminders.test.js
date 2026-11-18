@@ -34,5 +34,5 @@ test("every value is listed, the one never entered without a value and never due
 test("a chart's points are the days entered, the value before the range holding from its first day", () => {
   const list = [{ from: "0000-00-00", value: 80, at: 0 }, { from: "2026-10-01", value: 79, at: 1 }, { from: "2026-11-02", value: 78, at: 2 }, { from: "2026-11-05", deleted: true, at: 3 }];
   assert.deepEqual(bodyPoints(list, "2026-10-15", "2026-11-18"), [{ day: "2026-10-15", value: 79, carried: true }, { day: "2026-11-02", value: 78 }]);
-  assert.deepEqual(bodyPoints(list, "2026-09-01", "2026-11-18").map((point) => point.value), [80, 79, 78]);
+  assert.deepEqual(bodyPoints(list, "2026-09-01", "2026-11-18").map((point) => point.value), [79, 78]);
 });

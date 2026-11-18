@@ -787,7 +787,10 @@ function renderBodyCharts() {
   view.bodyLayouts = {};
   for (const item of bodyCharts) {
     const chart = byId(item.chart);
-    const points = bodyPoints(history[item.key], from, end);
+    // Each chart starts with the first value entered on a day, when that is later than the period's start.
+    const firstEntered = bodyPoints(history[item.key], "0000-00-01", end)[0]?.day;
+    const chartFrom = firstEntered && firstEntered > from ? firstEntered : from;
+    const points = bodyPoints(history[item.key], chartFrom, end);
     const has = points.some((point) => !point.carried);
     chart.parentElement.hidden = !has;
     if (!has) continue;
@@ -801,7 +804,7 @@ function renderBodyCharts() {
     const yStep = [0.5, 1, 2, 5, 10, 20].find((size) => (high - low) / size <= 4) ?? 20;
     const minY = Math.floor(low / yStep) * yStep - yStep;
     const maxY = Math.ceil(high / yStep) * yStep + yStep;
-    const axisStart = Date.parse(`${from}T00:00:00Z`);
+    const axisStart = Date.parse(`${chartFrom}T00:00:00Z`);
     const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
     const xForKey = (key) => margin.left + ((Date.parse(`${key}T12:00:00Z`) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
     const yFor = (value) => margin.top + ((maxY - value) / (maxY - minY)) * (height - margin.top - margin.bottom);
@@ -810,7 +813,7 @@ function renderBodyCharts() {
       children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
       children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value, yStep % 1 ? 1 : 0)));
     }
-    children.push(...dateTicks(from, end, xForKey, { margin, width, height }));
+    children.push(...dateTicks(chartFrom, end, xForKey, { margin, width, height }));
     // The line goes on to today at the last value, as it still holds.
     const path = [...points, { day: end, value: points.at(-1).value }].map((point, index) => `${index ? "L" : "M"}${xForKey(point.day).toFixed(1)},${yFor(point.value).toFixed(1)}`).join("");
     children.push(node("path", { class: "fitness-line", d: path, style: `stroke: ${item.color}` }));
@@ -819,7 +822,7 @@ function renderBodyCharts() {
     }
     const guide = node("g");
     children.push(guide);
-    view.bodyLayouts[item.key] = { item, points, from, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
+    view.bodyLayouts[item.key] = { item, points, from: chartFrom, end, axisStart, axisEnd, xForKey, margin, width, height, guide };
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     chart.style.height = `${height}px`;
     chart.replaceChildren(...children);
