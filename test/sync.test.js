@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { changesFor, emptyState, mergeStates, NewerSyncError, parseSettingsFile, parseSync, settingsText, syncSummary, syncText } from "../src/sync.js";
+import { changesFor, mergeSettings, emptyState, mergeStates, NewerSyncError, parseSettingsFile, parseSync, settingsText, syncSummary, syncText } from "../src/sync.js";
 
 const hour = 3_600_000;
 // An activity as the library keeps it, enough of it for merging.
@@ -104,4 +104,21 @@ test("a file from a newer version of the app is not read", () => {
 test("a sync's summary counts the activities and trainers and tells which settings are set", () => {
   const settings = { defaults: { fitness: { restHeartRate: 44, weightHistory: [{ from: null, kg: 78 }], sports: { rowing: { maxHeartRate: null } } }, trainers: [{ id: "a" }] }, changedAt: 1 };
   assert.deepEqual(syncSummary(state([activity("a"), activity("b")], {}, settings)), { activities: 2, trainers: 1, weight: true, heartRate: true, thresholds: false });
+});
+
+test("a sport's plan without a history is not wiped by the other device saving its weight", () => {
+  const plan = { longPerWeek: 2, intervalsPerWeek: 1 };
+  const desktop = { defaults: { fitness: { sports: { rowing: { plan } } } }, changedAt: { fitness: 1000 } };
+  const phone = { defaults: { fitness: { history: { weight: [{ from: "2026-11-18", value: 80, at: 2000 }] }, sports: { rowing: {} } } }, changedAt: { fitness: 2000 } };
+  for (const merged of [mergeSettings(desktop, phone), mergeSettings(phone, desktop)]) {
+    assert.deepEqual(merged.defaults.fitness.sports.rowing.plan, plan);
+    assert.equal(merged.defaults.fitness.history.weight[0].value, 80);
+  }
+});
+
+test("a plan removed through its history stays removed", () => {
+  const plan = { longPerWeek: 2 };
+  const older = { defaults: { fitness: { sports: { rowing: { plan, history: { plan: [{ from: "0000-00-00", value: null, at: 1 }, { from: "2026-11-02", value: plan, at: 1000 }] } } } } }, changedAt: { fitness: 1000 } };
+  const newer = { defaults: { fitness: { sports: { rowing: { plan: null, history: { plan: [{ from: "0000-00-00", value: null, at: 1 }, { from: "2026-11-02", value: plan, at: 1000 }, { from: "2026-11-16", value: null, at: 2000 }] } } } } }, changedAt: { fitness: 2000 } };
+  assert.equal(mergeSettings(older, newer).defaults.fitness.sports.rowing.plan, null);
 });

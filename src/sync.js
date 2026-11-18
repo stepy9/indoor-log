@@ -60,11 +60,15 @@ const blank = (value) => value == null || (typeof value === "object" && Object.k
 const clearable = new Set(["trainingExcuses"]);
 
 // The histories of two sides joined (see history.js), each value now in force set as the one of the joined history.
+// A value without a history comes from the newer side unless it is blank there and filled on the older: as with the
+// keys themselves, a device that has not set something up does not wipe it, say a plan set before plans kept a
+// history, when the other device saves its weight.
 function withHistories(older, newer, tracked) {
   const history = { ...older?.history, ...newer?.history };
   for (const key of Object.keys(history)) history[key] = mergeHistory(older?.history?.[key], newer?.history?.[key]);
   const now = Object.fromEntries(Object.entries(history).filter(([key]) => tracked.includes(key)).map(([key, list]) => [key, valueOn(list, "9999-12-31")]));
-  return { ...newer, ...(Object.keys(history).length ? { ...now, history } : {}) };
+  const kept = Object.fromEntries(Object.entries(older ?? {}).filter(([key, value]) => key !== "history" && key !== "sports" && !blank(value) && blank(newer?.[key])));
+  return { ...newer, ...kept, ...(Object.keys(history).length ? { ...now, history } : {}) };
 }
 
 // The newer side's fitness settings with both sides' histories, the general ones and each sport's.
