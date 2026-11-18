@@ -571,23 +571,21 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .compare-laps-grouping button { padding: 4px 10px; font-size: 12px; }
 .diary-view { display: flex; flex-direction: column; gap: 18px; }
 .diary-view[hidden], #diaryCalendarCard[hidden] { display: none; }
-/* The quick entry of the weight and resting heart rate: a slim card, tinted with an accent edge once it asks. */
-.diary-reminders { display: grid; gap: 6px; padding: 10px 14px; box-shadow: none; }
+/* The quick entry of the body's values: a slim card of tiles side by side, tinted with an accent edge once one asks. */
+.diary-reminders { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 18px; padding: 12px 14px; box-shadow: none; }
 .diary-reminders.is-due { border-color: transparent; border-left: 3px solid var(--accent); background: var(--accent-soft); }
-.diary-reminder { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; }
-.diary-reminder.is-due { color: var(--accent-ink); }
-.diary-reminder strong { font-weight: 600; }
-.diary-reminder-age { color: var(--muted); }
-.diary-reminder-done { color: var(--success); font-weight: 600; }
-/* Side by side, the fields and buttons of each line up in columns. */
-@media (min-width: 641px) {
-  .diary-reminders { grid-template-columns: max-content auto auto auto; justify-content: start; align-items: center; column-gap: 10px; }
-  .diary-reminder { display: contents; }
-  .diary-reminder > span:first-child { grid-column: 1; margin-right: 4px; }
-  .diary-reminder > .field-error { grid-column: 1 / -1; }
-}
+.diary-reminder { display: grid; gap: 4px; align-content: start; min-width: 0; font-size: 13px; }
+.diary-reminder-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.diary-reminder-head strong { font-weight: 600; }
+.diary-reminder-age { color: var(--muted); font-size: 12px; }
+.diary-reminder-ask { color: var(--accent-ink); font-size: 12px; font-weight: 600; }
+.diary-reminder-done { color: var(--success); font-size: 12px; font-weight: 600; }
+.diary-reminder-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.diary-reminder-controls .level-input { width: 72px; }
+.diary-reminder-unit { color: var(--muted); font-size: 12px; }
 .diary-reminder .outline-button { margin-top: 0; height: 28px; padding: 0 10px; }
 .diary-reminder .link-button { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.diary-reminder > .field-error { grid-column: 1 / -1; }
 .diary-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .diary-nav { display: flex; align-items: center; gap: 8px; }
 .diary-calendar-nav { justify-content: center; margin-bottom: 12px; }

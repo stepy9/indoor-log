@@ -8,7 +8,7 @@ import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.js";
 import { hrvDays, hrvOn } from "../hrv.js";
-import { parseSleep, shortSleepHours, sleepParts } from "../sleep.js";
+import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
@@ -772,6 +772,17 @@ function ageText(days) {
   return days === 0 ? t("bodyToday") : days === 1 ? t("bodyYesterday") : t("bodyDaysAgo", { days });
 }
 
+// Number fields with arrows, starting at the value in force; out of range or not a number is marked, not saved.
+const bodySteps = { weight: "0.1", restHeartRate: "1", hrv: "1" };
+const sleepRanges = { hours: { min: 0, max: 16 }, minutes: { min: 0, max: 59 } };
+
+function numberInput(label, value, range, step) {
+  const input = Object.assign(document.createElement("input"), { type: "number", className: "level-input", min: String(range.min), max: String(range.max), step });
+  if (value !== null && value !== undefined) input.value = String(value);
+  input.setAttribute("aria-label", label);
+  return input;
+}
+
 function renderReminders() {
   const box = byId("diaryReminders");
   const status = bodyToday();
@@ -779,24 +790,30 @@ function renderReminders() {
   box.classList.toggle("is-due", status.some((item) => item.due));
   const firstDay = view.entries.length ? dayKey(Math.min(...view.entries.map((entry) => entry.startMs)), zone) : null;
   box.replaceChildren(...status.map(({ key, value, days, due }) => {
-    const row = document.createElement("div");
-    row.className = `diary-reminder${due ? " is-due" : ""}`;
-    row.dataset.fieldRow = "";
+    const tile = document.createElement("div");
+    tile.className = `diary-reminder${due ? " is-due" : ""}`;
+    tile.dataset.fieldRow = "";
     const shown = value === null ? "" : bodyText(key, value);
-    const text = document.createElement("span");
-    if (due) text.textContent = days === null ? t(`reminder_${key}_unknown`, { value: shown }) : t(`reminder_${key}`, { value: shown, days });
+    const head = document.createElement("div");
+    head.className = "diary-reminder-head";
+    head.append(Object.assign(document.createElement("strong"), { textContent: t(`body_${key}`) }), Object.assign(document.createElement("span"), { textContent: shown || t("bodyNone") }));
+    // Under it how old it is and how it stands, the question when it is due, or what was just entered.
+    const note = document.createElement("div");
+    if (entered[key]) Object.assign(note, { className: "diary-reminder-done", textContent: entered[key] });
+    else if (due) Object.assign(note, { className: "diary-reminder-ask", textContent: days === null ? t("reminderAsk") : t("reminderAskDays", { days }) });
     else {
-      const name = Object.assign(document.createElement("strong"), { textContent: t(`body_${key}`) });
-      // The HRV with how its week stands against the usual range, once there are days enough to tell.
+      // The HRV with how its week stands against the usual range; a short night entered for today puts the intervals off.
       const standing = key === "hrv" ? hrvOn(hrvDays(bodyHistory().hrv), dayKey(Date.now(), zone))?.status : null;
-      // A short night entered for today: the day's intervals are put off.
       const short = key === "sleep" && days === 0 && value < shortSleepHours;
-      const rest = entered[key] ?? (value === null ? t("bodyNone") : [shown, ageText(days), standing ? t(`hrvStatus_${standing}`) : "", short ? t("sleepShort") : ""].filter(Boolean).join(" · "));
-      text.append(name, " ", Object.assign(document.createElement("span"), { className: entered[key] ? "diary-reminder-done" : "diary-reminder-age", textContent: rest }));
+      Object.assign(note, { className: "diary-reminder-age", textContent: [ageText(days), standing ? t(`hrvStatus_${standing}`) : "", short ? t("sleepShort") : ""].filter(Boolean).join(" · ") || " " });
     }
-    const input = Object.assign(document.createElement("input"), { type: "text", className: "level-input", placeholder: key === "sleep" ? t("sleepPlaceholder") : value === null ? bodyUnits[key] : bodyNumber(value) });
-    input.setAttribute("inputmode", key === "weight" ? "decimal" : key === "sleep" ? "text" : "numeric");
-    input.setAttribute("aria-label", t(`body_${key}`));
+    const controls = document.createElement("div");
+    controls.className = "diary-reminder-controls";
+    // The sleep in two fields, hours and minutes; the others in one with their unit.
+    const parts = value !== null && key === "sleep" ? sleepParts(value) : null;
+    const inputs = key === "sleep"
+      ? [numberInput(t("sleepHours"), parts?.hours, sleepRanges.hours, "1"), numberInput(t("sleepMinutes"), parts?.minutes, sleepRanges.minutes, "5")]
+      : [numberInput(t(`body_${key}`), value, bodyRanges[key], bodySteps[key])];
     const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
     const answer = (next) => {
       enterBodyValue(key, next, firstDay);
@@ -806,27 +823,34 @@ function renderReminders() {
       render();
     };
     save.addEventListener("click", () => {
-      // The sleep in hours and minutes ("7:23", "7h 23") or in hours ("7,5").
       if (key === "sleep") {
-        const hours = parseSleep(input.value);
-        if (markField(input, hours === null ? t("sleepInvalid") : null)) answer(hours);
+        const hours = checkNumber(inputs[0], { ...sleepRanges.hours, required: true });
+        const minutes = checkNumber(inputs[1], { ...sleepRanges.minutes, required: false });
+        if (hours === undefined || minutes === undefined) return;
+        const total = hours + (minutes ?? 0) / 60;
+        if (markField(inputs[0], total > 0 ? null : t("sleepInvalid"))) answer(Math.round(total * 100) / 100);
         return;
       }
-      const next = checkNumber(input, { ...bodyRanges[key], required: true });
+      const next = checkNumber(inputs[0], { ...bodyRanges[key], required: true });
       if (next !== undefined) answer(next);
     });
-    input.addEventListener("keydown", (event) => {
+    for (const input of inputs) input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") save.click();
     });
-    row.append(text, input, save);
+    if (key === "sleep") controls.append(inputs[0], unitNode("h"), inputs[1], unitNode("min"));
+    else controls.append(inputs[0], unitNode(bodyUnits[key]));
+    controls.append(save);
     if (due) {
       const keep = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: t("reminderKeep") });
       keep.addEventListener("click", () => answer(null));
-      row.append(keep);
+      controls.append(keep);
     }
-    return row;
+    tile.append(head, note, controls);
+    return tile;
   }));
 }
+
+const unitNode = (text) => Object.assign(document.createElement("span"), { className: "diary-reminder-unit", textContent: text });
 
 function render() {
   if (byId("diaryView").hidden) return;
