@@ -165,13 +165,14 @@ function summaryCard(scored, workouts, log, sport) {
     const text = ridden.length
       ? ridden.map((item) => `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`).join(", ")
       : excuse ? `${excuseText(excuse)} · ${t("summaryPlanned", { planned: t(`scorePlanned_${planned.type}`) })}` : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
-    const textCell = node("span", { class: "diary-plan-text" }, text);
+    const whyCell = node("span", { class: "diary-plan-why-cell" });
     if (!ridden.length) {
       const why = node("button", { type: "button", class: "link-button diary-plan-why" }, excuse ? t("excuseEdit") : t("excuseAsk"));
       why.addEventListener("click", () => openExcuse(day, render));
-      textCell.append(" ", why);
+      whyCell.append(why);
     }
-    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell);
+    row.classList.add("has-why");
+    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, node("span", { class: "diary-plan-text" }, text), whyCell);
     list.append(row);
   }
   // The week as a whole in the line that folds, in the rows' columns: a fold mark for the tick, the week for the day,

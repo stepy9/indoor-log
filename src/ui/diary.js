@@ -102,14 +102,19 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       row.append(cell);
       row.classList.add("has-score");
     }
-    const textCell = Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text });
-    // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness).
-    if (onExcuse && item.status !== "done") {
-      const why = Object.assign(document.createElement("button"), { type: "button", className: "link-button diary-plan-why", textContent: excuse ? t("excuseEdit") : t(item.status === "missed" ? "excuseAsk" : "excuseSkip") });
-      why.addEventListener("click", () => onExcuse(item.day));
-      textCell.append(" ", why);
+    row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+    // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness),
+    // in a column of its own at the row's end, empty on the days ridden, so the links line up.
+    if (onExcuse) {
+      row.classList.add("has-why");
+      const cell = Object.assign(document.createElement("span"), { className: "diary-plan-why-cell" });
+      if (item.status !== "done") {
+        const why = Object.assign(document.createElement("button"), { type: "button", className: "link-button diary-plan-why", textContent: excuse ? t("excuseEdit") : t(item.status === "missed" ? "excuseAsk" : "excuseSkip") });
+        why.addEventListener("click", () => onExcuse(item.day));
+        cell.append(why);
+      }
+      row.append(cell);
     }
-    row.append(textCell);
     return row;
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
