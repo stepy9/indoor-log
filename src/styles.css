@@ -1746,3 +1746,18 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .exercise-mode { display: inline-block; margin-left: 2px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; vertical-align: 2px; }
 .exercise-mode.is-hold { color: var(--muted); background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong) inset; }
 .exercise-mode.is-move { color: var(--accent-ink); background: var(--accent-soft); }
+
+/* The player's opening page: the set's exercises in order, a small figure, the name, whether to hold or move and
+   for how long, the start button under them; the steps' parts wait hidden until it is pressed. */
+.recovery-player.is-intro :is(.recovery-player-phase, h2#recoveryPlayerName, .recovery-player-figure, .recovery-player-clock, .recovery-player-how, .recovery-player-actions) { display: none; }
+.recovery-player-intro { text-align: left; }
+.recovery-player-intro h2 { margin: 4px 0 4px; font-size: 20px; }
+.recovery-intro-list { display: grid; gap: 8px; margin: 12px 0 16px; padding: 0; list-style: none; counter-reset: step; }
+.recovery-intro-item { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.recovery-intro-item .recovery-figure { flex: none; width: 76px; height: auto; }
+.recovery-intro-start { width: 100%; min-height: 48px; }
+@media (max-width: 640px) {
+  .recovery-player-intro { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .recovery-player-intro[hidden] { display: none; }
+  .recovery-intro-list { flex: 1; overflow-y: auto; align-content: start; }
+}

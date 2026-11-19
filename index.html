@@ -668,10 +668,6 @@
               </div>
               <p class="field-note" id="compareRecoveryNote"></p>
               <p class="recovery-status" id="compareRecoveryDone" hidden></p>
-              <details class="recovery-details">
-                <summary data-i18n="recoveryShow">Cviky v sestavě</summary>
-                <ul class="recovery-list" id="compareRecoveryList"></ul>
-              </details>
               <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti. Bolest, která neodchází, patří k fyzioterapeutovi.</p>
             </section>
             <section class="card" id="compareLapsCard" hidden>
@@ -700,6 +696,12 @@
         <div class="recovery-player-head">
           <span id="recoveryPlayerProgress"></span>
           <button class="settings-close" id="recoveryPlayerClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel">✕</button>
+        </div>
+        <div class="recovery-player-intro" id="recoveryPlayerIntro" hidden>
+          <h2 id="recoveryPlayerIntroTitle"></h2>
+          <p class="field-note" id="recoveryPlayerIntroNote"></p>
+          <ol class="recovery-intro-list" id="recoveryPlayerIntroList"></ol>
+          <button class="accent-button recovery-intro-start" id="recoveryPlayerStart" type="button" data-i18n="recoveryStartNow">Spustit</button>
         </div>
         <span class="recovery-player-phase" id="recoveryPlayerPhase"></span>
         <h2 id="recoveryPlayerName"></h2>

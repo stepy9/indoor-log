@@ -166,12 +166,39 @@ function stop() {
 }
 
 // list: the steps to run; doneKey and doneNote what the end says; onDone what a set finished does.
-async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = null } = {}) {
+// intro, when given ({ title, note, exercises: [{ id, seconds }] }), shows the set first, the steps starting on its button.
+async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = null, intro = null } = {}) {
   Object.assign(player, { list, index: 0, paused: false, doneKey, doneNote, onDone });
   const dialog = byId("recoveryPlayer");
   dialog.classList.remove("is-done", "is-paused");
   byId("recoveryPlayerPause").textContent = t("recoveryPause");
+  dialog.classList.toggle("is-intro", Boolean(intro));
+  byId("recoveryPlayerIntro").hidden = !intro;
+  if (intro) {
+    byId("recoveryPlayerProgress").textContent = "";
+    byId("recoveryPlayerIntroTitle").textContent = intro.title;
+    byId("recoveryPlayerIntroNote").textContent = intro.note ?? "";
+    byId("recoveryPlayerIntroList").replaceChildren(...intro.exercises.map(({ id, seconds }) => {
+      const item = element("li", "recovery-intro-item");
+      const art = figure(id);
+      const text = element("div", "recovery-text");
+      text.append(nameLine(id), element("span", "recovery-dose", dose(id, seconds)));
+      item.append(...(art ? [art] : []), text);
+      return item;
+    }));
+    dialog.showModal();
+    byId("recoveryPlayerStart").focus();
+    return;
+  }
   dialog.showModal();
+  run();
+}
+
+// From the intro's button, or straight away: the steps and their clock.
+async function run() {
+  const dialog = byId("recoveryPlayer");
+  dialog.classList.remove("is-intro");
+  byId("recoveryPlayerIntro").hidden = true;
   showStep();
   player.timer = setInterval(tick, 250);
   // The screen stays on while the set runs, where the browser allows it.
@@ -200,6 +227,7 @@ function wirePlayer() {
     tick();
   });
   byId("recoveryPlayerClose").addEventListener("click", () => dialog.close());
+  byId("recoveryPlayerStart").addEventListener("click", run);
   dialog.addEventListener("close", stop);
 }
 
@@ -220,7 +248,9 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
   };
   showStatus();
   const button = byId("compareRecoveryStart");
+  // The button opens the set first, what is coming and for how long, and runs it from there.
   button.onclick = () => start(steps(plan.exercises), {
+    intro: { title: t("recoveryTitle", { minutes: plan.minutes }), note: byId("compareRecoveryNote").textContent, exercises: plan.exercises.map((id) => ({ id })) },
     onDone: async () => {
       entry.stretched = Date.now();
       await saveEntries([entry]).catch(() => {});
@@ -228,18 +258,10 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
       onStretched();
     },
   });
-  byId("compareRecoveryList").replaceChildren(...plan.exercises.map((id) => {
-    const item = element("li", "recovery-item");
-    const art = figure(id);
-    const text = element("div", "recovery-text");
-    text.append(nameLine(id), element("span", "recovery-dose", dose(id)), element("p", "", t(`recoveryHow_${id}`)));
-    item.append(...(art ? [art] : []), text);
-    return item;
-  }));
 }
 
-// The warm-up before a rowing workout planned, for the Training tab's day: a button that runs the set in the same
-// player, what follows on the rower, and the moves folded under it.
+// The warm-up before a rowing workout planned, for the Training tab's day: a button that opens the set in the same
+// player and runs it from there, and what follows on the rower beside it.
 export function warmupBlock(type) {
   wirePlayer();
   const plan = warmupBefore(type);
@@ -248,20 +270,14 @@ export function warmupBlock(type) {
   const button = element("button", "outline-button warmup-button", t("warmupStart", { minutes: plan.minutes }));
   button.type = "button";
   const after = plan.onRower ? t("warmupRower", { minutes: plan.onRower }) : t("warmupRowerEasy");
-  button.addEventListener("click", () => start(steps(plan.exercises, { rest: warmupRest, seconds: plan.seconds }), { doneKey: "warmupDone", doneNote: after }));
-  head.append(button, element("span", "field-note warmup-note", after));
-  const details = element("details", "recovery-details");
-  const list = element("ul", "recovery-list");
-  list.append(...plan.exercises.map((id) => {
-    const item = element("li", "recovery-item");
-    const art = figure(id);
-    const text = element("div", "recovery-text");
-    text.append(nameLine(id), element("span", "recovery-dose", dose(id, plan.seconds[id])), element("p", "", t(`recoveryHow_${id}`)));
-    item.append(...(art ? [art] : []), text);
-    return item;
+  // The button opens the set first, what is coming and for how long, and runs it from there.
+  button.addEventListener("click", () => start(steps(plan.exercises, { rest: warmupRest, seconds: plan.seconds }), {
+    doneKey: "warmupDone",
+    doneNote: after,
+    intro: { title: t("warmupStart", { minutes: plan.minutes }), note: after, exercises: plan.exercises.map((id) => ({ id, seconds: plan.seconds[id] })) },
   }));
-  details.append(element("summary", "", t("warmupShow")), list);
-  block.append(head, details);
+  head.append(button, element("span", "field-note warmup-note", after));
+  block.append(head);
   return block;
 }
 
