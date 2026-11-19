@@ -1652,6 +1652,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .intervals-table tr:is(.is-rest, .is-recovery) { --step: var(--compare-3); }
 .intervals-table tr.is-cooldown { --step: var(--compare-1); }
 @media (min-width: 641px) {
-  .intervals-table tbody td:first-child { box-shadow: inset 4px 0 var(--step); }
+  .intervals-table tbody td:first-child { position: relative; }
+  .intervals-table tbody td:first-child::before { content: ""; position: absolute; top: 5px; bottom: 5px; left: 2px; width: 4px; border-radius: 4px; background: var(--step); }
   .intervals-table tbody tr { background: color-mix(in srgb, var(--step) 6%, transparent); }
 }
