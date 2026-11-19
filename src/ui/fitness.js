@@ -14,7 +14,7 @@ import { excuses } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
-import { yearProgress } from "../year-goal.js";
+import { goalFor, yearProgress } from "../year-goal.js";
 import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
 import { infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
@@ -322,7 +322,7 @@ function renderTiles(history, settings) {
   // Each shown sport's yearly distance goal: the km done this year, ahead or behind the year's share, and per day left.
   const goalSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of goalSports) {
-    const goal = settings.sports[sport]?.yearlyKm;
+    const goal = goalFor(settings.sports[sport], today().slice(0, 4));
     const progress = yearProgress({ workouts: view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 })), goal, today: today() });
     if (!progress) continue;
     const km = (value) => displayNumber(value, value < 100 ? 1 : 0);

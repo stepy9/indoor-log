@@ -42,3 +42,21 @@ export function yearLine({ workouts, goal, year, today }) {
   if (through) points.push({ day: through, km: total });
   return { days, through, points, total, goal };
 }
+
+// Each year keeps its own goal, so changing next year's leaves the years before as they were.
+// own.yearlyGoals: { "2026": 365, "2027": 800 }, 0 for a year set to none; the single yearlyKm the first version kept
+// is the goal of the year it was set in (2026). A year without its own takes the latest goal before it, so a new
+// year starts with last year's until it is changed. The goal in km, or 0 for none.
+export const firstGoalYear = "2026";
+
+export function goalFor(own, year) {
+  const goals = { ...(own?.yearlyKm > 0 ? { [firstGoalYear]: own.yearlyKm } : {}), ...own?.yearlyGoals };
+  if (Object.hasOwn(goals, year)) return goals[year] > 0 ? goals[year] : 0;
+  const before = Object.keys(goals).filter((key) => key < year).sort().at(-1);
+  return before && goals[before] > 0 ? goals[before] : 0;
+}
+
+// The goals with the year given set to the value (0 or null for none), the first version's single one folded in.
+export function withGoal(own, year, value) {
+  return { ...(own?.yearlyKm > 0 ? { [firstGoalYear]: own.yearlyKm } : {}), ...own?.yearlyGoals, [year]: value > 0 ? value : 0 };
+}

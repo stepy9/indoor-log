@@ -13,7 +13,7 @@ import { checkNumber, markField } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
-import { yearLine, yearProgress } from "../year-goal.js";
+import { goalFor, yearLine, yearProgress } from "../year-goal.js";
 
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
@@ -550,8 +550,9 @@ function renderBars(range, entries) {
   if (view.period === "year") {
     const settings = settingsFor(view.entries);
     const year = range[0].slice(0, 4);
-    for (const sport of sports.filter((item) => (view.sport === "all" || view.sport === item) && settings.sports[item]?.yearlyKm > 0)) {
-      charts.push(yearGoalChart(sport, settings.sports[sport].yearlyKm, year, entries.filter((entry) => entry.sport === sport)));
+    // Each year by its own goal, so next year's leaves this one as it was.
+    for (const sport of sports.filter((item) => (view.sport === "all" || view.sport === item) && goalFor(settings.sports[item], year) > 0)) {
+      charts.push(yearGoalChart(sport, goalFor(settings.sports[sport], year), year, entries.filter((entry) => entry.sport === sport)));
     }
   }
   byId("diaryCharts").replaceChildren(...charts);

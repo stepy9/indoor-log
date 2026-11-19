@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { yearLine, yearProgress } from "../src/year-goal.js";
+import { goalFor, withGoal, yearLine, yearProgress } from "../src/year-goal.js";
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 0.01, `${actual} ≠ ${expected}`);
 
@@ -43,4 +43,26 @@ test("yearLine counts a past year to its end and draws nothing ahead", () => {
   const ahead = yearLine({ workouts: [], goal: 100, year: "2027", today: "2026-01-20" });
   assert.equal(ahead.through, 0);
   assert.deepEqual(ahead.points, [{ day: 0, km: 0 }]);
+});
+
+test("goalFor keeps each year's goal and carries the latest one into a year without its own", () => {
+  const own = { yearlyGoals: { 2026: 190, 2028: 0 } };
+  assert.equal(goalFor(own, "2026"), 190);
+  assert.equal(goalFor(own, "2025"), 0);
+  assert.equal(goalFor(own, "2027"), 190);
+  // A year set to none stays without one, and so do the years after it.
+  assert.equal(goalFor(own, "2028"), 0);
+  assert.equal(goalFor(own, "2029"), 0);
+  assert.equal(goalFor({}, "2026"), 0);
+});
+
+test("goalFor takes the first version's single goal as 2026's, and withGoal changes one year only", () => {
+  const old = { yearlyKm: 365 };
+  assert.equal(goalFor(old, "2026"), 365);
+  assert.equal(goalFor(old, "2027"), 365);
+  const next = { yearlyGoals: withGoal(old, "2027", 800) };
+  assert.deepEqual(next.yearlyGoals, { 2026: 365, 2027: 800 });
+  assert.equal(goalFor(next, "2026"), 365);
+  assert.equal(goalFor(next, "2027"), 800);
+  assert.deepEqual(withGoal(next, "2027", null), { 2026: 365, 2027: 0 });
 });

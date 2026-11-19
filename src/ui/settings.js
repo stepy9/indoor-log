@@ -7,6 +7,7 @@ import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.j
 const openConversions = new Set();
 import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
 import { addDays, dayKey } from "../diary.js";
+import { goalFor, withGoal } from "../year-goal.js";
 import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
@@ -837,17 +838,19 @@ function trainingBlock(sport) {
     changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
-  // The distance for the whole year, for the Analysis tab to measure the year by.
+  // The distance for this year, for the Analysis tab and the diary's year to measure it by; each year keeps its own.
+  const thisYear = dayKey(Date.now(), zone).slice(0, 4);
   const yearly = node("label", { class: "settings-field settings-weekly" });
   const yearInput = node("input", { type: "number", min: "0", step: "10", inputmode: "numeric", "data-key": `yearly-km-${sport}`, placeholder: "—" });
-  yearInput.value = savedSport(sport).yearlyKm ? String(savedSport(sport).yearlyKm) : "";
+  const goalNow = goalFor(savedSport(sport), thisYear);
+  yearInput.value = goalNow ? String(goalNow) : "";
   yearInput.addEventListener("change", () => {
     const value = checkNumber(yearInput, { min: 1, max: 100000 });
     if (value === undefined) return;
-    saveSport(sport, { yearlyKm: value });
+    saveSport(sport, { yearlyGoals: withGoal(savedSport(sport), thisYear, value), yearlyKm: null });
     changed();
   });
-  yearly.append(node("span", {}, t("settingsYearlyKm")), yearInput);
+  yearly.append(node("span", {}, t("settingsYearlyKm", { year: thisYear })), yearInput);
   // The choices in rows, side by side where they fit.
   const row = (...cells) => {
     const line = node("div", { class: "settings-row" });
