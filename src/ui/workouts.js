@@ -49,7 +49,7 @@ function editor() {
       <button class="accent-button" type="button" data-role="paste-apply"></button>
     </details>
     <div class="laps-scroll"><table class="laps-table intervals-table">
-      <thead><tr><th>#</th><th data-role="h-start"></th><th data-role="h-length"></th><th data-role="h-resistance"></th><th data-role="h-target"></th><th data-role="h-type"></th><th></th></tr></thead>
+      <thead><tr><th></th><th>#</th><th data-role="h-start"></th><th data-role="h-length"></th><th data-role="h-resistance"></th><th data-role="h-target"></th><th data-role="h-type"></th><th></th></tr></thead>
       <tbody data-role="rows"></tbody>
     </table></div>
     <div class="dialog-actions">
@@ -148,11 +148,13 @@ function open({ name, steps, note, taken }, onSave) {
         draft.splice(index, 1);
         render();
       });
-      // Up and down by one, so a step put in the wrong place is moved rather than typed again.
+      // Up and down by one, so a step put in the wrong place is moved rather than typed again; at the row's start,
+      // away from the cross, and as large as the library's icons for a finger.
       const moves = el("span", { class: "step-moves" });
-      for (const [by, symbol, key] of [[-1, "↑", "workoutStepUp"], [1, "↓", "workoutStepDown"]]) {
+      for (const [by, path, key] of [[-1, "M6 15l6-6 6 6", "workoutStepUp"], [1, "M6 9l6 6 6-6", "workoutStepDown"]]) {
         const to = index + by;
-        const button = el("button", { type: "button", class: "link-button", title: t(key), "aria-label": `${t(key)} ${index + 1}` }, symbol);
+        const button = el("button", { type: "button", class: "row-icon-button", title: t(key), "aria-label": `${t(key)} ${index + 1}` });
+        button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
         button.disabled = to < 0 || to >= draft.length;
         button.addEventListener("click", () => {
           [draft[index], draft[to]] = [draft[to], draft[index]];
@@ -161,9 +163,7 @@ function open({ name, steps, note, taken }, onSave) {
         });
         moves.append(button);
       }
-      const actions = el("span", { class: "step-actions" });
-      actions.append(moves, remove);
-      const cells = [String(index + 1), formatDuration(start), length, resistance, target, type, actions];
+      const cells = [moves, String(index + 1), formatDuration(start), length, resistance, target, type, remove];
       row.append(...cells.map((content) => {
         const cell = el("td");
         if (content instanceof Node) cell.append(content);
