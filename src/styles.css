@@ -1786,3 +1786,4 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-figure .ghost { opacity: .16; }
 .recovery-figure .move-arrow { stroke: var(--orange); stroke-width: 3; fill: none; stroke-dasharray: 5 5; opacity: .85; }
 .recovery-figure .move-arrow-head { fill: var(--orange); stroke: none; }
+.recovery-figure .strap { stroke: color-mix(in srgb, var(--accent) 60%, var(--surface)); stroke-width: 4; }

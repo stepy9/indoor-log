@@ -1,7 +1,8 @@
 // The exercises' figures as SVG markup, without the DOM, so the app and a preview draw them alike.
 // A view: { poses, focus, blocks, far, arrows }. A pose: { trunk, neck, head, arms, legs, feet } as in recovery.js;
 // feet, when given, the toe of each leg (null for none). far: { arms: [index], legs: [index] }, the limbs on the
-// side away from the eye, drawn darker and behind the body. arrows: SVG paths showing a move's way, drawn faint.
+// side away from the eye, drawn darker and behind the body. arrows: SVG paths showing a move's way, drawn faint
+// ({ d, both } for one headed at both ends). A pose's strap: a towel from the hand to the foot.
 // blocks: rects behind the figure (the mat, a wall, a door frame), each with an optional class ("pad" for a cushion).
 
 const points = (list) => list.map(([x, y]) => `${x},${y}`).join(" ");
@@ -23,6 +24,8 @@ export function figureParts(pose, view) {
     return list;
   });
   const list = [
+    // A towel or strap held, from the hand to the foot.
+    ...(pose.strap ? [["polyline", "strap", { points: points(pose.strap) }]] : []),
     ...limbs("legs", true),
     ...limbs("arms", true),
     ...(pose.trunk ? [
@@ -78,7 +81,6 @@ export function figureMarkup(view, { hold = false, frame = null, className = "re
     const ghost = drawn[0].filter(([, kind]) => kind !== "focus").map(([tag, kind, attrs]) => `<${tag} class="${kind}"${attributes(attrs)}/>`).join("");
     body.push(`<g class="ghost">${ghost}</g>`);
   }
-  for (const arrow of view.arrows ?? []) body.push(`<path class="move-arrow" d="${arrow}" marker-end="url(#arrowHead)"/>`);
   const still = frame != null ? drawn[Math.min(frame, drawn.length - 1)] : drawn[0];
   still.forEach(([tag, kind, attrs], index) => {
     const animations = frame != null ? [] : Object.keys(attrs).flatMap((key) => {
@@ -88,6 +90,11 @@ export function figureMarkup(view, { hold = false, frame = null, className = "re
     });
     body.push(`<${tag} class="${kind}"${attributes(attrs)}>${animations.join("")}</${tag}>`);
   });
+  // Over the figure, so a limb does not hide it. An arrow is a path, or { d, both } with a head at each end for a move there and back.
+  for (const arrow of view.arrows ?? []) {
+    const { d, both = false } = typeof arrow === "string" ? { d: arrow } : arrow;
+    body.push(`<path class="move-arrow" d="${d}"${both ? ' marker-start="url(#arrowHead)"' : ""} marker-end="url(#arrowHead)"/>`);
+  }
   const defs = view.arrows?.length ? `<defs><marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="move-arrow-head"/></marker></defs>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170" class="${className}" aria-hidden="true">${defs}${body.join("")}</svg>`;
 }
