@@ -20,6 +20,8 @@ export const invertedMetric = (metric, sport) => metric === "pace" && sport !== 
 
 function rawValues(entry, metric) {
   const { records } = entry;
+  // The metres each stroke carries the boat: speed × 60 / stroke rate, only while rowing.
+  if (metric === "stroke") return (records.speed ?? []).map((speed, index) => (speed > 0 && records.cadence?.[index] > 0 ? (speed * 60) / records.cadence[index] : null));
   if (metric !== "pace") return records[metric] ?? [];
   return records.speed.map((speed) => paceFrom(speed, entry.sport));
 }

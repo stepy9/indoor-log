@@ -63,12 +63,13 @@ const shortDate = (epochMs) => new Intl.DateTimeFormat(locale(), {
 const selected = () => view.entries.filter((entry) => view.slots.has(entry.id));
 
 function metricLabel(metric, sport) {
-  if (metric !== "pace") return t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence" }[metric]);
+  if (metric !== "pace") return t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence", stroke: "compareStroke" }[metric]);
   return sport === "cycling" ? t("lapSpeed") : t("lapPace");
 }
 
 function metricText(value, metric, sport) {
   if (!Number.isFinite(value)) return "—";
+  if (metric === "stroke") return `${displayNumber(value, 2)} m`;
   if (metric === "pace") return sport === "cycling" ? `${displayNumber(value, 1)} km/h` : `${formatDuration(value)}${sport === "rowing" ? " /500 m" : " /km"}`;
   return `${displayNumber(value)} ${{ power: "W", heartRate: "bpm", cadence: sport === "running" ? "spm" : "rpm" }[metric]}`;
 }
@@ -202,8 +203,11 @@ function renderList() {
 }
 
 function renderControls() {
+  if (view.metric === "stroke" && view.sport !== "rowing") view.metric = "power";
   for (const button of document.querySelectorAll("[data-compare-metric]")) {
     button.textContent = metricLabel(button.dataset.compareMetric, view.sport);
+    // Metres per stroke only for rowing.
+    button.hidden = button.dataset.compareMetric === "stroke" && view.sport !== "rowing";
     button.setAttribute("aria-pressed", String(!view.stacked && button.dataset.compareMetric === view.metric));
   }
   byId("compareStacked").setAttribute("aria-pressed", String(view.stacked));
@@ -392,7 +396,7 @@ function renderChart() {
     for (const tick of yTicks) {
       chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
       const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
-      label.textContent = panel.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, panel.metric === "pace" ? 1 : 0);
+      label.textContent = panel.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, panel.metric === "pace" ? 1 : panel.metric === "stroke" ? 1 : 0);
       chart.append(label);
     }
     chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: top + panelHeight, y2: top + panelHeight }));

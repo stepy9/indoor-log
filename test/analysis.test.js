@@ -149,3 +149,12 @@ test("calories add up by week in the trend", () => {
   assert.equal(week.y, 500);
   assert.equal(trendValue({ summary: { calories: 0 } }, "calories"), null);
 });
+
+test("series gives the metres per stroke from speed and stroke rate, none without a rate", () => {
+  const rowing = entry();
+  rowing.records.cadence = rowing.records.seconds.map((second) => (second < 100 ? null : 24));
+  const points = series(rowing, "stroke", { axis: "time" });
+  assert.equal(points.length, 501);
+  assert.equal(points[0].y, 10);
+  assert.equal(points.find((point) => point.x === 330).y, 12.5);
+});
