@@ -396,18 +396,21 @@ export function exerciseCatalog() {
 // Strength twice a week for the muscles rowing leaves out, in two rounds: each exercise by its repeats (a press of
 // "done" ends it) or, a hold, by its time, a short rest between and a longer one between the rounds. The dose
 // follows a level (see strengthLevel): each step a repeat or five seconds more, up to a ceiling.
+// Double progression: the repeats grow to the top of their range in two rounds, then a third round comes and
+// they start again from the bottom, growing to the top once more. most: the top; a hold's in seconds.
 export const strengthPlan = {
   rounds: 2,
+  moreRoundsFrom: 6,
   rest: 20,
   roundRest: 60,
   // In the order they run: standing, on the hands, then lying.
   exercises: [
-    { id: "lunge", reps: 8, most: 15 },
-    { id: "pushUp", reps: 8, most: 20 },
-    { id: "plank", seconds: 30, most: 60 },
-    { id: "sidePlank", seconds: 20, most: 45 },
-    { id: "deadBug", reps: 10, most: 20 },
-    { id: "bridge", reps: 12, most: 20 },
+    { id: "lunge", reps: 8, most: 12 },
+    { id: "pushUp", reps: 8, most: 15 },
+    { id: "plank", seconds: 30, most: 45 },
+    { id: "sidePlank", seconds: 20, most: 30 },
+    { id: "deadBug", reps: 10, most: 16 },
+    { id: "bridge", reps: 12, most: 15 },
   ],
 };
 export const strengthPerWeek = 2;
@@ -431,10 +434,14 @@ export function strengthLevel(log = {}, today = null) {
 }
 
 // Each exercise's dose at a level's steps: { id, reps } or { id, seconds }.
+// The rounds at a level's steps: two, three from moreRoundsFrom on.
+export const strengthRounds = (steps = 0) => strengthPlan.rounds + (steps >= strengthPlan.moreRoundsFrom ? 1 : 0);
 export function strengthDoses(steps = 0) {
+  // With the third round the repeats start again from the bottom of their range.
+  const within = steps >= strengthPlan.moreRoundsFrom ? steps - strengthPlan.moreRoundsFrom : steps;
   return strengthPlan.exercises.map(({ id, reps, seconds, most }) => (reps
-    ? { id, reps: Math.min(most, reps + steps) }
-    : { id, seconds: Math.min(most, seconds + steps * 5) }));
+    ? { id, reps: Math.min(most, reps + within) }
+    : { id, seconds: Math.min(most, seconds + within * 5) }));
 }
 
 // The session at a level's steps as the player's steps: a rest before each exercise (the longer one before a
@@ -443,7 +450,8 @@ export function strengthDoses(steps = 0) {
 export function strengthSession(level = 0) {
   const doses = strengthDoses(level);
   const list = [];
-  for (let round = 1; round <= strengthPlan.rounds; round += 1) {
+  const rounds = strengthRounds(level);
+  for (let round = 1; round <= rounds; round += 1) {
     doses.forEach((dose, index) => {
       const { sides } = exercises[dose.id];
       list.push({ type: "rest", seconds: round > 1 && index === 0 ? strengthPlan.roundRest : index === 0 ? restSeconds : strengthPlan.rest, next: dose.id, round });
@@ -454,7 +462,7 @@ export function strengthSession(level = 0) {
     });
   }
   const total = list.reduce((sum, step) => sum + (step.seconds ?? step.reps * repSeconds), 0);
-  return { steps: list, minutes: Math.round(total / 60), doses };
+  return { steps: list, minutes: Math.round(total / 60), doses, rounds };
 }
 
 function keyNoon(key) {

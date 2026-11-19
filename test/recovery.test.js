@@ -174,7 +174,16 @@ test("strength comes twice a week on easy days, a day apart, never in the goal's
   assert.equal(first.steps.filter((step) => step.type === "work" && step.id === "pushUp").length, 2);
   assert.ok(first.steps.filter((step) => step.type === "work" && step.reps).every((step) => !step.seconds));
   assert.equal(strengthDoses(1).find((dose) => dose.id === "pushUp").reps, strengthDoses(0).find((dose) => dose.id === "pushUp").reps + 1);
-  assert.equal(strengthDoses(200).find((dose) => dose.id === "plank").seconds, 60);
+  assert.equal(strengthDoses(5).find((dose) => dose.id === "plank").seconds, 45);
+  assert.equal(strengthDoses(5).find((dose) => dose.id === "pushUp").reps, 13);
+  // At six steps a third round comes and the repeats start again from the bottom, to the top of their range.
+  const third = strengthSession(6);
+  assert.equal(third.rounds, 3);
+  assert.equal(third.doses.find((dose) => dose.id === "pushUp").reps, 8);
+  assert.equal(third.steps.filter((step) => step.type === "work" && step.id === "pushUp").length, 3);
+  assert.ok(third.minutes <= 20, String(third.minutes));
+  assert.equal(strengthDoses(200).find((dose) => dose.id === "pushUp").reps, 15);
+  assert.equal(strengthDoses(200).find((dose) => dose.id === "plank").seconds, 45);
 });
 
 test("the strength level grows half a step a session and loses a step for each week of a break beyond two", async () => {

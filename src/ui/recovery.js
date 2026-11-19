@@ -320,7 +320,7 @@ export function strengthBlock(today, { type = null, taper = null } = {}) {
   button.addEventListener("click", () => start(session.steps, {
     doneKey: "strengthDone",
     doneNote: t("strengthDoneNote"),
-    intro: { title: t("strengthStart", { minutes: session.minutes }), note: t("strengthIntro"), exercises: session.doses },
+    intro: { title: t("strengthStart", { minutes: session.minutes }), note: t("strengthIntro", { rounds: session.rounds }), exercises: session.doses },
     onDone: () => {
       saveDefaults({ strengthLog: { ...strengthLog(), [today]: true } });
       window.dispatchEvent(new Event("settings-change"));
