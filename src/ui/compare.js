@@ -264,6 +264,25 @@ function lapSpans(entry, axis) {
   }).filter((span) => Number.isFinite(span.from) && Number.isFinite(span.to) && span.to > span.from);
 }
 
+// The same workout ridden again: the same name, ignoring case and spaces at the ends, or the same intervals,
+// lap by lap of the same type and a length within 5 s or 5 % of each other.
+const sameName = (a, b) => Boolean(a.name?.trim()) && a.name.trim().toLowerCase() === b.name?.trim().toLowerCase();
+
+const lapSeconds = (laps, index, entry) => ((laps[index + 1]?.startMs ?? laps[index].endMs ?? entry.startMs + entry.records.seconds.at(-1) * 1000) - laps[index].startMs) / 1000;
+
+export function sameIntervals(a, b) {
+  const lapsA = a.laps ?? [];
+  const lapsB = b.laps ?? [];
+  if (lapsA.length < 2 || lapsA.length !== lapsB.length) return false;
+  if (!lapsA.some((lap) => lap.intensity && lap.intensity !== "active")) return false;
+  return lapsA.every((lap, index) => {
+    if ((lap.intensity ?? "active") !== (lapsB[index].intensity ?? "active")) return false;
+    const secondsA = lapSeconds(lapsA, index, a);
+    const secondsB = lapSeconds(lapsB, index, b);
+    return Math.abs(secondsA - secondsB) <= Math.max(5, Math.max(secondsA, secondsB) * 0.05);
+  });
+}
+
 function renderChart() {
   const chart = byId("compareChart");
   const picked = selected();
@@ -306,10 +325,10 @@ function renderChart() {
     return;
   }
   byId("compareChartEmpty").textContent = t("compareChartEmpty");
-  // One workout of intervals, alone or ridden several times under the same name, shows its laps: a stripe over the
+  // One workout of intervals, alone or ridden several times (by its name or its intervals), shows its laps: a stripe over the
   // chart coloured by type and a band behind each effort. A workout repeated keeps its steps, so the first one
   // picked stands for all; different workouts show none, their laps would not line up.
-  const sameWorkout = picked.every((entry) => entry.name && entry.name === picked[0].name);
+  const sameWorkout = picked.every((entry) => sameName(entry, picked[0]) || sameIntervals(entry, picked[0]));
   const firstSpans = picked.length === 1 || sameWorkout ? lapSpans(picked[0], view.axis) : null;
   const spans = firstSpans?.length ? [{ entry: picked[0], spans: firstSpans }] : null;
   byId("compareIntervalLegend").hidden = !spans;
