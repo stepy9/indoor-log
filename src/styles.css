@@ -1849,3 +1849,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .compare-same-summary .is-better { color: var(--success); font-weight: 600; }
 .compare-same-summary .is-worse { color: var(--danger-ink); font-weight: 600; }
 #compareSameTable tr.is-current td { font-weight: 600; }
+
+/* The year against its goal in the diary: the km added up as a solid line, the even pace to the goal dashed. */
+.diary-year-goal { margin-top: 14px; }
+.diary-year-goal .diary-chart-caption.is-ahead { color: var(--success); }
+.diary-year-goal .diary-chart-caption.is-behind { color: var(--danger-ink); }
+.diary-year-pace { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.diary-year-pace-label { text-anchor: end; }
+.diary-year-total { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.diary-year-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }

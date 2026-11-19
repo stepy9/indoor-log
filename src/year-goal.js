@@ -18,3 +18,27 @@ export function yearProgress({ workouts, goal, today }) {
   const daysLeft = Math.max(1, total - passed);
   return { done, expected, ahead: done - expected, left, daysLeft, perDay: left / daysLeft };
 }
+
+// The year's kilometres added up day by day, against the even pace to the goal, for a chart: the running total as
+// steps, from 0 on 1 January to the last day counted (today in this year, 31 December in one gone by, none ahead).
+// { days, through (the last day counted, 1-based, 0 for a year ahead), points: [{ day, km }], total, goal }
+export function yearLine({ workouts, goal, year, today }) {
+  const days = daysInYear(Number(year));
+  const thisYear = today.slice(0, 4);
+  const through = year < thisYear ? days : year > thisYear ? 0 : dayOfYear(today);
+  const byDay = new Map();
+  for (const workout of workouts) {
+    if (!workout.day.startsWith(year)) continue;
+    const day = dayOfYear(workout.day);
+    if (day <= through) byDay.set(day, (byDay.get(day) ?? 0) + (workout.km || 0));
+  }
+  const points = [{ day: 0, km: 0 }];
+  let total = 0;
+  for (const day of [...byDay.keys()].sort((a, b) => a - b)) {
+    points.push({ day: day - 1, km: total });
+    total += byDay.get(day);
+    points.push({ day, km: total });
+  }
+  if (through) points.push({ day: through, km: total });
+  return { days, through, points, total, goal };
+}

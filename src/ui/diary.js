@@ -13,6 +13,7 @@ import { checkNumber, markField } from "./validate.js";
 import { infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
+import { yearLine, yearProgress } from "../year-goal.js";
 
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
@@ -545,8 +546,76 @@ function renderBars(range, entries) {
   } else {
     charts.push(drawBars(buckets, shownGroups, metric, 220));
   }
+  // The year's view: for each sport shown with a yearly goal, the km added up against the even pace to it.
+  if (view.period === "year") {
+    const settings = settingsFor(view.entries);
+    const year = range[0].slice(0, 4);
+    for (const sport of sports.filter((item) => (view.sport === "all" || view.sport === item) && settings.sports[item]?.yearlyKm > 0)) {
+      charts.push(yearGoalChart(sport, settings.sports[sport].yearlyKm, year, entries.filter((entry) => entry.sport === sport)));
+    }
+  }
   byId("diaryCharts").replaceChildren(...charts);
   byId("diaryChartEmpty").hidden = entries.length > 0;
+}
+
+// One sport's year against its goal: the km added up day by day as a solid line, the even pace from 0 to the goal
+// on 31 December dashed, and where the year stands now: ahead or behind, and the km a day left.
+function yearGoalChart(sport, goal, year, entries) {
+  const today = dayKey(Date.now(), zone);
+  const workouts = entries.map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 }));
+  const line = yearLine({ workouts, goal, year, today });
+  const row = Object.assign(document.createElement("div"), { className: "diary-chart-row diary-year-goal" });
+  const kmText = (value) => `${displayNumber(value, value < 100 ? 1 : 0)} km`;
+  // What the caption says: this year's standing, or for a year gone by whether the goal was reached.
+  const progress = year === today.slice(0, 4) ? yearProgress({ workouts, goal, today }) : null;
+  const standing = progress
+    ? (progress.left > 0 ? [Math.abs(progress.ahead) < 0.05 ? "±0 km" : t(progress.ahead > 0 ? "yearGoalAhead" : "yearGoalBehind", { km: kmText(Math.abs(progress.ahead)).replace(" km", "") }), t("yearGoalPerDay", { km: displayNumber(progress.perDay, 1) })] : [t("yearGoalDone")])
+    : line.through ? [t(line.total >= goal ? "yearGoalDone" : "yearGoalMissed")] : [];
+  const caption = Object.assign(document.createElement("span"), { className: "diary-chart-caption" });
+  caption.textContent = [`${view.sport === "all" ? `${sportIcon[sport]} ` : ""}${t("yearGoal", { year })}: ${kmText(line.total)} ${t("yearGoalOf", { goal: displayNumber(goal) })}`, ...standing].join(" · ");
+  if (progress) caption.classList.add(progress.ahead >= 0 ? "is-ahead" : "is-behind");
+  const height = 170;
+  const width = Math.max(320, Math.round(byId("diaryCharts").getBoundingClientRect().width) || 1000);
+  const left = 56;
+  const right = 8;
+  const top = 14;
+  const bottom = 26;
+  const plotHeight = height - top - bottom;
+  const highest = Math.max(goal, line.total);
+  const step = axisStep(highest, "distance");
+  const max = Math.ceil(highest / step) * step;
+  const xFor = (day) => left + (day / line.days) * (width - left - right);
+  const yFor = (value) => top + plotHeight - (value / max) * plotHeight;
+  const svg = svgNode("svg", { class: "diary-chart", role: "img" });
+  svg.setAttribute("aria-label", caption.textContent);
+  const children = [];
+  for (let value = step; value <= max + 1e-9; value += step) {
+    children.push(svgNode("line", { x1: left, x2: width - right, y1: yFor(value), y2: yFor(value), class: "diary-grid" }));
+    children.push(svgNode("text", { x: left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, axisText(value * 1000, "distance")));
+  }
+  children.push(svgNode("line", { x1: left, x2: width - right, y1: yFor(0), y2: yFor(0), class: "diary-axis" }));
+  children.push(svgNode("text", { x: left - 8, y: yFor(0) + 4, class: "diary-axis-label" }, "0"));
+  // The months along the bottom, every other one where they do not fit.
+  const monthStep = width - left - right < 420 ? 2 : 1;
+  for (let month = 0; month < 12; month += monthStep) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const day = (Date.parse(`${key}T12:00:00Z`) - Date.parse(`${year}-01-01T12:00:00Z`)) / 86_400_000;
+    const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - Date.parse(`${year}-01-01T12:00:00Z`)) / 86_400_000;
+    children.push(svgNode("text", { x: xFor((day + nextDay) / 2), y: height - 8, class: "diary-tick" }, format(key, { month: "short" })));
+  }
+  // The even pace to the goal, and the running total over it.
+  children.push(svgNode("path", { class: "diary-year-pace", d: `M${xFor(0)},${yFor(0)}L${xFor(line.days)},${yFor(goal)}` }));
+  children.push(svgNode("text", { x: width - right, y: yFor(goal) - 6, class: "diary-axis-label diary-year-pace-label" }, kmText(goal)));
+  if (line.through) {
+    children.push(svgNode("path", { class: "diary-year-total", d: line.points.map((point, index) => `${index ? "L" : "M"}${xFor(point.day).toFixed(1)},${yFor(point.km).toFixed(1)}`).join("") }));
+    const end = line.points.at(-1);
+    children.push(svgNode("circle", { cx: xFor(end.day), cy: yFor(end.km), r: 4, class: "diary-year-dot" }));
+  }
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.style.height = `${height}px`;
+  svg.replaceChildren(...children);
+  row.append(caption, svg);
+  return row;
 }
 
 // The primary benefit, coloured by its group as Garmin does, with the aerobic Training Effect; both estimates.

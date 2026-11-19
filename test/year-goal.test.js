@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { yearProgress } from "../src/year-goal.js";
+import { yearLine, yearProgress } from "../src/year-goal.js";
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 0.01, `${actual} ≠ ${expected}`);
 
@@ -28,4 +28,19 @@ test("yearProgress shows a loss behind, nothing left once reached, and the leap 
 test("yearProgress leaves out days after today and needs a goal", () => {
   close(yearProgress({ workouts: [{ day: "2026-11-25", km: 10 }], goal: 100, today: "2026-11-19" }).done, 0);
   assert.equal(yearProgress({ workouts: [], goal: 0, today: "2026-11-19" }), null);
+});
+
+test("yearLine adds the year's km up as steps to today, against the year's days", () => {
+  const line = yearLine({ workouts: [{ day: "2026-01-03", km: 5 }, { day: "2026-01-03", km: 2 }, { day: "2026-01-10", km: 3 }, { day: "2025-12-31", km: 9 }, { day: "2026-02-01", km: 4 }], goal: 500, year: "2026", today: "2026-01-20" });
+  assert.equal(line.days, 365);
+  assert.equal(line.through, 20);
+  assert.equal(line.total, 10);
+  assert.deepEqual(line.points, [{ day: 0, km: 0 }, { day: 2, km: 0 }, { day: 3, km: 7 }, { day: 9, km: 7 }, { day: 10, km: 10 }, { day: 20, km: 10 }]);
+});
+
+test("yearLine counts a past year to its end and draws nothing ahead", () => {
+  assert.equal(yearLine({ workouts: [], goal: 100, year: "2024", today: "2026-01-20" }).through, 366);
+  const ahead = yearLine({ workouts: [], goal: 100, year: "2027", today: "2026-01-20" });
+  assert.equal(ahead.through, 0);
+  assert.deepEqual(ahead.points, [{ day: 0, km: 0 }]);
 });
