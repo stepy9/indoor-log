@@ -1721,3 +1721,10 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .compare-interval-legend i.is-warmup { background: var(--compare-4); }
 .compare-interval-legend i.is-recovery { background: var(--compare-3); }
 .compare-interval-legend i.is-cooldown { background: var(--compare-1); }
+
+/* The warm-up under the day's workout: its button and what follows on the rower side by side, wrapping on a phone;
+   the moves folded under, as in the stretching card. */
+.warmup-block { margin: 4px 0 8px; }
+.warmup-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.warmup-note { margin: 0; flex: 1 1 220px; }
+@media (pointer: coarse) { .warmup-button { min-height: 40px; } }

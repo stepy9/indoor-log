@@ -9,6 +9,9 @@
 // "thigh<i>" for a leg's first segment only.
 const tabletop = { trunk: [[140, 94], [100, 94], [60, 94]], neck: [46, 88], head: [36, 84], arms: [[[60, 94], [60, 146]]], legs: [[[140, 94], [140, 146], [184, 146]]] };
 
+// Standing upright, facing left, for the warm-up's moves.
+const standing = { trunk: [[110, 98], [111, 70], [110, 42]], neck: [112, 32], head: [114, 22], arms: [[[110, 42], [112, 68], [114, 92]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [116, 146]]] };
+
 export const exercises = {
   catCow: {
     seconds: 60, sides: 1,
@@ -74,6 +77,39 @@ export const exercises = {
     ],
     focus: ["arm0"],
   },
+  // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
+  armSwings: {
+    seconds: 30, sides: 1,
+    poses: [
+      { ...standing, arms: [[[110, 42], [94, 64], [80, 86]]] },
+      { ...standing, arms: [[[110, 42], [128, 22], [146, 6]]] },
+    ],
+    focus: ["arm0"],
+  },
+  hipHinge: {
+    seconds: 30, sides: 1,
+    poses: [
+      { ...standing, arms: [[[110, 42], [112, 68], [114, 92]]] },
+      { trunk: [[118, 96], [92, 86], [66, 78]], neck: [56, 74], head: [46, 70], arms: [[[66, 78], [66, 104], [66, 128]]], legs: [[[118, 96], [114, 122], [110, 146]], [[118, 96], [118, 122], [116, 146]]] },
+    ],
+    focus: ["trunk"],
+  },
+  squat: {
+    seconds: 40, sides: 1,
+    poses: [
+      { ...standing, arms: [[[110, 42], [84, 44], [58, 46]]] },
+      { trunk: [[132, 114], [118, 90], [104, 66]], neck: [100, 56], head: [96, 46], arms: [[[104, 66], [78, 68], [52, 70]]], legs: [[[132, 114], [96, 118], [106, 146]], [[132, 114], [100, 120], [112, 146]]] },
+    ],
+    focus: ["thigh0"],
+  },
+  legSwings: {
+    seconds: 20, sides: 2, wall: 34,
+    poses: [
+      { ...standing, arms: [[[110, 42], [80, 48], [44, 50]]], legs: [standing.legs[0], [[110, 98], [86, 118], [64, 128]]] },
+      { ...standing, arms: [[[110, 42], [80, 48], [44, 50]]], legs: [standing.legs[0], [[110, 98], [134, 118], [156, 128]]] },
+    ],
+    focus: ["leg1"],
+  },
 };
 
 // The pause before each exercise, and between its sides.
@@ -82,13 +118,15 @@ export const switchSeconds = 5;
 
 // The set as timed steps: { type: "rest", seconds, next } before each exercise and between its sides, then
 // { type: "work", id, side: 1 | 2 | null, seconds }. The first exercise starts after a rest too, to get ready.
-export function steps(ids) {
+// rest: the pause before each exercise; seconds: an exercise's time in this set where it differs from its own.
+export function steps(ids, { rest = restSeconds, seconds: own = {} } = {}) {
   const list = [];
   for (const id of ids) {
-    const { seconds, sides } = exercises[id];
-    list.push({ type: "rest", seconds: restSeconds, next: id });
+    const { sides } = exercises[id];
+    const seconds = own[id] ?? exercises[id].seconds;
+    list.push({ type: "rest", seconds: rest, next: id });
     for (let side = 1; side <= sides; side += 1) {
-      if (side > 1) list.push({ type: "rest", seconds: switchSeconds, next: id });
+      if (side > 1) list.push({ type: "rest", seconds: Math.min(rest, switchSeconds), next: id });
       list.push({ type: "work", id, side: sides > 1 ? side : null, seconds });
     }
   }
@@ -111,4 +149,23 @@ export function afterWorkout({ benefit = null, seconds = 0 }) {
   const ids = sets[set];
   const total = steps(ids).reduce((sum, step) => sum + step.seconds, 0);
   return { set, cooldown: hard, exercises: ids, minutes: Math.round(total / 60) };
+}
+
+// The warm-up before a rowing workout: moves for the back, shoulders and hips done in rhythm, short pauses between.
+// Before intervals, an FTP test or the goal the full set, then easy minutes on the rower building up to a few
+// strokes at the effort's pace; before a steady workout the short set, the first minutes on the rower easy anyway.
+export const warmupRest = 5;
+const warmups = {
+  short: { exercises: ["catCow", "armSwings", "squat"], seconds: { catCow: 30, squat: 30 } },
+  full: { exercises: ["catCow", "armSwings", "hipHinge", "squat", "legSwings"], seconds: { catCow: 45 } },
+};
+const hardTypes = new Set(["intervals", "ftpTestShort", "ftpTest", "goal"]);
+
+// The warm-up for a planned day's type: { set, exercises, seconds, minutes, onRower }; onRower the easy minutes
+// on the machine to go on with, before the efforts of a hard day.
+export function warmupBefore(type) {
+  const set = hardTypes.has(type) ? "full" : "short";
+  const { exercises: ids, seconds } = warmups[set];
+  const total = steps(ids, { rest: warmupRest, seconds }).reduce((sum, step) => sum + step.seconds, 0);
+  return { set, exercises: ids, seconds, minutes: Math.max(1, Math.round(total / 60)), onRower: set === "full" ? 5 : 0 };
 }

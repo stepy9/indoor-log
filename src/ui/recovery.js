@@ -2,7 +2,7 @@
 // its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
 // runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
 // and at the end the workout is marked as stretched.
-import { afterWorkout, exercises, steps } from "../recovery.js";
+import { afterWorkout, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
 import { byId, formatDuration, t } from "./context.js";
@@ -66,15 +66,15 @@ export function figure(id) {
   return svg;
 }
 
-function dose(id) {
-  const { seconds, sides } = exercises[id];
+function dose(id, seconds = exercises[id].seconds) {
+  const { sides } = exercises[id];
   return sides > 1 ? `${t("recoverySeconds", { seconds })} ${t("recoveryEachSide")}` : t("recoverySeconds", { seconds });
 }
 
 const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
 
 // The player: one step at a time, counted down by the clock, so a phone put aside keeps its place.
-const player = { list: [], index: 0, endsAt: 0, left: 0, paused: false, timer: null, entry: null, onDone: null, wakeLock: null };
+const player = { list: [], index: 0, endsAt: 0, left: 0, paused: false, timer: null, doneKey: "recoveryDone", onDone: null, wakeLock: null };
 
 function cue(long = false) {
   try { navigator.vibrate?.(long ? [200, 100, 200] : 120); } catch { /* no vibration */ }
@@ -132,12 +132,10 @@ async function finish() {
   byId("recoveryPlayerFigure").hidden = true;
   byId("recoveryPlayerProgress").textContent = "";
   byId("recoveryPlayerPhase").textContent = "";
-  byId("recoveryPlayerName").textContent = t("recoveryDone");
-  byId("recoveryPlayerHow").textContent = "";
+  byId("recoveryPlayerName").textContent = t(player.doneKey);
+  byId("recoveryPlayerHow").textContent = player.doneNote ?? "";
   byId("recoveryPlayerClock").textContent = "✓";
-  player.entry.stretched = Date.now();
-  await saveEntries([player.entry]).catch(() => {});
-  player.onDone?.();
+  await player.onDone?.();
 }
 
 function stop() {
@@ -147,8 +145,9 @@ function stop() {
   player.wakeLock = null;
 }
 
-async function start(entry, ids, onDone) {
-  Object.assign(player, { list: steps(ids), index: 0, paused: false, entry, onDone });
+// list: the steps to run; doneKey and doneNote what the end says; onDone what a set finished does.
+async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = null } = {}) {
+  Object.assign(player, { list, index: 0, paused: false, doneKey, doneNote, onDone });
   const dialog = byId("recoveryPlayer");
   dialog.classList.remove("is-done", "is-paused");
   byId("recoveryPlayerPause").textContent = t("recoveryPause");
@@ -201,9 +200,13 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
   };
   showStatus();
   const button = byId("compareRecoveryStart");
-  button.onclick = () => start(entry, plan.exercises, () => {
-    showStatus();
-    onStretched();
+  button.onclick = () => start(steps(plan.exercises), {
+    onDone: async () => {
+      entry.stretched = Date.now();
+      await saveEntries([entry]).catch(() => {});
+      showStatus();
+      onStretched();
+    },
   });
   byId("compareRecoveryList").replaceChildren(...plan.exercises.map((id) => {
     const item = element("li", "recovery-item");
@@ -213,4 +216,31 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
     item.append(...(art ? [art] : []), text);
     return item;
   }));
+}
+
+// The warm-up before a rowing workout planned, for the Training tab's day: a button that runs the set in the same
+// player, what follows on the rower, and the moves folded under it.
+export function warmupBlock(type) {
+  wirePlayer();
+  const plan = warmupBefore(type);
+  const block = element("div", "warmup-block");
+  const head = element("div", "warmup-head");
+  const button = element("button", "outline-button warmup-button", t("warmupStart", { minutes: plan.minutes }));
+  button.type = "button";
+  const after = plan.onRower ? t("warmupRower", { minutes: plan.onRower }) : t("warmupRowerEasy");
+  button.addEventListener("click", () => start(steps(plan.exercises, { rest: warmupRest, seconds: plan.seconds }), { doneKey: "warmupDone", doneNote: after }));
+  head.append(button, element("span", "field-note warmup-note", after));
+  const details = element("details", "recovery-details");
+  const list = element("ul", "recovery-list");
+  list.append(...plan.exercises.map((id) => {
+    const item = element("li", "recovery-item");
+    const art = figure(id);
+    const text = element("div", "recovery-text");
+    text.append(element("strong", "", t(`recovery_${id}`)), element("span", "recovery-dose", dose(id, plan.seconds[id])), element("p", "", t(`recoveryHow_${id}`)));
+    item.append(...(art ? [art] : []), text);
+    return item;
+  }));
+  details.append(element("summary", "", t("warmupShow")), list);
+  block.append(head, details);
+  return block;
 }

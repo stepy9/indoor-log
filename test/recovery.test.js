@@ -45,3 +45,21 @@ test("each figure's poses have the same parts, so they animate", () => {
     }
   }
 });
+
+test("warmupBefore gives the full set before a hard day and the short one before a steady row", async () => {
+  const { warmupBefore, warmupRest } = await import("../src/recovery.js");
+  const hard = warmupBefore("intervals");
+  assert.equal(hard.set, "full");
+  assert.equal(hard.onRower, 5);
+  assert.equal(warmupBefore("goal").set, "full");
+  const easy = warmupBefore("usual");
+  assert.equal(easy.set, "short");
+  assert.equal(easy.onRower, 0);
+  for (const plan of [hard, easy]) {
+    assert.ok(plan.minutes >= 1 && plan.minutes <= 6, String(plan.minutes));
+    for (const id of plan.exercises) assert.ok(exercises[id], id);
+  }
+  // The warm-up's pauses are short and an exercise takes the set's own time.
+  const list = steps(["catCow"], { rest: warmupRest, seconds: { catCow: 30 } });
+  assert.deepEqual(list, [{ type: "rest", seconds: warmupRest, next: "catCow" }, { type: "work", id: "catCow", side: null, seconds: 30 }]);
+});
