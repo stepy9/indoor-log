@@ -1817,3 +1817,22 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* The player's bell beside its cross: sounds on or off. */
 .recovery-sound { margin-left: auto; margin-right: 8px; font-size: 16px; }
 .recovery-player-head #recoveryPlayerProgress { margin-right: auto; }
+
+/* Regularity in Analysis: the last eight weeks side by side, kept ones marked green, the running one dashed. */
+.fitness-regularity { display: grid; gap: 12px; }
+.fitness-regularity .diary-tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.regularity-weeks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.regularity-week { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-variant-numeric: tabular-nums; }
+.regularity-week.is-kept { border-color: var(--success); background: color-mix(in srgb, var(--success) 12%, var(--surface)); }
+.regularity-week.is-running { border-style: dashed; }
+.regularity-label { color: var(--muted); font-size: 11px; font-weight: 600; }
+.regularity-count { color: var(--ink); font-size: 20px; font-weight: 600; line-height: 1.1; }
+.regularity-stretched { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.regularity-dots { display: flex; gap: 3px; min-height: 8px; }
+.regularity-dot { width: 7px; height: 7px; border: 1.5px solid var(--line-strong); border-radius: 50%; }
+.regularity-dot.is-done { border-color: var(--accent); background: var(--accent); }
+@media (max-width: 640px) {
+  .fitness-regularity .diary-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .regularity-weeks { gap: 4px; }
+  .regularity-count { font-size: 17px; }
+}

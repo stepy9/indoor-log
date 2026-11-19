@@ -8,11 +8,12 @@ import { shortSleepHours, sleepOn } from "../sleep.js";
 import { feverish, illnessSigns } from "../illness.js";
 import { sleepText } from "./diary.js";
 import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
-import { addDays, dayKey } from "../diary.js";
+import { addDays, dayKey, weekNumber } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
+import { regularity } from "../regularity.js";
 import { infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -1112,6 +1113,39 @@ function renderWeeks(history, entries, settings) {
   labelCells(table);
 }
 
+// The last eight weeks' regularity: tiles with the workouts, those stretched, the strength sessions and the run of
+// weeks kept, and the weeks side by side, each marked kept or not.
+function renderRegularity(entries) {
+  const result = regularity({
+    workouts: entries.map((entry) => ({ day: dayKey(entry.startMs, zone), stretched: Boolean(entry.stretched) })),
+    strengthDays: Object.keys(savedDefaults().strengthLog ?? {}).filter((day) => savedDefaults().strengthLog[day]),
+    today: today(),
+  });
+  const { totals, weeks, strengthGoal } = result;
+  const plural = (count) => t(`regWeeks_${count === 1 ? "one" : count >= 2 && count <= 4 ? "few" : "many"}`, { count });
+  const share = (done, total) => (total ? `${displayNumber((done / total) * 100)} %` : "");
+  byId("fitnessRegularityTiles").replaceChildren(
+    tile(t("regWorkouts"), String(totals.workouts), t("regPerWeek", { count: displayNumber(totals.workouts / weeks.length, 1) })),
+    tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.workouts }), share(totals.stretched, totals.workouts)),
+    tile(t("regStrength"), t("regOf", { done: totals.strength, total: strengthGoal * weeks.length }), t("regStrengthGoal", { goal: strengthGoal })),
+    tile(t("regStreak"), plural(result.streak), t("regKept", { kept: totals.kept, weeks: weeks.length })),
+  );
+  byId("fitnessRegularityWeeks").replaceChildren(...weeks.map((week) => {
+    const cell = node("div", { class: `regularity-week${week.kept ? " is-kept" : ""}${week.running ? " is-running" : ""}` });
+    cell.title = t("regWeekTitle", { week: weekNumber(week.monday), workouts: week.workouts, stretched: week.stretched, strength: week.strength });
+    const dots = node("span", { class: "regularity-dots" });
+    for (let index = 0; index < Math.max(strengthGoal, week.strength); index += 1) dots.append(node("span", { class: `regularity-dot${index < week.strength ? " is-done" : ""}` }));
+    cell.append(
+      node("span", { class: "regularity-label" }, week.running ? t("planThisWeek") : String(weekNumber(week.monday))),
+      node("span", { class: "regularity-count" }, String(week.workouts)),
+      node("span", { class: "regularity-stretched" }, `✓ ${week.stretched}`),
+      dots,
+    );
+    return cell;
+  }));
+  byId("fitnessRegularityNote").textContent = t("regNote", { goal: strengthGoal });
+}
+
 // The efficiency factor of each steady workout over the range as dots, with a least-squares trend line.
 // Power and speed do not share a scale, so the one with more workouts is shown.
 function renderEfficiency(entries) {
@@ -1320,6 +1354,7 @@ function render() {
   renderLoadChart(history, settings);
   const current = inRange(shown);
   renderWeeks(history, current, settings);
+  renderRegularity(shown);
   renderZones(current, settings);
   const currentSet = new Set(current);
   renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)), settings);
