@@ -289,3 +289,13 @@ test("the focus advice names the group furthest out of its range", () => {
   assert.deepEqual(focusAdvice(focus(95, 5, 0)), { group: "lowAerobic", side: "high" });
   assert.deepEqual(focusAdvice(focus(60, 20, 20)), { group: "anaerobic", side: "high" });
 });
+
+test("the output at a set heart rate takes workouts within 6 bpm, scaled by their efficiency", async () => {
+  const { outputAtHeartRate, commonHeartRate } = await import("../src/fitness.js");
+  assert.equal(outputAtHeartRate({ heart: 140, output: 140 }, 140), 140);
+  assert.equal(outputAtHeartRate({ heart: 136, output: 136 }, 140), 140);
+  assert.equal(outputAtHeartRate({ heart: 150, output: 150 }, 140), null);
+  assert.equal(outputAtHeartRate(null, 140), null);
+  assert.equal(commonHeartRate([{ heart: 131 }, { heart: 139 }, { heart: 141 }, { heart: 158 }]), 135);
+  assert.equal(commonHeartRate([]), null);
+});

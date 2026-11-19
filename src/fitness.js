@@ -511,19 +511,46 @@ export function decoupling(entry) {
   const end = seconds.at(-1);
   if (end - start < decouplingMinimum) return null;
   const middle = (start + end) / 2;
-  const halves = [{ output: 0, heart: 0 }, { output: 0, heart: 0 }];
+  const halves = [{ output: 0, heart: 0, time: 0 }, { output: 0, heart: 0, time: 0 }];
   const dts = steps(seconds);
   for (let index = 0; index < seconds.length; index += 1) {
     if (seconds[index] < start || !Number.isFinite(output[index]) || !(heartRate[index] > 0)) continue;
     const half = halves[seconds[index] < middle ? 0 : 1];
     half.output += output[index] * dts[index];
     half.heart += heartRate[index] * dts[index];
+    half.time += dts[index];
   }
   if (!halves.every((half) => half.output > 0 && half.heart > 0)) return null;
   const [first, second] = halves.map((half) => half.output / half.heart);
   // The efficiency factor of the whole after the warm-up: watts, or metres a minute, per heartbeat a minute.
   const efficiency = ((halves[0].output + halves[1].output) / (halves[0].heart + halves[1].heart)) * (field === "speed" ? 60 : 1);
-  return { percent: ((first - second) / first) * 100, by: field, efficiency };
+  // The averages after the warm-up, the output in watts or metres a minute, for the output at a set heart rate.
+  const time = halves[0].time + halves[1].time;
+  const heart = (halves[0].heart + halves[1].heart) / time;
+  const average = ((halves[0].output + halves[1].output) / time) * (field === "speed" ? 60 : 1);
+  return { percent: ((first - second) / first) * 100, by: field, efficiency, heart, output: average };
+}
+
+// The output at a set heart rate: the steady workouts whose average heart rate after the warm-up lies within
+// 6 bpm of it, each one's average output scaled to that heart rate by its efficiency factor. The scaling holds
+// over a few beats only, so workouts further off are left out rather than stretched.
+export const heartRateWindow = 6;
+
+export function outputAtHeartRate(result, bpm) {
+  if (!result || !(result.heart > 0) || Math.abs(result.heart - bpm) > heartRateWindow) return null;
+  return result.output * (bpm / result.heart);
+}
+
+// The reference heart rate on a 5 bpm step that takes the most workouts in; a tie goes to the lower one.
+export function commonHeartRate(results) {
+  const hearts = results.map((result) => result?.heart).filter((value) => value > 0);
+  if (!hearts.length) return null;
+  let best = null;
+  for (let bpm = Math.floor(Math.min(...hearts) / 5) * 5; bpm <= Math.ceil(Math.max(...hearts) / 5) * 5; bpm += 5) {
+    const count = hearts.filter((value) => Math.abs(value - bpm) <= heartRateWindow).length;
+    if (!best || count > best.count) best = { bpm, count };
+  }
+  return best.bpm;
 }
 
 // A watch that lost the strap's contact reads the heart rate far too low until it is set right, which shows as a

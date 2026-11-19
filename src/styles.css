@@ -1692,3 +1692,17 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 }
 /* Everywhere: the summary's long values (the main benefit) wrap instead of widening the table past its card. */
 #compareSummary td { white-space: normal; }
+
+/* The aerobic efficiency's switch and heart rate sit beside its title; on a phone they take a row of their own,
+   the select at 16px so iOS does not zoom, and fingers get full-height buttons. */
+.fitness-efficiency-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.fitness-efficiency-controls select { height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 13px; }
+@media (pointer: coarse) {
+  .fitness-efficiency-controls select { font-size: 16px; height: 38px; }
+  .fitness-efficiency-controls .segmented button { min-height: 32px; }
+}
+@media (max-width: 640px) {
+  .panel-title-row:has(> .fitness-efficiency-controls) { flex-wrap: wrap; }
+  .fitness-efficiency-controls { flex: 1 0 100%; justify-content: space-between; }
+  .fitness-efficiency-controls .segmented { order: -1; }
+}

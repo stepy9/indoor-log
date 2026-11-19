@@ -1,4 +1,4 @@
-import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
+import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
@@ -32,6 +32,9 @@ const view = {
   range: Object.hasOwn(ranges, remembered().range) ? remembered().range : "quarter",
   // The records show the best powers by duration or the best times by distance.
   recordsBy: "duration",
+  // The aerobic efficiency as the output per beat ("beat") or as the output at a set heart rate ("heart").
+  efficiencyBy: remembered().efficiencyBy === "heart" ? "heart" : "beat",
+  efficiencyHeart: Number.isFinite(remembered().efficiencyHeart) ? remembered().efficiencyHeart : null,
   layout: null,
 };
 
@@ -1112,13 +1115,21 @@ function renderEfficiency(entries) {
   const chart = byId("fitnessEfficiencyChart");
   const all = entries.map((entry) => ({ entry, result: decoupling(entry) })).filter((item) => item.result?.efficiency > 0);
   const by = all.filter((item) => item.result.by === "power").length >= all.filter((item) => item.result.by === "speed").length ? "power" : "speed";
-  const points = all.filter((item) => item.result.by === by).map((item) => ({ entry: item.entry, ms: item.entry.startMs, value: item.result.efficiency })).sort((a, b) => a.ms - b.ms);
+  const results = all.filter((item) => item.result.by === by);
+  // At a set heart rate: the one picked while it still takes a workout in, else the one taking the most.
+  const atHeart = view.efficiencyBy === "heart";
+  const takes = (bpm) => results.some((item) => outputAtHeartRate(item.result, bpm) != null);
+  const bpm = !results.length ? null : Number.isFinite(view.efficiencyHeart) && takes(view.efficiencyHeart) ? view.efficiencyHeart : commonHeartRate(results.map((item) => item.result));
+  renderEfficiencyHeart(results, bpm);
+  const valueOf = (result) => (atHeart ? outputAtHeartRate(result, bpm) : result.efficiency);
+  const points = results.map((item) => ({ entry: item.entry, ms: item.entry.startMs, value: valueOf(item.result), heart: item.result.heart })).filter((point) => point.value != null).sort((a, b) => a.ms - b.ms);
   const has = points.length > 0;
   chart.hidden = !has;
   byId("fitnessEfficiencyEmpty").hidden = has;
   byId("fitnessEfficiencySummary").textContent = "";
   if (!has) return;
-  const unit = by === "power" ? `W ${t("fitnessPerBeat")}` : `m/min ${t("fitnessPerBeat")}`;
+  const outputUnit = by === "power" ? "W" : "m/min";
+  const unit = atHeart ? outputUnit : `${outputUnit} ${t("fitnessPerBeat")}`;
   const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
   const height = 200;
   const margin = { left: 48, right: 14, top: 14, bottom: 26 };
@@ -1154,17 +1165,42 @@ function renderEfficiency(entries) {
     const to = points.at(-1).ms;
     children.push(node("path", { class: "fitness-line is-trend", d: `M${xFor(from).toFixed(1)},${yFor(at(from)).toFixed(1)}L${xFor(to).toFixed(1)},${yFor(at(to)).toFixed(1)}` }));
     const change = ((at(to) - at(from)) / at(from)) * 100;
-    byId("fitnessEfficiencySummary").textContent = t("fitnessEfficiencyTrend", { change: `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}` });
+    const changeText = `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}`;
+    const outputText = (value) => `${displayNumber(value, by === "power" ? 0 : 1)} ${outputUnit}`;
+    byId("fitnessEfficiencySummary").textContent = atHeart
+      ? t("fitnessAtHeartTrend", { bpm, from: outputText(at(from)), to: outputText(at(to)), change: changeText })
+      : t("fitnessEfficiencyTrend", { change: changeText });
   }
   for (const point of points) {
     const dot = node("circle", { cx: xFor(point.ms), cy: yFor(point.value), r: 4, class: "fitness-curve-dot" });
-    dot.append(node("title", {}, `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, digits)} ${unit}`));
+    dot.append(node("title", {}, `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, digits)} ${unit}${atHeart ? ` (${t("fitnessAtHeartActual", { bpm: Math.round(point.heart) })})` : ""}`));
     dot.addEventListener("click", () => openActivity(point.entry));
     children.push(dot);
   }
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.style.height = `${height}px`;
   chart.replaceChildren(...children);
+}
+
+// The switch between the output per beat and at a set heart rate, and the heart rates to pick: each 5 bpm step
+// that takes a workout in, with how many it takes.
+function renderEfficiencyHeart(results, bpm) {
+  const atHeart = view.efficiencyBy === "heart";
+  for (const button of document.querySelectorAll("[data-efficiency-by]")) button.setAttribute("aria-pressed", String(button.dataset.efficiencyBy === view.efficiencyBy));
+  byId("fitnessEfficiencyBy").hidden = !results.length;
+  const select = byId("fitnessEfficiencyHeart");
+  select.hidden = !atHeart || bpm == null;
+  byId("fitnessEfficiencyNote").hidden = atHeart;
+  byId("fitnessAtHeartNote").hidden = !atHeart;
+  if (bpm == null) return;
+  const hearts = results.map((item) => item.result.heart);
+  const options = [];
+  for (let value = Math.floor(Math.min(...hearts) / 5) * 5; value <= Math.ceil(Math.max(...hearts) / 5) * 5; value += 5) {
+    const count = hearts.filter((heart) => Math.abs(heart - value) <= heartRateWindow).length;
+    if (count) options.push(node("option", { value: String(value) }, t("fitnessAtHeartOption", { bpm: value, count })));
+  }
+  select.replaceChildren(...options);
+  select.value = String(bpm);
 }
 
 // Personal records over the whole library of the sport shown, whatever the range: the best power for each
@@ -1324,6 +1360,18 @@ export function setupFitness({ onOpen }) {
       render();
     });
   }
+  for (const button of document.querySelectorAll("[data-efficiency-by]")) {
+    button.addEventListener("click", () => {
+      view.efficiencyBy = button.dataset.efficiencyBy;
+      save({ efficiencyBy: view.efficiencyBy });
+      render();
+    });
+  }
+  byId("fitnessEfficiencyHeart").addEventListener("change", (event) => {
+    view.efficiencyHeart = Number(event.target.value);
+    save({ efficiencyHeart: view.efficiencyHeart });
+    render();
+  });
   const chart = byId("fitnessLoadChart");
   hoverable(chart, showLoadTooltip, hideLoadTooltip);
   hoverable(byId("fitnessFtpChart"), showFtpTooltip, hideFtpTooltip);

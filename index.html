@@ -544,11 +544,21 @@
             <p class="field-note info-note" id="fitnessHrvNote" data-i18n="hrvNote" hidden></p>
           </section>
           <section class="card">
-            <span class="field-label" data-i18n="fitnessEfficiencyTitle">Aerobní efektivita</span>
+            <div class="panel-title-row">
+              <span class="field-label" data-i18n="fitnessEfficiencyTitle">Aerobní efektivita</span>
+              <div class="fitness-efficiency-controls">
+                <select id="fitnessEfficiencyHeart" aria-label="Tep, při kterém se výkon porovná" data-i18n-aria="fitnessAtHeartPick" hidden></select>
+                <div class="segmented" id="fitnessEfficiencyBy" role="group" aria-label="Aerobní efektivita" data-i18n-aria="fitnessEfficiencyTitle" hidden>
+                  <button type="button" data-efficiency-by="beat" aria-pressed="true" data-i18n="fitnessPerBeatShort">Na tep</button>
+                  <button type="button" data-efficiency-by="heart" aria-pressed="false" data-i18n="fitnessAtHeartShort">Při tepu</button>
+                </div>
+              </div>
+            </div>
             <svg class="diary-chart" id="fitnessEfficiencyChart" role="img" aria-label="Aerobní efektivita" data-i18n-aria="fitnessEfficiencyTitle"></svg>
             <p class="field-note" id="fitnessEfficiencySummary"></p>
             <p class="field-note" id="fitnessEfficiencyEmpty" data-i18n="fitnessDecouplingEmpty" hidden></p>
-            <p class="field-note info-note" data-i18n="fitnessEfficiencyNote"></p>
+            <p class="field-note info-note" id="fitnessEfficiencyNote" data-i18n="fitnessEfficiencyNote"></p>
+            <p class="field-note info-note" id="fitnessAtHeartNote" data-i18n="fitnessAtHeartNote" hidden></p>
           </section>
           <section class="card">
             <span class="field-label" data-i18n="fitnessDecouplingTitle">Aerobní decoupling</span>
