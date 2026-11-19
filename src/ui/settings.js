@@ -16,7 +16,7 @@ import { parseKinomapPlan, setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapNotes, defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
-import { workoutList } from "./workouts.js";
+import { editWorkoutOnShow, workoutList } from "./workouts.js";
 import { withTip } from "./info.js";
 import { bodyStatus } from "../reminders.js";
 import { parseGarminCsv } from "../garmin-csv.js";
@@ -905,7 +905,7 @@ function kinomapBlock(sport) {
 }
 
 // The sport's workouts' steps by name; steps kept as plan text by an earlier version read into steps.
-function ownPlans(sport, prefs = savedSport(sport).plan ?? {}) {
+export function ownPlans(sport, prefs = savedSport(sport).plan ?? {}) {
   const plans = prefs.kinomapPlans ?? defaultKinomapPlans[sport] ?? {};
   return Object.fromEntries(Object.entries(plans).map(([name, steps]) => {
     if (Array.isArray(steps)) return [name, steps];
@@ -1113,8 +1113,10 @@ function fitHeight() {
 
 // Opens on the pane given, or on the sport of the open activity or analysis, or where it was left.
 // tab picks the part of a sport's pane to show.
-export async function openSettings(pane, tab) {
+export async function openSettings(pane, tab, workout) {
   garminMessage = "";
+  // A Kinomap workout named opens its steps once its sport's Kinomap tab is shown.
+  if (workout) editWorkoutOnShow(workout);
   if (sportTabs.includes(tab)) state.tab = tab;
   const sport = typeof pane === "string" ? pane : state.sport();
   if (sports.includes(sport) || sport === "general") state.pane = sport;

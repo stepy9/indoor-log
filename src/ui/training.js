@@ -6,12 +6,13 @@ import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName,
 import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
 import { lastFtpTyped, renderNextStep, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
-import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, settingsFor } from "./settings.js";
+import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { kindLabel } from "./library.js";
+import { workoutProfile } from "./workouts.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -228,23 +229,35 @@ function suggestionsButton(result, entries, type) {
     const intro = steady
       ? t("suggestRoutesIntro", { from: displayNumber(range[0], 1), to: displayNumber(range[1], 1) })
       : t(type === "intervals" ? "suggestIntervalsIntro" : "suggestTestIntro", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes });
+    // One of the own Kinomap workouts shows its course and opens its steps in the settings; a route is only named.
+    const plans = ownPlans(result.sport);
+    const suggestion = (name, note, exact) => {
+      const row = node("li", { class: exact ? "is-exact" : "" });
+      const steps = plans[name] ?? [];
+      const parts = [node("strong", {}, name), ...(note ? [node("span", { class: "field-note" }, note)] : []), ...(steps.length ? [workoutProfile(steps)] : [])];
+      if (!steps.length) {
+        row.append(...parts);
+        return row;
+      }
+      const open = node("button", { type: "button", class: "suggest-open", title: t("workoutEditButton") });
+      open.append(...parts);
+      open.addEventListener("click", () => {
+        dialog.close();
+        openSettings(result.sport, "kinomap", name);
+      });
+      row.classList.add("is-workout");
+      row.append(open);
+      return row;
+    };
     const list = node("ul", { class: "suggest-list" });
-    for (const item of items) {
-      const row = node("li", { class: item.exact ? "is-exact" : "" });
-      row.append(node("strong", {}, item.name), node("span", { class: "field-note" }, item.note));
-      list.append(row);
-    }
+    for (const item of items) list.append(suggestion(item.name, item.note, item.exact));
     const body = [node("p", { class: "field-note" }, intro)];
     if (items.length) body.push(list);
     // For a change instead of a steady workout: the workouts made that the plan does not lay out itself.
     const extras = steady ? plan.kinomap?.extras ?? [] : [];
     if (extras.length) {
       const extraList = node("ul", { class: "suggest-list" });
-      for (const name of extras) {
-        const row = node("li");
-        row.append(node("strong", {}, name));
-        extraList.append(row);
-      }
+      for (const name of extras) extraList.append(suggestion(name, "", false));
       body.push(node("p", { class: "field-label" }, t("suggestExtras")), extraList);
     }
     if (!steady && !items.some((item) => item.exact)) body.push(node("p", { class: "field-note" }, t(type === "intervals" ? "suggestNoIntervals" : "suggestNoTest", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes })));

@@ -24,6 +24,19 @@ function seconds(text) {
 
 const total = (steps) => steps.reduce((sum, item) => sum + (item.seconds || 0), 0);
 
+// A workout's course at a glance: each step a piece as long as the step, in the colour of its type.
+export function workoutProfile(steps) {
+  const profile = el("span", { class: "workout-profile", "aria-hidden": "true" });
+  profile.append(...steps.map((step) => Object.assign(el("span", { class: `is-${step.intensity ?? "active"}` }), { style: `flex-grow: ${step.seconds || 1}` })));
+  return profile;
+}
+
+// The workout whose steps open as soon as the list shows it (asked for from elsewhere, as the training's tips).
+let editOnShow = null;
+export function editWorkoutOnShow(name) {
+  editOnShow = name;
+}
+
 // Steps from what was pasted: Creator's JSON, or a plan as text (its last step a minute until changed).
 function stepsFromPaste(text) {
   try {
@@ -230,12 +243,7 @@ export function workoutList(names, plans, notes, write) {
       const row = el("div", { class: "workout-row" });
       const text = el("div", { class: "workout-row-text" });
       text.append(el("strong", {}, name), el("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
-      // The workout's course at a glance: each step a piece as long as the step, in the colour of its type.
-      if (steps.length) {
-        const profile = el("span", { class: "workout-profile", "aria-hidden": "true" });
-        profile.append(...steps.map((step) => Object.assign(el("span", { class: `is-${step.intensity ?? "active"}` }), { style: `flex-grow: ${step.seconds || 1}` })));
-        text.append(profile);
-      }
+      if (steps.length) text.append(workoutProfile(steps));
       const edit = el("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
       edit.addEventListener("click", () => open({ name, steps, note: notes[name], taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
         const nextPlans = { ...plans };
@@ -256,6 +264,14 @@ export function workoutList(names, plans, notes, write) {
         save(names.filter((other) => other !== name), nextPlans, nextNotes);
       });
       row.append(text, edit, remove);
+      if (editOnShow === name) {
+        editOnShow = null;
+        // Once the list is in the page, as its dialog opens over it.
+        queueMicrotask(() => {
+          row.scrollIntoView({ block: "nearest" });
+          edit.click();
+        });
+      }
       return row;
     });
     const add = el("button", { type: "button", class: "outline-button workout-add" }, t("workoutAdd"));
