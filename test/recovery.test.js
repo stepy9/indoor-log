@@ -173,6 +173,20 @@ test("strength comes twice a week on easy days, a day apart, never in the goal's
   assert.ok(first.minutes >= 8 && first.minutes <= 18, String(first.minutes));
   assert.equal(first.steps.filter((step) => step.type === "work" && step.id === "pushUp").length, 2);
   assert.ok(first.steps.filter((step) => step.type === "work" && step.reps).every((step) => !step.seconds));
-  assert.equal(strengthDoses(2).find((dose) => dose.id === "pushUp").reps, strengthDoses(0).find((dose) => dose.id === "pushUp").reps + 1);
+  assert.equal(strengthDoses(1).find((dose) => dose.id === "pushUp").reps, strengthDoses(0).find((dose) => dose.id === "pushUp").reps + 1);
   assert.equal(strengthDoses(200).find((dose) => dose.id === "plank").seconds, 60);
+});
+
+test("the strength level grows half a step a session and loses a step for each week of a break beyond two", async () => {
+  const { strengthLevel } = await import("../src/recovery.js");
+  const twiceWeekly = Object.fromEntries(["2026-10-05", "2026-10-08", "2026-10-12", "2026-10-15", "2026-10-19", "2026-10-22"].map((day) => [day, true]));
+  assert.deepEqual(strengthLevel(twiceWeekly, "2026-10-24"), { steps: 3, eased: 0 });
+  // Two weeks off take nothing, three take a step, five take three.
+  assert.deepEqual(strengthLevel(twiceWeekly, "2026-11-05"), { steps: 3, eased: 0 });
+  assert.deepEqual(strengthLevel(twiceWeekly, "2026-11-12"), { steps: 2, eased: 1 });
+  assert.deepEqual(strengthLevel(twiceWeekly, "2026-11-26"), { steps: 0, eased: 3 });
+  // A break between sessions lowers the level the next ones build on.
+  const after = { ...twiceWeekly, "2026-11-19": true, "2026-11-23": true };
+  assert.deepEqual(strengthLevel(after, "2026-11-24"), { steps: 2, eased: 0 });
+  assert.deepEqual(strengthLevel({}, "2026-11-24"), { steps: 0, eased: 0 });
 });

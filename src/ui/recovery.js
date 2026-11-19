@@ -2,7 +2,7 @@
 // its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
 // runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
 // and at the end the workout is marked as stretched.
-import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { primaryBenefit } from "../fitness.js";
@@ -286,7 +286,7 @@ export function setupExercises(beforeOpen = () => {}) {
     const catalog = exerciseCatalog();
     byId("exercisesWarmup").replaceChildren(...catalog.warmup.map((entry) => item(entry, "exercisesWarmupSet")));
     byId("exercisesStretch").replaceChildren(...catalog.stretch.map((entry) => item(entry, "exercisesStretchSet")));
-    const level = strengthSession(Object.keys(strengthLog()).length);
+    const level = strengthSession(strengthLevel(strengthLog(), new Date().toISOString().slice(0, 10)).steps);
     byId("exercisesStrength").replaceChildren(...level.doses.map((entry) => item({ ...entry, sets: ["week"] }, "exercisesStrengthSet")));
   };
   byId("exercisesButton").addEventListener("click", () => {
@@ -309,12 +309,14 @@ export function strengthBlock(today, { type = null, taper = null } = {}) {
   const state = strengthToday(log, today, { type, taper });
   if (state.rest === "today") return element("p", "training-today-done strength-done", t("strengthDoneToday"));
   if (!state.due) return null;
-  const session = strengthSession(Object.keys(log).length);
+  const level = strengthLevel(log, today);
+  const session = strengthSession(level.steps);
   const block = element("div", "warmup-block strength-block");
   const head = element("div", "warmup-head");
   const button = element("button", "outline-button warmup-button", t("strengthStart", { minutes: session.minutes }));
   button.type = "button";
-  const note = t("strengthNote", { done: state.done, of: 2 });
+  // After a break the dose comes down, and says so.
+  const note = [t("strengthNote", { done: state.done, of: 2 }), ...(level.eased ? [t("strengthEased", { steps: level.eased })] : [])].join(" ");
   button.addEventListener("click", () => start(session.steps, {
     doneKey: "strengthDone",
     doneNote: t("strengthDoneNote"),

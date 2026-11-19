@@ -394,8 +394,8 @@ export function exerciseCatalog() {
 }
 
 // Strength twice a week for the muscles rowing leaves out, in two rounds: each exercise by its repeats (a press of
-// "done" ends it) or, a hold, by its time, a short rest between and a longer one between the rounds. Every two
-// sessions done add a repeat or five seconds, up to a ceiling.
+// "done" ends it) or, a hold, by its time, a short rest between and a longer one between the rounds. The dose
+// follows a level (see strengthLevel): each step a repeat or five seconds more, up to a ceiling.
 export const strengthPlan = {
   rounds: 2,
   rest: 20,
@@ -414,19 +414,34 @@ export const strengthPerWeek = 2;
 // A repeat's time, to tell how long a set of them takes.
 const repSeconds = 3;
 
-// Each exercise's dose after so many sessions done: { id, reps } or { id, seconds }.
-export function strengthDoses(done = 0) {
-  const steps = Math.floor(done / 2);
+// The level strength work has reached, in steps of a repeat or five seconds: half a step for every session done,
+// and a step less for every full week of a break beyond two (between sessions, and from the last one to today),
+// never below the start. log: { "YYYY-MM-DD": true }. { steps, eased: the steps the break up to today took off }.
+export const strengthBreakDays = 14;
+export function strengthLevel(log = {}, today = null) {
+  const days = Object.keys(log).filter((day) => log[day] && (!today || day <= today)).sort();
+  const off = (from, to) => Math.max(0, Math.floor((Math.round((keyNoon(to) - keyNoon(from)) / 86_400_000) - strengthBreakDays) / 7));
+  let level = 0;
+  days.forEach((day, index) => {
+    if (index) level = Math.max(0, level - off(days[index - 1], day));
+    level += 0.5;
+  });
+  const eased = today && days.length ? Math.min(Math.floor(level), off(days.at(-1), today)) : 0;
+  return { steps: Math.max(0, Math.floor(level) - eased), eased };
+}
+
+// Each exercise's dose at a level's steps: { id, reps } or { id, seconds }.
+export function strengthDoses(steps = 0) {
   return strengthPlan.exercises.map(({ id, reps, seconds, most }) => (reps
     ? { id, reps: Math.min(most, reps + steps) }
     : { id, seconds: Math.min(most, seconds + steps * 5) }));
 }
 
-// The session as the player's steps: a rest before each exercise (the longer one before a round), then its work,
-// per side where it has two: { type: "work", id, side, reps } for repeats, with seconds for a hold. round counts
-// from 1. { steps, minutes, doses }.
-export function strengthSession(done = 0) {
-  const doses = strengthDoses(done);
+// The session at a level's steps as the player's steps: a rest before each exercise (the longer one before a
+// round), then its work, per side where it has two: { type: "work", id, side, reps } for repeats, with seconds
+// for a hold. round counts from 1. { steps, minutes, doses }.
+export function strengthSession(level = 0) {
+  const doses = strengthDoses(level);
   const list = [];
   for (let round = 1; round <= strengthPlan.rounds; round += 1) {
     doses.forEach((dose, index) => {
@@ -442,7 +457,9 @@ export function strengthSession(done = 0) {
   return { steps: list, minutes: Math.round(total / 60), doses };
 }
 
-const keyNoon = (key) => Date.parse(`${key}T12:00:00Z`);
+function keyNoon(key) {
+  return Date.parse(`${key}T12:00:00Z`);
+}
 const mondayKey = (key) => {
   const ms = keyNoon(key);
   return new Date(ms - ((new Date(ms).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
