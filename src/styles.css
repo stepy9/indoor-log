@@ -1656,3 +1656,14 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .intervals-table tbody td:first-child::before { content: ""; position: absolute; top: 5px; bottom: 5px; left: 2px; width: 4px; border-radius: 4px; background: var(--step); }
   .intervals-table tbody tr { background: color-mix(in srgb, var(--step) 6%, transparent); }
 }
+
+/* Phones: the steps' and the intervals' dialogs scroll as a whole, with no list scrolling inside them, and their
+   buttons stay in sight at the bottom, over a band of the dialog's own colour. */
+@media (max-width: 640px) {
+  :is(.workout-dialog, #intervalsDialog) { max-height: calc(100dvh - 32px); padding-bottom: 0; }
+  :is(.workout-dialog, #intervalsDialog) .laps-scroll:has(> .intervals-table) { max-height: none; }
+  :is(.workout-dialog, #intervalsDialog) .dialog-actions {
+    position: sticky; bottom: 0; z-index: 2; margin: 8px -22px 0; padding: 12px 22px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line); background: var(--surface);
+  }
+}
