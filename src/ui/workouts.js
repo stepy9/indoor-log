@@ -148,7 +148,22 @@ function open({ name, steps, note, taken }, onSave) {
         draft.splice(index, 1);
         render();
       });
-      const cells = [String(index + 1), formatDuration(start), length, resistance, target, type, remove];
+      // Up and down by one, so a step put in the wrong place is moved rather than typed again.
+      const moves = el("span", { class: "step-moves" });
+      for (const [by, symbol, key] of [[-1, "↑", "workoutStepUp"], [1, "↓", "workoutStepDown"]]) {
+        const to = index + by;
+        const button = el("button", { type: "button", class: "link-button", title: t(key), "aria-label": `${t(key)} ${index + 1}` }, symbol);
+        button.disabled = to < 0 || to >= draft.length;
+        button.addEventListener("click", () => {
+          [draft[index], draft[to]] = [draft[to], draft[index]];
+          render();
+          part("rows").rows[to]?.querySelectorAll(".step-moves button")[by < 0 ? 0 : 1]?.focus();
+        });
+        moves.append(button);
+      }
+      const actions = el("span", { class: "step-actions" });
+      actions.append(moves, remove);
+      const cells = [String(index + 1), formatDuration(start), length, resistance, target, type, actions];
       row.append(...cells.map((content) => {
         const cell = el("td");
         if (content instanceof Node) cell.append(content);
