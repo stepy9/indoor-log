@@ -5,6 +5,7 @@ import { parseKinomapPlan } from "../core.js";
 import { noteFromCreator, stepsFromCreator, stepsFromSegments } from "../training.js";
 import { formatDuration, t } from "./context.js";
 import { intensitySelectElement } from "./intervals.js";
+import { withTip } from "./info.js";
 import { checkNumber, markField } from "./validate.js";
 
 const el = (tag, attributes = {}, text = "") => {
@@ -43,7 +44,6 @@ function editor() {
     <div class="dialog-head"><h2 id="workoutDialogTitle"></h2><span class="estimate-note" data-role="count"></span></div>
     <label class="settings-field workout-name"><span></span><input type="text" data-role="name" /></label>
     <label class="settings-field workout-note"><span></span><textarea rows="3" data-role="note"></textarea></label>
-    <p class="field-note info-note" data-role="hint"></p>
     <details class="plan-paste"><summary data-role="paste-title"></summary>
       <textarea rows="4" data-role="paste" placeholder='{"data":{"intervals":[…]}}  /  00:00  37%  22rpm  WU'></textarea>
       <button class="accent-button" type="button" data-role="paste-apply"></button>
@@ -66,9 +66,11 @@ function open({ name, steps, note, taken }, onSave) {
   const box = editor();
   const part = (role) => box.querySelector(`[data-role="${role}"]`);
   let draft = steps.map((item) => ({ ...item }));
-  box.querySelector("h2").textContent = name ? t("workoutEdit") : t("workoutNew");
+  // The explanation behind an ⓘ by the title, as the settings' own.
+  const title = box.querySelector("h2");
+  title.textContent = name ? t("workoutEdit") : t("workoutNew");
+  withTip(title, t("workoutHint"));
   box.querySelector(".workout-name span").textContent = t("workoutName");
-  part("hint").textContent = t("workoutHint");
   part("paste-title").textContent = t("workoutPaste");
   part("paste-apply").textContent = t("pastePlanApply");
   for (const [role, key] of [["h-start", "segmentStart"], ["h-length", "segmentDuration"], ["h-resistance", "workoutResistance"], ["h-target", "segmentTarget"], ["h-type", "lapType"], ["add", "workoutAddStep"], ["cancel", "cancel"], ["save", "save"]]) part(role).textContent = t(key);

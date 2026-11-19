@@ -99,3 +99,19 @@ export function setupInfoNotes() {
     sync();
   }
 }
+
+// An ⓘ put into the title, its explanation in a tooltip on hover or a tap, as elsewhere in the app; returns the title.
+export function withTip(title, text) {
+  const hint = infoHint(text);
+  hint.classList.add("is-inline", "opens-right", "settings-tip");
+  const heading = title.textContent;
+  // On a phone a tap opens it in the sheet from the bottom, as the other explanations; a label holding it is not clicked through.
+  hint.addEventListener("click", (event) => {
+    if (!matchMedia("(max-width: 640px)").matches) return;
+    event.preventDefault();
+    hint.blur();
+    openInfoSheet(heading, text);
+  });
+  title.append(hint);
+  return title;
+}

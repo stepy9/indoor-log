@@ -17,7 +17,7 @@ import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapNotes, defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
 import { workoutList } from "./workouts.js";
-import { infoHint, openInfoSheet } from "./info.js";
+import { withTip } from "./info.js";
 import { bodyStatus } from "../reminders.js";
 import { parseGarminCsv } from "../garmin-csv.js";
 
@@ -204,22 +204,6 @@ export const setByHand = (sport, field) => (field === "ftp"
 // tab: the open part of a sport's pane, the same for every sport.
 const state = { pane: "general", tab: "trainers", entries: [], onTrainers: () => {}, sport: () => null };
 const sportTabs = ["trainers", "zones", "plan", "kinomap"];
-
-// An ⓘ put into the title, its explanation in a tooltip on hover or a tap, as elsewhere in the app; returns the title.
-function withTip(title, text) {
-  const hint = infoHint(text);
-  hint.classList.add("is-inline", "opens-right", "settings-tip");
-  const heading = title.textContent;
-  // On a phone a tap opens it in the sheet from the bottom, as the other explanations; a label holding it is not clicked through.
-  hint.addEventListener("click", (event) => {
-    if (!matchMedia("(max-width: 640px)").matches) return;
-    event.preventDefault();
-    hint.blur();
-    openInfoSheet(heading, text);
-  });
-  title.append(hint);
-  return title;
-}
 
 function node(tag, attributes = {}, text = "") {
   const element = document.createElement(tag);
