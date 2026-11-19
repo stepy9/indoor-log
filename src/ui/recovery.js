@@ -57,20 +57,47 @@ const element = (tag, className, textContent = "") => Object.assign(document.cre
 // The player: one step at a time, counted down by the clock, so a phone put aside keeps its place.
 const player = { list: [], index: 0, endsAt: 0, left: 0, paused: false, timer: null, doneKey: "recoveryDone", onDone: null, wakeLock: null };
 
-function cue(long = false) {
-  try { navigator.vibrate?.(long ? [200, 100, 200] : 120); } catch { /* no vibration */ }
+// Sounds to follow the set without looking: three short ticks before a change, one long high tone as an exercise
+// starts, two short low ones as it ends, a rising three at the end of the set. One audio context, opened by the
+// tap that starts the set (iOS plays nothing from one opened later), muted by the player's bell.
+const soundOn = () => savedDefaults().playerSound !== false;
+let audio = null;
+function openAudio() {
   try {
-    const audio = new (window.AudioContext || window.webkitAudioContext)();
-    const tone = audio.createOscillator();
-    const gain = audio.createGain();
-    tone.frequency.value = long ? 660 : 880;
-    gain.gain.setValueAtTime(0.15, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + (long ? 0.6 : 0.25));
-    tone.connect(gain).connect(audio.destination);
-    tone.start();
-    tone.stop(audio.currentTime + (long ? 0.6 : 0.25));
-    tone.onended = () => audio.close();
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+  } catch { audio = null; }
+}
+function tones(list) {
+  if (!soundOn() || !audio) return;
+  try {
+    let at = audio.currentTime + 0.02;
+    for (const [frequency, seconds, gap = 0.08] of list) {
+      const tone = audio.createOscillator();
+      const gain = audio.createGain();
+      tone.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.25, at + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+      tone.connect(gain).connect(audio.destination);
+      tone.start(at);
+      tone.stop(at + seconds + 0.02);
+      at += seconds + gap;
+    }
   } catch { /* no sound */ }
+}
+const buzz = (pattern) => { try { if (soundOn()) navigator.vibrate?.(pattern); } catch { /* no vibration */ } };
+const sounds = {
+  tick: () => tones([[660, 0.12]]),
+  start: () => { tones([[990, 0.45]]); buzz(250); },
+  stop: () => { tones([[520, 0.15], [520, 0.15]]); buzz([120, 80, 120]); },
+  done: () => { tones([[660, 0.18], [880, 0.18], [1100, 0.4]]); buzz([200, 100, 200, 100, 300]); },
+};
+// The change into the step now showing: a start into work, a stop out of it.
+function cue(into) {
+  if (into === "done") sounds.done();
+  else if (into === "work") sounds.start();
+  else sounds.stop();
 }
 
 function showStep() {
@@ -105,6 +132,7 @@ function showStep() {
   }
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
+  player.ticked = null;
   tick();
 }
 
@@ -112,7 +140,11 @@ function showStep() {
 function advance() {
   player.index += 1;
   if (player.index >= player.list.length) return finish();
-  cue(player.list[player.index].type === "work");
+  // Out of a rest into the next one (a side switched) is no stop: only work's ends are said.
+  const from = player.list[player.index - 1]?.type;
+  const into = player.list[player.index].type;
+  if (into === "work") cue("work");
+  else if (from === "work") cue("rest");
   showStep();
 }
 
@@ -120,13 +152,18 @@ function tick() {
   if (player.paused || !player.list.length || player.list[player.index]?.reps) return;
   const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
   byId("recoveryPlayerClock").textContent = formatDuration(left);
+  // The last three seconds of a pause or a hold tick, once each.
+  if (left > 0 && left <= 3 && player.ticked !== left) {
+    player.ticked = left;
+    sounds.tick();
+  }
   if (left > 0) return;
   advance();
 }
 
 async function finish() {
   stop();
-  cue(true);
+  cue("done");
   const dialog = byId("recoveryPlayer");
   dialog.classList.add("is-done");
   dialog.classList.remove("is-rest");
@@ -178,6 +215,7 @@ async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = n
 
 // From the intro's button, or straight away: the steps and their clock.
 async function run() {
+  openAudio();
   const dialog = byId("recoveryPlayer");
   dialog.classList.remove("is-intro");
   byId("recoveryPlayerIntro").hidden = true;
@@ -208,6 +246,21 @@ function wirePlayer() {
     advance();
   });
   byId("recoveryPlayerClose").addEventListener("click", () => dialog.close());
+  // The bell: sounds and vibration on or off, remembered.
+  const bell = byId("recoveryPlayerSound");
+  const showBell = () => {
+    bell.setAttribute("aria-pressed", String(soundOn()));
+    bell.textContent = soundOn() ? "🔔" : "🔕";
+    bell.title = t(soundOn() ? "playerSoundOn" : "playerSoundOff");
+    bell.setAttribute("aria-label", bell.title);
+  };
+  showBell();
+  bell.addEventListener("click", () => {
+    saveDefaults({ playerSound: !soundOn() });
+    openAudio();
+    showBell();
+    if (soundOn()) sounds.tick();
+  });
   byId("recoveryPlayerStart").addEventListener("click", run);
   byId("recoveryPlayerFinish").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", stop);
