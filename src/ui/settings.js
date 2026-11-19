@@ -837,6 +837,17 @@ function trainingBlock(sport) {
     changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
+  // The distance for the whole year, for the Analysis tab to measure the year by.
+  const yearly = node("label", { class: "settings-field settings-weekly" });
+  const yearInput = node("input", { type: "number", min: "0", step: "10", inputmode: "numeric", "data-key": `yearly-km-${sport}`, placeholder: "—" });
+  yearInput.value = savedSport(sport).yearlyKm ? String(savedSport(sport).yearlyKm) : "";
+  yearInput.addEventListener("change", () => {
+    const value = checkNumber(yearInput, { min: 1, max: 100000 });
+    if (value === undefined) return;
+    saveSport(sport, { yearlyKm: value });
+    changed();
+  });
+  yearly.append(node("span", {}, t("settingsYearlyKm")), yearInput);
   // The choices in rows, side by side where they fit.
   const row = (...cells) => {
     const line = node("div", { class: "settings-row" });
@@ -863,6 +874,7 @@ function trainingBlock(sport) {
   row(
     field(weekly, t("settingsTrainingDaysNote")),
     field(distance),
+    field(yearly, t("settingsYearlyKmNote")),
     field(minutes("usualMinutes", "settingsPlanUsual", planPrefLimits.usualMinutes)),
     field(minutes("minimalMinutes", "settingsPlanMinimal", planPrefLimits.minimalMinutes, "10"), t("settingsPlanMinimalNote")),
   );

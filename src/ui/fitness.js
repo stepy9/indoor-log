@@ -14,6 +14,7 @@ import { excuses } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
+import { yearProgress } from "../year-goal.js";
 import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
 import { infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
@@ -317,6 +318,18 @@ function renderTiles(history, settings) {
       : t("fitnessGoalRestFrom", { days: plan.days, level: level ? "+15" : "0", from: dayText(plan.restFrom, { weekday: "short", day: "numeric", month: "numeric" }) });
     const title = [goal.name || t("fitnessGoal"), ...(view.sport === "all" && goals.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
     tiles.push(tile(title, dayText(goal.day, { weekday: "short", day: "numeric", month: "numeric" }), note));
+  }
+  // Each shown sport's yearly distance goal: the km done this year, ahead or behind the year's share, and per day left.
+  const goalSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
+  for (const sport of goalSports) {
+    const goal = settings.sports[sport]?.yearlyKm;
+    const progress = yearProgress({ workouts: view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 })), goal, today: today() });
+    if (!progress) continue;
+    const km = (value) => displayNumber(value, value < 100 ? 1 : 0);
+    const ahead = Math.abs(progress.ahead) < 0.05 ? "±0 km" : t(progress.ahead > 0 ? "yearGoalAhead" : "yearGoalBehind", { km: km(Math.abs(progress.ahead)) });
+    const note = [t("yearGoalOf", { goal: displayNumber(goal) }), ...(progress.left > 0 ? [ahead, t("yearGoalPerDay", { km: displayNumber(progress.perDay, 1) })] : [t("yearGoalDone")])].join(" · ");
+    const title = [t("yearGoal", { year: today().slice(0, 4) }), ...(goalSports.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
+    tiles.push(tile(title, t("yearGoalValue", { done: km(progress.done), goal: displayNumber(goal) }), note, progress.ahead >= 0 ? "is-ahead" : "is-behind"));
   }
   if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
   const shownSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];

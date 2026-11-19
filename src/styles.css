@@ -1836,3 +1836,5 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .regularity-weeks { gap: 4px; }
   .regularity-count { font-size: 17px; }
 }
+.diary-tile.is-ahead .diary-tile-change { color: var(--success); }
+.diary-tile.is-behind .diary-tile-change { color: var(--danger-ink); }
