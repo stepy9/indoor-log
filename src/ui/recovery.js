@@ -113,10 +113,12 @@ function announce(coming) {
   if (!coming || coming.type !== "work") return;
   if (coming.side === 2) return speak(t("speakRight"));
   const { hold } = exercises[coming.id];
-  const parts = [t("speakNext", { name: t(`recovery_${coming.id}`) })];
-  if (coming.side === 1) parts.push(t("recoverySide_1").toLocaleLowerCase());
-  parts.push(coming.reps ? t("strengthReps", { reps: coming.reps }) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds }));
-  speak(parts.join(", "));
+  // Two short sentences, as a coach would say them: "Next exercise: push-ups. 8 repeats." The name in lower case
+  // inside the sentence, the side after it.
+  const name = t(`recovery_${coming.id}`).toLocaleLowerCase();
+  const side = coming.side === 1 ? `, ${t("recoverySide_1").toLocaleLowerCase()}` : "";
+  const amount = coming.reps ? t("speakReps", { reps: coming.reps }) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds });
+  speak(`${t("speakNext", { name })}${side}. ${amount}.`);
 }
 
 // The change into the step now showing: a start into work, a stop out of it.
