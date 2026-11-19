@@ -920,15 +920,16 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .settings-tabs button { flex: 1 0 auto; white-space: nowrap; }
 
 /* The ⓘ beside a title, showing its explanation below. */
-.info-tip { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 6px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--muted); background: transparent; font: italic 700 10px/1 Georgia, serif; vertical-align: 1px; cursor: pointer; }
-.info-tip:hover, .info-tip[aria-expanded="true"] { color: var(--ink); border-color: var(--muted); }
-.info-note { margin-top: 4px; }
-.info-note[hidden] { display: none; }
+.settings-tip { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 6px; padding: 0; border: 1.5px solid var(--muted); border-radius: 50%; color: var(--muted); background: transparent; font: italic 700 10px/1 Georgia, serif; vertical-align: 1px; cursor: pointer; }
+.settings-tip:hover, .settings-tip[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+.settings-tip-note { margin-top: 6px; }
+.settings-tip-note[hidden] { display: none; }
 
-/* The plan's rarer choices, folded. */
-.settings-advanced { margin-top: 16px; }
-.settings-advanced > summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
-.settings-advanced[open] > summary { margin-bottom: 4px; }
+/* The plan's choices in rows, side by side as they fit. */
+.settings-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; margin-top: 14px; }
+.settings-row > .settings-field { width: 150px; }
+.settings-cell { display: grid; gap: 4px; justify-items: start; }
+.settings-cell > .segmented { margin: 0; }
 
 /* The plan's two columns: the checklist, and the week's distance and the longest workouts beside it. */
 .diary-plan-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); gap: 24px; align-items: start; }

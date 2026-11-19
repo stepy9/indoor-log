@@ -200,8 +200,8 @@ export const setByHand = (sport, field) => (field === "ftp"
   ? ftpRecords(savedSport(sport)).some((record) => record.ftp > 0 && (!record.from || record.from <= dayKey(Date.now(), zone)))
   : Boolean(savedSport(sport)[field]));
 
-// tab: the open part of a sport's pane, the same for every sport; advanced: whether the plan's rarer choices unfold.
-const state = { pane: "general", tab: "trainers", advanced: false, entries: [], onTrainers: () => {}, sport: () => null };
+// tab: the open part of a sport's pane, the same for every sport.
+const state = { pane: "general", tab: "trainers", entries: [], onTrainers: () => {}, sport: () => null };
 const sportTabs = ["trainers", "zones", "plan", "kinomap"];
 
 // The explanations open by their ⓘ, kept open across redraws.
@@ -210,8 +210,8 @@ const openTips = new Set();
 // An ⓘ button put into the title, and the note it shows below it; returns both to append.
 function withTip(title, text) {
   const open = openTips.has(text);
-  const button = node("button", { type: "button", class: "info-tip", "aria-expanded": String(open), "aria-label": t("settingsMoreInfo"), title: t("settingsMoreInfo") }, "i");
-  const note = node("p", { class: "field-note info-note" }, text);
+  const button = node("button", { type: "button", class: "settings-tip", "aria-expanded": String(open), "aria-label": t("settingsMoreInfo"), title: t("settingsMoreInfo") }, "i");
+  const note = node("p", { class: "field-note settings-tip-note" }, text);
   note.hidden = !open;
   button.addEventListener("click", () => {
     const show = note.hidden;
@@ -827,9 +827,6 @@ function planPrefs(sport) {
   return { prefs, writePlan };
 }
 
-// A label with its explanation behind an ⓘ.
-const tipLabel = (text, note) => withTip(node("span", { class: "settings-label settings-days-label" }, text), note);
-
 function trainingBlock(sport) {
   const block = node("div", { class: "settings-block" });
   const { prefs, writePlan } = planPrefs(sport);
@@ -859,58 +856,56 @@ function trainingBlock(sport) {
     changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
-  const both = node("div", { class: "settings-weekly-row" });
-  both.append(weekly, distance);
-  block.append(both);
+  // The choices in rows, side by side where they fit; each row's explanations open below it.
+  const row = (...cells) => {
+    const line = node("div", { class: "settings-row" });
+    const notes = [];
+    for (const [cell, note] of cells) {
+      line.append(cell);
+      if (note) notes.push(note);
+    }
+    block.append(line, ...notes);
+  };
+  const choice = (text, note, control) => {
+    const cell = node("div", { class: "settings-cell" });
+    const title = node("span", { class: "settings-label" }, text);
+    const shown = note ? withTip(title, note)[1] : null;
+    cell.append(title, control);
+    return [cell, shown];
+  };
+  const field = (element, note) => [element, note ? withTip(element.querySelector("span"), note)[1] : null];
+  const minutes = (key, labelKey, limits, placeholder = t("settingsPlanAutoShort")) => numberField(t(labelKey), prefs[key], placeholder, (value) => writePlan({ [key]: value }), { min: limits[0], max: limits[1] });
   // The days of the week trained on, for the week's plan; none picked lets the plan take the usual ones.
   const days = daysRow(`training-day-${sport}`, t("settingsTrainingDays"), savedSport(sport).trainingDays, (list) => {
     saveSport(sport, { trainingDays: list });
     changed();
   });
-  block.append(...tipLabel(t("settingsTrainingDays"), t("settingsTrainingDaysNote")), days);
-  // The longer workouts: how many a week and on which days.
-  const label = (text) => node("span", { class: "settings-label settings-days-label" }, text);
-  block.append(
-    label(t("settingsPlanLongCount")),
-    choiceRow(`plan-long-count-${sport}`, t("settingsPlanLongCount"), [1, 2, 3], prefs.longPerWeek, (value) => writePlan({ longPerWeek: value })),
-    ...tipLabel(t("settingsPlanLongDays"), t("settingsPlanLongDaysNote")),
-    daysRow(`plan-long-day-${sport}`, t("settingsPlanLongDays"), prefs.longDays, (list) => writePlan({ longDays: list })),
+  row(
+    field(weekly, t("settingsTrainingDaysNote")),
+    field(distance),
+    field(minutes("usualMinutes", "settingsPlanUsual", planPrefLimits.usualMinutes)),
+    field(minutes("minimalMinutes", "settingsPlanMinimal", planPrefLimits.minimalMinutes, "10"), t("settingsPlanMinimalNote")),
   );
-  // Minutes: the longer workouts' target and step, the usual workout's time.
-  const minutes = (key, labelKey, limits) => numberField(t(labelKey), prefs[key], t("settingsPlanAutoShort"), (value) => writePlan({ [key]: value }), { min: limits[0], max: limits[1] });
-  const times = node("div", { class: "fitness-settings" });
-  times.append(
-    minutes("longTargetMinutes", "settingsPlanLongTarget", planPrefLimits.longTargetMinutes),
-    minutes("longStepMinutes", "settingsPlanLongStep", planPrefLimits.longStepMinutes),
-    minutes("usualMinutes", "settingsPlanUsual", planPrefLimits.usualMinutes),
+  row(
+    choice(t("settingsTrainingDays"), null, days),
+    choice(t("settingsPlanLongCount"), null, choiceRow(`plan-long-count-${sport}`, t("settingsPlanLongCount"), [1, 2, 3], prefs.longPerWeek, (value) => writePlan({ longPerWeek: value }))),
+    choice(t("settingsPlanLongDays"), t("settingsPlanLongDaysNote"), daysRow(`plan-long-day-${sport}`, t("settingsPlanLongDays"), prefs.longDays, (list) => writePlan({ longDays: list }))),
   );
-  // The note for the three times behind the first one's ⓘ, under the row.
-  const [, timesNote] = withTip(times.querySelector(".settings-field > span"), t("settingsPlanTimesNote"));
-  block.append(times, timesNote);
-  // The rarer choices, folded away until wanted.
-  const advanced = node("details", { class: "settings-advanced" });
-  advanced.open = state.advanced;
-  advanced.addEventListener("toggle", () => {
-    state.advanced = advanced.open;
-  });
-  advanced.append(
-    node("summary", {}, t("settingsAdvanced")),
-    ...tipLabel(t("settingsPlanIntervals"), t("settingsPlanIntervalsNote")),
-    choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value })),
-    ...tipLabel(t("settingsPlanIntervalType"), t("settingsPlanIntervalTypeNote")),
-    choiceRow(`plan-interval-type-${sport}`, t("settingsPlanIntervalType"), ["short", "medium", "tempo"].map((value) => ({ value, label: t(`settingsPlanIntervalType_${value}`) })), prefs.intervalType, (value) => writePlan({ intervalType: value })),
-    ...tipLabel(t("settingsPlanFtpTest"), t("settingsPlanFtpTestNote")),
-    choiceRow(`plan-ftp-test-${sport}`, t("settingsPlanFtpTest"), [6, 8, 10].map((value) => ({ value, label: t("settingsPlanWeeks", { weeks: value }) })), prefs.ftpTestWeeks, (value) => writePlan({ ftpTestWeeks: value }), t("settingsPlanOff")),
-    ...tipLabel(t("settingsPlanLighter"), t("settingsPlanLighterNote")),
-    choiceRow(`plan-lighter-${sport}`, t("settingsPlanLighter"), [3, 5].map((value) => ({ value, label: t("settingsPlanLighterEvery", { weeks: value }) })).concat({ value: 0, label: t("settingsPlanNever") }), prefs.lighterEvery, (value) => writePlan({ lighterEvery: value }), t("settingsPlanLighterAuto")),
-    label(t("settingsPlanLighterBy")),
-    choiceRow(`plan-lighter-by-${sport}`, t("settingsPlanLighterBy"), [10, 30, 40].map((value) => ({ value, label: `${value} %` })), prefs.lighterPercent, (value) => writePlan({ lighterPercent: value }), t("settingsPlanLighterByAuto")),
+  row(
+    field(minutes("longTargetMinutes", "settingsPlanLongTarget", planPrefLimits.longTargetMinutes), t("settingsPlanTimesNote")),
+    field(minutes("longStepMinutes", "settingsPlanLongStep", planPrefLimits.longStepMinutes)),
   );
-  const least = node("div", { class: "fitness-settings" });
-  least.append(numberField(t("settingsPlanMinimal"), prefs.minimalMinutes, "10", (value) => writePlan({ minimalMinutes: value }), { min: planPrefLimits.minimalMinutes[0], max: planPrefLimits.minimalMinutes[1] }));
-  const [, minimalNote] = withTip(least.querySelector(".settings-field > span"), t("settingsPlanMinimalNote"));
-  advanced.append(least, minimalNote);
-  block.append(advanced);
+  row(
+    choice(t("settingsPlanIntervals"), t("settingsPlanIntervalsNote"), choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value }))),
+    choice(t("settingsPlanIntervalType"), t("settingsPlanIntervalTypeNote"), choiceRow(`plan-interval-type-${sport}`, t("settingsPlanIntervalType"), ["short", "medium", "tempo"].map((value) => ({ value, label: t(`settingsPlanIntervalType_${value}`) })), prefs.intervalType, (value) => writePlan({ intervalType: value }))),
+  );
+  row(
+    choice(t("settingsPlanFtpTest"), t("settingsPlanFtpTestNote"), choiceRow(`plan-ftp-test-${sport}`, t("settingsPlanFtpTest"), [6, 8, 10].map((value) => ({ value, label: t("settingsPlanWeeks", { weeks: value }) })), prefs.ftpTestWeeks, (value) => writePlan({ ftpTestWeeks: value }), t("settingsPlanOff"))),
+  );
+  row(
+    choice(t("settingsPlanLighter"), t("settingsPlanLighterNote"), choiceRow(`plan-lighter-${sport}`, t("settingsPlanLighter"), [3, 5].map((value) => ({ value, label: t("settingsPlanLighterEvery", { weeks: value }) })).concat({ value: 0, label: t("settingsPlanNever") }), prefs.lighterEvery, (value) => writePlan({ lighterEvery: value }), t("settingsPlanLighterAuto"))),
+    choice(t("settingsPlanLighterBy"), null, choiceRow(`plan-lighter-by-${sport}`, t("settingsPlanLighterBy"), [10, 30, 40].map((value) => ({ value, label: `${value} %` })), prefs.lighterPercent, (value) => writePlan({ lighterPercent: value }), t("settingsPlanLighterByAuto"))),
+  );
   return block;
 }
 
