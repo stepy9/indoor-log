@@ -17,7 +17,7 @@ import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
 import { workoutList } from "./workouts.js";
-import { infoHint } from "./info.js";
+import { infoHint, openInfoSheet } from "./info.js";
 import { bodyStatus } from "../reminders.js";
 import { parseGarminCsv } from "../garmin-csv.js";
 
@@ -209,6 +209,14 @@ const sportTabs = ["trainers", "zones", "plan", "kinomap"];
 function withTip(title, text) {
   const hint = infoHint(text);
   hint.classList.add("is-inline", "opens-right", "settings-tip");
+  const heading = title.textContent;
+  // On a phone a tap opens it in the sheet from the bottom, as the other explanations; a label holding it is not clicked through.
+  hint.addEventListener("click", (event) => {
+    if (!matchMedia("(max-width: 640px)").matches) return;
+    event.preventDefault();
+    hint.blur();
+    openInfoSheet(heading, text);
+  });
   title.append(hint);
   return title;
 }

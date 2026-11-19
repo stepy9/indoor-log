@@ -64,6 +64,14 @@ function sheet() {
   return dialog;
 }
 
+// The explanation in the sheet from the bottom, as a phone shows it.
+export function openInfoSheet(heading, text) {
+  const dialog = sheet();
+  document.getElementById("infoDialogTitle").textContent = heading;
+  renderInfo(document.getElementById("infoDialogText"), text);
+  dialog.showModal();
+}
+
 export function setupInfoNotes() {
   for (const note of document.querySelectorAll(".info-note")) {
     // A converter setting's note belongs to its own panel, headed by that setting's name (.info-title).
@@ -76,10 +84,7 @@ export function setupInfoNotes() {
     button.addEventListener("click", () => {
       // The desktop's Analysis page shows the note as the tooltip instead.
       if (button.closest("#fitnessView") && matchMedia("(min-width: 641px)").matches) return;
-      const dialog = sheet();
-      document.getElementById("infoDialogTitle").textContent = title.textContent;
-      renderInfo(document.getElementById("infoDialogText"), note.textContent);
-      dialog.showModal();
+      openInfoSheet(title.textContent, note.textContent);
     });
     // On a desktop the Analysis page keeps its notes behind the ⓘ too, shown as a tooltip on hover or focus.
     const tip = Object.assign(document.createElement("span"), { className: "tile-info-text info-tip", role: "tooltip" });

@@ -922,6 +922,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* The ⓘ beside a title, its explanation in a tooltip. */
 .settings-tip { display: inline-grid; margin-left: 6px; vertical-align: 1px; font-weight: 700; }
 .settings-tip .tile-info-text { font-weight: 400; }
+@media (max-width: 640px) { .settings-tip .tile-info-text { display: none; } }
 
 /* The plan's choices in rows, side by side as they fit. */
 .settings-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; margin-top: 14px; }
