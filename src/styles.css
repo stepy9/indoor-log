@@ -91,7 +91,7 @@
 * { box-sizing: border-box; }
 /* The scrollbar's room is kept on short pages too, so switching views never shifts the layout. */
 html { background: var(--bg); scrollbar-gutter: stable; }
-body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; min-width: 320px; color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.45; }
+body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; min-width: 320px; overflow-x: clip; color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.45; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -951,7 +951,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-key.is-done i { background: var(--compare-1); }
 .diary-plan-key.is-ahead i { border: 1px dashed var(--compare-1); }
 .diary-plan-key.is-target i { width: 2px; height: 12px; border-radius: 0; background: var(--ink); }
-@media (max-width: 760px) { .diary-plan-body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1000px) { .diary-plan-body { grid-template-columns: minmax(0, 1fr); } }
 
 /* The two record tables share their column widths, so they line up one under the other. */
 #fitnessRecords, #fitnessRecordTimes { table-layout: fixed; width: 100%; min-width: 560px; }
@@ -1049,10 +1049,16 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 @media (max-width: 640px) {
   .brand { flex: none; }
   .topbar-title { display: block; align-self: center; flex: 1; min-width: 0; overflow: hidden; color: var(--topbar-ink); font-size: 17px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-  .topbar-actions { position: relative; gap: 8px; }
-  #libraryButton, .topbar-more-button { position: relative; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border-radius: 50%; }
+  #libraryButton { position: relative; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border-radius: 50%; }
   #libraryButton > span { display: none; }
   .topbar-icon { display: block; }
+}
+/* Tablets too (an iPad held upright): the settings, the language and the appearance go under the gear,
+   so the tabs and the actions fit in one row. */
+@media (max-width: 1100px) {
+  .topbar-actions { position: relative; gap: 8px; }
+  .topbar-more-button { position: relative; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border-radius: 50%; }
+  .topbar-more-button .topbar-icon { display: block; }
   .topbar-more-button[aria-expanded="true"] { color: #fff; border-color: var(--topbar-muted); }
   .topbar-more {
     position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; width: 230px;
@@ -1286,7 +1292,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 
 /* What the app does and that it stays in the browser: the phone's footer, at the end of the gear's menu. */
 .topbar-more-about { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 1100px) {
   .topbar-more-about { display: block; grid-column: 1 / -1; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid var(--topbar-line); color: var(--topbar-muted); font-size: 12px; line-height: 1.45; }
   .topbar-more-about span[data-i18n="privacy"] { display: block; margin-top: 4px; }
 }
@@ -1393,7 +1399,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 
 /* Why a day went unridden. */
 .diary-plan-why { font-size: 12px; text-decoration: underline; white-space: nowrap; }
-.diary-plan-row.has-score.has-why { grid-template-columns: auto 90px 34px minmax(0, 1fr) 120px; }
+.diary-plan-row.has-score.has-why { grid-template-columns: auto 90px 34px minmax(0, 1fr) auto; }
 .diary-plan-why-cell { justify-self: end; }
 .diary-plan-row.is-excused .diary-plan-text { color: var(--muted); }
 .excuse-dialog { width: min(480px, calc(100vw - 32px)); }
