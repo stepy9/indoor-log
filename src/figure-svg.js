@@ -2,7 +2,8 @@
 // A view: { poses, focus, blocks, far, arrows }. A pose: { trunk, neck, head, arms, legs, feet } as in recovery.js;
 // feet, when given, the toe of each leg (null for none). far: { arms: [index], legs: [index] }, the limbs on the
 // side away from the eye, drawn darker and behind the body. arrows: SVG paths showing a move's way, drawn faint
-// ({ d, both } for one headed at both ends). A pose's strap: a towel from the hand to the foot.
+// ({ d, both } for one headed at both ends). A pose's strap: a towel from the hand to the foot. A close-up's
+// pose has bands instead of a body, each a polyline as wide as the view's bandWidths says; focus "band<i>" names one.
 // blocks: rects behind the figure (the mat, a wall, a door frame), each with an optional class ("pad" for a cushion).
 
 const points = (list) => list.map(([x, y]) => `${x},${y}`).join(" ");
@@ -23,9 +24,13 @@ export function figureParts(pose, view) {
     if (toe) list.push(["line", `foot${tone}`, { x1: end[0], y1: end[1], x2: toe[0], y2: toe[1] }]);
     return list;
   });
+  // A close-up's parts: bands of their own widths (a forearm, a palm, fingers), far ones darker and behind.
+  const bands = (wantFar) => (pose.bands ?? []).flatMap((band, index) => (isFar("bands", index) === wantFar
+    ? [["polyline", `limb band${wantFar ? " far" : ""}`, { points: points(band), style: `stroke-width: ${view.bandWidths?.[index] ?? 12}px` }]] : []));
   const list = [
     // A towel or strap held, from the hand to the foot.
     ...(pose.strap ? [["polyline", "strap", { points: points(pose.strap) }]] : []),
+    ...bands(true),
     ...limbs("legs", true),
     ...limbs("arms", true),
     ...(pose.trunk ? [
@@ -35,6 +40,7 @@ export function figureParts(pose, view) {
     ] : []),
     ...limbs("legs", false),
     ...limbs("arms", false),
+    ...bands(false),
   ];
   // The muscle that stretches or works: a soft band over its part rather than a line.
   for (const name of view.focus ?? []) {
@@ -45,6 +51,7 @@ export function figureParts(pose, view) {
     if (kind === "arm") list.push(["polyline", "focus", { points: points(pose.arms[index]) }]);
     if (kind === "leg") list.push(["polyline", "focus", { points: points(pose.legs[index]) }]);
     if (kind === "thigh") list.push(["polyline", "focus", { points: points(pose.legs[index].slice(0, 2)) }]);
+    if (name.startsWith("band")) list.push(["polyline", "focus", { points: points(pose.bands[Number(name.slice(4))]) }]);
     if (kind === "fore") list.push(["polyline", "focus", { points: points(pose.arms[index].slice(1)) }]);
   }
   return list;

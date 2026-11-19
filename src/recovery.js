@@ -85,11 +85,14 @@ export const exercises = {
     focus: ["arm0"],
     more: [{
       key: "detail",
-      focus: ["fore0"],
-      far: { arms: [1] },
+      // The hand close up, palm up: the forearm, the palm and the fingers bending down at the wrist, the other
+      // hand (far) pressing on the fingers from above.
+      focus: ["band0"],
+      far: { bands: [3, 4] },
+      bandWidths: [26, 24, 14, 22, 16, 10],
       poses: [
-        { arms: [[[-10, 70], [70, 70], [160, 72], [200, 72]], [[90, 180], [150, 140], [196, 80]]], legs: [] },
-        { arms: [[[-10, 70], [70, 70], [160, 72], [168, 110]], [[90, 180], [150, 146], [172, 112]]], legs: [] },
+        { arms: [], legs: [], bands: [[[-10, 84], [112, 84]], [[112, 84], [150, 84]], [[150, 84], [186, 84]], [[230, 6], [206, 42]], [[206, 42], [178, 78]], [[122, 78], [140, 66]]] },
+        { arms: [], legs: [], bands: [[[-10, 84], [112, 84]], [[112, 84], [138, 112]], [[138, 112], [150, 144]], [[226, 64], [192, 100]], [[192, 100], [154, 128]], [[120, 80], [132, 62]]] },
       ],
     }],
   },
