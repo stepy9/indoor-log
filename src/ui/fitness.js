@@ -1310,7 +1310,7 @@ export const rerenderFitness = () => {
 
 export function setupFitness({ onOpen }) {
   openActivity = onOpen;
-  byId("fitnessSettingsLink").addEventListener("click", () => openSettings(view.sport === "all" ? undefined : view.sport));
+  byId("fitnessSettingsLink").addEventListener("click", () => openSettings(view.sport === "all" ? undefined : view.sport, "zones"));
   window.addEventListener("settings-change", rerenderFitness);
   byId("fitnessSport").addEventListener("change", (event) => {
     view.sport = event.target.value;

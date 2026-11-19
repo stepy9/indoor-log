@@ -462,7 +462,7 @@ function render() {
   if (!view.sport) {
     const empty = node("section", { class: "card" });
     const link = node("button", { type: "button", class: "link-button" }, t("trainingSetUp"));
-    link.addEventListener("click", () => openSettings());
+    link.addEventListener("click", () => openSettings(undefined, "plan"));
     empty.append(node("p", { class: "field-note" }, t("trainingEmpty")), link);
     content.replaceChildren(empty);
     return;
@@ -489,7 +489,7 @@ function render() {
   if (plan) cards.push(progressCard(sport, view.entries.filter((entry) => entry.sport === sport), plan, settings));
   cards.push(workoutsCard(sport, scored));
   const settingsLink = node("button", { type: "button", class: "link-button" }, t("trainingEditSettings"));
-  settingsLink.addEventListener("click", () => openSettings(sport));
+  settingsLink.addEventListener("click", () => openSettings(sport, "plan"));
   cards.push(settingsLink);
   content.replaceChildren(...cards);
   // Drawn once in the page, as the week's figures measure their column.
