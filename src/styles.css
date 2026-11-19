@@ -931,8 +931,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 @media (max-width: 640px) { .settings-tip .tile-info-text { display: none; } }
 
 /* The plan's choices in rows, side by side as they fit. */
-.settings-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; margin-top: 14px; }
-.settings-row > .settings-field { width: 150px; }
+.settings-row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start; margin-top: 14px; }
+.settings-row > .settings-field { width: 160px; max-width: none; margin-top: 0; }
+.settings-row > .settings-field > span:first-child { white-space: nowrap; }
+.settings-subhead { margin: 20px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--ink); font-size: 13px; font-weight: 700; }
+.settings-subhead + .settings-row { margin-top: 10px; }
+.settings-block > :first-child + .settings-subhead { margin-top: 12px; padding-top: 0; border-top: 0; }
 .settings-cell { display: grid; gap: 4px; justify-items: start; }
 .settings-cell > .segmented { margin: 0; }
 

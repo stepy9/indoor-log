@@ -871,22 +871,27 @@ function trainingBlock(sport) {
     saveSport(sport, { trainingDays: list });
     changed();
   });
+  // In sections under small headings: the volume, the workouts' length, the days, intervals and tests, lighter weeks.
+  block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionVolume")));
   row(
     field(weekly, t("settingsTrainingDaysNote")),
     field(distance),
     field(yearly, t("settingsYearlyKmNote")),
+  );
+  block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionLength")));
+  row(
     field(minutes("usualMinutes", "settingsPlanUsual", planPrefLimits.usualMinutes)),
     field(minutes("minimalMinutes", "settingsPlanMinimal", planPrefLimits.minimalMinutes, "10"), t("settingsPlanMinimalNote")),
+    field(minutes("longTargetMinutes", "settingsPlanLongTarget", planPrefLimits.longTargetMinutes), t("settingsPlanTimesNote")),
+    field(minutes("longStepMinutes", "settingsPlanLongStep", planPrefLimits.longStepMinutes)),
   );
+  block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionDays")));
   row(
     choice(t("settingsTrainingDays"), null, days),
     choice(t("settingsPlanLongCount"), null, choiceRow(`plan-long-count-${sport}`, t("settingsPlanLongCount"), [1, 2, 3], prefs.longPerWeek, (value) => writePlan({ longPerWeek: value }))),
     choice(t("settingsPlanLongDays"), t("settingsPlanLongDaysNote"), daysRow(`plan-long-day-${sport}`, t("settingsPlanLongDays"), prefs.longDays, (list) => writePlan({ longDays: list }))),
   );
-  row(
-    field(minutes("longTargetMinutes", "settingsPlanLongTarget", planPrefLimits.longTargetMinutes), t("settingsPlanTimesNote")),
-    field(minutes("longStepMinutes", "settingsPlanLongStep", planPrefLimits.longStepMinutes)),
-  );
+  block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionIntervals")));
   row(
     choice(t("settingsPlanIntervals"), t("settingsPlanIntervalsNote"), choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value }))),
     choice(t("settingsPlanIntervalType"), t("settingsPlanIntervalTypeNote"), choiceRow(`plan-interval-type-${sport}`, t("settingsPlanIntervalType"), ["short", "medium", "tempo"].map((value) => ({ value, label: t(`settingsPlanIntervalType_${value}`) })), prefs.intervalType, (value) => writePlan({ intervalType: value }))),
@@ -894,6 +899,7 @@ function trainingBlock(sport) {
   row(
     choice(t("settingsPlanFtpTest"), t("settingsPlanFtpTestNote"), choiceRow(`plan-ftp-test-${sport}`, t("settingsPlanFtpTest"), [6, 8, 10].map((value) => ({ value, label: t("settingsPlanWeeks", { weeks: value }) })), prefs.ftpTestWeeks, (value) => writePlan({ ftpTestWeeks: value }), t("settingsPlanOff"))),
   );
+  block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionLighter")));
   row(
     choice(t("settingsPlanLighter"), t("settingsPlanLighterNote"), choiceRow(`plan-lighter-${sport}`, t("settingsPlanLighter"), [3, 5].map((value) => ({ value, label: t("settingsPlanLighterEvery", { weeks: value }) })).concat({ value: 0, label: t("settingsPlanNever") }), prefs.lighterEvery, (value) => writePlan({ lighterEvery: value }), t("settingsPlanLighterAuto"))),
     choice(t("settingsPlanLighterBy"), null, choiceRow(`plan-lighter-by-${sport}`, t("settingsPlanLighterBy"), [10, 30, 40].map((value) => ({ value, label: `${value} %` })), prefs.lighterPercent, (value) => writePlan({ lighterPercent: value }), t("settingsPlanLighterByAuto"))),
