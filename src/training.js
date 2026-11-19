@@ -342,12 +342,57 @@ export const defaultKinomapWorkouts = {
 // The steps of the user's own Kinomap workouts, by name: Kinomap Creator keeps no types, nor a cadence for rowing,
 // so they are kept here, and an import of the workout splits its laps by them. A step is { seconds, percent
 // (resistance) | null, targetType: "cadence" | "power" | null, target | null, intensity }.
-const step = (seconds, percent, cadence, intensity) => ({ seconds, percent, targetType: "cadence", target: cadence, intensity });
+const step = (seconds, percent, cadence, intensity) => ({ seconds, percent, targetType: cadence ? "cadence" : null, target: cadence, intensity });
 export const defaultKinomapPlans = {
   rowing: {
     "FTP test 5 min": [
       step(600, 37, 22, "warmup"), step(30, 44, 26, "active"), step(60, 30, 20, "recovery"), step(30, 44, 26, "active"), step(60, 30, 20, "recovery"),
       step(30, 44, 26, "active"), step(270, 30, 20, "recovery"), step(300, 44, 27, "active"), step(480, 37, 20, "cooldown"),
+    ],
+    "FTP test 20 min": [
+      step(600, 37, null, "warmup"), step(60, 44, null, "active"), step(60, 30, null, "recovery"), step(60, 44, null, "active"), step(60, 30, null, "recovery"),
+      step(60, 44, null, "active"), step(300, 30, null, "recovery"), step(300, 44, null, "active"), step(600, 44, null, "active"), step(300, 44, null, "active"),
+      step(480, 37, null, "cooldown"),
+    ],
+    "Intervaly 4x2 min": [
+      step(600, 37, null, "warmup"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(300, 37, null, "cooldown"),
+    ],
+    "Intervaly 5x2 min": [
+      step(600, 37, null, "warmup"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"),
+      step(300, 37, null, "cooldown"),
+    ],
+    "Intervaly 6x2 min": [
+      step(600, 37, null, "warmup"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"),
+      step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(300, 37, null, "cooldown"),
+    ],
+    "Intervaly 7x2 min": [
+      step(600, 37, null, "warmup"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"),
+      step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(300, 37, null, "cooldown"),
+    ],
+    "Intervaly 8x2 min": [
+      step(600, 37, null, "warmup"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"),
+      step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(120, 75, null, "active"), step(300, 37, null, "cooldown"),
+    ],
+    "Pyramida 1-2-3-2-1 min": [
+      step(600, 37, null, "warmup"), step(60, 75, null, "active"), step(60, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"),
+      step(180, 75, null, "active"), step(180, 30, null, "recovery"), step(120, 75, null, "active"), step(120, 30, null, "recovery"), step(60, 75, null, "active"),
+      step(300, 37, null, "cooldown"),
+    ],
+    "Progrese 30 min": [
+      step(1320, 37, null, "active"), step(300, 44, null, "active"), step(180, 51, null, "active"), step(180, 30, null, "cooldown"),
+    ],
+    "Technika tempo záběrů 20 min": [
+      step(240, 37, null, "warmup"), step(180, 37, 18, "active"), step(180, 37, 22, "active"), step(120, 37, 26, "active"), step(180, 37, 18, "active"),
+      step(180, 37, 22, "active"), step(120, 37, 26, "active"),
+    ],
+    "Minimální jízda 10 min": [
+      step(600, 30, null, "active"),
     ],
   },
 };
