@@ -1787,3 +1787,11 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-figure .move-arrow { stroke: var(--orange); stroke-width: 3; fill: none; stroke-dasharray: 5 5; opacity: .85; }
 .recovery-figure .move-arrow-head { fill: var(--orange); stroke: none; }
 .recovery-figure .strap { stroke: color-mix(in srgb, var(--accent) 60%, var(--surface)); stroke-width: 4; }
+
+/* Strength: under the day's workout like the warm-up; in the player a set of repeats shows its count in place of
+   the clock and its "done" button leads, the pause hidden; in the diary a day's strength work is a small line. */
+.strength-block { margin-top: 6px; }
+.strength-done { margin-top: 6px; }
+.recovery-player.is-reps #recoveryPlayerPause { display: none; }
+.recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent); background: var(--accent); }
+.diary-strength { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

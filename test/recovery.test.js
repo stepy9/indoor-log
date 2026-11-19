@@ -156,3 +156,23 @@ test("a warm-up goes from the floor up and the short one varies by day", async (
   for (const list of shorts) assert.equal(list[0], "catCow");
   assert.ok(new Set(shorts.map((list) => list.join())).size > 1);
 });
+
+test("strength comes twice a week on easy days, a day apart, never in the goal's week, and grows every two sessions", async () => {
+  const { strengthToday, strengthSession, strengthDoses } = await import("../src/recovery.js");
+  // Thursday 19 November 2026.
+  assert.deepEqual(strengthToday({}, "2026-11-19"), { due: true, done: 0, rest: null });
+  assert.equal(strengthToday({}, "2026-11-19", { type: "intervals" }).rest, "hard");
+  assert.equal(strengthToday({}, "2026-11-19", { type: "goal" }).rest, "hard");
+  assert.equal(strengthToday({}, "2026-11-19", { type: "usual", taper: "final" }).rest, "taper");
+  assert.equal(strengthToday({ "2026-11-18": true }, "2026-11-19").rest, "yesterday");
+  assert.equal(strengthToday({ "2026-11-19": true }, "2026-11-19").rest, "today");
+  assert.equal(strengthToday({ "2026-11-16": true, "2026-11-17": true }, "2026-11-19").rest, "enough");
+  // Last week's sessions do not count against this one.
+  assert.deepEqual(strengthToday({ "2026-11-12": true, "2026-11-14": true, "2026-11-17": true }, "2026-11-19"), { due: true, done: 1, rest: null });
+  const first = strengthSession(0);
+  assert.ok(first.minutes >= 8 && first.minutes <= 18, String(first.minutes));
+  assert.equal(first.steps.filter((step) => step.type === "work" && step.id === "pushUp").length, 2);
+  assert.ok(first.steps.filter((step) => step.type === "work" && step.reps).every((step) => !step.seconds));
+  assert.equal(strengthDoses(2).find((dose) => dose.id === "pushUp").reps, strengthDoses(0).find((dose) => dose.id === "pushUp").reps + 1);
+  assert.equal(strengthDoses(200).find((dose) => dose.id === "plank").seconds, 60);
+});

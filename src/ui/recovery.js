@@ -2,7 +2,8 @@
 // its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
 // runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
 // and at the end the workout is marked as stretched.
-import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
+import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
@@ -37,9 +38,9 @@ export function figures(id) {
 }
 
 // The time, said as a hold or as a move to repeat, and per side where it has two.
-function dose(id, seconds = exercises[id].seconds) {
+function dose(id, seconds = exercises[id].seconds, reps = null) {
   const { sides, hold } = exercises[id];
-  const time = t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
+  const time = reps ? t("strengthReps", { reps }) : t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
   return sides > 1 ? `${time} ${t("recoveryEachSide")}` : time;
 }
 
@@ -79,31 +80,48 @@ function showStep() {
   const dialog = byId("recoveryPlayer");
   dialog.classList.toggle("is-rest", !work);
   const position = [...new Set(player.list.filter((item) => item.type === "work").map((item) => item.id))];
-  byId("recoveryPlayerProgress").textContent = t("recoveryProgress", { current: position.indexOf(id) + 1, total: position.length });
+  const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
+  const progress = t("recoveryProgress", { current: position.indexOf(id) + 1, total: position.length });
+  byId("recoveryPlayerProgress").textContent = rounds > 1 ? `${t("strengthRound", { round: step.round, rounds })} · ${progress}` : progress;
   const coming = player.list[player.index + 1];
   // In work the side, if any, and whether to hold or move.
   const mode = t(exercises[id].hold ? "recoveryModeHold" : "recoveryModeMove");
-  byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${mode}` : mode) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
+  const what = work && step.reps ? t("strengthReps", { reps: step.reps }) : mode;
+  byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${what}` : what) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
   byId("recoveryPlayerHow").textContent = t(`recoveryHow_${id}`);
   const art = figures(id);
   byId("recoveryPlayerFigure").replaceChildren(...art);
   byId("recoveryPlayerFigure").classList.toggle("has-views", art.length > 1);
   byId("recoveryPlayerFigure").hidden = !art.length;
+  // Repeats have no clock: their count shows and "done" ends them; the pause has nothing to stop then.
+  const counted = work && step.reps;
+  dialog.classList.toggle("is-reps", Boolean(counted));
+  byId("recoveryPlayerSkip").textContent = t(counted ? "strengthDoneStep" : "recoverySkip");
+  if (counted) {
+    player.endsAt = Infinity;
+    byId("recoveryPlayerClock").textContent = `${step.reps}×`;
+    return;
+  }
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
   tick();
 }
 
-function tick() {
-  if (player.paused) return;
-  const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
-  byId("recoveryPlayerClock").textContent = formatDuration(left);
-  if (left > 0) return;
+// On to the next step, or the end.
+function advance() {
   player.index += 1;
   if (player.index >= player.list.length) return finish();
   cue(player.list[player.index].type === "work");
   showStep();
+}
+
+function tick() {
+  if (player.paused || !player.list.length || player.list[player.index]?.reps) return;
+  const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
+  byId("recoveryPlayerClock").textContent = formatDuration(left);
+  if (left > 0) return;
+  advance();
 }
 
 async function finish() {
@@ -142,11 +160,11 @@ async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = n
     byId("recoveryPlayerProgress").textContent = "";
     byId("recoveryPlayerIntroTitle").textContent = intro.title;
     byId("recoveryPlayerIntroNote").textContent = intro.note ?? "";
-    byId("recoveryPlayerIntroList").replaceChildren(...intro.exercises.map(({ id, seconds }) => {
+    byId("recoveryPlayerIntroList").replaceChildren(...intro.exercises.map(({ id, seconds, reps }) => {
       const item = element("li", "recovery-intro-item");
       const art = figure(id);
       const text = element("div", "recovery-text");
-      text.append(nameLine(id), element("span", "recovery-dose", dose(id, seconds)));
+      text.append(nameLine(id), element("span", "recovery-dose", dose(id, seconds, reps)));
       item.append(...(art ? [art] : []), text);
       return item;
     }));
@@ -187,8 +205,7 @@ function wirePlayer() {
     player.paused = false;
     dialog.classList.remove("is-paused");
     byId("recoveryPlayerPause").textContent = t("recoveryPause");
-    player.endsAt = Date.now();
-    tick();
+    advance();
   });
   byId("recoveryPlayerClose").addEventListener("click", () => dialog.close());
   byId("recoveryPlayerStart").addEventListener("click", run);
@@ -256,7 +273,7 @@ export function setupExercises(beforeOpen = () => {}) {
     const text = element("div", "recovery-text");
     text.append(
       nameLine(entry.id),
-      element("span", "recovery-dose", dose(entry.id, entry.seconds)),
+      element("span", "recovery-dose", dose(entry.id, entry.seconds, entry.reps)),
       element("p", "", t(`recoveryHow_${entry.id}`)),
       element("span", "field-note exercises-sets", t("exercisesIn", { sets: entry.sets.map((set) => t(`${setKey}_${set}`)).join(", ") })),
     );
@@ -269,6 +286,8 @@ export function setupExercises(beforeOpen = () => {}) {
     const catalog = exerciseCatalog();
     byId("exercisesWarmup").replaceChildren(...catalog.warmup.map((entry) => item(entry, "exercisesWarmupSet")));
     byId("exercisesStretch").replaceChildren(...catalog.stretch.map((entry) => item(entry, "exercisesStretchSet")));
+    const level = strengthSession(Object.keys(strengthLog()).length);
+    byId("exercisesStrength").replaceChildren(...level.doses.map((entry) => item({ ...entry, sets: ["week"] }, "exercisesStrengthSet")));
   };
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
@@ -277,4 +296,35 @@ export function setupExercises(beforeOpen = () => {}) {
     dialog.scrollTop = 0;
   });
   byId("exercisesClose").addEventListener("click", () => dialog.close());
+}
+
+// The days strength work was done, kept with the synced settings: { "YYYY-MM-DD": true }.
+export const strengthLog = () => savedDefaults().strengthLog ?? {};
+
+// The strength session for the Training tab's day, when today asks for one (twice a week, an easy day, not the
+// goal's week): a button opening it in the player, how many this week; or that today's is done. null otherwise.
+export function strengthBlock(today, { type = null, taper = null } = {}) {
+  wirePlayer();
+  const log = strengthLog();
+  const state = strengthToday(log, today, { type, taper });
+  if (state.rest === "today") return element("p", "training-today-done strength-done", t("strengthDoneToday"));
+  if (!state.due) return null;
+  const session = strengthSession(Object.keys(log).length);
+  const block = element("div", "warmup-block strength-block");
+  const head = element("div", "warmup-head");
+  const button = element("button", "outline-button warmup-button", t("strengthStart", { minutes: session.minutes }));
+  button.type = "button";
+  const note = t("strengthNote", { done: state.done, of: 2 });
+  button.addEventListener("click", () => start(session.steps, {
+    doneKey: "strengthDone",
+    doneNote: t("strengthDoneNote"),
+    intro: { title: t("strengthStart", { minutes: session.minutes }), note: t("strengthIntro"), exercises: session.doses },
+    onDone: () => {
+      saveDefaults({ strengthLog: { ...strengthLog(), [today]: true } });
+      window.dispatchEvent(new Event("settings-change"));
+    },
+  }));
+  head.append(button, element("span", "field-note warmup-note", note));
+  block.append(head);
+  return block;
 }

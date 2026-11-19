@@ -171,6 +171,59 @@ export const exercises = {
     ],
     focus: ["trunk"],
   },
+  // The strength work, for the muscles rowing leaves out: the chest and triceps (it only pulls), the deep and side
+  // trunk that guards the lower back, and each leg on its own (the stroke drives both together). reps: the
+  // repeats a set starts at, per side where there are two; the holds start at their seconds.
+  pushUp: {
+    seconds: 30, sides: 1, reps: 8,
+    far: { arms: [0], legs: [0] },
+    arrows: [{ d: "M98,52 L98,86", both: true }],
+    poses: [
+      { trunk: [[126, 118], [94, 107], [62, 96]], neck: [52, 93], head: [41, 90], arms: [[[62, 96], [66, 122], [68, 146]], [[62, 96], [62, 122], [62, 146]]], legs: [[[126, 118], [160, 130], [192, 141]], [[126, 118], [157, 129], [188, 140]]], feet: [[198, 148], [194, 148]] },
+      { trunk: [[126, 134], [93, 131], [60, 128]], neck: [50, 127], head: [39, 126], arms: [[[60, 128], [84, 126], [68, 146]], [[60, 128], [80, 124], [62, 146]]], legs: [[[126, 134], [160, 138], [192, 141]], [[126, 134], [157, 137], [188, 140]]], feet: [[198, 148], [194, 148]] },
+    ],
+    focus: ["arm1"],
+  },
+  plank: {
+    seconds: 30, sides: 1, hold: true,
+    far: { arms: [0], legs: [0] },
+    poses: [
+      { trunk: [[130, 130], [100, 120], [70, 110]], neck: [60, 109], head: [49, 108], arms: [[[70, 110], [74, 146], [46, 146]], [[70, 110], [70, 146], [40, 146]]], legs: [[[130, 130], [164, 146], [196, 146]], [[130, 130], [160, 146], [192, 146]]], feet: [[198, 140], [194, 140]] },
+      { trunk: [[130, 124], [100, 117], [70, 110]], neck: [60, 109], head: [49, 108], arms: [[[70, 110], [74, 146], [46, 146]], [[70, 110], [70, 146], [40, 146]]], legs: [[[130, 124], [164, 132], [196, 140]], [[130, 124], [160, 132], [192, 140]]], feet: [[198, 148], [194, 148]] },
+    ],
+    focus: ["trunk"],
+  },
+  deadBug: {
+    seconds: 30, sides: 1, reps: 10,
+    // On the back, arms up and knees over the hips: the near arm back and the far leg out, slowly, the lower back down.
+    far: { arms: [0], legs: [0] },
+    poses: [
+      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [50, 114], [52, 88]], [[48, 140], [46, 114], [44, 88]]], legs: [[[128, 140], [132, 100], [168, 100]], [[128, 140], [126, 100], [162, 100]]], feet: [[176, 92], [170, 92]] },
+      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [50, 114], [52, 88]], [[48, 140], [28, 132], [6, 126]]], legs: [[[128, 140], [162, 130], [198, 124]], [[128, 140], [126, 100], [162, 100]]], feet: [[204, 114], [170, 92]] },
+    ],
+    focus: ["trunk"],
+  },
+  sidePlank: {
+    seconds: 20, sides: 2, hold: true, view: "front",
+    // From the front, on one forearm, the body one straight line from the feet to the head, the hips lifted.
+    far: { arms: [0] },
+    poses: [
+      { trunk: [[126, 140], [94, 118], [60, 96]], neck: [49, 89], head: [39, 82], arms: [[[60, 96], [62, 122], [64, 146]], [[60, 96], [61, 70], [62, 44]]], legs: [[[126, 140], [160, 143], [194, 145]], [[126, 140], [158, 140], [190, 141]]] },
+      { trunk: [[126, 120], [93, 108], [60, 96]], neck: [49, 89], head: [39, 82], arms: [[[60, 96], [62, 122], [64, 146]], [[60, 96], [61, 70], [62, 44]]], legs: [[[126, 120], [160, 133], [194, 145]], [[126, 120], [158, 130], [190, 140]]] },
+    ],
+    focus: ["trunk"],
+  },
+  lunge: {
+    seconds: 30, sides: 2, reps: 8,
+    // A split stance, the trunk upright: down until the back knee nearly touches, and up again.
+    far: { legs: [1] },
+    arrows: [{ d: "M176,44 L176,96", both: true }],
+    poses: [
+      { trunk: [[114, 96], [115, 68], [114, 40]], neck: [112, 30], head: [110, 19], arms: [[[114, 40], [116, 66], [118, 90]]], legs: [[[114, 96], [96, 120], [84, 146]], [[114, 96], [132, 120], [148, 140]]], feet: [[70, 147], [156, 148]] },
+      { trunk: [[116, 118], [117, 90], [116, 62]], neck: [114, 52], head: [112, 41], arms: [[[116, 62], [118, 88], [120, 112]]], legs: [[[116, 118], [90, 118], [84, 146]], [[116, 118], [128, 142], [156, 140]]], feet: [[70, 147], [164, 148]] },
+    ],
+    focus: ["thigh0"],
+  },
   // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
   bridge: {
     seconds: 30, sides: 1,
@@ -338,4 +391,72 @@ export function exerciseCatalog() {
     warmup: collect(warmups, warmFlow),
     stretch: collect(sets, flow),
   };
+}
+
+// Strength twice a week for the muscles rowing leaves out, in two rounds: each exercise by its repeats (a press of
+// "done" ends it) or, a hold, by its time, a short rest between and a longer one between the rounds. Every two
+// sessions done add a repeat or five seconds, up to a ceiling.
+export const strengthPlan = {
+  rounds: 2,
+  rest: 20,
+  roundRest: 60,
+  // In the order they run: standing, on the hands, then lying.
+  exercises: [
+    { id: "lunge", reps: 8, most: 15 },
+    { id: "pushUp", reps: 8, most: 20 },
+    { id: "plank", seconds: 30, most: 60 },
+    { id: "sidePlank", seconds: 20, most: 45 },
+    { id: "deadBug", reps: 10, most: 20 },
+    { id: "bridge", reps: 12, most: 20 },
+  ],
+};
+export const strengthPerWeek = 2;
+// A repeat's time, to tell how long a set of them takes.
+const repSeconds = 3;
+
+// Each exercise's dose after so many sessions done: { id, reps } or { id, seconds }.
+export function strengthDoses(done = 0) {
+  const steps = Math.floor(done / 2);
+  return strengthPlan.exercises.map(({ id, reps, seconds, most }) => (reps
+    ? { id, reps: Math.min(most, reps + steps) }
+    : { id, seconds: Math.min(most, seconds + steps * 5) }));
+}
+
+// The session as the player's steps: a rest before each exercise (the longer one before a round), then its work,
+// per side where it has two: { type: "work", id, side, reps } for repeats, with seconds for a hold. round counts
+// from 1. { steps, minutes, doses }.
+export function strengthSession(done = 0) {
+  const doses = strengthDoses(done);
+  const list = [];
+  for (let round = 1; round <= strengthPlan.rounds; round += 1) {
+    doses.forEach((dose, index) => {
+      const { sides } = exercises[dose.id];
+      list.push({ type: "rest", seconds: round > 1 && index === 0 ? strengthPlan.roundRest : index === 0 ? restSeconds : strengthPlan.rest, next: dose.id, round });
+      for (let side = 1; side <= sides; side += 1) {
+        if (side > 1) list.push({ type: "rest", seconds: switchSeconds, next: dose.id, round });
+        list.push({ type: "work", id: dose.id, side: sides > 1 ? side : null, round, ...(dose.reps ? { reps: dose.reps } : { seconds: dose.seconds }) });
+      }
+    });
+  }
+  const total = list.reduce((sum, step) => sum + (step.seconds ?? step.reps * repSeconds), 0);
+  return { steps: list, minutes: Math.round(total / 60), doses };
+}
+
+const keyNoon = (key) => Date.parse(`${key}T12:00:00Z`);
+const mondayKey = (key) => {
+  const ms = keyNoon(key);
+  return new Date(ms - ((new Date(ms).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+};
+
+// Whether today asks for strength work: under twice this week (Monday on), none yesterday or today, and today
+// an easy one: no intervals, FTP test, goal or opener planned, and not the goal's week (taper "final").
+// log: { "YYYY-MM-DD": true }; type: today's planned type or null for a day without one.
+// { due, done: this week's count, rest: why not ("enough", "today", "yesterday", "hard", "taper") }.
+const hardDays = new Set(["intervals", "ftpTestShort", "ftpTest", "goal", "opener"]);
+export function strengthToday(log = {}, today, { type = null, taper = null } = {}) {
+  const monday = mondayKey(today);
+  const yesterday = new Date(keyNoon(today) - 86_400_000).toISOString().slice(0, 10);
+  const done = Object.keys(log).filter((day) => log[day] && day >= monday && day <= today).length;
+  const rest = log[today] ? "today" : done >= strengthPerWeek ? "enough" : taper === "final" ? "taper" : hardDays.has(type) ? "hard" : log[yesterday] ? "yesterday" : null;
+  return { due: !rest, done, rest };
 }

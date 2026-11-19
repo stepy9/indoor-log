@@ -1,4 +1,4 @@
-import { warmupBlock } from "./recovery.js";
+import { strengthBlock, warmupBlock } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -353,6 +353,9 @@ function todayCard(result, scored, fatigue, entries) {
     // Before a row, a warm-up for the back, shoulders and hips, longer before the hard days.
     if (result.sport === "rowing") card.append(warmupBlock(showing.type, showing.day));
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
+  // Strength work twice a week on an easy day (or one without a workout), for the muscles rowing leaves out.
+  const strength = strengthBlock(now, { type: item?.status === "planned" && !excused[now] ? item.type : null, taper: result.plan.taper ?? null });
+  if (strength) card.append(strength);
   if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
   if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) {
     const minimal = result.plan.kinomap?.minimal;

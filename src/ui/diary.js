@@ -623,6 +623,8 @@ function renderCalendar(range, entries) {
     cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: format(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
     const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
+    // Strength work done that day, from the Training tab.
+    if (savedDefaults().strengthLog?.[day]) cell.append(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `💪 ${t("strengthDay")}`, title: t("strengthDoneDay") }));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {
