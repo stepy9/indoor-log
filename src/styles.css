@@ -1627,3 +1627,31 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   #fitnessWeeks td:first-child { white-space: normal; }
   #lapsTable th, #lapsTable td { padding-inline: 6px; }
 }
+
+/* Phones: the steps (and the intervals' segments) stand apart: more room between them, a stripe on the left in the
+   colour of their type, and their number and start on a tinted head row, ruled off from the fields under it. */
+@media (max-width: 640px) {
+  :is(.workout-dialog, #intervalsDialog) .intervals-table tr {
+    --step: var(--compare-1);
+    grid-template-rows: 44px; margin-bottom: 14px; padding: 0 12px 12px 14px; border-left: 4px solid var(--step);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--step) 14%, var(--surface-2)) 0 44px, var(--line) 44px 45px, var(--surface-2) 45px);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .12);
+  }
+  :is(.workout-dialog, #intervalsDialog) .intervals-table tr.is-warmup { --step: var(--compare-4); }
+  :is(.workout-dialog, #intervalsDialog) .intervals-table tr.is-active { --step: var(--compare-2); }
+  :is(.workout-dialog, #intervalsDialog) .intervals-table tr:is(.is-rest, .is-recovery) { --step: var(--compare-3); }
+  :is(.workout-dialog, #intervalsDialog) .intervals-table tr.is-cooldown { --step: var(--compare-1); }
+  .workout-dialog .intervals-table tr > td:nth-child(2) { font-size: 15px; }
+}
+
+/* Everywhere: a step's (or segment's) type has a colour: warm-up yellow, active orange, recovery and rest green,
+   cool-down blue. On a desktop it is a stripe at the row's start; a phone's card takes it on its left edge. */
+.intervals-table tr { --step: var(--compare-1); }
+.intervals-table tr.is-warmup { --step: var(--compare-4); }
+.intervals-table tr.is-active { --step: var(--compare-2); }
+.intervals-table tr:is(.is-rest, .is-recovery) { --step: var(--compare-3); }
+.intervals-table tr.is-cooldown { --step: var(--compare-1); }
+@media (min-width: 641px) {
+  .intervals-table tbody td:first-child { box-shadow: inset 4px 0 var(--step); }
+  .intervals-table tbody tr { background: color-mix(in srgb, var(--step) 6%, transparent); }
+}
