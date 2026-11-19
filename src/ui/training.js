@@ -335,32 +335,44 @@ function todayCard(result, scored, fatigue, entries) {
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, t(item?.status === "planned" ? "trainingToday" : "trainingNext", { day: showing ? format(showing.day, { weekday: "long", day: "numeric", month: "numeric" }) : "" })));
   card.append(head);
-  if (excused[now]) card.append(node("p", { class: "training-today-done is-excused" }, t("trainingTodayExcused", { reason: excuseText(excused[now]) })));
+  // The day's workout on the left; beside it on a wide screen (under it on a phone) what goes with it: the warm-up,
+  // strength work and the least to ride, each under a small heading.
+  const main = node("div", { class: "training-today-main" });
+  const side = node("div", { class: "training-today-side" });
+  const extra = (title, ...content) => {
+    const part = node("div", { class: "training-today-extra" });
+    part.append(node("span", { class: "training-today-extra-title" }, title), ...content);
+    side.append(part);
+  };
+  if (excused[now]) main.append(node("p", { class: "training-today-done is-excused" }, t("trainingTodayExcused", { reason: excuseText(excused[now]) })));
   if (done) {
     const line = node("p", { class: "training-today-done" }, t("trainingTodayDone"));
     for (const scoredItem of scored.filter((entry) => entry.day === now && entry.result)) line.append(" ", scoreBadge(scoredItem.result.score));
-    card.append(line);
+    main.append(line);
   }
   if (showing) {
-    card.append(
+    main.append(
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
       node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
     );
     const alternative = extraFor(result.plan.kinomap, showing);
-    if (alternative) card.append(node("p", { class: "field-note" }, t("trainingAlternative", { name: alternative })));
+    if (alternative) main.append(node("p", { class: "field-note" }, t("trainingAlternative", { name: alternative })));
     const suggestions = showing.type === "usual" || showing.type === "long" ? suggestionsButton(result, entries, showing.type) : null;
-    if (suggestions) card.append(suggestions);
+    if (suggestions) main.append(suggestions);
     // Before a row, a warm-up for the back, shoulders and hips, longer before the hard days.
-    if (result.sport === "rowing") card.append(warmupBlock(showing.type, showing.day));
-  } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
+    if (result.sport === "rowing") extra(t("trainingBefore"), warmupBlock(showing.type, showing.day));
+  } else if (!done) main.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
+  if (fatigue) main.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
   // Strength work twice a week on an easy day (or one without a workout), for the muscles rowing leaves out.
   const strength = strengthBlock(now, { type: item?.status === "planned" && !excused[now] ? item.type : null, taper: result.plan.taper ?? null });
-  if (strength) card.append(strength);
-  if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
+  if (strength) extra(t("exercisesStrength"), strength);
   if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) {
     const minimal = result.plan.kinomap?.minimal;
-    card.append(node("p", { class: "field-note" }, t("planMinimal", { minutes: result.plan.minimal.minutes }) + (minimal ? ` ${t("planKinomap", { name: minimal })}.` : "")));
+    extra(t("trainingLeast"), node("p", { class: "field-note" }, t("planMinimalShort", { minutes: result.plan.minimal.minutes }) + (minimal ? ` ${t("planKinomap", { name: minimal })}.` : "")));
   }
+  const body = node("div", { class: `training-today-body${side.children.length ? "" : " is-single"}` });
+  body.append(main, ...(side.children.length ? [side] : []));
+  card.append(body);
   return card;
 }
 
