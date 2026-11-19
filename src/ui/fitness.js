@@ -14,6 +14,7 @@ import { excuses } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
+import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
 import { infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -36,6 +37,8 @@ const view = {
   // The aerobic efficiency as the output per beat ("beat") or as the output at a set heart rate ("heart").
   efficiencyBy: remembered().efficiencyBy === "heart" ? "heart" : "beat",
   efficiencyHeart: Number.isFinite(remembered().efficiencyHeart) ? remembered().efficiencyHeart : null,
+  // The rowing technique's band of stroke rates ("20-22"), or null for the one with the most data.
+  strokeBand: remembered().strokeBand ?? null,
   layout: null,
 };
 
@@ -1167,6 +1170,20 @@ function renderEfficiency(entries) {
   if (!has) return;
   const outputUnit = by === "power" ? "W" : "m/min";
   const unit = atHeart ? outputUnit : `${outputUnit} ${t("fitnessPerBeat")}`;
+  const trend = trendChart(chart, points, (point, digits) => `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, digits)} ${unit}${atHeart ? ` (${t("fitnessAtHeartActual", { bpm: Math.round(point.heart) })})` : ""}`);
+  if (!trend) return;
+  const change = ((trend.to - trend.from) / trend.from) * 100;
+  const changeText = `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}`;
+  const outputText = (value) => `${displayNumber(value, by === "power" ? 0 : 1)} ${outputUnit}`;
+  byId("fitnessEfficiencySummary").textContent = atHeart
+    ? t("fitnessAtHeartTrend", { bpm, from: outputText(trend.from), to: outputText(trend.to), change: changeText })
+    : t("fitnessEfficiencyTrend", { change: changeText });
+}
+
+// Points over the range's days as dots, each opening its workout, with a least-squares trend line from three of
+// them. points: [{ entry, ms, value }] by time; label(point, digits) its tooltip. The trend's values at the first
+// and the last point, or null without one.
+function trendChart(chart, points, label) {
   const width = Math.max(300, Math.round(chart.parentElement.getBoundingClientRect().width) || 600);
   const height = 200;
   const margin = { left: 48, right: 14, top: 14, bottom: 26 };
@@ -1192,6 +1209,7 @@ function renderEfficiency(entries) {
   }
   children.push(...dateTicks(firstKey, lastKey, (key) => xFor(noonOf(key)), { margin, width, height }));
   // The least-squares line, drawn between the first and the last workout.
+  let trend = null;
   if (points.length >= 3) {
     const n = points.length;
     const meanX = points.reduce((sum, point) => sum + point.ms, 0) / n;
@@ -1201,22 +1219,54 @@ function renderEfficiency(entries) {
     const from = points[0].ms;
     const to = points.at(-1).ms;
     children.push(node("path", { class: "fitness-line is-trend", d: `M${xFor(from).toFixed(1)},${yFor(at(from)).toFixed(1)}L${xFor(to).toFixed(1)},${yFor(at(to)).toFixed(1)}` }));
-    const change = ((at(to) - at(from)) / at(from)) * 100;
-    const changeText = `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}`;
-    const outputText = (value) => `${displayNumber(value, by === "power" ? 0 : 1)} ${outputUnit}`;
-    byId("fitnessEfficiencySummary").textContent = atHeart
-      ? t("fitnessAtHeartTrend", { bpm, from: outputText(at(from)), to: outputText(at(to)), change: changeText })
-      : t("fitnessEfficiencyTrend", { change: changeText });
+    trend = { from: at(from), to: at(to) };
   }
   for (const point of points) {
     const dot = node("circle", { cx: xFor(point.ms), cy: yFor(point.value), r: 4, class: "fitness-curve-dot" });
-    dot.append(node("title", {}, `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, digits)} ${unit}${atHeart ? ` (${t("fitnessAtHeartActual", { bpm: Math.round(point.heart) })})` : ""}`));
+    dot.append(node("title", {}, label(point, digits)));
     dot.addEventListener("click", () => openActivity(point.entry));
     children.push(dot);
   }
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.style.height = `${height}px`;
   chart.replaceChildren(...children);
+  return trend;
+}
+
+// The rowing technique over the range: the metres per stroke of each row within the band of stroke rates picked,
+// with its trend. Only where rowing shows.
+function renderTechnique(entries) {
+  const rows = entries.filter((entry) => entry.sport === "rowing");
+  const card = byId("fitnessTechnique");
+  card.hidden = !rows.length;
+  if (!rows.length) return;
+  const key = (band) => band.join("-");
+  const band = strokeBands.find((item) => key(item) === view.strokeBand) ?? busiestBand(rows);
+  const bandText = `${band[0]}–${band[1]}`;
+  byId("fitnessTechniqueBand").replaceChildren(...strokeBands.map((item) => {
+    const button = node("button", { type: "button", "aria-pressed": String(item === band) }, `${item[0]}–${item[1]}`);
+    button.addEventListener("click", () => {
+      view.strokeBand = key(item);
+      save({ strokeBand: view.strokeBand });
+      render();
+    });
+    return button;
+  }));
+  const points = rows.map((entry) => ({ entry, ms: entry.startMs, result: strokeDistance(entry, band) }))
+    .filter((point) => point.result).map((point) => ({ ...point, value: point.result.metersPerStroke })).sort((a, b) => a.ms - b.ms);
+  const chart = byId("fitnessTechniqueChart");
+  chart.hidden = !points.length;
+  const empty = byId("fitnessTechniqueEmpty");
+  empty.hidden = points.length > 0;
+  empty.textContent = t("techniqueEmpty", { band: bandText });
+  const summary = byId("fitnessTechniqueSummary");
+  summary.textContent = "";
+  if (!points.length) return;
+  const trend = trendChart(chart, points, (point) => `${dayText(dayKey(point.ms, zone))} · ${point.entry.name ?? ""}: ${displayNumber(point.value, 2)} m · ${formatDuration(point.result.seconds)} ${bandText} SPM`);
+  if (trend) {
+    const change = ((trend.to - trend.from) / trend.from) * 100;
+    summary.textContent = t("techniqueTrend", { band: bandText, from: displayNumber(trend.from, 2), to: displayNumber(trend.to, 2), change: `${change >= 0 ? "+" : ""}${displayNumber(change, 1)}` });
+  }
 }
 
 // The switch between the output per beat and at a set heart rate, and the heart rates to pick: each 5 bpm step
@@ -1360,6 +1410,7 @@ function render() {
   renderCurve(current, inRange(shown, 1), shown.filter((entry) => !currentSet.has(entry)), settings);
   renderRecords(shown);
   renderEfficiency(current);
+  renderTechnique(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
   renderBodyChart(loadHistory(ofSport(view.entries), settings, zone, today()));
