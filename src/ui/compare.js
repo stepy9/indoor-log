@@ -35,6 +35,8 @@ const view = {
   trendRange: ["quarter", "all"].includes(savedDefaults().trend?.range) ? savedDefaults().trend.range : "year",
   trendGroup: ["week", "month"].includes(savedDefaults().trend?.group) ? savedDefaults().trend.group : "activity",
   metric: "power",
+  // "All" stacks the heart rate, pace, power and cadence under each other; the metric stays for the tables.
+  stacked: savedDefaults().compare?.stacked === true,
   axis: "distance",
   smoothSeconds: 10,
   hoverX: null,
@@ -202,8 +204,9 @@ function renderList() {
 function renderControls() {
   for (const button of document.querySelectorAll("[data-compare-metric]")) {
     button.textContent = metricLabel(button.dataset.compareMetric, view.sport);
-    button.setAttribute("aria-pressed", String(button.dataset.compareMetric === view.metric));
+    button.setAttribute("aria-pressed", String(!view.stacked && button.dataset.compareMetric === view.metric));
   }
+  byId("compareStacked").setAttribute("aria-pressed", String(view.stacked));
   for (const button of document.querySelectorAll("[data-compare-axis]")) {
     button.setAttribute("aria-pressed", String(button.dataset.compareAxis === view.axis));
   }
@@ -238,6 +241,29 @@ function pan(by) {
   renderZoomed();
 }
 
+// The metrics stacked under each other by "All", in the order the activity's own chart shows them.
+const stackedMetrics = ["heartRate", "pace", "power", "cadence"];
+
+// The laps of an interval workout on the x axis, each with its type, for the stripe over the chart and the bands
+// behind the work; null for a workout of plain distance laps, which are all of one type.
+function lapSpans(entry, axis) {
+  const laps = entry.laps ?? [];
+  if (laps.length < 2 || !(entry.intervalLaps || laps.some((lap) => lap.intensity && lap.intensity !== "active"))) return null;
+  const { seconds, distance } = entry.records;
+  const xAt = (second) => {
+    if (axis === "time") return second;
+    let index = 0;
+    while (index + 1 < seconds.length && seconds[index + 1] <= second) index += 1;
+    return distance[index] ?? null;
+  };
+  const end = seconds.at(-1);
+  return laps.map((lap, index) => {
+    const from = Math.max(0, (lap.startMs - entry.startMs) / 1000);
+    const to = Math.min(end, laps[index + 1] ? (laps[index + 1].startMs - entry.startMs) / 1000 : (lap.endMs ? (lap.endMs - entry.startMs) / 1000 : end));
+    return { from: xAt(from), to: xAt(to), intensity: lap.intensity ?? "active" };
+  }).filter((span) => Number.isFinite(span.from) && Number.isFinite(span.to) && span.to > span.from);
+}
+
 function renderChart() {
   const chart = byId("compareChart");
   const picked = selected();
@@ -246,17 +272,24 @@ function renderChart() {
   view.layout = null;
   byId("compareZoomBar").hidden = true;
   byId("compareZoomHint").hidden = true;
+  byId("compareIntervalLegend").hidden = true;
+  chart.style.height = "";
   if (!picked.length) return;
   const zoom = view.zoom;
-  const full = picked.map((entry) => ({ entry, points: series(entry, view.metric, { axis: view.axis, smoothSeconds: view.smoothSeconds }) }));
-  view.fullMaxX = Math.max(0, ...full.map(({ points }) => points.at(-1)?.x ?? 0));
-  const lines = full.map(({ entry, points }) => ({
-    entry, slot: view.slots.get(entry.id),
-    // Thinning comes after the zoom, so a zoomed stretch keeps its detail.
-    points: downsample(zoomed(points, zoom)),
-  })).filter((line) => line.points.length);
+  const metrics = view.stacked ? stackedMetrics : [view.metric];
+  const full = metrics.map((metric) => picked.map((entry) => ({ entry, points: series(entry, metric, { axis: view.axis, smoothSeconds: view.smoothSeconds }) })));
+  view.fullMaxX = Math.max(0, ...full.flat().map(({ points }) => points.at(-1)?.x ?? 0));
+  // A metric none of the activities recorded takes no panel.
+  const panels = metrics.map((metric, index) => ({
+    metric,
+    lines: full[index].map(({ entry, points }) => ({
+      entry, slot: view.slots.get(entry.id),
+      // Thinning comes after the zoom, so a zoomed stretch keeps its detail.
+      points: downsample(zoomed(points, zoom)),
+    })).filter((line) => line.points.length),
+  })).filter((panel) => panel.lines.length);
   byId("compareZoomBar").hidden = !zoom;
-  byId("compareZoomHint").hidden = !lines.length;
+  byId("compareZoomHint").hidden = !panels.length;
   // The arrows move by half the zoomed stretch; their tooltips say how far.
   if (zoom) {
     const step = axisText((zoom[1] - zoom[0]) / 2);
@@ -265,62 +298,88 @@ function renderChart() {
       byId(id).setAttribute("aria-label", byId(id).title);
     }
   }
-  if (!lines.length) {
+  if (!panels.length) {
     const empty = byId("compareChartEmpty");
     empty.textContent = t(zoom ? "zoomEmpty" : "compareChartEmpty");
     empty.hidden = false;
+    chart.style.height = "";
     return;
   }
   byId("compareChartEmpty").textContent = t("compareChartEmpty");
+  // One activity of intervals shows its laps: a stripe over the chart coloured by type and a band behind each effort.
+  const spans = picked.length === 1 ? lapSpans(picked[0], view.axis) : null;
+  byId("compareIntervalLegend").hidden = !spans;
+  const stacked = panels.length > 1;
   const width = chart.clientWidth || 800;
-  const height = 320;
-  const margin = { top: 12, right: 16, bottom: 30, left: 64 };
-  const all = lines.flatMap((line) => line.points);
-  const minX = zoom ? zoom[0] : 0;
-  const maxX = zoom ? zoom[1] : Math.max(...all.map((point) => point.x)) || 1;
-  // The middle 98 % of values set the scale, so a single spike does not flatten the rest.
-  const ys = all.map((point) => point.y).sort((a, b) => a - b);
-  const low = ys[Math.floor(ys.length * 0.01)];
-  const high = ys[Math.ceil(ys.length * 0.99) - 1];
-  const pad = (high - low) * 0.08 || 1;
-  const inverted = invertedMetric(view.metric, view.sport);
-  // Paces tick on whole 5, 10, 15 or 30 seconds.
-  const yTicks = niceTicks(Math.max(0, low - pad), high + pad, 5, inverted ? [1, 2, 5, 10, 15, 20, 30, 60, 120] : null);
-  const yLow = Math.min(yTicks[0], low - pad);
-  const yHigh = Math.max(yTicks.at(-1), high + pad);
+  const panelHeight = stacked ? 118 : 278;
+  const panelGap = stacked ? 22 : 0;
+  const margin = { top: spans ? 22 : 12, right: 16, bottom: 30, left: 64 };
+  const height = margin.top + panels.length * panelHeight + (panels.length - 1) * panelGap + margin.bottom;
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
+  const all = panels.flatMap((panel) => panel.lines.flatMap((line) => line.points));
+  const minX = zoom ? zoom[0] : 0;
+  const maxX = zoom ? zoom[1] : Math.max(...all.map((point) => point.x)) || 1;
   const xFor = (x) => margin.left + ((x - minX) / (maxX - minX)) * plotWidth;
-  const yFor = (y) => {
-    const share = (Math.min(yHigh, Math.max(yLow, y)) - yLow) / (yHigh - yLow || 1);
-    return margin.top + (inverted ? share : 1 - share) * plotHeight;
-  };
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.setAttribute("height", String(height));
+  chart.style.height = `${height}px`;
   // Lines reaching past a zoomed stretch are cut at the edges of the plot.
   const clip = svg("clipPath", { id: "comparePlot" });
   clip.append(svg("rect", { x: margin.left, y: 0, width: plotWidth, height }));
   chart.append(clip);
-
-  for (const tick of yTicks) {
-    chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
-    const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
-    label.textContent = view.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, view.metric === "pace" ? 1 : 0);
-    chart.append(label);
+  if (spans) {
+    for (const span of spans) {
+      const x1 = Math.max(margin.left, xFor(span.from));
+      const x2 = Math.min(margin.left + plotWidth, xFor(span.to));
+      if (x2 <= x1) continue;
+      if (span.intensity === "active") chart.append(svg("rect", { class: "compare-work-band", x: x1, y: margin.top, width: x2 - x1, height: plotHeight }));
+      chart.append(svg("rect", { class: `compare-lap-stripe is-${span.intensity}`, x: x1 + 0.5, y: 6, width: Math.max(1, x2 - x1 - 1), height: 5, rx: 2 }));
+    }
   }
   for (const tick of xTicks(minX, maxX)) {
     const label = svg("text", { class: "compare-tick", x: xFor(tick), y: height - 10, "text-anchor": "middle" });
     label.textContent = axisText(tick);
     chart.append(label);
   }
-  chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
-  for (const line of lines) {
-    const d = line.points.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
-    chart.append(svg("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})`, "clip-path": "url(#comparePlot)" }));
-  }
+  const laid = panels.map((panel, index) => {
+    const top = margin.top + index * (panelHeight + panelGap);
+    const titled = stacked ? 16 : 0;
+    // The middle 98 % of values set the scale, so a single spike does not flatten the rest.
+    const ys = panel.lines.flatMap((line) => line.points.map((point) => point.y)).sort((a, b) => a - b);
+    const low = ys[Math.floor(ys.length * 0.01)];
+    const high = ys[Math.ceil(ys.length * 0.99) - 1];
+    const pad = (high - low) * 0.08 || 1;
+    const inverted = invertedMetric(panel.metric, view.sport);
+    // Paces tick on whole 5, 10, 15 or 30 seconds.
+    const yTicks = niceTicks(Math.max(0, low - pad), high + pad, stacked ? 3 : 5, inverted ? [1, 2, 5, 10, 15, 20, 30, 60, 120] : null);
+    const yLow = Math.min(yTicks[0], low - pad);
+    const yHigh = Math.max(yTicks.at(-1), high + pad);
+    const yFor = (y) => {
+      const share = (Math.min(yHigh, Math.max(yLow, y)) - yLow) / (yHigh - yLow || 1);
+      return top + titled + (inverted ? share : 1 - share) * (panelHeight - titled);
+    };
+    if (stacked) {
+      const title = svg("text", { class: "compare-panel-title", x: margin.left, y: top + 10 });
+      title.textContent = metricLabel(panel.metric, view.sport);
+      chart.append(title);
+    }
+    for (const tick of yTicks) {
+      chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
+      const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
+      label.textContent = panel.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, panel.metric === "pace" ? 1 : 0);
+      chart.append(label);
+    }
+    chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: top + panelHeight, y2: top + panelHeight }));
+    for (const line of panel.lines) {
+      const d = line.points.map((point, at) => `${at ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
+      chart.append(svg("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})`, "clip-path": "url(#comparePlot)" }));
+    }
+    return { ...panel, yFor };
+  });
   const guide = svg("g", { class: "compare-hover" });
   chart.append(guide);
-  view.layout = { lines, margin, plotWidth, plotHeight, minX, maxX, xFor, yFor, guide };
+  view.layout = { panels: laid, lines: laid[0].lines, spans, margin, plotWidth, plotHeight, minX, maxX, xFor, guide };
   renderHover();
 }
 
@@ -337,6 +396,8 @@ function valueAt(points, x) {
   return points[low].y;
 }
 
+const intensityKeys = { warmup: "intensityWarmup", active: "intensityActive", rest: "intensityRest", recovery: "intensityRecovery", cooldown: "intensityCooldown" };
+
 function renderHover() {
   if (view.layout?.trend) {
     renderTrendHover();
@@ -351,20 +412,27 @@ function renderHover() {
     return;
   }
   const x = layout.xFor(view.hoverX);
-  const rows = layout.lines.map((line) => ({ line, value: valueAt(line.points, view.hoverX) }));
+  const stacked = layout.panels.length > 1;
+  const rows = layout.panels.flatMap((panel) => panel.lines.map((line) => ({ panel, line, value: valueAt(line.points, view.hoverX) })));
   layout.guide.replaceChildren(
     svg("line", { class: "compare-crosshair", x1: x, x2: x, y1: layout.margin.top, y2: layout.margin.top + layout.plotHeight }),
     ...rows.filter((row) => row.value != null).map((row) => svg("circle", {
-      class: "compare-dot", cx: x, cy: layout.yFor(row.value), r: 4, fill: `var(--compare-${row.line.slot})`,
+      class: "compare-dot", cx: x, cy: row.panel.yFor(row.value), r: 4, fill: `var(--compare-${row.line.slot})`,
     })),
   );
+  // The lap's type under the pointer, for one activity of intervals.
+  const span = layout.spans?.find((candidate) => view.hoverX >= candidate.from && view.hoverX < candidate.to);
+  const heading = Object.assign(document.createElement("strong"), { textContent: axisText(view.hoverX) });
+  if (span) heading.append(` · ${t(intensityKeys[span.intensity] ?? "intensityActive")}`);
+  const single = layout.panels[0].lines.length === 1;
   tooltip.replaceChildren(
-    Object.assign(document.createElement("strong"), { textContent: axisText(view.hoverX) }),
+    heading,
     ...rows.map((row) => {
       const item = document.createElement("span");
       const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
       swatch.style.background = `var(--compare-${row.line.slot})`;
-      item.append(swatch, `${shortDate(row.line.entry.startMs)}  ${metricText(row.value, view.metric, view.sport)}`);
+      const label = stacked ? (single ? metricLabel(row.panel.metric, view.sport) : `${shortDate(row.line.entry.startMs)} · ${metricLabel(row.panel.metric, view.sport)}`) : shortDate(row.line.entry.startMs);
+      item.append(swatch, `${label}  ${metricText(row.value, row.panel.metric, view.sport)}`);
       return item;
     }),
   );
@@ -666,6 +734,7 @@ function renderTrendChart() {
   const metric = view.trendMetric;
   const points = trendPoints();
   chart.replaceChildren();
+  chart.style.height = "";
   view.layout = null;
   const empty = byId("compareChartEmpty");
   empty.hidden = points.length > 0;
@@ -990,9 +1059,16 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
   for (const button of document.querySelectorAll("[data-compare-metric]")) {
     button.addEventListener("click", () => {
       view.metric = button.dataset.compareMetric;
+      view.stacked = false;
+      saveDefaults({ compare: { ...savedDefaults().compare, stacked: false } });
       render();
     });
   }
+  byId("compareStacked").addEventListener("click", () => {
+    view.stacked = true;
+    saveDefaults({ compare: { ...savedDefaults().compare, stacked: true } });
+    render();
+  });
   for (const button of document.querySelectorAll("[data-compare-axis]")) {
     button.addEventListener("click", () => {
       view.axis = button.dataset.compareAxis;

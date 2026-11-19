@@ -611,6 +611,7 @@
                 <button type="button" data-compare-metric="pace">Tempo</button>
                 <button type="button" data-compare-metric="heartRate">Tep</button>
                 <button type="button" data-compare-metric="cadence">Kadence</button>
+                <button type="button" id="compareStacked" aria-pressed="false" data-i18n="compareStacked">Vše</button>
               </div>
               <div class="segmented" role="group" aria-label="Osa X" data-i18n-aria="compareAxis">
                 <button type="button" data-compare-axis="distance" data-i18n="compareByDistance">Vzdálenost</button>
@@ -636,6 +637,12 @@
                 <button class="outline-button" id="compareZoomRight" type="button" aria-label="Posunout doprava" data-i18n-aria="zoomRight" title="Posunout doprava" data-i18n-title="zoomRight">›</button>
               </div>
               <p class="field-note compare-chart-empty" id="compareChartEmpty" data-i18n="compareChartEmpty">Vyberte vlevo jednu nebo více aktivit.</p>
+            </div>
+            <div class="compare-interval-legend field-note" id="compareIntervalLegend" hidden>
+              <span><i class="is-warmup"></i><span data-i18n="intensityWarmup">Rozcvičení</span></span>
+              <span><i class="is-active"></i><span data-i18n="intensityActive">Aktivní</span></span>
+              <span><i class="is-recovery"></i><span data-i18n="intensityRecovery">Zotavení</span></span>
+              <span><i class="is-cooldown"></i><span data-i18n="intensityCooldown">Zklidnění</span></span>
             </div>
             <p class="field-note" id="compareZoomHint" data-i18n="zoomHint" hidden>Tažením v grafu přiblížíte úsek. Šipky ho posunou o půl úseku, Shift + tažení plynule. Dvojklik vrátí celý průběh.</p>
           </section>

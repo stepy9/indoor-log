@@ -1706,3 +1706,18 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .fitness-efficiency-controls { flex: 1 0 100%; justify-content: space-between; }
   .fitness-efficiency-controls .segmented { order: -1; }
 }
+
+/* An interval workout in the comparison: a stripe of its laps over the chart coloured by type, as a workout's
+   course is, a faint band behind each effort, and a legend under the chart. "All" stacks the metrics in panels. */
+.compare-lap-stripe { fill: var(--compare-2); }
+.compare-lap-stripe.is-warmup { fill: var(--compare-4); }
+.compare-lap-stripe:is(.is-rest, .is-recovery) { fill: var(--compare-3); }
+.compare-lap-stripe.is-cooldown { fill: var(--compare-1); }
+.compare-work-band { fill: var(--ink); opacity: .06; pointer-events: none; }
+.compare-panel-title { fill: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.compare-interval-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; }
+.compare-interval-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.compare-interval-legend i { width: 14px; height: 5px; border-radius: 2px; background: var(--compare-2); }
+.compare-interval-legend i.is-warmup { background: var(--compare-4); }
+.compare-interval-legend i.is-recovery { background: var(--compare-3); }
+.compare-interval-legend i.is-cooldown { background: var(--compare-1); }
