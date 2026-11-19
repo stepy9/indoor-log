@@ -1499,3 +1499,5 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .workout-add { align-self: flex-start; margin-top: 4px; }
 .workout-dialog .workout-name { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
 .workout-dialog .workout-name input { max-width: 360px; }
+.workout-dialog .workout-note { display: flex; flex-direction: column; gap: 4px; margin: 0 0 8px; }
+.workout-dialog .workout-note textarea { width: 100%; resize: vertical; font: inherit; }

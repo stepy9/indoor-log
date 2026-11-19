@@ -397,6 +397,29 @@ export const defaultKinomapPlans = {
   },
 };
 
+// The descriptions of those workouts as written in Kinomap Creator, by name, shown with their steps.
+export const defaultKinomapNotes = {
+  rowing: {
+    "FTP test 5 min": "Test maximálního výkonu na 5 minut (pro odhad FTP).\nOdpor drž po celý test stejný (stupeň 7), výkon zvyšuj tempem a silou záběru, 24–30 záběrů/min.\nRozjezdy svižně, ne naplno.\n5 min NAPLNO: start kolem 130–150 W, rovnoměrně, poslední minuta na doraz.\nNejez těsně před jízdou, měj pití a hrudní pás na tep.",
+    "FTP test 20 min": "Test FTP: 20 minut naplno, FTP = 95 % průměrného výkonu.\nOdpor drž po celý test stejný (stupeň 7), výkon zvyšuj tempem a silou záběru, 24–28 záběrů/min.\nRozjezdy v tempu, které chceš držet v testu.\n20 min NAPLNO: prvních 5 min kolem 110–120 W opatrně, pak drž, posledních 5 min přidej.\nLepší začít pomaleji a zrychlit než odpadnout v půlce.\n2–3 dny po testu A, odpočatý, nejez těsně před jízdou.",
+    "Intervaly 4x2 min": "Intervaly: 4 × 2 min svižně, mezi nimi 2 min volně.\nÚseky svižně, ale ať zvládneš všechny; odpočinky opravdu volně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6. Výkon drž tempem a silou záběru.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Intervaly 5x2 min": "Intervaly: 5 × 2 min svižně, mezi nimi 2 min volně.\nÚseky svižně, ale ať zvládneš všechny; odpočinky opravdu volně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6. Výkon drž tempem a silou záběru.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Intervaly 6x2 min": "Intervaly: 6 × 2 min svižně, mezi nimi 2 min volně.\nÚseky svižně, ale ať zvládneš všechny; odpočinky opravdu volně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6. Výkon drž tempem a silou záběru.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Intervaly 7x2 min": "Intervaly: 7 × 2 min svižně, mezi nimi 2 min volně.\nÚseky svižně, ale ať zvládneš všechny; odpočinky opravdu volně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6. Výkon drž tempem a silou záběru.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Intervaly 8x2 min": "Intervaly: 8 × 2 min svižně, mezi nimi 2 min volně.\nÚseky svižně, ale ať zvládneš všechny; odpočinky opravdu volně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6. Výkon drž tempem a silou záběru.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Pyramida 1-2-3-2-1 min": "Pyramida: svižně 1-2-3-2-1 min, volně vždy stejně dlouho jako úsek před tím.\nRozlož síly: prostřední 3 min jeď tak, ať druhá půlka pyramidy jde stejně svižně.\nOdpor: úseky stupeň 11, odpočinky stupeň 5, rozjetí a vyjetí stupeň 6.\nCíl úseků zhruba 100–110 W (upřesní se po FTP testu).",
+    "Progrese 30 min": "Stupňovaná jízda: většinu klidně v Z2, na konci postupně přidej.\nPrvních 22 min jako běžná jízda v Z2 (tep 127–141), pak 5 min na horní hraně Z2 a 3 min těsně nad ní.\nOdpor: stupeň 6, pak 7 a 8, vyjetí stupeň 5. Tempo záběrů klidné, výkon silou záběru.\nMísto běžné delší jízdy jednou za 1–2 týdny.",
+    "Technika tempo záběrů 20 min": "Technika: lehce na stupni 6, mění se jen tempo záběrů (SPM v názvu úseku).\n18 SPM: dlouhý záběr, síla z nohou, pomalý návrat. 26 SPM: rychleji, ale ne trhaně.\nTep držet v Z2; když vyleze výš, zpomal tempo, ne sílu.\nMísto běžné jízdy jednou za 1–2 týdny.",
+    "Minimální jízda 10 min": "Pro dny, kdy se nechce: 10 min úplně lehce na stupni 5.\nJde jen o to sednout si a udržet rutinu; tep klidně pod Z2.",
+  },
+};
+
+// A Creator workout's description as plain text: its line breaks, kept as <br>, as new lines; null without one.
+export function noteFromCreator(json) {
+  const text = json?.data?.description ?? json?.description;
+  return typeof text === "string" ? text.replace(/<br\s*\/?>/gi, "\n").trim() : null;
+}
+
 const plainName = (name) => String(name ?? "").replace(/^Kinomap\s*-\s*/i, "").trim().toLowerCase();
 
 // The saved steps of the workout of that name (the "Kinomap - " the converter puts before it left out):

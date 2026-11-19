@@ -2,7 +2,7 @@
 // in a table like the intervals' (length, resistance, target, type), or read from Kinomap Creator's workout JSON or
 // a plan pasted as text. An import of a workout of that name splits its laps by its steps.
 import { parseKinomapPlan } from "../core.js";
-import { stepsFromCreator, stepsFromSegments } from "../training.js";
+import { noteFromCreator, stepsFromCreator, stepsFromSegments } from "../training.js";
 import { formatDuration, t } from "./context.js";
 import { intensitySelectElement } from "./intervals.js";
 import { checkNumber, markField } from "./validate.js";
@@ -34,7 +34,7 @@ function stepsFromPaste(text) {
   return stepsFromSegments(segments, segments.at(-1).startMs / 1000 + 60);
 }
 
-// The dialog, made once; open() fills it for one workout and calls back with { name, steps } on Save.
+// The dialog, made once; open() fills it for one workout and calls back with { name, steps, note } on Save.
 let dialog = null;
 function editor() {
   if (dialog) return dialog;
@@ -42,6 +42,7 @@ function editor() {
   dialog.innerHTML = `
     <div class="dialog-head"><h2 id="workoutDialogTitle"></h2><span class="estimate-note" data-role="count"></span></div>
     <label class="settings-field workout-name"><span></span><input type="text" data-role="name" /></label>
+    <label class="settings-field workout-note"><span></span><textarea rows="3" data-role="note"></textarea></label>
     <p class="field-note info-note" data-role="hint"></p>
     <details class="plan-paste"><summary data-role="paste-title"></summary>
       <textarea rows="4" data-role="paste" placeholder='{"data":{"intervals":[…]}}  /  00:00  37%  22rpm  WU'></textarea>
@@ -61,7 +62,7 @@ function editor() {
   return dialog;
 }
 
-function open({ name, steps, taken }, onSave) {
+function open({ name, steps, note, taken }, onSave) {
   const box = editor();
   const part = (role) => box.querySelector(`[data-role="${role}"]`);
   let draft = steps.map((item) => ({ ...item }));
@@ -74,6 +75,8 @@ function open({ name, steps, taken }, onSave) {
   const nameInput = part("name");
   nameInput.value = name ?? "";
   part("paste").value = "";
+  box.querySelector(".workout-note span").textContent = t("workoutNote");
+  part("note").value = note ?? "";
 
   const wrong = () => box.querySelector('input[aria-invalid="true"]:not([hidden])');
   const update = () => {
@@ -166,6 +169,11 @@ function open({ name, steps, taken }, onSave) {
     part("paste").classList.toggle("is-invalid", !read);
     if (!read) return;
     draft = read;
+    // Creator's JSON brings its description too, which takes the place of the one typed.
+    try {
+      const pasted = noteFromCreator(JSON.parse(part("paste").value));
+      if (pasted) part("note").value = pasted;
+    } catch { /* a plan as text has none */ }
     part("paste").closest("details").open = false;
     render();
   };
@@ -173,7 +181,7 @@ function open({ name, steps, taken }, onSave) {
   part("save").onclick = () => {
     checkName();
     if (wrong() || !draft.length) return;
-    onSave({ name: nameInput.value.trim(), steps: draft });
+    onSave({ name: nameInput.value.trim(), steps: draft, note: part("note").value.trim() });
     box.close();
   };
   render();
@@ -183,13 +191,15 @@ function open({ name, steps, taken }, onSave) {
 }
 
 // The list in the settings: each workout's name, its steps in short, and buttons to change or remove it; a button
-// adds one. names: the workouts in order; plans: the steps by name; write({ names, plans }) saves both.
-export function workoutList(names, plans, write) {
+// adds one. names: the workouts in order; plans: the steps by name; notes: the descriptions by name;
+// write({ names, plans, notes }) saves them.
+export function workoutList(names, plans, notes, write) {
   const box = el("div", { class: "workout-list" });
-  const save = (nextNames, nextPlans) => {
+  const save = (nextNames, nextPlans, nextNotes) => {
     names = nextNames;
     plans = nextPlans;
-    write({ names, plans });
+    notes = nextNotes;
+    write({ names, plans, notes });
     render();
   };
   const render = () => {
@@ -199,25 +209,30 @@ export function workoutList(names, plans, write) {
       const text = el("div", { class: "workout-row-text" });
       text.append(el("strong", {}, name), el("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
       const edit = el("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
-      edit.addEventListener("click", () => open({ name, steps, taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
+      edit.addEventListener("click", () => open({ name, steps, note: notes[name], taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
         const nextPlans = { ...plans };
         delete nextPlans[name];
         nextPlans[result.name] = result.steps;
-        save(names.map((other) => (other === name ? result.name : other)), nextPlans);
+        const nextNotes = { ...notes };
+        delete nextNotes[name];
+        if (result.note) nextNotes[result.name] = result.note;
+        save(names.map((other) => (other === name ? result.name : other)), nextPlans, nextNotes);
       }));
       const remove = el("button", { type: "button", class: "row-icon-button", title: t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` }, "×");
       remove.addEventListener("click", () => {
         if (!confirm(t("workoutRemoveConfirm", { name }))) return;
         const nextPlans = { ...plans };
         delete nextPlans[name];
-        save(names.filter((other) => other !== name), nextPlans);
+        const nextNotes = { ...notes };
+        delete nextNotes[name];
+        save(names.filter((other) => other !== name), nextPlans, nextNotes);
       });
       row.append(text, edit, remove);
       return row;
     });
     const add = el("button", { type: "button", class: "outline-button workout-add" }, t("workoutAdd"));
     add.addEventListener("click", () => open({ name: "", steps: [], taken: names.map((other) => other.toLowerCase()) }, (result) => {
-      save([...names, result.name], { ...plans, [result.name]: result.steps });
+      save([...names, result.name], { ...plans, [result.name]: result.steps }, result.note ? { ...notes, [result.name]: result.note } : notes);
     }));
     box.replaceChildren(...rows, add);
   };

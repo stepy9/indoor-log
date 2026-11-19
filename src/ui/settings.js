@@ -15,7 +15,7 @@ import { formatDay, parseDay } from "../dates.js";
 import { parseKinomapPlan, setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
-import { defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
+import { defaultKinomapNotes, defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
 import { workoutList } from "./workouts.js";
 import { infoHint, openInfoSheet } from "./info.js";
 import { bodyStatus } from "../reminders.js";
@@ -910,10 +910,10 @@ function kinomapBlock(sport) {
   const { prefs, writePlan } = planPrefs(sport);
   block.append(
     withTip(node("h4", {}, t("settingsPlanKinomap")), t("settingsPlanKinomapNote")),
-    workoutList(prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? [], ownPlans(sport, prefs), ({ names, plans }) => {
+    workoutList(prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? [], ownPlans(sport, prefs), prefs.kinomapNotes ?? defaultKinomapNotes[sport] ?? {}, ({ names, plans, notes }) => {
       // Kept in prefs too, as the other fields write theirs over them.
-      Object.assign(prefs, { kinomapWorkouts: names, kinomapPlans: plans });
-      writePlan({ kinomapWorkouts: names, kinomapPlans: plans });
+      Object.assign(prefs, { kinomapWorkouts: names, kinomapPlans: plans, kinomapNotes: notes });
+      writePlan({ kinomapWorkouts: names, kinomapPlans: plans, kinomapNotes: notes });
     }),
   );
   return block;
