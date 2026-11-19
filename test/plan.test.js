@@ -287,3 +287,39 @@ test("days excused are no training days: the longer workout and the FTP test mov
   const list = weekChecklist(plan, [], "2026-11-02", every, excused);
   assert.equal(list.find((item) => item.day === "2026-11-08").type, "off");
 });
+
+test("nextStep tapers before a goal: a fifth fewer kilometres the week before, 40 % fewer and short intervals in its week", () => {
+  const final = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-07", prefs: { ftpTestWeeks: 6 } });
+  assert.equal(final.taper, "final");
+  assert.equal(final.weekKm, 4.8);
+  assert.equal(final.long.fromKm, 2);
+  assert.equal(final.intervals.max, 1);
+  assert.ok(final.intervals.repeats <= 3, String(final.intervals.repeats));
+  assert.equal(final.ftpTest.due, false);
+  assert.equal(final.lighter, false);
+  const first = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-14" });
+  assert.equal(first.taper, "first");
+  assert.equal(first.weekKm, 6.4);
+  assert.equal(first.long.fromKm, 2);
+  assert.equal(first.outlook[1].taper, "final");
+  assert.equal(first.outlook[1].goal, "2026-11-14");
+  assert.equal(first.outlook[2].taper, null);
+  assert.equal(nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-01" }).taper, null);
+});
+
+test("weekPlan puts the goal on its day, an opener the day before and nothing hard two days before", () => {
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-07" });
+  const days = weekPlan(plan, weeks(4), "2026-11-04", [0, 1, 3, 4, 5]);
+  const typeOn = (day) => days.find((item) => item.day === day)?.type;
+  assert.equal(typeOn("2026-11-07"), "goal");
+  assert.equal(typeOn("2026-11-06"), "opener");
+  assert.equal(typeOn("2026-11-05"), "usual");
+  // A goal on a day not trained on still shows in the week.
+  const sunday = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-08" });
+  assert.ok(weekChecklist(sunday, weeks(4), "2026-11-04", [0, 1, 3, 5]).some((item) => item.day === "2026-11-08" && item.type === "goal"));
+});
+
+test("an FTP test the taper puts off comes the week after the goal", () => {
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-14", prefs: { ftpTestWeeks: 6 } });
+  assert.deepEqual(plan.outlook.map((week) => week.ftpTest), [false, false, true, false, false, false]);
+});

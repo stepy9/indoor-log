@@ -87,6 +87,8 @@ export function scoreWorkout(facts, planned, fallback = null) {
   const targets = planned ?? fallback;
   if (!targets) return null;
   const type = planned?.type ?? null;
+  // The goal day (a race, unless it was an FTP test) and the opener before it are ridden as the day asks: not scored.
+  if ((type === "goal" && !facts.ftpTest) || type === "opener") return null;
   const parts = [];
   const part = (key, share, params = {}) => {
     parts.push({ key, share: share == null ? null : Math.round(share * 100) / 100, ...params });

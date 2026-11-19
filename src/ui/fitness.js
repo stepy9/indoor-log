@@ -193,8 +193,10 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours, illnessSigns: Boolean(illnessSigns(bodyHistory(), today())) }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours, illnessSigns: Boolean(illnessSigns(bodyHistory(), today())), goal: settings.sports[sport]?.goal?.day ?? null }) : null;
   if (!plan) return null;
+  // The goal's name, for the day it is planned on.
+  plan.goalName = plan.goal ? settings.sports[sport]?.goal?.name || null : null;
   // The steady workouts' heart rate: the second zone of the sport's own zones.
   const own = forSport(settings, sport);
   const bounds = [own.heartRateZones[1], own.heartRateZones[2]].map((fraction) => heartRateAt(fraction, own));
@@ -275,6 +277,7 @@ export function renderNextStep(card, entries, sport = "all") {
   // Why it holds back, or that this is a lighter week.
   const notes = [
     ...(plan.lighter ? [t("nextLighter")] : []),
+    ...(plan.taper ? [t(`nextTaper_${plan.taper}`, { day: dayText(plan.goal, { weekday: "short", day: "numeric", month: "numeric" }) })] : []),
     ...plan.holds.map((hold) => t(`nextHold_${hold}`)),
     ...(plan.tooHard ? [t("nextTooHard")] : []),
     ...(plan.focus ? [t(`nextFocus_${plan.focus}`)] : []),

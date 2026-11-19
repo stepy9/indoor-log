@@ -77,6 +77,8 @@ function kinomapPart(plan, type) {
 
 function plannedWords(plan, sport, type, detail) {
   if (type === "off") return t("planOff");
+  if (type === "goal") return plan.goalName ? t("planGoalNamed", { name: plan.goalName }) : t("planGoal");
+  if (type === "opener") return t("planOpener", { minutes: Math.max(15, Math.round(plan.usual.minutes / 2 / 5) * 5) });
   if (detail && type.startsWith("ftpTest")) return t(`plan${type[0].toUpperCase()}${type.slice(1)}Detail`);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
@@ -138,10 +140,11 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
   head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: `${t("planTitle")} · ${sportLabel(sport)}` }));
   const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
   // What the days ahead add, an interval workout counted as a usual one.
-  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : ["ftpTestShort", "ftpTest", "off"].includes(item.type) ? 0 : plan.usual.km), 0);
+  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : ["ftpTestShort", "ftpTest", "off", "goal"].includes(item.type) ? 0 : item.type === "opener" ? plan.usual.km / 2 : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
   list.append(...rows);
   if (plan.lighter) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planLighter") }));
+  if (plan.taper) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t(`planTaper_${plan.taper}`) }));
   // How the training focus steers the week, as on the fitness page.
   // The least to ride on a day without the will: easy, for the habit.
   if (plan.minimal) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planMinimal", { minutes: plan.minimal.minutes }) }));

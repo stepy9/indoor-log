@@ -369,7 +369,12 @@ function outlookCard(plan) {
   table.tHead.append(headRow);
   plan.outlook.forEach((week, index) => {
     const row = node("tr", { class: index === 0 ? "is-current" : "" });
-    const notes = [...(week.ftpTest ? [t("trainingOutlookTest")] : []), ...(week.lighter ? [t("trainingOutlookLighter")] : [])];
+    const notes = [
+      ...(week.goal ? [t("trainingOutlookGoal", { day: format(week.goal, { weekday: "short", day: "numeric", month: "numeric" }) })] : []),
+      ...(week.taper ? [t(`trainingOutlookTaper_${week.taper}`)] : []),
+      ...(week.ftpTest ? [t("trainingOutlookTest")] : []),
+      ...(week.lighter ? [t("trainingOutlookLighter")] : []),
+    ];
     row.append(
       node("td", {}, `${index === 0 ? t("planThisWeek") : weekNumber(week.monday)} · ${format(week.monday, { day: "numeric", month: "numeric" })}`),
       node("td", {}, `${week.longCount > 1 ? `${week.longCount} × ` : ""}${week.longMinutes} min`),

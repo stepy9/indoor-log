@@ -45,7 +45,18 @@ export const ftpTestGap = 2;
 // How many weeks the outlook shows, this one included.
 export const outlookWeeks = 6;
 
-export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null, unwell = false, hrvLow = false, shortSleep = false, illnessSigns = false }) {
+// The taper before a goal day (a race or a test), by the week: the week of the goal (the goal within 7 days of its
+// Monday) is the final one, the week before it the first. The final week rides 40 % fewer kilometres, its longer
+// workout no longer than the usual one and at most one interval workout of half the repeats; the first week rides
+// 20 % fewer and holds the longer workout. Neither is a lighter week nor takes an FTP test.
+export const taperCut = { first: 0.2, final: 0.4 };
+export function taperOf(monday, goal) {
+  if (!goal) return null;
+  const days = Math.round((noon(goal) - noon(monday)) / dayMs);
+  return days >= 0 && days <= 7 ? "final" : days > 7 && days <= 14 ? "first" : null;
+}
+
+export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focus = null, prefs = {}, lastFtpTest = null, unwell = false, hrvLow = false, shortSleep = false, illnessSigns = false, goal = null }) {
   const steady = workouts.filter((workout) => workout.kind === "steady" && workout.km > 0);
   const since = (days) => addDays(today, -days);
   const recentSteady = steady.filter((workout) => workout.day > since(14));
@@ -69,7 +80,10 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const firstMonday = mondayOf(workouts.reduce((first, workout) => (workout.day < first ? workout.day : first), today));
   const weekNumber = Math.round((noon(thisMonday) - noon(firstMonday)) / (7 * dayMs));
   const every = Number.isInteger(prefs.lighterEvery) ? prefs.lighterEvery : 4;
-  const lighter = every > 0 && weekNumber % every === every - 1;
+  // A goal day ahead (today included) tapers the weeks before it, in place of a lighter week.
+  const goalDay = goal && goal >= today ? goal : null;
+  const taper = taperOf(thisMonday, goalDay);
+  const lighter = !taper && every > 0 && weekNumber % every === every - 1;
   const lighterBy = (prefs.lighterPercent > 0 ? prefs.lighterPercent : 20) / 100;
 
   // The FTP test, every so many weeks when set: due from that many weeks after the last one (now, without one),
@@ -80,7 +94,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     every: prefs.ftpTestWeeks,
     last: lastTest,
     done: testsThisWeek,
-    due: testsThisWeek === 1 || (testsThisWeek === 0 && (!lastTest || lastTest <= addDays(today, -7 * prefs.ftpTestWeeks))),
+    due: !taper && (testsThisWeek === 1 || (testsThisWeek === 0 && (!lastTest || lastTest <= addDays(today, -7 * prefs.ftpTestWeeks)))),
   } : null;
 
   // What holds the build back, most telling first.
@@ -109,15 +123,18 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const before = base.filter((workout) => workout.day < thisMonday);
   const longest = Math.max(before.length ? Math.max(...before.map((workout) => workout.km)) : longestKm, usualFrom);
   const grown = step != null ? longest + step : Number.isFinite(target) && !(prefs.longStepMinutes > 0) && target > longest ? target : longest * 1.1;
-  const longKm = lighter ? (step != null ? Math.max(usualFrom, longest - step) : usualFrom) : holds.length ? longest : grown;
+  const longKm = taper === "final" ? usualFrom : lighter ? (step != null ? Math.max(usualFrom, longest - step) : usualFrom) : holds.length || taper ? longest : grown;
   const longFrom = tenthUp(Math.min(longKm, Math.max(target, usualFrom)));
-  const long = { fromKm: longFrom, toKm: tenthUp(longFrom * 1.08), minutes: Math.round(longFrom / speed / 60), count: prefs.longPerWeek > 0 ? prefs.longPerWeek : 1 };
+  const long = { fromKm: longFrom, toKm: tenthUp(longFrom * 1.08), minutes: Math.round(longFrom / speed / 60), count: taper === "final" ? 1 : prefs.longPerWeek > 0 ? prefs.longPerWeek : 1 };
   // The week's distance: at most 10 % over the last full week, 20 % under it in a lighter week; with a weekly
   // volume set, growing towards it and no further.
   const goalKm = prefs.weeklyHours > 0 ? prefs.weeklyHours * 3600 * speed : prefs.weeklyKm > 0 ? prefs.weeklyKm : null;
   const grownWeek = lastWeekKm * (lighter ? 1 - lighterBy : holds.length ? 1 : 1.1);
   const weekFrom = goalKm ? (lastWeekKm > 0 ? Math.min(grownWeek, lighter ? goalKm * (1 - lighterBy) : goalKm) : goalKm) : grownWeek;
-  const weekKm = weekFrom > 0 ? Math.round(weekFrom * 10) / 10 : null;
+  // A taper cuts the week's distance from the last full week, or from the volume set before it began.
+  const taperFrom = goalKm && lastWeekKm > 0 ? Math.min(lastWeekKm, goalKm) : goalKm ?? lastWeekKm;
+  const weekTo = taper ? taperFrom * (1 - taperCut[taper]) : weekFrom;
+  const weekKm = weekTo > 0 ? Math.round(weekTo * 10) / 10 : null;
   const longDone = thisWeek.filter((workout) => workout.kind === "steady" && workout.km >= long.fromKm - 0.05).length;
   const doneLong = longDone >= long.count;
 
@@ -128,11 +145,13 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   const kind = intervalKinds[prefs.intervalType] ? prefs.intervalType : "medium";
   const shape = intervalKinds[kind];
   const grownBy = Math.floor(intervalsDone / 2) - (lighter ? 1 : 0);
-  const repeats = Math.max(shape.repeats[0] - 1, Math.min(shape.repeats[1], shape.repeats[0] + (shape.grow ? 0 : grownBy)));
+  const grownRepeats = Math.max(shape.repeats[0] - 1, Math.min(shape.repeats[1], shape.repeats[0] + (shape.grow ? 0 : grownBy)));
+  // The final week keeps the efforts sharp but few: half the repeats, two at the least.
+  const repeats = taper === "final" ? Math.max(2, Math.ceil(grownRepeats / 2)) : grownRepeats;
   const minutes = shape.grow ? Math.max(shape.minutes - 1, Math.min(shape.most, shape.minutes + grownBy * shape.grow)) : shape.minutes;
   // The number set holds, one at most in a lighter week; else by the focus.
   const intervalsSet = Number.isInteger(prefs.intervalsPerWeek);
-  const intervalsMax = ftpTest?.due ? 0 : intervalsSet ? (lighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : lighter || focus === "intense" ? 1 : 2;
+  const intervalsMax = ftpTest?.due ? 0 : intervalsSet ? (lighter || taper === "final" ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : lighter || taper === "final" || focus === "intense" ? 1 : 2;
   const intervals = {
     set: intervalsSet || Boolean(ftpTest?.due),
     kind,
@@ -150,24 +169,32 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // The weeks ahead as the plan would go if each were kept and nothing held it back: this week first, then
   // the next ones, each with its longer workouts' time, whether it is lighter, the FTP test and the intervals.
   const minutesOf = (km) => Math.round(km / speed / 60);
-  const firstTestWeek = ftpTest ? (ftpTest.due ? thisMonday : mondayOf(addDays(lastTest, 7 * prefs.ftpTestWeeks))) : null;
+  // A test the taper puts off comes the week after the goal's.
+  const afterGoal = goalDay ? addDays(mondayOf(goalDay), 7) : null;
+  const testFrom = ftpTest && !ftpTest.due ? (lastTest ? mondayOf(addDays(lastTest, 7 * prefs.ftpTestWeeks)) : thisMonday) : thisMonday;
+  const firstTestWeek = ftpTest ? (afterGoal && testFrom < afterGoal && taperOf(testFrom, goalDay) ? afterGoal : testFrom) : null;
   const outlook = [];
   let grownKm = longFrom;
   let peakKm = lighter ? longest : longFrom;
   for (let index = 0; index < outlookWeeks; index += 1) {
     const monday = addDays(thisMonday, index * 7);
-    const isLighter = every > 0 && (weekNumber + index) % every === every - 1;
+    const weekTaper = taperOf(monday, goalDay);
+    const isLighter = !weekTaper && every > 0 && (weekNumber + index) % every === every - 1;
     if (index > 0) {
-      if (isLighter) grownKm = step != null ? Math.max(usualFrom, peakKm - step) : usualFrom;
+      if (weekTaper === "final") grownKm = usualFrom;
+      else if (weekTaper === "first") grownKm = peakKm;
+      else if (isLighter) grownKm = step != null ? Math.max(usualFrom, peakKm - step) : usualFrom;
       else {
         grownKm = Math.min(Math.max(target, usualFrom), step != null ? peakKm + step : Number.isFinite(target) && !(prefs.longStepMinutes > 0) ? Math.max(target, peakKm) : peakKm * 1.1);
         peakKm = grownKm;
       }
     }
     const weeksSinceFirst = firstTestWeek ? Math.round((noon(monday) - noon(firstTestWeek)) / (7 * dayMs)) : -1;
-    const testWeek = weeksSinceFirst >= 0 && weeksSinceFirst % prefs.ftpTestWeeks === 0;
-    const intervalsCount = testWeek ? 0 : intervalsSet ? (isLighter ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : isLighter || focus === "intense" ? 1 : 2;
-    outlook.push({ monday, lighter: isLighter, longMinutes: minutesOf(tenthUp(grownKm)), longCount: long.count, ftpTest: testWeek, intervals: intervalsCount });
+    const testWeek = !weekTaper && weeksSinceFirst >= 0 && weeksSinceFirst % prefs.ftpTestWeeks === 0;
+    const fewer = isLighter || weekTaper === "final";
+    const intervalsCount = testWeek ? 0 : intervalsSet ? (fewer ? Math.min(1, prefs.intervalsPerWeek) : prefs.intervalsPerWeek) : fewer || focus === "intense" ? 1 : 2;
+    const goalInWeek = goalDay && goalDay >= monday && goalDay < addDays(monday, 7) ? goalDay : null;
+    outlook.push({ monday, lighter: isLighter, taper: weekTaper, goal: goalInWeek, longMinutes: minutesOf(tenthUp(grownKm)), longCount: weekTaper === "final" ? 1 : long.count, ftpTest: testWeek, intervals: intervalsCount });
   }
 
   return {
@@ -180,6 +207,8 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     lastWeekKm: Math.round(lastWeekKm * 10) / 10,
     thisWeekKm: Math.round(kmOf(thisWeek) * 10) / 10,
     lighter,
+    taper,
+    goal: goalDay,
     holds,
     tooHard,
     focus,
@@ -217,8 +246,11 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
   if (!plan || !days.length) return [];
   const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const trained = new Set(workouts.map((workout) => workout.day));
-  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => days.includes(weekday(day)) && !trained.has(day) && !excused[day]);
+  // The goal day is planned whatever the weekday; the two days before it take nothing hard.
+  const goal = plan.goal ?? null;
+  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => (days.includes(weekday(day)) || day === goal) && !trained.has(day) && !excused[day]);
   if (!open.length) return [];
+  const nearGoal = (day) => Boolean(goal) && day >= addDays(goal, -2) && day <= goal;
   const nextMonday = addDays(mondayOf(today), 7);
   const types = new Map(open.map((day) => [day, "usual"]));
   // The longer workouts: those of this week not yet done, on the weekdays set for them, else a weekend day first,
@@ -227,7 +259,7 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
   const thisWeekOpen = open.filter((day) => day < nextMonday);
   const count = plan.long.count ?? 1;
   const toNextWeek = plan.doneLong || !thisWeekOpen.length;
-  const longDays = toNextWeek ? open.filter((day) => day >= nextMonday) : thisWeekOpen;
+  const longDays = (toNextWeek ? open.filter((day) => day >= nextMonday) : thisWeekOpen).filter((day) => !nearGoal(day));
   const wantedLong = Math.min(toNextWeek ? count : count - (plan.longDone ?? 0), Math.max(1, longDays.length - 1));
   const longPicks = longDays.filter((day) => plan.longDays?.includes(weekday(day))).slice(0, wantedLong);
   // Days apart counted round the week too, as next week's longer workouts fall on the same weekdays.
@@ -248,7 +280,7 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
   // The FTP test when due: the short one on the first usual day not after a longer workout, the 20 minutes
   // ftpTestGap days or more after it (or after the short one done), rested, so not the day after a longer one either.
   if (plan.ftpTest?.due) {
-    const rested = (day) => types.get(day) === "usual" && !longPicks.includes(addDays(day, -1));
+    const rested = (day) => types.get(day) === "usual" && !longPicks.includes(addDays(day, -1)) && !nearGoal(day);
     let after = plan.ftpTest.done ? plan.ftpTest.last : null;
     for (const test of plan.ftpTest.done ? ["ftpTest"] : ["ftpTestShort", "ftpTest"]) {
       const day = open.find((candidate) => rested(candidate) && (!after || candidate >= addDays(after, ftpTestGap)));
@@ -264,7 +296,7 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
   const wanted = plan.intervals.due ? Math.max(0, most - plan.intervals.done) : 0;
   const usualLeft = open.filter((day) => types.get(day) === "usual").length;
   const room = usualLeft >= 2 ? usualLeft - 1 : open.length === 2 && usualLeft === 1 ? 1 : 0;
-  const free = open.filter((day) => types.get(day) === "usual" && !nearLong(day));
+  const free = open.filter((day) => types.get(day) === "usual" && !nearLong(day) && !nearGoal(day));
   const picks = [];
   // Spread out: the middle open day first, then the one farthest from those taken.
   for (let count = 0; count < Math.min(wanted, free.length, room); count += 1) {
@@ -274,6 +306,9 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
     picks.push(pick);
   }
   for (const day of picks) types.set(day, "intervals");
+  // The goal itself, and the day before it a short easy ride with a few efforts at the goal's pace, to open up.
+  if (goal && types.has(goal)) types.set(goal, "goal");
+  if (goal && types.has(addDays(goal, -1))) types.set(addDays(goal, -1), "opener");
   return open.map((day) => ({ day, type: types.get(day) }));
 }
 
@@ -289,7 +324,7 @@ export function weekChecklist(plan, workouts, today, days, excused = {}) {
   return week.flatMap((day) => {
     const done = workouts.filter((workout) => workout.day === day);
     if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.ftpTest) ? "ftpTest" : done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
-    if (!days.includes(weekday(day))) return [];
+    if (!days.includes(weekday(day)) && day !== plan?.goal) return [];
     if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
     return [{ day, status: "planned", type: excused[day] ? "off" : ahead.get(day) ?? "usual", workouts: [] }];
   });
