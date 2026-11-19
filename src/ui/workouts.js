@@ -43,7 +43,7 @@ function editor() {
   dialog.innerHTML = `
     <div class="dialog-head"><h2 id="workoutDialogTitle"></h2><span class="estimate-note" data-role="count"></span></div>
     <label class="settings-field workout-name"><span></span><input type="text" data-role="name" /></label>
-    <label class="settings-field workout-note"><span></span><textarea rows="3" data-role="note"></textarea></label>
+    <label class="settings-field workout-note"><span></span><textarea rows="6" data-role="note"></textarea></label>
     <details class="plan-paste"><summary data-role="paste-title"></summary>
       <textarea rows="4" data-role="paste" placeholder='{"data":{"intervals":[…]}}  /  00:00  37%  22rpm  WU'></textarea>
       <button class="accent-button" type="button" data-role="paste-apply"></button>
