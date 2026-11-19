@@ -7,7 +7,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
-import { byId, formatDuration, t } from "./context.js";
+import { byId, formatDuration, state, t } from "./context.js";
 
 
 
@@ -93,6 +93,32 @@ const sounds = {
   stop: () => { tones([[520, 0.15], [520, 0.15]]); buzz([120, 80, 120]); },
   done: () => { tones([[660, 0.18], [880, 0.18], [1100, 0.4]]); buzz([200, 100, 200, 100, 300]); },
 };
+// The next exercise said aloud in the app's language as a pause starts, or "Right side" before the switch; muted by
+// the same bell. Spoken a moment after the tones, so the two do not overlap.
+function speak(text) {
+  try {
+    const synth = window.speechSynthesis;
+    if (!soundOn() || !synth || !text) return;
+    synth.cancel();
+    const lang = state.language === "en" ? "en-GB" : "cs-CZ";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    const voice = synth.getVoices().find((item) => item.lang?.replace("_", "-") === lang) ?? synth.getVoices().find((item) => item.lang?.startsWith(lang.slice(0, 2)));
+    if (voice) utterance.voice = voice;
+    setTimeout(() => synth.speak(utterance), 500);
+  } catch { /* no speech */ }
+}
+const quiet = () => { try { window.speechSynthesis?.cancel(); } catch { /* no speech */ } };
+function announce(coming) {
+  if (!coming || coming.type !== "work") return;
+  if (coming.side === 2) return speak(t("speakRight"));
+  const { hold } = exercises[coming.id];
+  const parts = [t("speakNext", { name: t(`recovery_${coming.id}`) })];
+  if (coming.side === 1) parts.push(t("recoverySide_1").toLocaleLowerCase());
+  parts.push(coming.reps ? t("strengthReps", { reps: coming.reps }) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds }));
+  speak(parts.join(", "));
+}
+
 // The change into the step now showing: a start into work, a stop out of it.
 function cue(into) {
   if (into === "done") sounds.done();
@@ -130,6 +156,7 @@ function showStep() {
     byId("recoveryPlayerClock").textContent = `${step.reps}×`;
     return;
   }
+  if (!work) announce(coming);
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
   player.ticked = null;
@@ -178,6 +205,7 @@ async function finish() {
 }
 
 function stop() {
+  quiet();
   clearInterval(player.timer);
   player.timer = null;
   player.wakeLock?.release?.().catch?.(() => {});
@@ -216,6 +244,8 @@ async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = n
 // From the intro's button, or straight away: the steps and their clock.
 async function run() {
   openAudio();
+  // iOS speaks only once speech has started from a tap: an empty line now opens it for the set.
+  try { if (soundOn()) window.speechSynthesis?.speak(new SpeechSynthesisUtterance("")); } catch { /* no speech */ }
   const dialog = byId("recoveryPlayer");
   dialog.classList.remove("is-intro");
   byId("recoveryPlayerIntro").hidden = true;
@@ -257,6 +287,7 @@ function wirePlayer() {
   showBell();
   bell.addEventListener("click", () => {
     saveDefaults({ playerSound: !soundOn() });
+    if (!soundOn()) quiet();
     openAudio();
     showBell();
     if (soundOn()) sounds.tick();
