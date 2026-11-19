@@ -1464,14 +1464,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-text p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .recovery-dose { color: var(--accent-ink); font-size: 12px; font-weight: 600; }
 .recovery-figure { flex: none; width: 110px; height: 85px; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.recovery-figure .mat { fill: var(--line-strong); stroke: none; }
-.recovery-figure .limb, .recovery-figure .trunk, .recovery-figure .neck { stroke: color-mix(in srgb, var(--ink) 80%, var(--surface)); }
-.recovery-figure .limb { stroke-width: 11; }
-.recovery-figure .leg { stroke-width: 12; }
-.recovery-figure .trunk { stroke-width: 18; }
-.recovery-figure .neck { stroke-width: 10; }
-.recovery-figure .head { fill: color-mix(in srgb, var(--ink) 80%, var(--surface)); stroke: none; }
-.recovery-figure .focus { stroke: var(--orange); stroke-width: 5; }
 .recovery-player { width: min(480px, 100vw); max-width: 100vw; padding: 20px; border: 0; border-radius: var(--radius); color: var(--ink); background: var(--surface); text-align: center; }
 .recovery-player::backdrop { background: rgba(11, 18, 32, .6); }
 .recovery-player-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
@@ -1775,3 +1767,22 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-player-figure.has-views { display: flex; gap: 10px; justify-content: center; }
 .recovery-player-figure.has-views .recovery-view { flex: 1 1 0; min-width: 0; }
 .recovery-player-figure.has-views .recovery-figure { max-height: 28vh; }
+
+/* The exercises' figures: the near limbs light and the far ones darker behind the body, hands and feet, the
+   stretched muscle as a soft band, a cushion where one is used; a move shows its start as a faint ghost and its
+   way by a dashed arrow. */
+.recovery-figure .mat { fill: var(--line-strong); stroke: none; }
+.recovery-figure .mat.pad { fill: color-mix(in srgb, var(--accent) 35%, var(--surface)); }
+.recovery-figure .limb, .recovery-figure .trunk, .recovery-figure .neck, .recovery-figure .foot { stroke: color-mix(in srgb, var(--ink) 82%, var(--surface)); }
+.recovery-figure .limb { stroke-width: 11; }
+.recovery-figure .leg { stroke-width: 12; }
+.recovery-figure .foot { stroke-width: 8; }
+.recovery-figure .trunk { stroke-width: 18; }
+.recovery-figure .neck { stroke-width: 10; }
+.recovery-figure .head, .recovery-figure .hand { fill: color-mix(in srgb, var(--ink) 82%, var(--surface)); stroke: none; }
+.recovery-figure .far:is(.limb, .foot) { stroke: color-mix(in srgb, var(--ink) 42%, var(--surface)); }
+.recovery-figure .hand.far { fill: color-mix(in srgb, var(--ink) 42%, var(--surface)); }
+.recovery-figure .focus { stroke: var(--orange); stroke-width: 20; opacity: .5; }
+.recovery-figure .ghost { opacity: .16; }
+.recovery-figure .move-arrow { stroke: var(--orange); stroke-width: 3; fill: none; stroke-dasharray: 5 5; opacity: .85; }
+.recovery-figure .move-arrow-head { fill: var(--orange); stroke: none; }

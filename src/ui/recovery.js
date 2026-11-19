@@ -2,97 +2,22 @@
 // its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
 // runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
 // and at the end the workout is marked as stretched.
-import { afterWorkout, exerciseCatalog, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
+import { figureMarkup } from "../figure-svg.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
 import { byId, formatDuration, t } from "./context.js";
 
-const svgNs = "http://www.w3.org/2000/svg";
-const cycle = "5s";
 
-const points = (list) => list.map(([x, y]) => `${x},${y}`).join(" ");
-const trunkPath = ([[hx, hy], [cx, cy], [sx, sy]]) => `M${hx},${hy} Q${cx},${cy} ${sx},${sy}`;
 
-// Each drawn part as [tag, class, attributes of a pose]; the same parts in every pose, so they animate. A view
-// close up (a hand) has no trunk or head: only what the pose holds is drawn.
-function parts(pose, focus) {
-  const list = [
-    ...pose.legs.map((leg) => ["polyline", "limb leg", { points: points(leg) }]),
-    ...pose.arms.map((arm) => ["polyline", "limb arm", { points: points(arm) }]),
-    ...(pose.trunk ? [
-      ["path", "trunk", { d: trunkPath(pose.trunk) }],
-      ["line", "neck", { x1: pose.trunk[2][0], y1: pose.trunk[2][1], x2: pose.neck[0], y2: pose.neck[1] }],
-      ["circle", "head", { cx: pose.head[0], cy: pose.head[1], r: 12 }],
-    ] : []),
-  ];
-  for (const name of focus) {
-    if (name === "trunk") list.push(["path", "focus", { d: trunkPath(pose.trunk) }]);
-    const [, kind, index] = name.match(/^(arm|leg|thigh|fore)(\d+)$/) ?? [];
-    if (kind === "arm") list.push(["polyline", "focus", { points: points(pose.arms[index]) }]);
-    if (kind === "leg") list.push(["polyline", "focus", { points: points(pose.legs[index]) }]);
-    if (kind === "thigh") list.push(["polyline", "focus", { points: points(pose.legs[index].slice(0, 2)) }]);
-    // An arm from its elbow on: the forearm and the hand.
-    if (kind === "fore") list.push(["polyline", "focus", { points: points(pose.arms[index].slice(1)) }]);
-  }
-  return list;
-}
-
-// A move goes round its poses over and over (two poses: there and back; more: a circle through them); a hold
-// eases into the stretch, stays there still most of the cycle and eases back, so the figure shows a pose to keep
-// rather than a motion to repeat.
-const ease = ".45 0 .55 1";
-function timing(hold, count) {
-  if (hold) return { dur: "8s", keyTimes: "0;.2;.88;1", keySplines: `${ease};0 0 1 1;${ease}`, order: [0, 1, 1, 0] };
-  const order = count === 2 ? [0, 1, 0] : [...Array(count).keys(), 0];
-  const steps = order.length - 1;
-  return {
-    dur: count === 2 ? cycle : `${count * 1.1}s`,
-    keyTimes: order.map((_, index) => String(Math.round((index / steps) * 1000) / 1000)).join(";"),
-    // Round a circle the speed stays even; there and back it eases at each end.
-    keySplines: Array(steps).fill(count === 2 ? ease : "0 0 1 1").join(";"),
-    order,
-  };
-}
-
-// The views an exercise is drawn in: its side view first, then any other (from above, a close-up), each
-// { key, poses, focus, blocks } with blocks the mat, the wall or the door frame behind the figure.
-function views(id) {
-  const { poses, focus = [], wall, more = [] } = exercises[id];
-  if (!poses) return [];
-  const side = { key: "side", poses, focus, blocks: [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : [])] };
-  return [side, ...more.map((view) => ({ focus, blocks: [], ...view }))];
-}
-
+// One view drawn: the markup of figure-svg.js, made an element.
 function drawView(id, view) {
-  const how = timing(exercises[id].hold, view.poses.length);
-  const svg = document.createElementNS(svgNs, "svg");
-  svg.setAttribute("viewBox", "0 0 220 170");
-  svg.setAttribute("class", `recovery-figure is-${view.key}`);
-  svg.setAttribute("aria-hidden", "true");
-  for (const block of view.blocks) {
-    const rect = document.createElementNS(svgNs, "rect");
-    for (const [key, value] of Object.entries({ ...block, class: "mat" })) rect.setAttribute(key, value);
-    svg.append(rect);
-  }
-  const drawn = view.poses.map((pose) => parts(pose, view.focus));
-  drawn[0].forEach(([tag, className, attrs], index) => {
-    const node = document.createElementNS(svgNs, tag);
-    node.setAttribute("class", className);
-    for (const [key, value] of Object.entries(attrs)) {
-      node.setAttribute(key, value);
-      const values = how.order.map((pose) => drawn[Math.min(pose, drawn.length - 1)][index][2][key]);
-      if (values.every((other) => String(other) === String(value))) continue;
-      const animate = document.createElementNS(svgNs, "animate");
-      for (const [name, setting] of Object.entries({
-        attributeName: key, dur: how.dur, repeatCount: "indefinite", calcMode: "spline",
-        keyTimes: how.keyTimes, keySplines: how.keySplines, values: values.join(";"),
-      })) animate.setAttribute(name, setting);
-      node.append(animate);
-    }
-    svg.append(node);
-  });
-  return svg;
+  const holder = document.createElement("div");
+  holder.innerHTML = figureMarkup(view, { hold: Boolean(exercises[id].hold), className: `recovery-figure is-${view.key}` });
+  return holder.firstElementChild;
 }
+
+const views = exerciseViews;
 
 // The side view alone, for the small lists.
 export function figure(id) {

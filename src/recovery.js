@@ -42,25 +42,31 @@ export const exercises = {
   },
   hipFlexor: {
     seconds: 30, sides: 2, hold: true,
+    // Half-kneeling, the back knee on a cushion: the front leg (far) at a right angle, the hips easing forward.
+    props: [{ x: 122, y: 137, width: 38, height: 13, rx: 5, class: "pad" }],
+    far: { legs: [0] },
     poses: [
-      { trunk: [[110, 98], [112, 70], [110, 42]], neck: [110, 32], head: [110, 22], arms: [[[110, 42], [122, 68], [112, 94]]], legs: [[[110, 98], [70, 98], [70, 146]], [[110, 98], [140, 146], [184, 146]]] },
-      { trunk: [[96, 106], [97, 78], [98, 50]], neck: [98, 40], head: [98, 30], arms: [[[98, 50], [110, 76], [100, 102]]], legs: [[[96, 106], [62, 102], [70, 146]], [[96, 106], [140, 146], [184, 146]]] },
+      { trunk: [[118, 104], [119, 76], [118, 48]], neck: [118, 38], head: [118, 25], arms: [[[118, 48], [104, 70], [82, 98]]], legs: [[[118, 104], [74, 104], [74, 146]], [[118, 104], [140, 145], [184, 144]]], feet: [[55, 147], [197, 149]] },
+      { trunk: [[104, 112], [105, 84], [104, 56]], neck: [104, 46], head: [104, 33], arms: [[[104, 56], [88, 78], [68, 96]]], legs: [[[104, 112], [62, 100], [74, 146]], [[104, 112], [140, 145], [184, 144]]], feet: [[55, 147], [197, 149]] },
     ],
     focus: ["thigh1"],
   },
   figureFour: {
     seconds: 30, sides: 2, hold: true,
+    // On the back: the near leg's ankle crossed over the far leg's knee, then that leg pulled towards the chest.
+    far: { legs: [0] },
     poses: [
-      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [74, 146], [100, 146]]], legs: [[[128, 140], [150, 104], [180, 140]], [[128, 140], [164, 124], [148, 104]]] },
-      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [84, 128], [114, 104]]], legs: [[[128, 140], [118, 96], [150, 84]], [[128, 140], [144, 108], [120, 92]]] },
+      { trunk: [[120, 138], [86, 140], [52, 138]], neck: [42, 136], head: [30, 134], arms: [[[52, 138], [70, 145], [94, 145]]], legs: [[[120, 138], [148, 104], [172, 145]], [[120, 138], [136, 120], [152, 106]]], feet: [[187, 146], [162, 99]] },
+      { trunk: [[120, 138], [86, 140], [52, 138]], neck: [42, 136], head: [30, 134], arms: [[[52, 138], [86, 124], [118, 110]]], legs: [[[120, 138], [128, 96], [166, 90]], [[120, 138], [142, 120], [134, 100]]], feet: [[178, 84], [140, 91]] },
     ],
     focus: ["thigh1"],
     more: [{
       key: "top",
-      blocks: [{ x: 72, y: 6, width: 76, height: 158, rx: 10 }],
+      // From above, head up: the crossed leg's knee out to the side and its ankle on the other knee, a "4".
+      blocks: [{ x: 60, y: 6, width: 106, height: 158, rx: 10 }],
       poses: [
-        { trunk: [[110, 100], [110, 70], [110, 42]], neck: [110, 32], head: [110, 20], arms: [[[110, 42], [90, 66], [84, 96]], [[110, 42], [130, 66], [136, 96]]], legs: [[[104, 100], [100, 124], [98, 150]], [[116, 100], [158, 118], [102, 124]]] },
-        { trunk: [[110, 100], [110, 70], [110, 42]], neck: [110, 32], head: [110, 20], arms: [[[110, 42], [96, 72], [100, 112]], [[110, 42], [124, 72], [106, 114]]], legs: [[[104, 100], [100, 112], [98, 134]], [[116, 100], [156, 104], [102, 112]]] },
+        { trunk: [[110, 104], [110, 75], [110, 46]], neck: [110, 36], head: [110, 24], arms: [[[97, 50], [87, 76], [83, 102]], [[123, 50], [133, 76], [137, 102]]], legs: [[[103, 106], [100, 136], [98, 156]], [[117, 106], [150, 126], [104, 134]]], feet: [null, [92, 136]] },
+        { trunk: [[110, 104], [110, 75], [110, 46]], neck: [110, 36], head: [110, 24], arms: [[[97, 50], [87, 76], [83, 102]], [[123, 50], [133, 76], [137, 102]]], legs: [[[103, 106], [100, 122], [98, 142]], [[117, 106], [150, 112], [104, 120]]], feet: [null, [92, 122]] },
       ],
     }],
   },
@@ -89,29 +95,35 @@ export const exercises = {
     focus: ["leg1"],
   },
   chest: {
-    seconds: 30, sides: 1, hold: true, wall: 130,
+    seconds: 30, sides: 1, hold: true, wall: 136,
+    // The forearm up the door frame behind, a step forward through the door, the chest opening.
+    far: { legs: [0] },
     poses: [
-      { trunk: [[116, 98], [117, 70], [116, 42]], neck: [114, 32], head: [112, 22], arms: [[[116, 42], [128, 44], [128, 18]]], legs: [[[116, 98], [116, 122], [116, 146]], [[116, 98], [110, 122], [106, 146]]] },
-      { trunk: [[104, 100], [104, 72], [104, 44]], neck: [101, 34], head: [98, 24], arms: [[[104, 44], [128, 44], [128, 18]]], legs: [[[104, 100], [90, 122], [84, 146]], [[104, 100], [112, 124], [118, 146]]] },
+      { trunk: [[112, 98], [112, 72], [110, 48]], neck: [107, 38], head: [104, 25], arms: [[[110, 48], [133, 48], [133, 22]]], legs: [[[112, 98], [112, 122], [112, 145]], [[112, 98], [110, 122], [108, 145]]], feet: [[98, 147], [94, 147]] },
+      { trunk: [[106, 100], [105, 75], [104, 50]], neck: [100, 40], head: [96, 28], arms: [[[104, 50], [132, 48], [133, 22]]], legs: [[[106, 100], [114, 124], [120, 145]], [[106, 100], [94, 122], [86, 145]]], feet: [[106, 147], [72, 147]] },
     ],
     focus: ["arm0"],
     more: [{
-      key: "top",
-      focus: ["arm0", "arm1"],
-      blocks: [{ x: 14, y: 44, width: 58, height: 12, rx: 3 }, { x: 148, y: 44, width: 58, height: 12, rx: 3 }],
+      key: "front",
+      // From the front: the upper arms out to the door frame's sides, the forearms up along it, a goal post;
+      // leaning through, the body comes a little nearer and lower.
+      focus: ["chest"],
+      blocks: [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, { x: 34, y: 6, width: 9, height: 146, rx: 3 }, { x: 177, y: 6, width: 9, height: 146, rx: 3 }],
       poses: [
-        { trunk: [[110, 118], [110, 113], [110, 108]], neck: [110, 106], head: [110, 104], arms: [[[110, 108], [86, 104], [74, 58]], [[110, 108], [134, 104], [146, 58]]], legs: [[[104, 118], [102, 126], [102, 134]], [[116, 118], [118, 108], [118, 96]]] },
-        { trunk: [[110, 92], [110, 87], [110, 82]], neck: [110, 80], head: [110, 78], arms: [[[110, 82], [88, 76], [74, 58]], [[110, 82], [132, 76], [146, 58]]], legs: [[[104, 92], [102, 112], [102, 134]], [[116, 92], [118, 82], [118, 72]]] },
+        { trunk: [[110, 100], [110, 72], [110, 46]], neck: [110, 34], head: [110, 22], arms: [[[97, 48], [47, 48], [47, 16]], [[123, 48], [173, 48], [173, 16]]], legs: [[[104, 100], [101, 124], [99, 145]], [[116, 100], [119, 124], [121, 145]]], feet: [[91, 147], [129, 147]] },
+        { trunk: [[110, 104], [110, 77], [110, 51]], neck: [110, 39], head: [110, 27], arms: [[[96, 53], [47, 48], [47, 16]], [[124, 53], [173, 48], [173, 16]]], legs: [[[104, 104], [101, 126], [99, 145]], [[116, 104], [119, 126], [121, 145]]], feet: [[91, 147], [129, 147]] },
       ],
     }],
   },
   // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
   armSwings: {
     seconds: 30, sides: 1,
+    // Round through four poses, down, forward, up and back, the arrow showing the way.
+    arrows: ["M66,79 A58,58 0 0 1 62,9"],
     poses: [
       { ...standing, arms: [[[110, 42], [108, 68], [106, 94]]] },
       { ...standing, arms: [[[110, 42], [84, 44], [58, 46]]] },
-      { ...standing, arms: [[[110, 42], [112, 20], [114, 0]]] },
+      { ...standing, arms: [[[110, 42], [107, 20], [104, 0]]] },
       { ...standing, arms: [[[110, 42], [134, 48], [156, 58]]] },
     ],
     focus: ["arm0"],
@@ -141,6 +153,16 @@ export const exercises = {
     focus: ["leg1"],
   },
 };
+
+// The views an exercise is drawn in, for figure-svg.js: its side view first (on the mat, by its wall and props,
+// with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
+// far, arrows }.
+export function exerciseViews(id) {
+  const { poses, focus = [], wall, props = [], far, arrows, more = [] } = exercises[id];
+  if (!poses) return [];
+  const blocks = [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
+  return [{ key: "side", poses, focus, blocks, far, arrows }, ...more.map((view) => ({ focus, blocks: [], ...view }))];
+}
 
 // The pause before each exercise, and between its sides.
 export const restSeconds = 10;

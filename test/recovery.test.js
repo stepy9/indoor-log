@@ -104,3 +104,19 @@ test("every view's poses have the same parts as its first, so they animate, and 
     }
   }
 });
+
+test("figureMarkup animates a view's poses, ghosts a move's start and draws far limbs behind the body", async () => {
+  const { figureMarkup } = await import("../src/figure-svg.js");
+  const { exerciseViews } = await import("../src/recovery.js");
+  const [hip] = exerciseViews("hipFlexor");
+  const held = figureMarkup(hip, { hold: true });
+  assert.ok(held.includes("<animate"));
+  assert.ok(!held.includes('class="ghost"'));
+  assert.ok(held.indexOf("limb leg far") < held.indexOf('class="trunk"'));
+  assert.ok(held.includes('class="mat pad"'));
+  const [arms] = exerciseViews("armSwings");
+  const moving = figureMarkup(arms);
+  assert.ok(moving.includes('class="ghost"') && moving.includes("move-arrow"));
+  assert.ok(!figureMarkup(arms, { frame: 1 }).includes("<animate"));
+  assert.deepEqual(exerciseViews("chest").map((view) => view.key), ["side", "front"]);
+});
