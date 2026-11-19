@@ -381,8 +381,14 @@ function todayCard(result, scored, fatigue, entries) {
 function calendarRow(result) {
   const row = node("div", { class: "training-calendar" });
   const label = node("label", { class: "training-calendar-time" });
-  const input = node("input", { type: "time", step: "300" });
-  input.value = /^dd:dd$/.test(savedDefaults().calendarTime ?? "") ? savedDefaults().calendarTime : "18:00";
+  // A select of quarter hours from 5:00 to 22:45, written as the app's language writes a time (18:00 in Czech).
+  const input = node("select", { class: "training-calendar-select" });
+  const saved = /^dd:dd$/.test(savedDefaults().calendarTime ?? "") ? savedDefaults().calendarTime : "18:00";
+  const times = new Set([saved]);
+  for (let minutes = 5 * 60; minutes < 23 * 60; minutes += 15) times.add(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+  const timeText = (value) => new Intl.DateTimeFormat(locale(), { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`2000-01-01T${value}:00Z`));
+  input.append(...[...times].sort().map((value) => new Option(timeText(value), value)));
+  input.value = saved;
   input.addEventListener("change", () => {
     if (/^dd:dd$/.test(input.value)) saveDefaults({ calendarTime: input.value });
   });

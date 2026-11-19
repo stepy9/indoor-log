@@ -914,7 +914,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-calendar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .training-calendar .outline-button { margin-top: 0; }
 .training-calendar-time { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-.training-calendar-time input { height: 32px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.training-calendar-select { height: 34px; min-width: 0; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 16px; font-variant-numeric: tabular-nums; }
+.training-calendar-select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .training-calendar-note { flex-basis: 100%; margin: 0; }
 .diary-plan-toggle { margin: 0; }
 .settings-days { margin-top: 4px; }
