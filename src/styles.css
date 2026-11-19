@@ -1667,3 +1667,10 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
     border-top: 1px solid var(--line); background: var(--surface);
   }
 }
+
+/* A workout in the list shows its course: a thin bar of its steps, each as long as the step, coloured by type. */
+.workout-profile { display: flex; gap: 2px; height: 6px; margin-top: 5px; max-width: 320px; }
+.workout-profile > span { flex-basis: 0; min-width: 2px; border-radius: 3px; background: var(--compare-2); }
+.workout-profile > .is-warmup { background: var(--compare-4); }
+.workout-profile > :is(.is-rest, .is-recovery) { background: var(--compare-3); }
+.workout-profile > .is-cooldown { background: var(--compare-1); }

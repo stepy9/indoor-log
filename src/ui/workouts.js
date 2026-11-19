@@ -230,6 +230,12 @@ export function workoutList(names, plans, notes, write) {
       const row = el("div", { class: "workout-row" });
       const text = el("div", { class: "workout-row-text" });
       text.append(el("strong", {}, name), el("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
+      // The workout's course at a glance: each step a piece as long as the step, in the colour of its type.
+      if (steps.length) {
+        const profile = el("span", { class: "workout-profile", "aria-hidden": "true" });
+        profile.append(...steps.map((step) => Object.assign(el("span", { class: `is-${step.intensity ?? "active"}` }), { style: `flex-grow: ${step.seconds || 1}` })));
+        text.append(profile);
+      }
       const edit = el("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
       edit.addEventListener("click", () => open({ name, steps, note: notes[name], taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
         const nextPlans = { ...plans };
