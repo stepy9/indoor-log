@@ -1142,19 +1142,19 @@ function renderRegularity(entries) {
   const share = (done, total) => (total ? `${displayNumber((done / total) * 100)} %` : "");
   byId("fitnessRegularityTiles").replaceChildren(
     tile(t("regWorkouts"), String(totals.workouts), t("regPerWeek", { count: displayNumber(totals.workouts / weeks.length, 1) })),
-    tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.workouts }), share(totals.stretched, totals.workouts)),
-    tile(t("regStrength"), t("regOf", { done: totals.strength, total: strengthGoal * weeks.length }), t("regStrengthGoal", { goal: strengthGoal })),
+    tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.stretchable }), [share(totals.stretched, totals.stretchable), ...(weeks[0].stretchTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.stretchTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].filter(Boolean).join(" · ")),
+    tile(t("regStrength"), t("regOf", { done: totals.strength, total: totals.strengthGoal }), [t("regStrengthGoal", { goal: strengthGoal }), ...(weeks[0].strengthTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.strengthTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].join(" · ")),
     tile(t("regStreak"), plural(result.streak), t("regKept", { kept: totals.kept, weeks: weeks.length })),
   );
   byId("fitnessRegularityWeeks").replaceChildren(...weeks.map((week) => {
     const cell = node("div", { class: `regularity-week${week.kept ? " is-kept" : ""}${week.running ? " is-running" : ""}` });
     cell.title = t("regWeekTitle", { week: weekNumber(week.monday), workouts: week.workouts, stretched: week.stretched, strength: week.strength });
     const dots = node("span", { class: "regularity-dots" });
-    for (let index = 0; index < Math.max(strengthGoal, week.strength); index += 1) dots.append(node("span", { class: `regularity-dot${index < week.strength ? " is-done" : ""}` }));
+    for (let index = 0; index < (week.strengthTracked ? Math.max(strengthGoal, week.strength) : 0); index += 1) dots.append(node("span", { class: `regularity-dot${index < week.strength ? " is-done" : ""}` }));
     cell.append(
       node("span", { class: "regularity-label" }, week.running ? t("planThisWeek") : String(weekNumber(week.monday))),
       node("span", { class: "regularity-count" }, String(week.workouts)),
-      node("span", { class: "regularity-stretched" }, `✓ ${week.stretched}`),
+      node("span", { class: "regularity-stretched" }, week.stretchTracked ? `✓ ${week.stretched}` : ""),
       dots,
     );
     return cell;
