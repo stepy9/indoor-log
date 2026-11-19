@@ -147,8 +147,8 @@ function clearRests(entry) {
 const finiteValues = (list) => list.filter(Number.isFinite);
 const average = (list) => (list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : null);
 
-// Kinds a workout can have; the data only tells intervals from steady, the rest are picked by hand.
-export const workoutKinds = ["steady", "intervals", "tempo", "race", "recovery"];
+// Kinds a workout can have; the data tells intervals from steady and the name a test, the rest are picked by hand.
+export const workoutKinds = ["steady", "intervals", "tempo", "test", "race", "recovery"];
 
 export const workoutKind = (entry) => entry.kind || detectedKind(entry);
 
@@ -158,7 +158,9 @@ export function detectedKind(entry) {
     const restLaps = entry.laps.filter((lap) => lap.intensity === "recovery" || lap.intensity === "rest").length;
     // Interval laps, even when every one is work, as in a stroke-rate fartlek; older entries show them by their targets.
     const intervalLaps = entry.intervalLaps || entry.laps.filter((lap) => lap.target != null).length >= 2;
-    kinds.set(entry, intervalLaps || restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
+    // A test by its name: "FTP", "test" or "ramp", as in "FTP test 5 min".
+    if (/\b(ftp|test|ramp)\b/i.test(entry.name ?? "")) kinds.set(entry, "test");
+    else kinds.set(entry, intervalLaps || restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
   }
   return kinds.get(entry);
 }

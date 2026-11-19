@@ -24,7 +24,7 @@ import { checkNumber, checkText, markField } from "./ui/validate.js";
 import { allZones, defaultZoneFor, offsetLabel, systemZone, zoneOffsetMinutes } from "./zones.js";
 
 // Cadence targets go as watts by default for intervals and races, the workouts Connect should chart a target for.
-const cadenceAsPowerFor = (kind) => kind === "intervals" || kind === "race";
+const cadenceAsPowerFor = (kind) => kind === "intervals" || kind === "test" || kind === "race";
 let cadenceRerender = false;
 
 function lapLabel(meters) {
