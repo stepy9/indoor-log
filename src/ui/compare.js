@@ -15,6 +15,8 @@ import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRa
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
+// A phone compares two at most: more lines, columns and colours do not fit its width.
+const limit = () => (matchMedia("(max-width: 640px)").matches ? 2 : slotCount);
 const svgNs = "http://www.w3.org/2000/svg";
 
 const view = {
@@ -140,7 +142,7 @@ function renderSports() {
 
 function toggle(entry, on) {
   if (!on) view.slots.delete(entry.id);
-  else if (view.slots.size < slotCount) {
+  else if (view.slots.size < limit()) {
     const used = new Set(view.slots.values());
     view.slots.set(entry.id, [1, 2, 3, 4, 5, 6].find((slot) => !used.has(slot)));
   }
@@ -165,7 +167,7 @@ function renderList() {
     const row = document.createElement("label");
     row.className = `compare-item${slot ? " is-selected" : ""}`;
     const checkbox = Object.assign(document.createElement("input"), { type: "checkbox", checked: Boolean(slot) });
-    checkbox.disabled = !slot && view.slots.size >= slotCount;
+    checkbox.disabled = !slot && view.slots.size >= limit();
     checkbox.addEventListener("change", () => toggle(entry, checkbox.checked));
     const swatch = Object.assign(document.createElement("span"), { className: "compare-swatch" });
     if (slot) swatch.style.background = `var(--compare-${slot})`;
@@ -189,7 +191,8 @@ function renderList() {
     row.append(checkbox, swatch, text);
     return row;
   }), `compare:${view.sport}`);
-  byId("compareLimit").hidden = view.slots.size < slotCount;
+  byId("compareLimit").hidden = view.slots.size < limit();
+  byId("compareLimit").textContent = t("compareLimit", { count: limit() });
   // On a phone the picker folds to one line, so an activity opened from elsewhere shows its chart first.
   byId("comparePickerCount").textContent = view.slots.size ? ` · ${view.slots.size}` : "";
   byId("comparePickerToggle").setAttribute("aria-expanded", String(view.pickerOpen));

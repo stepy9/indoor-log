@@ -1681,3 +1681,14 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .suggest-open::after { content: "›"; position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--muted); font-size: 20px; }
 .suggest-open:hover { background: var(--surface-2); }
 .suggest-open .workout-profile { max-width: none; }
+
+/* Phones: Compare holds two activities, so its tables fit: the cells wrap (a long "main benefit" no longer widens the
+   table and pushes the values out of sight), the names take a third of the width and the cells sit closer. */
+@media (max-width: 640px) {
+  :is(#compareSummary, #compareBest, #compareLapsTable) { table-layout: fixed; width: 100%; min-width: 0; }
+  :is(#compareSummary, #compareBest, #compareLapsTable) :is(th, td) { padding: 7px 6px; white-space: normal; overflow-wrap: anywhere; }
+  :is(#compareSummary, #compareBest, #compareLapsTable) tr > :first-child { width: 34%; }
+  :is(#compareSummary, #compareBest, #compareLapsTable) th:not(:first-child) { font-size: 11px; }
+}
+/* Everywhere: the summary's long values (the main benefit) wrap instead of widening the table past its card. */
+#compareSummary td { white-space: normal; }
