@@ -169,3 +169,23 @@ export function warmupBefore(type) {
   const total = steps(ids, { rest: warmupRest, seconds }).reduce((sum, step) => sum + step.seconds, 0);
   return { set, exercises: ids, seconds, minutes: Math.max(1, Math.round(total / 60)), onRower: set === "full" ? 5 : 0 };
 }
+
+// Every exercise of the warm-up and the stretching, in the order the sets first take them, each with its time in
+// them and the sets it is in: { warmup: [{ id, seconds, sets }], stretch: [...] }, sets naming warmups' and sets' keys.
+export function exerciseCatalog() {
+  const collect = (groups) => {
+    const list = [];
+    for (const [set, { exercises: ids, seconds = {} }] of Object.entries(groups)) {
+      for (const id of ids) {
+        const found = list.find((item) => item.id === id);
+        if (found) found.sets.push(set);
+        else list.push({ id, seconds: seconds[id] ?? exercises[id].seconds, sides: exercises[id].sides, sets: [set] });
+      }
+    }
+    return list;
+  };
+  return {
+    warmup: collect(warmups),
+    stretch: collect(Object.fromEntries(Object.entries(sets).map(([set, ids]) => [set, { exercises: ids }]))),
+  };
+}

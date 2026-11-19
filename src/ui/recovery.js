@@ -2,7 +2,7 @@
 // its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
 // runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
 // and at the end the workout is marked as stretched.
-import { afterWorkout, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, exerciseCatalog, exercises, steps, warmupBefore, warmupRest } from "../recovery.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
 import { byId, formatDuration, t } from "./context.js";
@@ -243,4 +243,35 @@ export function warmupBlock(type) {
   details.append(element("summary", "", t("warmupShow")), list);
   block.append(head, details);
   return block;
+}
+
+// The catalogue of every exercise, from the gear's menu: the warm-up's moves and the stretches, each with its figure,
+// time, how-to and the sets it is in.
+export function setupExercises(beforeOpen = () => {}) {
+  const dialog = byId("exercisesDialog");
+  const item = (entry, setKey) => {
+    const li = element("li", "recovery-item");
+    const art = figure(entry.id);
+    const text = element("div", "recovery-text");
+    text.append(
+      element("strong", "", t(`recovery_${entry.id}`)),
+      element("span", "recovery-dose", dose(entry.id, entry.seconds)),
+      element("p", "", t(`recoveryHow_${entry.id}`)),
+      element("span", "field-note exercises-sets", t("exercisesIn", { sets: entry.sets.map((set) => t(`${setKey}_${set}`)).join(", ") })),
+    );
+    li.append(...(art ? [art] : []), text);
+    return li;
+  };
+  const render = () => {
+    const catalog = exerciseCatalog();
+    byId("exercisesWarmup").replaceChildren(...catalog.warmup.map((entry) => item(entry, "exercisesWarmupSet")));
+    byId("exercisesStretch").replaceChildren(...catalog.stretch.map((entry) => item(entry, "exercisesStretchSet")));
+  };
+  byId("exercisesButton").addEventListener("click", () => {
+    beforeOpen();
+    render();
+    dialog.showModal();
+    dialog.scrollTop = 0;
+  });
+  byId("exercisesClose").addEventListener("click", () => dialog.close());
 }

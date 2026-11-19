@@ -63,3 +63,13 @@ test("warmupBefore gives the full set before a hard day and the short one before
   const list = steps(["catCow"], { rest: warmupRest, seconds: { catCow: 30 } });
   assert.deepEqual(list, [{ type: "rest", seconds: warmupRest, next: "catCow" }, { type: "work", id: "catCow", side: null, seconds: 30 }]);
 });
+
+test("exerciseCatalog lists every exercise once per group with the sets it is in", async () => {
+  const { exerciseCatalog } = await import("../src/recovery.js");
+  const { warmup, stretch } = exerciseCatalog();
+  assert.deepEqual(warmup.map((item) => item.id), ["catCow", "armSwings", "squat", "hipHinge", "legSwings"]);
+  assert.deepEqual(warmup.find((item) => item.id === "catCow").sets, ["short", "full"]);
+  assert.equal(stretch.length, 8);
+  assert.deepEqual(stretch.find((item) => item.id === "chest").sets, ["hard"]);
+  assert.equal(new Set([...warmup, ...stretch].map((item) => item.id)).size, 12);
+});

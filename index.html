@@ -35,6 +35,7 @@
           <button class="library-button topbar-more-button" id="topbarMoreButton" type="button" aria-label="Nastavení" data-i18n-aria="settingsTitle" aria-haspopup="true" aria-expanded="false" aria-controls="topbarMore"><svg class="topbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
           <div class="topbar-more" id="topbarMore">
           <button class="library-button" id="settingsButton" type="button"><span data-i18n="settingsTitle">Nastavení</span></button>
+          <button class="library-button" id="exercisesButton" type="button"><span data-i18n="exercisesTitle">Cviky</span></button>
           <div class="language-control" id="languageControl">
             <span class="visually-hidden" data-i18n="language">Jazyk</span>
             <button id="languageButton" class="language-button" type="button" aria-label="Jazyk" data-i18n-aria="language" aria-haspopup="listbox" aria-expanded="false" aria-controls="languageMenu">
@@ -683,6 +684,18 @@
           </div>
         </div>
       </section>
+      <dialog class="intervals-dialog exercises-dialog" id="exercisesDialog" aria-labelledby="exercisesTitle">
+        <div class="dialog-head">
+          <h2 id="exercisesTitle" data-i18n="exercisesTitle">Cviky</h2>
+          <button class="settings-close library-close" id="exercisesClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
+        </div>
+        <p class="field-note" data-i18n="exercisesIntro">Všechny cviky rozcvičky před veslováním a protažení po něm. Sestavu podle tréninku nabízí karta Dnes v Tréninku a detail aktivity.</p>
+        <h3 class="exercises-group" data-i18n="exercisesWarmup">Rozcvička</h3>
+        <ul class="recovery-list" id="exercisesWarmup"></ul>
+        <h3 class="exercises-group" data-i18n="exercisesStretch">Protažení</h3>
+        <ul class="recovery-list" id="exercisesStretch"></ul>
+        <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti. Bolest, která neodchází, patří k fyzioterapeutovi.</p>
+      </dialog>
       <dialog class="recovery-player" id="recoveryPlayer" aria-labelledby="recoveryPlayerName">
         <div class="recovery-player-head">
           <span id="recoveryPlayerProgress"></span>

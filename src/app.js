@@ -14,6 +14,7 @@ import { detectedKind } from "./analysis.js";
 import { entryFromWorkout, workoutFromEntry } from "./library.js";
 import { leaveConverter, openConverter, rerenderCompare, setupCompare } from "./ui/compare.js";
 import { setupInfoNotes } from "./ui/info.js";
+import { setupExercises } from "./ui/recovery.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
@@ -1008,6 +1009,11 @@ elements.trainer.addEventListener("change", () => {
 elements.resistance.addEventListener("input", () => {
   delete elements.resistance.dataset.fromDefault;
   render();
+});
+// The exercises' catalogue from the gear's menu, which closes as it opens.
+setupExercises(() => {
+  byId("topbarMore").classList.remove("is-open");
+  byId("topbarMoreButton").setAttribute("aria-expanded", "false");
 });
 setupSettings({ currentSport: () => state.kinomap?.sport, onTrainers: () => {
   const sport = state.kinomap?.sport;
