@@ -7,7 +7,9 @@
 // control point to the shoulder, the neck's end and the head's centre, arms and legs as joint lists from the
 // shoulder and the hip. focus names the parts drawn over in the accent colour: "trunk", "arm<i>", "leg<i>" or
 // "thigh<i>" for a leg's first segment only. hold marks a static stretch, eased into and held still for its time;
-// without it the exercise is a move, repeated smoothly between its two poses.
+// without it the exercise is a move, repeated smoothly between its two poses (or round more of them, a circle).
+// more: other views beside the side one, { key: "top" | "detail", poses, focus, blocks }; a close-up's poses
+// have arms (and legs) only.
 const tabletop = { trunk: [[140, 94], [100, 94], [60, 94]], neck: [46, 88], head: [36, 84], arms: [[[60, 94], [60, 146]]], legs: [[[140, 94], [140, 146], [184, 146]]] };
 
 // Standing upright, facing left, for the warm-up's moves.
@@ -53,6 +55,14 @@ export const exercises = {
       { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [84, 128], [114, 104]]], legs: [[[128, 140], [118, 96], [150, 84]], [[128, 140], [144, 108], [120, 92]]] },
     ],
     focus: ["thigh1"],
+    more: [{
+      key: "top",
+      blocks: [{ x: 72, y: 6, width: 76, height: 158, rx: 10 }],
+      poses: [
+        { trunk: [[110, 100], [110, 70], [110, 42]], neck: [110, 32], head: [110, 20], arms: [[[110, 42], [90, 66], [84, 96]], [[110, 42], [130, 66], [136, 96]]], legs: [[[104, 100], [100, 124], [98, 150]], [[116, 100], [158, 118], [102, 124]]] },
+        { trunk: [[110, 100], [110, 70], [110, 42]], neck: [110, 32], head: [110, 20], arms: [[[110, 42], [96, 72], [100, 112]], [[110, 42], [124, 72], [106, 114]]], legs: [[[104, 100], [100, 112], [98, 134]], [[116, 100], [156, 104], [102, 112]]] },
+      ],
+    }],
   },
   forearm: {
     seconds: 20, sides: 2, hold: true,
@@ -61,6 +71,14 @@ export const exercises = {
       { trunk: [[110, 98], [111, 70], [110, 42]], neck: [112, 32], head: [114, 22], arms: [[[110, 42], [138, 44], [164, 46], [172, 62]], [[110, 42], [128, 66], [170, 68]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [116, 146]]] },
     ],
     focus: ["arm0"],
+    more: [{
+      key: "detail",
+      focus: ["fore0"],
+      poses: [
+        { arms: [[[-10, 70], [70, 70], [160, 72], [200, 72]], [[90, 180], [150, 140], [196, 80]]], legs: [] },
+        { arms: [[[-10, 70], [70, 70], [160, 72], [168, 110]], [[90, 180], [150, 146], [172, 112]]], legs: [] },
+      ],
+    }],
   },
   calf: {
     seconds: 30, sides: 2, hold: true, wall: 34,
@@ -77,13 +95,24 @@ export const exercises = {
       { trunk: [[104, 100], [104, 72], [104, 44]], neck: [101, 34], head: [98, 24], arms: [[[104, 44], [128, 44], [128, 18]]], legs: [[[104, 100], [90, 122], [84, 146]], [[104, 100], [112, 124], [118, 146]]] },
     ],
     focus: ["arm0"],
+    more: [{
+      key: "top",
+      focus: ["arm0", "arm1"],
+      blocks: [{ x: 14, y: 44, width: 58, height: 12, rx: 3 }, { x: 148, y: 44, width: 58, height: 12, rx: 3 }],
+      poses: [
+        { trunk: [[110, 118], [110, 113], [110, 108]], neck: [110, 106], head: [110, 104], arms: [[[110, 108], [86, 104], [74, 58]], [[110, 108], [134, 104], [146, 58]]], legs: [[[104, 118], [102, 126], [102, 134]], [[116, 118], [118, 108], [118, 96]]] },
+        { trunk: [[110, 92], [110, 87], [110, 82]], neck: [110, 80], head: [110, 78], arms: [[[110, 82], [88, 76], [74, 58]], [[110, 82], [132, 76], [146, 58]]], legs: [[[104, 92], [102, 112], [102, 134]], [[116, 92], [118, 82], [118, 72]]] },
+      ],
+    }],
   },
   // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
   armSwings: {
     seconds: 30, sides: 1,
     poses: [
-      { ...standing, arms: [[[110, 42], [94, 64], [80, 86]]] },
-      { ...standing, arms: [[[110, 42], [128, 22], [146, 6]]] },
+      { ...standing, arms: [[[110, 42], [108, 68], [106, 94]]] },
+      { ...standing, arms: [[[110, 42], [84, 44], [58, 46]]] },
+      { ...standing, arms: [[[110, 42], [112, 20], [114, 0]]] },
+      { ...standing, arms: [[[110, 42], [134, 48], [156, 58]]] },
     ],
     focus: ["arm0"],
   },

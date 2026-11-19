@@ -13,65 +13,102 @@ const cycle = "5s";
 const points = (list) => list.map(([x, y]) => `${x},${y}`).join(" ");
 const trunkPath = ([[hx, hy], [cx, cy], [sx, sy]]) => `M${hx},${hy} Q${cx},${cy} ${sx},${sy}`;
 
-// Each drawn part as [tag, class, attributes of a pose]; the same parts in every pose, so they animate.
+// Each drawn part as [tag, class, attributes of a pose]; the same parts in every pose, so they animate. A view
+// close up (a hand) has no trunk or head: only what the pose holds is drawn.
 function parts(pose, focus) {
   const list = [
     ...pose.legs.map((leg) => ["polyline", "limb leg", { points: points(leg) }]),
     ...pose.arms.map((arm) => ["polyline", "limb arm", { points: points(arm) }]),
-    ["path", "trunk", { d: trunkPath(pose.trunk) }],
-    ["line", "neck", { x1: pose.trunk[2][0], y1: pose.trunk[2][1], x2: pose.neck[0], y2: pose.neck[1] }],
-    ["circle", "head", { cx: pose.head[0], cy: pose.head[1], r: 12 }],
+    ...(pose.trunk ? [
+      ["path", "trunk", { d: trunkPath(pose.trunk) }],
+      ["line", "neck", { x1: pose.trunk[2][0], y1: pose.trunk[2][1], x2: pose.neck[0], y2: pose.neck[1] }],
+      ["circle", "head", { cx: pose.head[0], cy: pose.head[1], r: 12 }],
+    ] : []),
   ];
   for (const name of focus) {
     if (name === "trunk") list.push(["path", "focus", { d: trunkPath(pose.trunk) }]);
-    const [, kind, index] = name.match(/^(arm|leg|thigh)(\d+)$/) ?? [];
+    const [, kind, index] = name.match(/^(arm|leg|thigh|fore)(\d+)$/) ?? [];
     if (kind === "arm") list.push(["polyline", "focus", { points: points(pose.arms[index]) }]);
     if (kind === "leg") list.push(["polyline", "focus", { points: points(pose.legs[index]) }]);
     if (kind === "thigh") list.push(["polyline", "focus", { points: points(pose.legs[index].slice(0, 2)) }]);
+    // An arm from its elbow on: the forearm and the hand.
+    if (kind === "fore") list.push(["polyline", "focus", { points: points(pose.arms[index].slice(1)) }]);
   }
   return list;
 }
 
-// A move swings between its poses over and over; a hold eases into the stretch, stays there still most of the
-// cycle and eases back, so the figure shows a pose to keep rather than a motion to repeat.
-const motion = {
-  move: { dur: cycle, keyTimes: "0;.5;1", keySplines: ".45 0 .55 1;.45 0 .55 1", values: (a, b) => `${a};${b};${a}` },
-  hold: { dur: "8s", keyTimes: "0;.2;.88;1", keySplines: ".45 0 .55 1;0 0 1 1;.45 0 .55 1", values: (a, b) => `${a};${b};${b};${a}` },
-};
+// A move goes round its poses over and over (two poses: there and back; more: a circle through them); a hold
+// eases into the stretch, stays there still most of the cycle and eases back, so the figure shows a pose to keep
+// rather than a motion to repeat.
+const ease = ".45 0 .55 1";
+function timing(hold, count) {
+  if (hold) return { dur: "8s", keyTimes: "0;.2;.88;1", keySplines: `${ease};0 0 1 1;${ease}`, order: [0, 1, 1, 0] };
+  const order = count === 2 ? [0, 1, 0] : [...Array(count).keys(), 0];
+  const steps = order.length - 1;
+  return {
+    dur: count === 2 ? cycle : `${count * 1.1}s`,
+    keyTimes: order.map((_, index) => String(Math.round((index / steps) * 1000) / 1000)).join(";"),
+    // Round a circle the speed stays even; there and back it eases at each end.
+    keySplines: Array(steps).fill(count === 2 ? ease : "0 0 1 1").join(";"),
+    order,
+  };
+}
 
-export function figure(id) {
-  const { poses, focus = [], wall, hold } = exercises[id];
-  const how = motion[hold ? "hold" : "move"];
-  if (!poses) return null;
+// The views an exercise is drawn in: its side view first, then any other (from above, a close-up), each
+// { key, poses, focus, blocks } with blocks the mat, the wall or the door frame behind the figure.
+function views(id) {
+  const { poses, focus = [], wall, more = [] } = exercises[id];
+  if (!poses) return [];
+  const side = { key: "side", poses, focus, blocks: [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : [])] };
+  return [side, ...more.map((view) => ({ focus, blocks: [], ...view }))];
+}
+
+function drawView(id, view) {
+  const how = timing(exercises[id].hold, view.poses.length);
   const svg = document.createElementNS(svgNs, "svg");
   svg.setAttribute("viewBox", "0 0 220 170");
-  svg.setAttribute("class", "recovery-figure");
+  svg.setAttribute("class", `recovery-figure is-${view.key}`);
   svg.setAttribute("aria-hidden", "true");
-  // The mat, and the wall or door frame leant on where the exercise has one.
-  const blocks = [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : [])];
-  for (const block of blocks) {
+  for (const block of view.blocks) {
     const rect = document.createElementNS(svgNs, "rect");
     for (const [key, value] of Object.entries({ ...block, class: "mat" })) rect.setAttribute(key, value);
     svg.append(rect);
   }
-  const [from, to] = poses.map((pose) => parts(pose, focus));
-  from.forEach(([tag, className, attrs], index) => {
+  const drawn = view.poses.map((pose) => parts(pose, view.focus));
+  drawn[0].forEach(([tag, className, attrs], index) => {
     const node = document.createElementNS(svgNs, tag);
     node.setAttribute("class", className);
     for (const [key, value] of Object.entries(attrs)) {
       node.setAttribute(key, value);
-      const other = to[index][2][key];
-      if (String(other) === String(value)) continue;
+      const values = how.order.map((pose) => drawn[Math.min(pose, drawn.length - 1)][index][2][key]);
+      if (values.every((other) => String(other) === String(value))) continue;
       const animate = document.createElementNS(svgNs, "animate");
       for (const [name, setting] of Object.entries({
         attributeName: key, dur: how.dur, repeatCount: "indefinite", calcMode: "spline",
-        keyTimes: how.keyTimes, keySplines: how.keySplines, values: how.values(value, other),
+        keyTimes: how.keyTimes, keySplines: how.keySplines, values: values.join(";"),
       })) animate.setAttribute(name, setting);
       node.append(animate);
     }
     svg.append(node);
   });
   return svg;
+}
+
+// The side view alone, for the small lists.
+export function figure(id) {
+  const [side] = views(id);
+  return side ? drawView(id, side) : null;
+}
+
+// Every view, each captioned when there is more than one ("from the side", "from above", "close up").
+export function figures(id) {
+  const all = views(id);
+  if (all.length < 2) return all.map((view) => drawView(id, view));
+  return all.map((view) => {
+    const box = Object.assign(document.createElement("figure"), { className: "recovery-view" });
+    box.append(drawView(id, view), Object.assign(document.createElement("figcaption"), { textContent: t(`recoveryView_${view.key}`) }));
+    return box;
+  });
 }
 
 // The time, said as a hold or as a move to repeat, and per side where it has two.
@@ -124,9 +161,10 @@ function showStep() {
   byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${mode}` : mode) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
   byId("recoveryPlayerHow").textContent = t(`recoveryHow_${id}`);
-  const art = figure(id);
-  byId("recoveryPlayerFigure").replaceChildren(...(art ? [art] : []));
-  byId("recoveryPlayerFigure").hidden = !art;
+  const art = figures(id);
+  byId("recoveryPlayerFigure").replaceChildren(...art);
+  byId("recoveryPlayerFigure").classList.toggle("has-views", art.length > 1);
+  byId("recoveryPlayerFigure").hidden = !art.length;
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
   tick();
@@ -289,7 +327,7 @@ export function setupExercises(beforeOpen = () => {}) {
   const dialog = byId("exercisesDialog");
   const item = (entry, setKey) => {
     const li = element("li", "recovery-item");
-    const art = figure(entry.id);
+    const art = figures(entry.id);
     const text = element("div", "recovery-text");
     text.append(
       nameLine(entry.id),
@@ -297,7 +335,9 @@ export function setupExercises(beforeOpen = () => {}) {
       element("p", "", t(`recoveryHow_${entry.id}`)),
       element("span", "field-note exercises-sets", t("exercisesIn", { sets: entry.sets.map((set) => t(`${setKey}_${set}`)).join(", ") })),
     );
-    li.append(...(art ? [art] : []), text);
+    const pictures = element("div", "recovery-views");
+    pictures.append(...art);
+    li.append(pictures, text);
     return li;
   };
   const render = () => {

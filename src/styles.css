@@ -1766,3 +1766,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-finish { display: none; width: 100%; min-height: 48px; }
 .recovery-player.is-done .recovery-finish { display: block; }
 .recovery-player.is-done .recovery-player-head .settings-close { visibility: hidden; }
+
+/* An exercise drawn from more than one side: the views under each other in a list's card, side by side in the
+   player, each captioned. */
+.recovery-views { display: flex; flex: none; flex-direction: column; gap: 6px; }
+.recovery-view { margin: 0; text-align: center; }
+.recovery-view figcaption { color: var(--muted); font-size: 11px; }
+.recovery-player-figure.has-views { display: flex; gap: 10px; justify-content: center; }
+.recovery-player-figure.has-views .recovery-view { flex: 1 1 0; min-width: 0; }
+.recovery-player-figure.has-views .recovery-figure { max-height: 28vh; }

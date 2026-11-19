@@ -80,3 +80,27 @@ test("the warm-up's moves and cat–cow repeat, the other stretches are held", a
   for (const { id } of warmup) assert.ok(!exercises[id].hold, id);
   assert.deepEqual(stretch.filter(({ id }) => !exercises[id].hold).map(({ id }) => id), ["catCow"]);
 });
+
+test("every view's poses have the same parts as its first, so they animate, and its focus names a part", () => {
+  for (const [id, exercise] of Object.entries(exercises)) {
+    if (!exercise.poses) continue;
+    const views = [{ poses: exercise.poses, focus: exercise.focus ?? [] }, ...(exercise.more ?? []).map((view) => ({ focus: exercise.focus ?? [], ...view }))];
+    for (const [number, { poses, focus }] of views.entries()) {
+      const [first, ...rest] = poses;
+      const label = `${id} view ${number}`;
+      assert.ok(poses.length >= 2, label);
+      for (const pose of rest) {
+        assert.equal(Boolean(pose.trunk), Boolean(first.trunk), label);
+        assert.equal(pose.arms.length, first.arms.length, label);
+        assert.equal(pose.legs.length, first.legs.length, label);
+        pose.arms.forEach((arm, index) => assert.equal(arm.length, first.arms[index].length, label));
+        pose.legs.forEach((leg, index) => assert.equal(leg.length, first.legs[index].length, label));
+      }
+      for (const name of focus) {
+        const [, kind, index] = name.match(/^(arm|leg|thigh|fore)(\d+)$/) ?? [null, "trunk"];
+        if (kind === "trunk") assert.ok(first.trunk, `${label}: ${name}`);
+        else assert.ok((kind === "arm" || kind === "fore" ? first.arms : first.legs)[index], `${label}: ${name}`);
+      }
+    }
+  }
+});
