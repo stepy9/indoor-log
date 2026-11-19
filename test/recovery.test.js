@@ -95,8 +95,18 @@ test("every view's poses have the same parts as its first, so they animate, and 
         assert.equal(pose.legs.length, first.legs.length, label);
         pose.arms.forEach((arm, index) => assert.equal(arm.length, first.arms[index].length, label));
         pose.legs.forEach((leg, index) => assert.equal(leg.length, first.legs[index].length, label));
+        assert.equal((pose.bands ?? []).length, (first.bands ?? []).length, label);
+        assert.equal(Boolean(pose.strap), Boolean(first.strap), label);
       }
       for (const name of focus) {
+        if (name.startsWith("band")) {
+          assert.ok(first.bands?.[Number(name.slice(4))], `${label}: ${name}`);
+          continue;
+        }
+        if (name === "chest") {
+          assert.ok(first.arms.length >= 2, `${label}: ${name}`);
+          continue;
+        }
         const [, kind, index] = name.match(/^(arm|leg|thigh|fore)(\d+)$/) ?? [null, "trunk"];
         if (kind === "trunk") assert.ok(first.trunk, `${label}: ${name}`);
         else assert.ok((kind === "arm" || kind === "fore" ? first.arms : first.legs)[index], `${label}: ${name}`);
