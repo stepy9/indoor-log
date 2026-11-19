@@ -39,7 +39,7 @@ function stepsFromPaste(text) {
 let dialog = null;
 function editor() {
   if (dialog) return dialog;
-  dialog = el("dialog", { class: "intervals-dialog workout-dialog", "aria-labelledby": "workoutDialogTitle" });
+  dialog = el("dialog", { class: "intervals-dialog workout-dialog", "aria-labelledby": "workoutDialogTitle", tabindex: "-1" });
   dialog.innerHTML = `
     <div class="dialog-head"><h2 id="workoutDialogTitle"></h2><span class="estimate-note" data-role="count"></span></div>
     <label class="settings-field workout-name"><span></span><input type="text" data-role="name" /></label>
@@ -204,7 +204,10 @@ function open({ name, steps, note, taken }, onSave) {
   render();
   checkName();
   box.showModal();
+  // The browser would focus the first control, the ⓘ, and show its tooltip unasked: a new workout starts at its
+  // name, one opened to change at the dialog itself (no keyboard popping up on a phone).
   if (!name) nameInput.focus();
+  else box.focus();
 }
 
 // The list in the settings: each workout's name, its steps in short, and buttons to change or remove it; a button

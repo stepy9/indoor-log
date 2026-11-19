@@ -1502,5 +1502,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .workout-dialog .step-moves { display: inline-flex; gap: 2px; white-space: nowrap; }
 .workout-dialog .step-moves .row-icon-button { margin: 0; }
 .workout-dialog .step-moves .row-icon-button:disabled { opacity: .25; cursor: default; background: transparent; }
+.workout-dialog:focus { outline: none; }
 .workout-dialog .workout-note { display: flex; flex-direction: column; gap: 4px; margin: 0 0 8px; }
 .workout-dialog .workout-note textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font: inherit; font-size: 14px; font-weight: 400; line-height: 1.4; resize: vertical; }
