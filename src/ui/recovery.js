@@ -155,6 +155,7 @@ async function finish() {
   byId("recoveryPlayerName").textContent = t(player.doneKey);
   byId("recoveryPlayerHow").textContent = player.doneNote ?? "";
   byId("recoveryPlayerClock").textContent = "✓";
+  byId("recoveryPlayerFinish").focus();
   await player.onDone?.();
 }
 
@@ -228,6 +229,7 @@ function wirePlayer() {
   });
   byId("recoveryPlayerClose").addEventListener("click", () => dialog.close());
   byId("recoveryPlayerStart").addEventListener("click", run);
+  byId("recoveryPlayerFinish").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", stop);
 }
 

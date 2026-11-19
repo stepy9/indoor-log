@@ -1761,3 +1761,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .recovery-player-intro[hidden] { display: none; }
   .recovery-intro-list { flex: 1; overflow-y: auto; align-content: start; }
 }
+
+/* A set finished closes by its own button under the tick, not by the corner's cross. */
+.recovery-finish { display: none; width: 100%; min-height: 48px; }
+.recovery-player.is-done .recovery-finish { display: block; }
+.recovery-player.is-done .recovery-player-head .settings-close { visibility: hidden; }
