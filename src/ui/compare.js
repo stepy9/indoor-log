@@ -306,12 +306,13 @@ function renderChart() {
     return;
   }
   byId("compareChartEmpty").textContent = t("compareChartEmpty");
-  // Each activity of intervals shows its laps: a stripe of its own over the chart coloured by type, and a band
-  // behind each effort, neutral for one activity and in its line's colour among several.
-  const striped = picked.map((entry) => ({ entry, slot: view.slots.get(entry.id), spans: lapSpans(entry, view.axis) })).filter((item) => item.spans?.length);
-  const spans = striped.length ? striped : null;
+  // One workout of intervals, alone or ridden several times under the same name, shows its laps: a stripe over the
+  // chart coloured by type and a band behind each effort. A workout repeated keeps its steps, so the first one
+  // picked stands for all; different workouts show none, their laps would not line up.
+  const sameWorkout = picked.every((entry) => entry.name && entry.name === picked[0].name);
+  const firstSpans = picked.length === 1 || sameWorkout ? lapSpans(picked[0], view.axis) : null;
+  const spans = firstSpans?.length ? [{ entry: picked[0], spans: firstSpans }] : null;
   byId("compareIntervalLegend").hidden = !spans;
-  const marked = picked.length > 1;
   const stacked = panels.length > 1;
   const width = chart.clientWidth || 800;
   const panelHeight = stacked ? 118 : 278;
@@ -334,17 +335,11 @@ function renderChart() {
   chart.append(clip);
   for (const [row, item] of (spans ?? []).entries()) {
     const y = 6 + row * stripeStep;
-    // Among several activities a dot in the line's colour tells whose stripe it is.
-    if (marked) chart.append(svg("circle", { cx: margin.left - 8, cy: y + 2.5, r: 3.5, fill: `var(--compare-${item.slot})` }));
     for (const span of item.spans) {
       const x1 = Math.max(margin.left, xFor(span.from));
       const x2 = Math.min(margin.left + plotWidth, xFor(span.to));
       if (x2 <= x1) continue;
-      if (span.intensity === "active") {
-        const band = svg("rect", { class: `compare-work-band${marked ? " is-tinted" : ""}`, x: x1, y: margin.top, width: x2 - x1, height: plotHeight });
-        if (marked) band.style.fill = `var(--compare-${item.slot})`;
-        chart.append(band);
-      }
+      if (span.intensity === "active") chart.append(svg("rect", { class: "compare-work-band", x: x1, y: margin.top, width: x2 - x1, height: plotHeight }));
       chart.append(svg("rect", { class: `compare-lap-stripe is-${span.intensity}`, x: x1 + 0.5, y, width: Math.max(1, x2 - x1 - 1), height: 5, rx: 2 }));
     }
   }
@@ -431,14 +426,11 @@ function renderHover() {
       class: "compare-dot", cx: x, cy: row.panel.yFor(row.value), r: 4, fill: `var(--compare-${row.line.slot})`,
     })),
   );
-  // The lap's type under the pointer: for one activity in the heading, among several after each one's first value.
-  const typeOf = (entry) => {
-    const span = layout.spans?.find((item) => item.entry === entry)?.spans.find((candidate) => view.hoverX >= candidate.from && view.hoverX < candidate.to);
-    return span ? t(intensityKeys[span.intensity] ?? "intensityActive") : "";
-  };
+  // The lap's type under the pointer, in the heading.
+  const span = layout.spans?.[0].spans.find((candidate) => view.hoverX >= candidate.from && view.hoverX < candidate.to);
   const heading = Object.assign(document.createElement("strong"), { textContent: axisText(view.hoverX) });
+  if (span) heading.append(` · ${t(intensityKeys[span.intensity] ?? "intensityActive")}`);
   const single = layout.panels[0].lines.length === 1;
-  if (single && typeOf(layout.panels[0].lines[0].entry)) heading.append(` · ${typeOf(layout.panels[0].lines[0].entry)}`);
   tooltip.replaceChildren(
     heading,
     ...rows.map((row) => {
@@ -446,8 +438,7 @@ function renderHover() {
       const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
       swatch.style.background = `var(--compare-${row.line.slot})`;
       const label = stacked ? (single ? metricLabel(row.panel.metric, view.sport) : `${shortDate(row.line.entry.startMs)} · ${metricLabel(row.panel.metric, view.sport)}`) : shortDate(row.line.entry.startMs);
-      const type = !single && row.panel === layout.panels[0] ? typeOf(row.line.entry) : "";
-      item.append(swatch, `${label}  ${metricText(row.value, row.panel.metric, view.sport)}${type ? ` · ${type}` : ""}`);
+      item.append(swatch, `${label}  ${metricText(row.value, row.panel.metric, view.sport)}`);
       return item;
     }),
   );
