@@ -976,6 +976,8 @@ export function setupDiary({ onOpen }) {
     render();
   });
   openActivity = onOpen;
+  // Saved settings (a yearly goal, the plan) show at once in the diary open behind the dialog.
+  window.addEventListener("settings-change", render);
   byId("diarySport").addEventListener("change", (event) => {
     view.sport = event.target.value;
     render();
