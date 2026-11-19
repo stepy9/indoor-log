@@ -32,8 +32,16 @@ function parts(pose, focus) {
   return list;
 }
 
+// A move swings between its poses over and over; a hold eases into the stretch, stays there still most of the
+// cycle and eases back, so the figure shows a pose to keep rather than a motion to repeat.
+const motion = {
+  move: { dur: cycle, keyTimes: "0;.5;1", keySplines: ".45 0 .55 1;.45 0 .55 1", values: (a, b) => `${a};${b};${a}` },
+  hold: { dur: "8s", keyTimes: "0;.2;.88;1", keySplines: ".45 0 .55 1;0 0 1 1;.45 0 .55 1", values: (a, b) => `${a};${b};${b};${a}` },
+};
+
 export function figure(id) {
-  const { poses, focus = [], wall } = exercises[id];
+  const { poses, focus = [], wall, hold } = exercises[id];
+  const how = motion[hold ? "hold" : "move"];
   if (!poses) return null;
   const svg = document.createElementNS(svgNs, "svg");
   svg.setAttribute("viewBox", "0 0 220 170");
@@ -56,8 +64,8 @@ export function figure(id) {
       if (String(other) === String(value)) continue;
       const animate = document.createElementNS(svgNs, "animate");
       for (const [name, setting] of Object.entries({
-        attributeName: key, dur: cycle, repeatCount: "indefinite", calcMode: "spline",
-        keyTimes: "0;.5;1", keySplines: ".45 0 .55 1;.45 0 .55 1", values: `${value};${other};${value}`,
+        attributeName: key, dur: how.dur, repeatCount: "indefinite", calcMode: "spline",
+        keyTimes: how.keyTimes, keySplines: how.keySplines, values: how.values(value, other),
       })) animate.setAttribute(name, setting);
       node.append(animate);
     }
@@ -66,10 +74,20 @@ export function figure(id) {
   return svg;
 }
 
+// The time, said as a hold or as a move to repeat, and per side where it has two.
 function dose(id, seconds = exercises[id].seconds) {
-  const { sides } = exercises[id];
-  return sides > 1 ? `${t("recoverySeconds", { seconds })} ${t("recoveryEachSide")}` : t("recoverySeconds", { seconds });
+  const { sides, hold } = exercises[id];
+  const time = t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
+  return sides > 1 ? `${time} ${t("recoveryEachSide")}` : time;
 }
+
+// A tag saying whether to hold still or to move, beside the name.
+const nameLine = (id) => {
+  const line = element("strong", "exercise-name", t(`recovery_${id}`));
+  line.append(" ", modeTag(id));
+  return line;
+};
+const modeTag = (id) => element("span", `exercise-mode is-${exercises[id].hold ? "hold" : "move"}`, t(exercises[id].hold ? "recoveryModeHold" : "recoveryModeMove"));
 
 const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
 
@@ -101,7 +119,9 @@ function showStep() {
   const position = [...new Set(player.list.filter((item) => item.type === "work").map((item) => item.id))];
   byId("recoveryPlayerProgress").textContent = t("recoveryProgress", { current: position.indexOf(id) + 1, total: position.length });
   const coming = player.list[player.index + 1];
-  byId("recoveryPlayerPhase").textContent = work ? (step.side ? t(`recoverySide_${step.side}`) : "") : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
+  // In work the side, if any, and whether to hold or move.
+  const mode = t(exercises[id].hold ? "recoveryModeHold" : "recoveryModeMove");
+  byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${mode}` : mode) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
   byId("recoveryPlayerHow").textContent = t(`recoveryHow_${id}`);
   const art = figure(id);
@@ -212,7 +232,7 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
     const item = element("li", "recovery-item");
     const art = figure(id);
     const text = element("div", "recovery-text");
-    text.append(element("strong", "", t(`recovery_${id}`)), element("span", "recovery-dose", dose(id)), element("p", "", t(`recoveryHow_${id}`)));
+    text.append(nameLine(id), element("span", "recovery-dose", dose(id)), element("p", "", t(`recoveryHow_${id}`)));
     item.append(...(art ? [art] : []), text);
     return item;
   }));
@@ -236,7 +256,7 @@ export function warmupBlock(type) {
     const item = element("li", "recovery-item");
     const art = figure(id);
     const text = element("div", "recovery-text");
-    text.append(element("strong", "", t(`recovery_${id}`)), element("span", "recovery-dose", dose(id, plan.seconds[id])), element("p", "", t(`recoveryHow_${id}`)));
+    text.append(nameLine(id), element("span", "recovery-dose", dose(id, plan.seconds[id])), element("p", "", t(`recoveryHow_${id}`)));
     item.append(...(art ? [art] : []), text);
     return item;
   }));
@@ -254,7 +274,7 @@ export function setupExercises(beforeOpen = () => {}) {
     const art = figure(entry.id);
     const text = element("div", "recovery-text");
     text.append(
-      element("strong", "", t(`recovery_${entry.id}`)),
+      nameLine(entry.id),
       element("span", "recovery-dose", dose(entry.id, entry.seconds)),
       element("p", "", t(`recoveryHow_${entry.id}`)),
       element("span", "field-note exercises-sets", t("exercisesIn", { sets: entry.sets.map((set) => t(`${setKey}_${set}`)).join(", ") })),

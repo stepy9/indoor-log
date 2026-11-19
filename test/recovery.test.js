@@ -73,3 +73,10 @@ test("exerciseCatalog lists every exercise once per group with the sets it is in
   assert.deepEqual(stretch.find((item) => item.id === "chest").sets, ["hard"]);
   assert.equal(new Set([...warmup, ...stretch].map((item) => item.id)).size, 12);
 });
+
+test("the warm-up's moves and cat–cow repeat, the other stretches are held", async () => {
+  const { exerciseCatalog } = await import("../src/recovery.js");
+  const { warmup, stretch } = exerciseCatalog();
+  for (const { id } of warmup) assert.ok(!exercises[id].hold, id);
+  assert.deepEqual(stretch.filter(({ id }) => !exercises[id].hold).map(({ id }) => id), ["catCow"]);
+});

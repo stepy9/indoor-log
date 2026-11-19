@@ -6,7 +6,8 @@
 // A pose of the side-view figure in a 220 × 170 box, the mat's top at y 150: the trunk from the hip through a
 // control point to the shoulder, the neck's end and the head's centre, arms and legs as joint lists from the
 // shoulder and the hip. focus names the parts drawn over in the accent colour: "trunk", "arm<i>", "leg<i>" or
-// "thigh<i>" for a leg's first segment only.
+// "thigh<i>" for a leg's first segment only. hold marks a static stretch, eased into and held still for its time;
+// without it the exercise is a move, repeated smoothly between its two poses.
 const tabletop = { trunk: [[140, 94], [100, 94], [60, 94]], neck: [46, 88], head: [36, 84], arms: [[[60, 94], [60, 146]]], legs: [[[140, 94], [140, 146], [184, 146]]] };
 
 // Standing upright, facing left, for the warm-up's moves.
@@ -22,7 +23,7 @@ export const exercises = {
     focus: ["trunk"],
   },
   childPose: {
-    seconds: 45, sides: 1,
+    seconds: 45, sides: 1, hold: true,
     poses: [
       tabletop,
       { trunk: [[174, 130], [134, 116], [92, 128]], neck: [84, 134], head: [76, 138], arms: [[[92, 128], [40, 146]]], legs: [[[174, 130], [140, 146], [184, 146]]] },
@@ -30,7 +31,7 @@ export const exercises = {
     focus: ["trunk"],
   },
   hamstring: {
-    seconds: 30, sides: 2,
+    seconds: 30, sides: 2, hold: true,
     poses: [
       { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [96, 146]]], legs: [[[128, 140], [168, 143], [206, 143]], [[128, 140], [146, 104], [180, 128]]] },
       { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [96, 146]]], legs: [[[128, 140], [168, 143], [206, 143]], [[128, 140], [140, 94], [150, 46]]] },
@@ -38,7 +39,7 @@ export const exercises = {
     focus: ["leg1"],
   },
   hipFlexor: {
-    seconds: 30, sides: 2,
+    seconds: 30, sides: 2, hold: true,
     poses: [
       { trunk: [[110, 98], [112, 70], [110, 42]], neck: [110, 32], head: [110, 22], arms: [[[110, 42], [122, 68], [112, 94]]], legs: [[[110, 98], [70, 98], [70, 146]], [[110, 98], [140, 146], [184, 146]]] },
       { trunk: [[96, 106], [97, 78], [98, 50]], neck: [98, 40], head: [98, 30], arms: [[[98, 50], [110, 76], [100, 102]]], legs: [[[96, 106], [62, 102], [70, 146]], [[96, 106], [140, 146], [184, 146]]] },
@@ -46,7 +47,7 @@ export const exercises = {
     focus: ["thigh1"],
   },
   figureFour: {
-    seconds: 30, sides: 2,
+    seconds: 30, sides: 2, hold: true,
     poses: [
       { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [74, 146], [100, 146]]], legs: [[[128, 140], [150, 104], [180, 140]], [[128, 140], [164, 124], [148, 104]]] },
       { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [84, 128], [114, 104]]], legs: [[[128, 140], [118, 96], [150, 84]], [[128, 140], [144, 108], [120, 92]]] },
@@ -54,7 +55,7 @@ export const exercises = {
     focus: ["thigh1"],
   },
   forearm: {
-    seconds: 20, sides: 2,
+    seconds: 20, sides: 2, hold: true,
     poses: [
       { trunk: [[110, 98], [111, 70], [110, 42]], neck: [112, 32], head: [114, 22], arms: [[[110, 42], [138, 44], [164, 46], [182, 46]], [[110, 42], [128, 64], [168, 58]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [116, 146]]] },
       { trunk: [[110, 98], [111, 70], [110, 42]], neck: [112, 32], head: [114, 22], arms: [[[110, 42], [138, 44], [164, 46], [172, 62]], [[110, 42], [128, 66], [170, 68]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [116, 146]]] },
@@ -62,7 +63,7 @@ export const exercises = {
     focus: ["arm0"],
   },
   calf: {
-    seconds: 30, sides: 2, wall: 34,
+    seconds: 30, sides: 2, hold: true, wall: 34,
     poses: [
       { trunk: [[110, 96], [96, 72], [82, 50]], neck: [76, 40], head: [72, 30], arms: [[[82, 50], [62, 52], [42, 50]]], legs: [[[110, 96], [86, 120], [92, 146]], [[110, 96], [140, 122], [170, 146]]] },
       { trunk: [[102, 98], [86, 76], [70, 56]], neck: [64, 46], head: [60, 36], arms: [[[70, 56], [56, 58], [42, 56]]], legs: [[[102, 98], [78, 120], [92, 146]], [[102, 98], [136, 122], [170, 146]]] },
@@ -70,7 +71,7 @@ export const exercises = {
     focus: ["leg1"],
   },
   chest: {
-    seconds: 30, sides: 1, wall: 130,
+    seconds: 30, sides: 1, hold: true, wall: 130,
     poses: [
       { trunk: [[116, 98], [117, 70], [116, 42]], neck: [114, 32], head: [112, 22], arms: [[[116, 42], [128, 44], [128, 18]]], legs: [[[116, 98], [116, 122], [116, 146]], [[116, 98], [110, 122], [106, 146]]] },
       { trunk: [[104, 100], [104, 72], [104, 44]], neck: [101, 34], head: [98, 24], arms: [[[104, 44], [128, 44], [128, 18]]], legs: [[[104, 100], [90, 122], [84, 146]], [[104, 100], [112, 124], [118, 146]]] },
