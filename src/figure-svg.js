@@ -51,6 +51,14 @@ export function figureParts(pose, view) {
     if (kind === "arm") list.push(["polyline", "focus", { points: points(pose.arms[index]) }]);
     if (kind === "leg") list.push(["polyline", "focus", { points: points(pose.legs[index]) }]);
     if (kind === "thigh") list.push(["polyline", "focus", { points: points(pose.legs[index].slice(0, 2)) }]);
+    // The broad back muscle: from the elbow over the shoulder down the upper side of the trunk.
+    if (name === "lat") {
+      const arm = pose.arms.at(-1);
+      const [[hx, hy], [cx, cy], [sx, sy]] = pose.trunk;
+      // A third of the way from the shoulder to the hip, along the trunk's curve.
+      const along = (t) => [Math.round((1 - t) ** 2 * sx + 2 * t * (1 - t) * cx + t ** 2 * hx), Math.round((1 - t) ** 2 * sy + 2 * t * (1 - t) * cy + t ** 2 * hy)];
+      list.push(["polyline", "focus", { points: points([arm[1], [sx, sy], along(0.18), along(0.36)]) }]);
+    }
     if (name.startsWith("band")) list.push(["polyline", "focus", { points: points(pose.bands[Number(name.slice(4))]) }]);
     if (kind === "fore") list.push(["polyline", "focus", { points: points(pose.arms[index].slice(1)) }]);
   }

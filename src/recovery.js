@@ -127,6 +127,62 @@ export const exercises = {
       ],
     }],
   },
+  latStretch: {
+    seconds: 30, sides: 1, hold: true,
+    // Kneeling before a chair, the forearms on its seat, the hips sinking back to the heels and the chest down.
+    props: [{ x: 10, y: 92, width: 50, height: 9, rx: 3 }, { x: 14, y: 100, width: 6, height: 50, rx: 2 }, { x: 50, y: 100, width: 6, height: 50, rx: 2 }],
+    far: { arms: [0], legs: [0] },
+    poses: [
+      { trunk: [[150, 100], [118, 96], [86, 90]], neck: [75, 94], head: [65, 98], arms: [[[86, 90], [56, 90], [34, 89]], [[86, 90], [50, 90], [28, 89]]], legs: [[[150, 100], [156, 146], [198, 146]], [[150, 100], [150, 146], [192, 146]]] },
+      { trunk: [[170, 120], [128, 120], [88, 108]], neck: [77, 110], head: [66, 114], arms: [[[88, 108], [56, 90], [34, 89]], [[88, 108], [50, 90], [28, 89]]], legs: [[[170, 120], [156, 146], [198, 146]], [[170, 120], [150, 146], [192, 146]]] },
+    ],
+    focus: ["lat"],
+  },
+  quadStretch: {
+    seconds: 30, sides: 2, hold: true, wall: 34,
+    // Standing, a hand on the wall, the other bringing the heel to the buttock, the knees together.
+    far: { arms: [0], legs: [0] },
+    poses: [
+      { trunk: [[110, 98], [111, 70], [110, 42]], neck: [108, 32], head: [106, 21], arms: [[[110, 42], [80, 48], [44, 50]], [[110, 42], [118, 68], [122, 94]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [134, 136]]], feet: [[96, 147], [144, 142]] },
+      { trunk: [[110, 98], [111, 70], [110, 42]], neck: [108, 32], head: [106, 21], arms: [[[110, 42], [80, 48], [44, 50]], [[110, 42], [126, 72], [130, 100]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [112, 122], [128, 104]]], feet: [[96, 147], [138, 98]] },
+    ],
+    focus: ["thigh1"],
+  },
+  openBook: {
+    seconds: 30, sides: 2, view: "top", floor: false,
+    // From above, lying on the side, head left, knees bent forward: the top arm opens from in front to behind,
+    // the chest turning with it.
+    props: [{ x: 18, y: 20, width: 184, height: 136, rx: 10 }],
+    far: { arms: [0], legs: [0] },
+    arrows: ["M102,142 A54,54 0 0 0 102,36"],
+    poses: [
+      { trunk: [[140, 90], [105, 90], [70, 90]], neck: [58, 90], head: [46, 90], arms: [[[70, 90], [72, 118], [74, 146]], [[70, 90], [78, 116], [84, 142]]], legs: [[[140, 90], [152, 128], [184, 132]], [[140, 90], [146, 126], [178, 128]]] },
+      { trunk: [[140, 90], [105, 90], [70, 90]], neck: [58, 90], head: [46, 88], arms: [[[70, 90], [72, 118], [74, 146]], [[70, 90], [78, 64], [84, 38]]], legs: [[[140, 90], [152, 128], [184, 132]], [[140, 90], [146, 126], [178, 128]]] },
+    ],
+    focus: ["trunk"],
+  },
+  kneesToChest: {
+    seconds: 30, sides: 1, hold: true,
+    // On the back, both knees drawn to the chest and hugged, the lower back long on the mat.
+    far: { legs: [0] },
+    poses: [
+      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [72, 145], [96, 145]]], legs: [[[128, 140], [152, 104], [176, 145]], [[128, 140], [146, 102], [170, 145]]], feet: [[190, 147], [184, 147]] },
+      { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [70, 118], [94, 106]]], legs: [[[128, 140], [106, 100], [134, 108]], [[128, 140], [100, 102], [128, 112]]], feet: [[144, 102], [138, 106]] },
+    ],
+    focus: ["trunk"],
+  },
+  // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
+  bridge: {
+    seconds: 30, sides: 1,
+    // On the back, knees bent: the hips lift until shoulders, hips and knees are in line, and lower again.
+    far: { legs: [0] },
+    arrows: [{ d: "M122,60 L122,94", both: true }],
+    poses: [
+      { trunk: [[124, 140], [88, 140], [52, 140]], neck: [40, 138], head: [28, 136], arms: [[[52, 140], [76, 145], [100, 145]]], legs: [[[124, 140], [150, 104], [172, 145]], [[124, 140], [146, 102], [166, 145]]], feet: [[186, 147], [180, 147]] },
+      { trunk: [[122, 106], [88, 124], [52, 140]], neck: [40, 138], head: [28, 136], arms: [[[52, 140], [76, 145], [100, 145]]], legs: [[[122, 106], [154, 98], [172, 145]], [[122, 106], [148, 96], [166, 145]]], feet: [[186, 147], [180, 147]] },
+    ],
+    focus: ["thigh1"],
+  },
   // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
   armSwings: {
     seconds: 30, sides: 1,
@@ -180,10 +236,11 @@ export const exercises = {
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
 // far, arrows }.
 export function exerciseViews(id) {
-  const { poses, focus = [], wall, props = [], far, arrows, more = [] } = exercises[id];
+  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true } = exercises[id];
   if (!poses) return [];
-  const blocks = [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }, ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
-  return [{ key: "side", poses, focus, blocks, far, arrows }, ...more.map((view) => ({ focus, blocks: [], ...view }))];
+  // The floor under a side view; a view from above has its mat among the props.
+  const blocks = [...(floor ? [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }] : []), ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
+  return [{ key: view, poses, focus, blocks, far, arrows }, ...more.map((other) => ({ focus, blocks: [], ...other }))];
 }
 
 // The pause before each exercise, and between its sides.
@@ -208,9 +265,9 @@ export function steps(ids, { rest = restSeconds, seconds: own = {} } = {}) {
 }
 
 const sets = {
-  easy: ["catCow", "hamstring", "hipFlexor"],
-  long: ["catCow", "hamstring", "hipFlexor", "childPose", "figureFour", "forearm"],
-  hard: ["catCow", "hamstring", "hipFlexor", "figureFour", "calf", "chest"],
+  easy: ["catCow", "hamstring", "hipFlexor", "kneesToChest"],
+  long: ["catCow", "quadStretch", "hamstring", "hipFlexor", "figureFour", "openBook", "forearm", "childPose"],
+  hard: ["catCow", "latStretch", "hamstring", "hipFlexor", "figureFour", "calf", "chest"],
 };
 const hardBenefits = new Set(["threshold", "vo2max", "anaerobic", "sprint"]);
 
@@ -231,7 +288,7 @@ export function afterWorkout({ benefit = null, seconds = 0 }) {
 export const warmupRest = 5;
 const warmups = {
   short: { exercises: ["catCow", "armSwings", "squat"], seconds: { catCow: 30, squat: 30 } },
-  full: { exercises: ["catCow", "armSwings", "hipHinge", "squat", "legSwings"], seconds: { catCow: 45 } },
+  full: { exercises: ["catCow", "armSwings", "bridge", "hipHinge", "squat", "legSwings"], seconds: { catCow: 45 } },
 };
 const hardTypes = new Set(["intervals", "ftpTestShort", "ftpTest", "goal"]);
 

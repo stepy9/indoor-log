@@ -67,18 +67,18 @@ test("warmupBefore gives the full set before a hard day and the short one before
 test("exerciseCatalog lists every exercise once per group with the sets it is in", async () => {
   const { exerciseCatalog } = await import("../src/recovery.js");
   const { warmup, stretch } = exerciseCatalog();
-  assert.deepEqual(warmup.map((item) => item.id), ["catCow", "armSwings", "squat", "hipHinge", "legSwings"]);
+  assert.deepEqual(warmup.map((item) => item.id), ["catCow", "armSwings", "squat", "bridge", "hipHinge", "legSwings"]);
   assert.deepEqual(warmup.find((item) => item.id === "catCow").sets, ["short", "full"]);
-  assert.equal(stretch.length, 8);
+  assert.equal(stretch.length, 12);
   assert.deepEqual(stretch.find((item) => item.id === "chest").sets, ["hard"]);
-  assert.equal(new Set([...warmup, ...stretch].map((item) => item.id)).size, 12);
+  assert.equal(new Set([...warmup, ...stretch].map((item) => item.id)).size, 17);
 });
 
 test("the warm-up's moves and cat–cow repeat, the other stretches are held", async () => {
   const { exerciseCatalog } = await import("../src/recovery.js");
   const { warmup, stretch } = exerciseCatalog();
   for (const { id } of warmup) assert.ok(!exercises[id].hold, id);
-  assert.deepEqual(stretch.filter(({ id }) => !exercises[id].hold).map(({ id }) => id), ["catCow"]);
+  assert.deepEqual(stretch.filter(({ id }) => !exercises[id].hold).map(({ id }) => id), ["catCow", "openBook"]);
 });
 
 test("every view's poses have the same parts as its first, so they animate, and its focus names a part", () => {
@@ -103,7 +103,7 @@ test("every view's poses have the same parts as its first, so they animate, and 
           assert.ok(first.bands?.[Number(name.slice(4))], `${label}: ${name}`);
           continue;
         }
-        if (name === "chest") {
+        if (name === "chest" || name === "lat") {
           assert.ok(first.arms.length >= 2, `${label}: ${name}`);
           continue;
         }
