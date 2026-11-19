@@ -264,20 +264,37 @@ export function steps(ids, { rest = restSeconds, seconds: own = {} } = {}) {
   return list;
 }
 
+// Each set: the core always in it (the back, the hamstrings and the hip flexors a rower needs every time) and so
+// many more from its pool, taken in turn day by day, so the same kind of workout is not always followed alike.
 const sets = {
-  easy: ["catCow", "hamstring", "hipFlexor", "kneesToChest"],
-  long: ["catCow", "quadStretch", "hamstring", "hipFlexor", "figureFour", "openBook", "forearm", "childPose"],
-  hard: ["catCow", "latStretch", "hamstring", "hipFlexor", "figureFour", "calf", "chest"],
+  easy: { core: ["catCow", "hamstring", "hipFlexor"], pool: ["kneesToChest", "childPose", "figureFour", "quadStretch"], take: 1 },
+  long: { core: ["catCow", "hamstring", "hipFlexor"], pool: ["quadStretch", "figureFour", "openBook", "forearm", "childPose", "latStretch", "kneesToChest"], take: 4 },
+  hard: { core: ["catCow", "hamstring", "hipFlexor"], pool: ["latStretch", "figureFour", "calf", "chest", "quadStretch", "openBook"], take: 4 },
 };
+
+// The order a set runs in, so one position leads to the next: standing first, then on all fours and kneeling,
+// lying last.
+const flow = ["quadStretch", "calf", "chest", "forearm", "catCow", "childPose", "latStretch", "hipFlexor", "hamstring", "figureFour", "kneesToChest", "openBook"];
+// A warm-up the other way round: from the floor up to standing, ready for the rower.
+const warmFlow = ["catCow", "bridge", "armSwings", "hipHinge", "squat", "legSwings"];
+
+// The day's turn of a pool: take of them, starting further on each day and wrapping round, so over a few days
+// each comes. day: "YYYY-MM-DD" (null: the first turn).
+export function pick({ core, pool, take }, day = null, order = flow) {
+  const number = day ? Math.round(Date.parse(`${day}T12:00:00Z`) / 86_400_000) : 0;
+  const start = (number * take) % pool.length;
+  const picked = Array.from({ length: Math.min(take, pool.length) }, (_, index) => pool[(start + index) % pool.length]);
+  return [...core, ...picked].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
 const hardBenefits = new Set(["threshold", "vo2max", "anaerobic", "sprint"]);
 
 // The set after a workout: { set, cooldown, exercises, minutes }. benefit is the primary benefit or null,
-// seconds the workout's time. A hard workout asks first for a few easy minutes on the machine; a recovery or a
-// short one gets the short set, a longer steady one the fuller set.
-export function afterWorkout({ benefit = null, seconds = 0 }) {
+// seconds the workout's time, day its day for the set's turn. A hard workout asks first for a few easy minutes on
+// the machine; a recovery or a short one gets the short set, a longer steady one the fuller set.
+export function afterWorkout({ benefit = null, seconds = 0, day = null }) {
   const hard = hardBenefits.has(benefit);
   const set = hard ? "hard" : benefit === "recovery" || seconds < 45 * 60 ? "easy" : "long";
-  const ids = sets[set];
+  const ids = pick(sets[set], day);
   const total = steps(ids).reduce((sum, step) => sum + step.seconds, 0);
   return { set, cooldown: hard, exercises: ids, minutes: Math.round(total / 60) };
 }
@@ -286,17 +303,19 @@ export function afterWorkout({ benefit = null, seconds = 0 }) {
 // Before intervals, an FTP test or the goal the full set, then easy minutes on the rower building up to a few
 // strokes at the effort's pace; before a steady workout the short set, the first minutes on the rower easy anyway.
 export const warmupRest = 5;
+// The short warm-up takes two of the moves in turn beside cat–cow; the full one takes them all.
 const warmups = {
-  short: { exercises: ["catCow", "armSwings", "squat"], seconds: { catCow: 30, squat: 30 } },
-  full: { exercises: ["catCow", "armSwings", "bridge", "hipHinge", "squat", "legSwings"], seconds: { catCow: 45 } },
+  short: { core: ["catCow"], pool: ["armSwings", "squat", "bridge", "hipHinge", "legSwings"], take: 2, seconds: { catCow: 30, squat: 30 } },
+  full: { core: ["catCow", "armSwings", "bridge", "hipHinge", "squat", "legSwings"], pool: [], take: 0, seconds: { catCow: 45 } },
 };
 const hardTypes = new Set(["intervals", "ftpTestShort", "ftpTest", "goal"]);
 
 // The warm-up for a planned day's type: { set, exercises, seconds, minutes, onRower }; onRower the easy minutes
-// on the machine to go on with, before the efforts of a hard day.
-export function warmupBefore(type) {
+// on the machine to go on with, before the efforts of a hard day. day: the planned day, for the short set's turn.
+export function warmupBefore(type, day = null) {
   const set = hardTypes.has(type) ? "full" : "short";
-  const { exercises: ids, seconds } = warmups[set];
+  const { seconds } = warmups[set];
+  const ids = pick(warmups[set], day, warmFlow);
   const total = steps(ids, { rest: warmupRest, seconds }).reduce((sum, step) => sum + step.seconds, 0);
   return { set, exercises: ids, seconds, minutes: Math.max(1, Math.round(total / 60)), onRower: set === "full" ? 5 : 0 };
 }
@@ -304,10 +323,10 @@ export function warmupBefore(type) {
 // Every exercise of the warm-up and the stretching, in the order the sets first take them, each with its time in
 // them and the sets it is in: { warmup: [{ id, seconds, sets }], stretch: [...] }, sets naming warmups' and sets' keys.
 export function exerciseCatalog() {
-  const collect = (groups) => {
+  const collect = (groups, order) => {
     const list = [];
-    for (const [set, { exercises: ids, seconds = {} }] of Object.entries(groups)) {
-      for (const id of ids) {
+    for (const [set, { core, pool, seconds = {} }] of Object.entries(groups)) {
+      for (const id of [...core, ...pool].sort((a, b) => order.indexOf(a) - order.indexOf(b))) {
         const found = list.find((item) => item.id === id);
         if (found) found.sets.push(set);
         else list.push({ id, seconds: seconds[id] ?? exercises[id].seconds, sides: exercises[id].sides, sets: [set] });
@@ -316,7 +335,7 @@ export function exerciseCatalog() {
     return list;
   };
   return {
-    warmup: collect(warmups),
-    stretch: collect(Object.fromEntries(Object.entries(sets).map(([set, ids]) => [set, { exercises: ids }]))),
+    warmup: collect(warmups, warmFlow),
+    stretch: collect(sets, flow),
   };
 }

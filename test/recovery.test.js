@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { afterWorkout, exercises, restSeconds, steps, switchSeconds } from "../src/recovery.js";
+import { afterWorkout, exerciseCatalog as exerciseCatalogOf, exercises, restSeconds, steps, switchSeconds } from "../src/recovery.js";
 
 test("afterWorkout picks the set by the benefit and the length", () => {
   assert.equal(afterWorkout({ benefit: "recovery", seconds: 3600 }).set, "easy");
@@ -67,7 +67,7 @@ test("warmupBefore gives the full set before a hard day and the short one before
 test("exerciseCatalog lists every exercise once per group with the sets it is in", async () => {
   const { exerciseCatalog } = await import("../src/recovery.js");
   const { warmup, stretch } = exerciseCatalog();
-  assert.deepEqual(warmup.map((item) => item.id), ["catCow", "armSwings", "squat", "bridge", "hipHinge", "legSwings"]);
+  assert.deepEqual(warmup.map((item) => item.id), ["catCow", "bridge", "armSwings", "hipHinge", "squat", "legSwings"]);
   assert.deepEqual(warmup.find((item) => item.id === "catCow").sets, ["short", "full"]);
   assert.equal(stretch.length, 12);
   assert.deepEqual(stretch.find((item) => item.id === "chest").sets, ["hard"]);
@@ -129,4 +129,30 @@ test("figureMarkup animates a view's poses, ghosts a move's start and draws far 
   assert.ok(moving.includes('class="ghost"') && moving.includes("move-arrow"));
   assert.ok(!figureMarkup(arms, { frame: 1 }).includes("<animate"));
   assert.deepEqual(exerciseViews("chest").map((view) => view.key), ["side", "front"]);
+});
+
+test("the sets take their core every day and the rest in turn, each of the pool within a few days", () => {
+  const days = Array.from({ length: 7 }, (_, index) => `2026-11-${String(10 + index).padStart(2, "0")}`);
+  for (const benefit of ["recovery", "base", "threshold"]) {
+    const plans = days.map((day) => afterWorkout({ benefit, seconds: 3600, day }));
+    for (const plan of plans) {
+      for (const id of ["catCow", "hamstring", "hipFlexor"]) assert.ok(plan.exercises.includes(id), `${benefit}: ${id}`);
+      assert.ok(plan.minutes >= 3 && plan.minutes <= 12, `${benefit}: ${plan.minutes}`);
+    }
+    assert.ok(new Set(plans.map((plan) => plan.exercises.join())).size > 1, benefit);
+    const seen = new Set(plans.flatMap((plan) => plan.exercises));
+    const { stretch } = exerciseCatalogOf();
+    for (const item of stretch.filter((entry) => entry.sets.includes(plans[0].set))) assert.ok(seen.has(item.id), `${benefit}: ${item.id}`);
+  }
+  // The same day gives the same set.
+  assert.deepEqual(afterWorkout({ benefit: "base", seconds: 3600, day: "2026-11-19" }), afterWorkout({ benefit: "base", seconds: 3600, day: "2026-11-19" }));
+});
+
+test("a warm-up goes from the floor up and the short one varies by day", async () => {
+  const { warmupBefore } = await import("../src/recovery.js");
+  assert.equal(warmupBefore("intervals").exercises[0], "catCow");
+  assert.equal(warmupBefore("intervals").exercises.at(-1), "legSwings");
+  const shorts = ["2026-11-19", "2026-11-20", "2026-11-21"].map((day) => warmupBefore("usual", day).exercises);
+  for (const list of shorts) assert.equal(list[0], "catCow");
+  assert.ok(new Set(shorts.map((list) => list.join())).size > 1);
 });

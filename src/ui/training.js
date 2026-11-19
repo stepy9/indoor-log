@@ -351,7 +351,7 @@ function todayCard(result, scored, fatigue, entries) {
     const suggestions = showing.type === "usual" || showing.type === "long" ? suggestionsButton(result, entries, showing.type) : null;
     if (suggestions) card.append(suggestions);
     // Before a row, a warm-up for the back, shoulders and hips, longer before the hard days.
-    if (result.sport === "rowing") card.append(warmupBlock(showing.type));
+    if (result.sport === "rowing") card.append(warmupBlock(showing.type, showing.day));
   } else if (!done) card.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
   if (fatigue) card.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
   if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) {

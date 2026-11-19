@@ -203,7 +203,7 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
   card.hidden = !entry;
   if (!entry) return;
   wirePlayer();
-  const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds });
+  const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day: new Date(entry.startMs).toISOString().slice(0, 10) });
   byId("compareRecoveryTitle").textContent = t("recoveryTitle", { minutes: plan.minutes });
   byId("compareRecoveryNote").textContent = t(plan.cooldown ? "recoveryCooldown" : `recoveryNote_${plan.set}`);
   const status = byId("compareRecoveryDone");
@@ -227,9 +227,9 @@ export function renderRecovery(picked, settings, onStretched = () => {}) {
 
 // The warm-up before a rowing workout planned, for the Training tab's day: a button that opens the set in the same
 // player and runs it from there, and what follows on the rower beside it.
-export function warmupBlock(type) {
+export function warmupBlock(type, day = null) {
   wirePlayer();
-  const plan = warmupBefore(type);
+  const plan = warmupBefore(type, day);
   const block = element("div", "warmup-block");
   const head = element("div", "warmup-head");
   const button = element("button", "outline-button warmup-button", t("warmupStart", { minutes: plan.minutes }));
