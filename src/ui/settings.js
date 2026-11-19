@@ -17,6 +17,7 @@ import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits } from "../plan.js";
 import { defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
 import { workoutList } from "./workouts.js";
+import { infoHint } from "./info.js";
 import { bodyStatus } from "../reminders.js";
 import { parseGarminCsv } from "../garmin-csv.js";
 
@@ -204,24 +205,12 @@ export const setByHand = (sport, field) => (field === "ftp"
 const state = { pane: "general", tab: "trainers", entries: [], onTrainers: () => {}, sport: () => null };
 const sportTabs = ["trainers", "zones", "plan", "kinomap"];
 
-// The explanations open by their ⓘ, kept open across redraws.
-const openTips = new Set();
-
-// An ⓘ button put into the title, and the note it shows below it; returns both to append.
+// An ⓘ put into the title, its explanation in a tooltip on hover or a tap, as elsewhere in the app; returns the title.
 function withTip(title, text) {
-  const open = openTips.has(text);
-  const button = node("button", { type: "button", class: "settings-tip", "aria-expanded": String(open), "aria-label": t("settingsMoreInfo"), title: t("settingsMoreInfo") }, "i");
-  const note = node("p", { class: "field-note settings-tip-note" }, text);
-  note.hidden = !open;
-  button.addEventListener("click", () => {
-    const show = note.hidden;
-    note.hidden = !show;
-    button.setAttribute("aria-expanded", String(show));
-    if (show) openTips.add(text);
-    else openTips.delete(text);
-  });
-  title.append(button);
-  return [title, note];
+  const hint = infoHint(text);
+  hint.classList.add("is-inline", "opens-right", "settings-tip");
+  title.append(hint);
+  return title;
 }
 
 function node(tag, attributes = {}, text = "") {
@@ -362,9 +351,8 @@ function trainersBlock(sport) {
     state.dirty = true;
     render();
   });
-  const [heading, hint] = withTip(node("h4", {}, t("trainersTitle")), t("trainersHint"));
-  title.append(heading, add);
-  block.append(title, hint);
+  title.append(withTip(node("h4", {}, t("trainersTitle")), t("trainersHint")), add);
+  block.append(title);
   const list = trainers().filter((trainer) => trainer.sport === sport);
   if (!list.length) {
     block.append(node("p", { class: "field-note" }, t("trainersEmpty")));
@@ -476,10 +464,10 @@ function zonesBlock(sport, by, settings) {
     saveSport(sport, { [field]: null });
     changed();
   });
-  const [heading, note] = withTip(node("h4", {}, t(by === "power" ? "settingsPowerZones" : "settingsHeartRateZones")), by === "power" ? t("settingsPowerZonesNote")
+  const heading = withTip(node("h4", {}, t(by === "power" ? "settingsPowerZones" : "settingsHeartRateZones")), by === "power" ? t("settingsPowerZonesNote")
     : own.heartRateBasis === "reserve" ? t("settingsReserveNote", { rest: displayNumber(own.restHeartRate) }) : t("settingsHeartRateZonesNote"));
   title.append(heading, reset);
-  block.append(title, note);
+  block.append(title);
   // Heart rate zones count from the maximum or from the reserve above the resting heart rate.
   if (by === "heartRate") {
     const basis = node("div", { class: "segmented settings-basis", role: "group", "aria-label": t("settingsZonesBasis") });
@@ -770,7 +758,7 @@ function goalBlock(sport) {
     saveSport(sport, { goal: next.day ? next : null });
     changed();
   };
-  block.append(...withTip(node("h4", {}, t("settingsGoal")), t("settingsGoalNote")));
+  block.append(withTip(node("h4", {}, t("settingsGoal")), t("settingsGoalNote")));
   const row = node("div", { class: "settings-goal" });
   const name = node("input", { type: "text", "data-key": `goal-name-${sport}`, "aria-label": t("settingsGoalName"), placeholder: t("settingsGoalName") });
   name.value = goal.name ?? "";
@@ -830,7 +818,7 @@ function planPrefs(sport) {
 function trainingBlock(sport) {
   const block = node("div", { class: "settings-block" });
   const { prefs, writePlan } = planPrefs(sport);
-  block.append(...withTip(node("h4", {}, t("settingsTraining")), t("settingsTrainingNote")));
+  block.append(withTip(node("h4", {}, t("settingsTraining")), t("settingsTrainingNote")));
   // The time to train each week, in hours to the tenth, for the weekly summary to measure each week by.
   const weekly = node("label", { class: "settings-field settings-weekly" });
   // Number fields, so the arrows and the wheel step the value: half hours, whole kilometres.
@@ -856,24 +844,23 @@ function trainingBlock(sport) {
     changed();
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
-  // The choices in rows, side by side where they fit; each row's explanations open below it.
+  // The choices in rows, side by side where they fit.
   const row = (...cells) => {
     const line = node("div", { class: "settings-row" });
-    const notes = [];
-    for (const [cell, note] of cells) {
-      line.append(cell);
-      if (note) notes.push(note);
-    }
-    block.append(line, ...notes);
+    line.append(...cells);
+    block.append(line);
   };
   const choice = (text, note, control) => {
     const cell = node("div", { class: "settings-cell" });
     const title = node("span", { class: "settings-label" }, text);
-    const shown = note ? withTip(title, note)[1] : null;
+    if (note) withTip(title, note);
     cell.append(title, control);
-    return [cell, shown];
+    return cell;
   };
-  const field = (element, note) => [element, note ? withTip(element.querySelector("span"), note)[1] : null];
+  const field = (element, note) => {
+    if (note) withTip(element.querySelector("span"), note);
+    return element;
+  };
   const minutes = (key, labelKey, limits, placeholder = t("settingsPlanAutoShort")) => numberField(t(labelKey), prefs[key], placeholder, (value) => writePlan({ [key]: value }), { min: limits[0], max: limits[1] });
   // The days of the week trained on, for the week's plan; none picked lets the plan take the usual ones.
   const days = daysRow(`training-day-${sport}`, t("settingsTrainingDays"), savedSport(sport).trainingDays, (list) => {
@@ -914,7 +901,7 @@ function kinomapBlock(sport) {
   const block = node("div", { class: "settings-block" });
   const { prefs, writePlan } = planPrefs(sport);
   block.append(
-    ...withTip(node("h4", {}, t("settingsPlanKinomap")), t("settingsPlanKinomapNote")),
+    withTip(node("h4", {}, t("settingsPlanKinomap")), t("settingsPlanKinomapNote")),
     workoutList(prefs.kinomapWorkouts ?? defaultKinomapWorkouts[sport] ?? [], ownPlans(sport, prefs), ({ names, plans }) => {
       // Kept in prefs too, as the other fields write theirs over them.
       Object.assign(prefs, { kinomapWorkouts: names, kinomapPlans: plans });
@@ -1016,9 +1003,9 @@ function ftpBlock(sport, settings, estimate) {
     changed();
   };
   add.addEventListener("click", () => write([...history, { from: dayKey(Date.now(), zone), ftp: currentFtp(settings, sport) || 200 }]));
-  const [heading, note] = withTip(node("span", { class: "settings-label" }, t("settingsFtpHistory")), t("settingsFtpNote", { estimate: estimate ? `${estimate} W` : "—" }));
+  const heading = withTip(node("span", { class: "settings-label" }, t("settingsFtpHistory")), t("settingsFtpNote", { estimate: estimate ? `${estimate} W` : "—" }));
   title.append(heading, add);
-  block.append(title, note);
+  block.append(title);
   if (!history.length) return block;
   const table = node("table", { class: "laps-table settings-ftp-table" });
   const head = node("tr");
@@ -1083,7 +1070,7 @@ function sportPane(sport) {
     return pane;
   }
   const thresholds = node("div", { class: "settings-block" });
-  thresholds.append(...withTip(node("h4", {}, t("fitnessSettings")), t("settingsThresholdsNote")));
+  thresholds.append(withTip(node("h4", {}, t("fitnessSettings")), t("settingsThresholdsNote")));
   const grid = node("div", { class: "fitness-settings" });
   grid.append(
     numberField(t("settingsSportMaxHr"), savedSport(sport).maxHeartRate, settings.estimates.generalMax ? `${t("settingsFromGeneral")} ${settings.estimates.generalMax}` : "—", (value) => {

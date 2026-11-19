@@ -919,11 +919,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .settings-tabs { display: flex; max-width: 100%; margin-top: 4px; overflow-x: auto; }
 .settings-tabs button { flex: 1 0 auto; white-space: nowrap; }
 
-/* The ⓘ beside a title, showing its explanation below. */
-.settings-tip { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 6px; padding: 0; border: 1.5px solid var(--muted); border-radius: 50%; color: var(--muted); background: transparent; font: italic 700 10px/1 Georgia, serif; vertical-align: 1px; cursor: pointer; }
-.settings-tip:hover, .settings-tip[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
-.settings-tip-note { margin-top: 6px; }
-.settings-tip-note[hidden] { display: none; }
+/* The ⓘ beside a title, its explanation in a tooltip. */
+.settings-tip { display: inline-grid; margin-left: 6px; vertical-align: 1px; font-weight: 700; }
+.settings-tip .tile-info-text { font-weight: 400; }
 
 /* The plan's choices in rows, side by side as they fit. */
 .settings-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; margin-top: 14px; }
