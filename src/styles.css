@@ -1843,3 +1843,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 }
 .diary-tile.is-ahead .diary-tile-change { color: var(--success); }
 .diary-tile.is-behind .diary-tile-change { color: var(--danger-ink); }
+
+/* The same workout before, in an activity's detail: the change since the last time, coloured better or worse. */
+.compare-same-summary { margin: 4px 0 10px; font-size: 14px; }
+.compare-same-summary .is-better { color: var(--success); font-weight: 600; }
+.compare-same-summary .is-worse { color: var(--danger-ink); font-weight: 600; }
+#compareSameTable tr.is-current td { font-weight: 600; }

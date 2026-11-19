@@ -2,6 +2,7 @@ import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
 import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./training.js";
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
 import { weekNumber } from "../diary.js";
+import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
 import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
@@ -268,24 +269,6 @@ function lapSpans(entry, axis) {
   }).filter((span) => Number.isFinite(span.from) && Number.isFinite(span.to) && span.to > span.from);
 }
 
-// The same workout ridden again: the same name, ignoring case and spaces at the ends, or the same intervals,
-// lap by lap of the same type and a length within 5 s or 5 % of each other.
-const sameName = (a, b) => Boolean(a.name?.trim()) && a.name.trim().toLowerCase() === b.name?.trim().toLowerCase();
-
-const lapSeconds = (laps, index, entry) => ((laps[index + 1]?.startMs ?? laps[index].endMs ?? entry.startMs + entry.records.seconds.at(-1) * 1000) - laps[index].startMs) / 1000;
-
-export function sameIntervals(a, b) {
-  const lapsA = a.laps ?? [];
-  const lapsB = b.laps ?? [];
-  if (lapsA.length < 2 || lapsA.length !== lapsB.length) return false;
-  if (!lapsA.some((lap) => lap.intensity && lap.intensity !== "active")) return false;
-  return lapsA.every((lap, index) => {
-    if ((lap.intensity ?? "active") !== (lapsB[index].intensity ?? "active")) return false;
-    const secondsA = lapSeconds(lapsA, index, a);
-    const secondsB = lapSeconds(lapsB, index, b);
-    return Math.abs(secondsA - secondsB) <= Math.max(5, Math.max(secondsA, secondsB) * 0.05);
-  });
-}
 
 function renderChart() {
   const chart = byId("compareChart");
@@ -632,10 +615,62 @@ function renderTables() {
     }]),
     ...powerDurations.map((seconds) => [t("compareBestPower", { duration: formatDuration(seconds) }), (entry) => watts(bestAverage(entry, "power", seconds), entry)]),
   ], picked);
+  renderSame(all);
   // A set finished marks the workout in the diary, which reads the library afresh.
   renderRecovery(all, settings, showDiary);
 }
 
+
+// With one activity open, the earlier times through the same workout: power, heart rate and the power per beat
+// each time, with the change since; a date adds that time to the chart.
+function renderSame(all) {
+  const card = byId("compareSame");
+  const history = all.length === 1 ? sameWorkoutHistory(all[0], view.entries) : null;
+  card.hidden = !history?.earlier.length;
+  if (card.hidden) return;
+  const { current, earlier } = history;
+  const day = (ms) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(ms));
+  const signed = (value, digits, unit) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${unit}`);
+  const cell = (text, className = "") => Object.assign(document.createElement("td"), { textContent: text, className });
+  // Better now: more power, a lower heart rate, more power per beat.
+  const tone = (value, higherBetter) => (value == null || Math.abs(value) < 0.5 ? "" : (value > 0) === higherBetter ? "is-better" : "is-worse");
+  byId("compareSameTitle").textContent = t("sameTitle", { count: earlier.length });
+  const last = earlier[0];
+  const summary = byId("compareSameSummary");
+  summary.replaceChildren();
+  const part = (text, className) => Object.assign(document.createElement("span"), { textContent: text, className });
+  const powerText = part(signed(last.change.power, 0, " W"), tone(last.change.power, true));
+  const heartText = part(signed(last.change.heartRate, 0, " bpm"), tone(last.change.heartRate, false));
+  const efficiencyText = part(signed(last.change.efficiency, 1, " %"), tone(last.change.efficiency, true));
+  // The sentence with its numbers coloured: built from the translation, each placeholder taking its span.
+  const template = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", { day: day(last.entry.startMs), power: "{power}", heart: "{heart}", efficiency: "{efficiency}" });
+  const parts = { power: powerText, heart: heartText, efficiency: efficiencyText };
+  for (const piece of template.split(/({power}|{heart}|{efficiency})/)) summary.append(parts[piece.slice(1, -1)] ?? piece);
+  const table = byId("compareSameTable");
+  const head = document.createElement("tr");
+  const labels = [t("sameDate"), t("compareAvgPower"), t("compareAvgHeartRate"), t("samePerBeat"), t("sameChange")];
+  head.append(...labels.map((label) => Object.assign(document.createElement("th"), { textContent: label })));
+  const value = (number, unit, digits = 0) => (number == null ? "—" : `${displayNumber(number, digits)} ${unit}`);
+  const row = (item, isCurrent) => {
+    const line = document.createElement("tr");
+    if (isCurrent) line.className = "is-current";
+    const when = document.createElement("td");
+    if (isCurrent) when.textContent = `${day(item.entry.startMs)} (${t("sameThis")})`;
+    else {
+      const link = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: day(item.entry.startMs), title: t("sameAdd") });
+      link.addEventListener("click", () => toggle(item.entry, true));
+      when.append(link);
+    }
+    const change = isCurrent ? "" : [signed(item.change.power, 0, " W"), signed(item.change.heartRate, 0, " bpm")].join(" · ");
+    line.append(when, cell(value(item.power, "W")), cell(value(item.heartRate, "bpm")), cell(value(item.efficiency, "W/bpm", 2)),
+      isCurrent ? cell("") : cell(`${change} · ${signed(item.change.efficiency, 1, " %")}`, tone(item.change.efficiency, true)));
+    [...line.cells].forEach((td, index) => { td.dataset.label = isCurrent && index === 4 ? "" : labels[index]; });
+    return line;
+  };
+  table.replaceChildren(document.createElement("thead"), document.createElement("tbody"));
+  table.tHead.append(head);
+  table.tBodies[0].append(row(current, true), ...earlier.map((item) => row(item, false)));
+}
 
 // Trend: one point per activity that passes the filters and falls in the range, oldest to newest.
 const trendSince = () => {
