@@ -95,7 +95,9 @@ const sounds = {
 };
 // The next exercise said aloud in the app's language as a pause starts, or "Right side" before the switch; muted by
 // the same bell. Spoken a moment after the tones, so the two do not overlap.
-function speak(text) {
+// The line waiting to be said, cleared by a newer one or by the player stopping, so nothing is said after it closes.
+let pendingSpeech = null;
+function speak(text, delay = 500) {
   try {
     const synth = window.speechSynthesis;
     if (!soundOn() || !synth || !text) return;
@@ -105,10 +107,14 @@ function speak(text) {
     utterance.lang = lang;
     const voice = synth.getVoices().find((item) => item.lang?.replace("_", "-") === lang) ?? synth.getVoices().find((item) => item.lang?.startsWith(lang.slice(0, 2)));
     if (voice) utterance.voice = voice;
-    setTimeout(() => synth.speak(utterance), 500);
+    clearTimeout(pendingSpeech);
+    pendingSpeech = setTimeout(() => synth.speak(utterance), delay);
   } catch { /* no speech */ }
 }
-const quiet = () => { try { window.speechSynthesis?.cancel(); } catch { /* no speech */ } };
+const quiet = () => {
+  clearTimeout(pendingSpeech);
+  try { window.speechSynthesis?.cancel(); } catch { /* no speech */ }
+};
 function announce(coming) {
   if (!coming || coming.type !== "work") return;
   if (coming.side === 2) return speak(t("speakRight"));
@@ -118,7 +124,10 @@ function announce(coming) {
   const name = t(`recovery_${coming.id}`).toLocaleLowerCase();
   const side = coming.side === 1 ? `, ${t("recoverySide_1").toLocaleLowerCase()}` : "";
   const amount = coming.reps ? t("speakReps", { reps: coming.reps }) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds });
-  speak(`${t("speakNext", { name })}${side}. ${amount}.`);
+  // The first exercise of the last of several rounds says so first.
+  const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
+  const lastRound = rounds > 1 && coming.round === rounds && !player.list.slice(0, player.list.indexOf(coming)).some((item) => item.type === "work" && item.round === rounds);
+  speak(`${lastRound ? `${t("speakLastRound")} ` : ""}${t("speakNext", { name })}${side}. ${amount}.`);
 }
 
 // The change into the step now showing: a start into work, a stop out of it.
@@ -162,6 +171,7 @@ function showStep() {
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
   player.ticked = null;
+  player.said = null;
   tick();
 }
 
@@ -181,6 +191,13 @@ function tick() {
   if (player.paused || !player.list.length || player.list[player.index]?.reps) return;
   const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
   byId("recoveryPlayerClock").textContent = formatDuration(left);
+  // During a timed exercise of 30 s or more the voice says the half, and from 15 s the last five; once each.
+  const step = player.list[player.index];
+  if (step.type === "work" && player.said !== left) {
+    if (step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t("speakHalf"), 0);
+    else if (step.seconds >= 15 && left === 5) speak(t("speakLastFive"), 0);
+    player.said = left;
+  }
   // The last three seconds of a pause or a hold tick, once each.
   if (left > 0 && left <= 3 && player.ticked !== left) {
     player.ticked = left;
