@@ -14,6 +14,7 @@ import { infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { kindLabel } from "./library.js";
 import { workoutProfile } from "./workouts.js";
+import { planCalendar, plannedMinutes } from "../calendar.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -376,6 +377,40 @@ function todayCard(result, scored, fatigue, entries) {
   return card;
 }
 
+// The planned days to the calendar: the training time, remembered, and a button downloading them as an .ics file.
+function calendarRow(result) {
+  const row = node("div", { class: "training-calendar" });
+  const label = node("label", { class: "training-calendar-time" });
+  const input = node("input", { type: "time", step: "300" });
+  input.value = /^dd:dd$/.test(savedDefaults().calendarTime ?? "") ? savedDefaults().calendarTime : "18:00";
+  input.addEventListener("change", () => {
+    if (/^dd:dd$/.test(input.value)) saveDefaults({ calendarTime: input.value });
+  });
+  label.append(node("span", {}, t("calendarTime")), input);
+  const button = node("button", { type: "button", class: "outline-button" }, t("calendarDownload"));
+  button.addEventListener("click", () => {
+    const { plan, sport } = result;
+    const text = planCalendar({
+      days: result.days,
+      sport,
+      time: /^dd:dd$/.test(input.value) ? input.value : "18:00",
+      title: (type) => `${sportLabel(sport)} · ${t(`scorePlanned_${type}`)}`,
+      description: (type) => plannedText(plan, sport, type, { detail: true }),
+      minutes: (type) => plannedMinutes(plan, type),
+    });
+    const url = URL.createObjectURL(new Blob([text], { type: "text/calendar;charset=utf-8" }));
+    const link = node("a", { href: url, download: `plan-${sport}-${today()}.ics` });
+    document.body.append(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1000);
+  });
+  row.append(label, button, node("span", { class: "field-note training-calendar-note" }, t("calendarNote")));
+  return row;
+}
+
 // The weeks ahead as the plan would go: the longer workouts' time, the intervals, the lighter weeks and FTP tests.
 function outlookCard(plan) {
   const card = node("section", { class: "card training-outlook" });
@@ -534,6 +569,7 @@ function render() {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
     drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render) });
+    if (result.days.length) week.append(calendarRow(result));
   }
 }
 

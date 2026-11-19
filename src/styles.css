@@ -911,6 +911,11 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-row.is-done .diary-plan-text { text-decoration: none; }
 .diary-plan-row.is-missed .diary-plan-text { color: var(--muted); font-style: italic; }
 .diary-plan-day { color: var(--muted); font-size: 13px; }
+.training-calendar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.training-calendar .outline-button { margin-top: 0; }
+.training-calendar-time { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.training-calendar-time input { height: 32px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.training-calendar-note { flex-basis: 100%; margin: 0; }
 .diary-plan-toggle { margin: 0; }
 .settings-days { margin-top: 4px; }
 .settings-days-label { display: block; margin-top: 12px; }
