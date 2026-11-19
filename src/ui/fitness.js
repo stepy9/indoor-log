@@ -13,7 +13,7 @@ import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
-import { infoHint, renderInfo } from "./info.js";
+import { infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
@@ -71,13 +71,7 @@ function save(patch) {
 function tile(label, value, note = "", className = "", info = "", tones = []) {
   const element = node("div", { class: `diary-tile ${className}` });
   element.append(node("span", { class: "diary-tile-label" }, label), node("span", { class: "diary-tile-value" }, value));
-  if (info) {
-    const hint = node("span", { class: "tile-info", tabindex: "0", role: "button", "aria-label": info }, "i");
-    const box = node("span", { class: "tile-info-text", role: "tooltip" });
-    renderInfo(box, info, tones);
-    hint.append(box);
-    element.append(hint);
-  }
+  if (info) element.append(infoHint(info, tones));
   if (note) element.append(node("span", { class: "diary-tile-change" }, note));
   return element;
 }

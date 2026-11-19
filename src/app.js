@@ -661,9 +661,10 @@ function renderLaps(laps, sport) {
   const rows = laps.map((lap, index) => {
     const row = document.createElement("tr");
     row.className = `is-${lap.intensity}`;
-    row.append(...columns.map(([, cell]) => {
+    row.append(...columns.map(([title, cell]) => {
       const content = cell(lap, index);
       const td = document.createElement("td");
+      td.dataset.label = title;
       if (content instanceof Node) td.append(content);
       else td.textContent = content;
       return td;

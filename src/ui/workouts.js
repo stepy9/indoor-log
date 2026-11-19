@@ -164,8 +164,10 @@ function open({ name, steps, note, taken }, onSave) {
         moves.append(button);
       }
       const cells = [moves, String(index + 1), formatDuration(start), length, resistance, target, type, remove];
-      row.append(...cells.map((content) => {
-        const cell = el("td");
+      // Each cell is named, so the phone's card can put the name above the field.
+      const labels = ["", "", t("segmentStart"), t("segmentDuration"), t("workoutResistance"), t("segmentTarget"), t("lapType"), ""];
+      row.append(...cells.map((content, column) => {
+        const cell = el("td", { "data-label": labels[column] });
         if (content instanceof Node) cell.append(content);
         else cell.textContent = content;
         return cell;

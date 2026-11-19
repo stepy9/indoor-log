@@ -34,7 +34,23 @@ export function infoHint(text = "", tones = []) {
   const box = Object.assign(document.createElement("span"), { className: "tile-info-text" });
   box.setAttribute("role", "tooltip");
   hint.append(box);
+  let current = text, currentTones = tones;
+  // On a phone a tap opens the explanation in the sheet from the bottom, as the other explanations do, headed by the
+  // card's title; a tooltip there would run off the screen. The settings' ⓘ (withTip) opens its own.
+  hint.addEventListener("click", (event) => {
+    if (!matchMedia("(max-width: 640px)").matches || hint.classList.contains("settings-tip")) return;
+    event.preventDefault();
+    hint.blur();
+    const box = hint.closest(".diary-tile, .card, section, dialog");
+    const heading = box?.querySelector("h2, h3, h4, .diary-tile-label, .field-label, .chart-title, .info-title, .panel-title, strong")?.cloneNode(true);
+    heading?.querySelectorAll(".tile-info").forEach((inner) => inner.remove());
+    // A card titled by its select (the trend's metric) is headed by the chosen option.
+    const title = heading?.textContent.trim() || box?.querySelector("select")?.selectedOptions[0]?.text || "";
+    openInfoSheet(title, current, currentTones);
+  });
   hint.set = (value, valueTones = []) => {
+    current = value;
+    currentTones = valueTones;
     hint.hidden = !value;
     hint.setAttribute("aria-label", value);
     if (value) renderInfo(box, value, valueTones);
@@ -65,10 +81,10 @@ function sheet() {
 }
 
 // The explanation in the sheet from the bottom, as a phone shows it.
-export function openInfoSheet(heading, text) {
+export function openInfoSheet(heading, text, tones = []) {
   const dialog = sheet();
   document.getElementById("infoDialogTitle").textContent = heading;
-  renderInfo(document.getElementById("infoDialogText"), text);
+  renderInfo(document.getElementById("infoDialogText"), text, tones);
   dialog.showModal();
 }
 

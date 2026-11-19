@@ -396,8 +396,9 @@ function trainersBlock(sport) {
     const actions = node("span", { class: "trainer-actions" });
     actions.append(toggle, remove);
     const row = node("tr");
-    row.append(...[name, levels, usual, actions].map((control) => {
-      const cell = node("td");
+    const labels = [t("trainerName"), t("trainerLevels"), t("trainerDefault"), ""];
+    row.append(...[name, levels, usual, actions].map((control, column) => {
+      const cell = node("td", { "data-label": labels[column] });
       cell.append(control);
       return cell;
     }));
