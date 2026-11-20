@@ -408,6 +408,20 @@ export function setupExercises(beforeOpen = () => {}) {
     const level = strengthSession(strengthLevel(strengthLog(), new Date().toISOString().slice(0, 10)).steps);
     byId("exercisesStrength").replaceChildren(...level.doses.map((entry) => item({ ...entry, sets: ["week"] }, "exercisesStrengthSet")));
   };
+  // One group at a time, behind tabs; the last one picked comes back on the next opening.
+  const tabs = [...byId("exercisesTabs").querySelectorAll("[data-exercises-tab]")];
+  const show = (name) => {
+    for (const button of tabs) {
+      const on = button.dataset.exercisesTab === name;
+      button.setAttribute("aria-pressed", String(on));
+      byId(`exercises${button.dataset.exercisesTab}`).hidden = !on;
+    }
+    try { localStorage.setItem("exercisesTab", name); } catch {}
+  };
+  for (const button of tabs) button.addEventListener("click", () => { show(button.dataset.exercisesTab); dialog.scrollTop = 0; });
+  let saved = null;
+  try { saved = localStorage.getItem("exercisesTab"); } catch {}
+  show(tabs.some((button) => button.dataset.exercisesTab === saved) ? saved : "Warmup");
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
     render();
