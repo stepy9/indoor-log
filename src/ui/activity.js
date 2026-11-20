@@ -52,7 +52,10 @@ function tiles(entry, settings) {
   const beats = (value) => (Number.isFinite(value) ? [unit(value, "bpm"), max > 0 ? `${displayNumber((value / max) * 100)} %` : ""].filter(Boolean).join(" · ") : null);
   const benefit = primaryBenefit(entry, settings);
   const effect = aerobicEffect(entry, settings);
+  const feelFaces = { 0: "😫", 25: "🙁", 50: "😐", 75: "🙂", 100: "😄" };
   const list = [
+    [t("feel"), summary.workoutFeel != null ? `${feelFaces[summary.workoutFeel] ?? ""} ${t(`feel${summary.workoutFeel}`)}`.trim() : null],
+    [t("rpe"), summary.workoutRpe ? `${summary.workoutRpe} – ${t(`rpe${summary.workoutRpe}`)}` : null],
     [t("lapTime"), formatDuration(summary.timerSeconds)],
     [t("lapDistanceColumn"), summary.distance > 0 ? unit(summary.distance / 1000, "km", 2) : null],
     [metricName("pace", sport), paceText(paceFrom(summary.timerSeconds > 0 ? summary.distance / summary.timerSeconds : null, sport), sport)],
@@ -228,14 +231,19 @@ function render() {
   const index = view.entries.findIndex((other) => other.id === entry.id);
   byId("activityNewer").disabled = index <= 0;
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
-  const stretch = el("section", "card");
-  try {
-    stretch.append(el("span", "field-label", t("activityStretch")), stretchBlock(entry, settings));
-  } catch {
-    stretch.hidden = true;
+  // The stretching after a row sits in the head, under the date: a tick once done, the button to start it otherwise.
+  const extras = byId("activityExtras");
+  extras.replaceChildren();
+  if (entry.sport === "rowing") {
+    try {
+      const block = stretchBlock(entry, settings);
+      block.querySelector(":scope > p.field-note:last-child")?.remove();
+      extras.append(block);
+    } catch {}
   }
+  extras.hidden = !extras.childElementCount;
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), entry.sport === "rowing" ? stretch : null,
+    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
   ].filter(Boolean));
 }
 
