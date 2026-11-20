@@ -10,7 +10,7 @@ import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.
 import { hrvDays, hrvOn } from "../hrv.js";
 import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
-import { infoHint } from "./info.js";
+import { hoverTip, infoHint } from "./info.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { goalFor, yearLine, yearProgress } from "../year-goal.js";
@@ -18,8 +18,7 @@ import { goalFor, yearLine, yearProgress } from "../year-goal.js";
 // A workout's score as a small coloured number: green from 80, amber from 50, red below.
 export function scoreBadge(score, title = "") {
   const badge = Object.assign(document.createElement("span"), { className: `score-badge is-${score >= 80 ? "good" : score >= 50 ? "fair" : "poor"}`, textContent: String(score) });
-  badge.title = title || t("scoreTitle", { score });
-  return badge;
+  return hoverTip(badge, title || t("scoreTitle", { score }));
 }
 
 
@@ -126,7 +125,7 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
     const swapped = item.status === "planned" && !excuse ? swappedWith?.(item.day) : null;
     // A day ridden drawn by the caller when it can (its workouts opening their detail), else as text.
     if (item.status === "done" && doneCell) row.append(doneCell(item.day));
-    else row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text, title: swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : "" }));
+    else row.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text }), swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : ""));
     // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness),
     // in a column of its own at the row's end, empty on the days ridden, so the links line up.
     if (onExcuse) {
@@ -704,7 +703,7 @@ function renderCalendar(range, entries) {
     const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
     // Strength work done that day, from the Training tab.
-    if (savedDefaults().strengthLog?.[day]) cell.append(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `💪 ${t("strengthDay")}`, title: t("strengthDoneDay") }));
+    if (savedDefaults().strengthLog?.[day]) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `💪 ${t("strengthDay")}` }), t("strengthDoneDay")));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {

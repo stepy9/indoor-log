@@ -10,7 +10,7 @@ import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./sco
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
-import { infoHint } from "./info.js";
+import { hoverTip, infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith } from "./excuse.js";
 import { openSwap } from "./swap.js";
 import { kindLabel } from "./library.js";
@@ -148,7 +148,7 @@ function daysWorkouts(entries, day, sport) {
   const cell = node("span", { class: "diary-plan-text training-rides" });
   for (const entry of entries) {
     const name = entry.name.replace(/^Kinomap - /, "");
-    const open = node("button", { type: "button", class: "link-button training-summary-ride", title: name });
+    const open = node("button", { type: "button", class: "link-button training-summary-ride" });
     const km = displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
     const kind = /ftp/i.test(entry.name ?? "") ? t("scoreAs_ftpTest") : kindLabel(workoutKind(entry), sport);
     open.append(node("span", { class: "training-summary-name" }, name), node("span", { class: "training-summary-meta" }, `${km} km · ${kind}`));
@@ -156,7 +156,7 @@ function daysWorkouts(entries, day, sport) {
     cell.append(open);
   }
   const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(entries.some((entry) => entry.stretched) ? [["🧘", t("recoveryStretched")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
-  for (const [icon, title] of extras) cell.append(node("span", { class: "training-summary-extra", title }, icon));
+  for (const [icon, title] of extras) cell.append(hoverTip(node("span", { class: "training-summary-extra" }, icon), title));
   return cell;
 }
 

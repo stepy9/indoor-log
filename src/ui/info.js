@@ -26,6 +26,18 @@ export function renderInfo(box, text, tones = []) {
   }
 }
 
+// The app's own tooltip on an element instead of the browser's title: the text in the box the ⓘ use, on hover or focus.
+export function hoverTip(element, text) {
+  if (!text) return element;
+  element.classList.add("has-tip");
+  if (element.tabIndex < 0 && element.tagName !== "BUTTON") element.tabIndex = 0;
+  const box = Object.assign(document.createElement("span"), { className: "tile-info-text hover-tip-text", textContent: text });
+  box.setAttribute("role", "tooltip");
+  element.setAttribute("aria-label", text);
+  element.append(box);
+  return element;
+}
+
 // An ⓘ whose tooltip, opened by hover or a tap, lays out text as renderInfo does; set() changes the text later,
 // an empty text hiding the ⓘ.
 export function infoHint(text = "", tones = []) {
