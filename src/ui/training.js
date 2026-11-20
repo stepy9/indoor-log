@@ -1,5 +1,4 @@
 import { strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
-import { openActivity } from "./activity.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
