@@ -465,6 +465,23 @@ export function strengthSession(level = 0) {
   return { steps: list, minutes: Math.round(total / 60), doses, rounds };
 }
 
+// What a logged day's strength session or warm-up held: { rounds, items: [{ id, reps | seconds, sides }] }. The log keeps
+// the exercises (or true, before it did); the doses follow from the level the day was done at, the warm-up's times
+// from its set (the full one by its length). log: the strength log, for its level.
+export function sessionDetail(kind, logged, day, log = {}) {
+  if (!logged) return null;
+  if (kind === "strength") {
+    const before = Object.fromEntries(Object.entries(log).filter(([key]) => key !== day));
+    const session = strengthSession(strengthLevel(before, day).steps);
+    const ids = Array.isArray(logged) ? logged : session.doses.map((dose) => dose.id);
+    const items = ids.map((id) => ({ ...(session.doses.find((dose) => dose.id === id) ?? { id }), sides: exercises[id]?.sides ?? 1 }));
+    return { rounds: session.rounds, items };
+  }
+  const ids = Array.isArray(logged) ? logged : warmupBefore("steady", day).exercises;
+  const { seconds = {} } = ids.length > warmups.short.core.length + warmups.short.take ? warmups.full : warmups.short;
+  return { rounds: 1, items: ids.map((id) => ({ id, seconds: seconds[id] ?? exercises[id]?.seconds, sides: exercises[id]?.sides ?? 1 })) };
+}
+
 function keyNoon(key) {
   return Date.parse(`${key}T12:00:00Z`);
 }

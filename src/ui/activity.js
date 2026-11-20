@@ -12,8 +12,8 @@ import { partsText } from "./training.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { perKgText, settingsFor } from "./settings.js";
-import { stretchBlock, strengthLog, warmupLog } from "./recovery.js";
-import { afterWorkout, strengthLevel, strengthSession, warmupBefore } from "../recovery.js";
+import { sessionLines, stretchBlock } from "./recovery.js";
+import { afterWorkout } from "../recovery.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 // The day stretching after a row came into the app.
@@ -405,14 +405,17 @@ function intensityCard(entry, settings) {
   return card;
 }
 
-// A chip for a set of exercises done around the row; hovering it, or tapping it on a phone, lists the exercises.
-function sessionChip(label, ids, done) {
+// A chip for a set of exercises done around the row; hovering it, or tapping it on a phone, lists the exercises:
+// their names, or lines given with the repeats or times, under the rounds when more than one.
+function sessionChip(label, ids, done, { lines = null, rounds = 1 } = {}) {
   const chip = el("span", `activity-chip${done ? " is-done" : ""}`);
   chip.tabIndex = 0;
   chip.append(el("span", "", `${done ? "✓ " : ""}${label}`));
-  if (ids.length) {
+  const items = lines ?? ids.map((id) => t(`recovery_${id}`));
+  if (items.length) {
     const list = el("ul", "activity-chip-list");
-    list.append(...ids.map((id) => el("li", "", t(`recovery_${id}`))));
+    if (rounds > 1) list.append(el("li", "activity-chip-rounds", t("sessionRounds", { rounds })));
+    list.append(...items.map((text) => el("li", "", text)));
     chip.append(list);
   }
   return chip;
@@ -426,12 +429,11 @@ function renderSessions(entry, settings) {
   box.replaceChildren();
   if (entry.sport === "rowing") {
     const day = new Date(entry.startMs).toISOString().slice(0, 10);
-    // Logs since the exercises are kept give them; older ones (true) fall back to the set the day would have had.
-    const kept = (value, fallback) => (Array.isArray(value) ? value : fallback());
-    const warmed = warmupLog()[day];
-    if (warmed) box.append(sessionChip(t("exercisesWarmup"), kept(warmed, () => warmupBefore(workoutKind(entry) === "intervals" ? "intervals" : "steady", day).exercises), true));
-    const strong = strengthLog()[day];
-    if (strong) box.append(sessionChip(t("exercisesStrength"), kept(strong, () => strengthSession(strengthLevel(strengthLog(), day).steps).doses.map((dose) => dose.id)), true));
+    // Each exercise with its repeats or time, the strength's rounds over them.
+    const warmed = sessionLines("warmup", day);
+    if (warmed) box.append(sessionChip(t("exercisesWarmup"), [], true, warmed));
+    const strong = sessionLines("strength", day);
+    if (strong) box.append(sessionChip(t("exercisesStrength"), [], true, strong));
     const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day });
     if (entry.stretched) box.append(sessionChip(t("exercisesStretch"), entry.stretchedExercises ?? plan.exercises, true));
     // Stretching came in on 18 November 2026: an activity before it is not offered one it could not have had.

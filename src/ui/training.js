@@ -1,4 +1,4 @@
-import { strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
+import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -155,7 +155,9 @@ function daysWorkouts(entries, day, sport) {
     open.addEventListener("click", () => openActivity(entry));
     cell.append(open);
   }
-  const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(entries.some((entry) => entry.stretched) ? [["🧘", t("recoveryStretched")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
+  const stretched = entries.filter((entry) => entry.stretched);
+  const stretchTip = stretched.length ? [t("recoveryStretched"), ...stretched.flatMap((entry) => (entry.stretchedExercises ?? []).map((id) => `· ${t(`recovery_${id}`)}`))].join("\n") : "";
+  const extras = [...(warmupLog()[day] ? [["🤸", sessionTip("warmup", day)]] : []), ...(stretchTip ? [["🧘", stretchTip]] : []), ...(strengthLog()[day] ? [["💪", sessionTip("strength", day)]] : [])];
   for (const [icon, title] of extras) cell.append(hoverTip(node("span", { class: "training-summary-extra" }, icon), title));
   return cell;
 }

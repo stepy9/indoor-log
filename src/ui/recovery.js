@@ -2,7 +2,7 @@
 // work, each exercise with its dose, how-to and, where it has one, a figure moving between its two poses in time with
 // the breath. A button runs the set step by step, full screen on a phone: a countdown per exercise and side, a short
 // rest between, and at the end the set is marked done.
-import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, sessionDetail, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { primaryBenefit } from "../fitness.js";
@@ -436,6 +436,24 @@ export function setupExercises(beforeOpen = () => {}) {
 
 // The days strength work was done, kept with the synced settings: { "YYYY-MM-DD": true }.
 export const strengthLog = () => savedDefaults().strengthLog ?? {};
+
+// A day's strength session or warm-up as lines: each exercise with its repeats or time (per side where it has two).
+// { rounds, lines } or null when not done that day.
+export function sessionLines(kind, day) {
+  const detail = sessionDetail(kind, (kind === "strength" ? strengthLog() : warmupLog())[day], day, strengthLog());
+  if (!detail) return null;
+  const dose = (item) => item.reps ? `${item.reps}×` : item.seconds ? `${item.seconds} s` : "";
+  const lines = detail.items.map((item) => [t(`recovery_${item.id}`), [dose(item), item.sides > 1 && dose(item) ? t("sessionPerSide") : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · "));
+  return { rounds: detail.rounds, lines };
+}
+
+// The same for a tooltip: its title (with the rounds when more than one), then the exercises one a line.
+export function sessionTip(kind, day) {
+  const session = sessionLines(kind, day);
+  if (!session) return "";
+  const title = t(kind === "strength" ? "strengthDoneDay" : "warmupDone");
+  return [session.rounds > 1 ? `${title} · ${t("sessionRounds", { rounds: session.rounds })}` : title, ...session.lines.map((line) => `· ${line}`)].join("\n");
+}
 
 // The strength session for the Training tab's day, when today asks for one (twice a week, an easy day, not the
 // goal's week): a button opening it in the player, how many this week; or that today's is done. null otherwise.
