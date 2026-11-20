@@ -248,10 +248,14 @@ function renderSessions(entry, settings) {
   box.replaceChildren();
   if (entry.sport === "rowing") {
     const day = new Date(entry.startMs).toISOString().slice(0, 10);
-    if (warmupLog()[day]) box.append(sessionChip(t("exercisesWarmup"), warmupBefore(workoutKind(entry) === "intervals" ? "intervals" : "steady", day).exercises, true));
-    if (strengthLog()[day]) box.append(sessionChip(t("exercisesStrength"), strengthSession(strengthLevel(strengthLog(), day).steps).doses.map((dose) => dose.id), true));
+    // Logs since the exercises are kept give them; older ones (true) fall back to the set the day would have had.
+    const kept = (value, fallback) => (Array.isArray(value) ? value : fallback());
+    const warmed = warmupLog()[day];
+    if (warmed) box.append(sessionChip(t("exercisesWarmup"), kept(warmed, () => warmupBefore(workoutKind(entry) === "intervals" ? "intervals" : "steady", day).exercises), true));
+    const strong = strengthLog()[day];
+    if (strong) box.append(sessionChip(t("exercisesStrength"), kept(strong, () => strengthSession(strengthLevel(strengthLog(), day).steps).doses.map((dose) => dose.id)), true));
     const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day });
-    if (entry.stretched) box.append(sessionChip(t("exercisesStretch"), plan.exercises, true));
+    if (entry.stretched) box.append(sessionChip(t("exercisesStretch"), entry.stretchedExercises ?? plan.exercises, true));
     else {
       try {
         const button = stretchBlock(entry, settings).querySelector("button");

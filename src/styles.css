@@ -1910,10 +1910,10 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .activity-chart-label { font-size: 26px; }
 }
 .activity-sessions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; align-self: center; }
-.activity-chip { position: relative; display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-size: 13px; font-weight: 600; cursor: default; white-space: nowrap; }
+.activity-chip { position: relative; display: inline-flex; align-items: center; box-sizing: border-box; height: 38px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); font-size: 14px; font-weight: 600; cursor: default; white-space: nowrap; }
 .activity-chip.is-done { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, var(--line-strong)); background: var(--success-soft); }
 .activity-sessions[hidden] { display: none; }
-.activity-chip.is-action { cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+.activity-chip.is-action { cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; }
 .activity-chip.is-action:hover { border-color: var(--accent); }
 .activity-chip-list { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; display: none; min-width: 200px; margin: 0; padding: 8px 12px 8px 28px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); font-weight: 400; white-space: normal; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
 .activity-chip-list li { padding: 2px 0; }

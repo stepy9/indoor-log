@@ -341,6 +341,8 @@ export function stretchBlock(entry, settings) {
     intro: { title: t("recoveryTitle", { minutes: plan.minutes }), note, exercises: plan.exercises.map((id) => ({ id })) },
     onDone: async () => {
       entry.stretched = Date.now();
+      // The exercises done, so the activity's detail lists the very set.
+      entry.stretchedExercises = plan.exercises;
       await saveEntries([entry]).catch(() => {});
       window.dispatchEvent(new Event("settings-change"));
     },
@@ -372,7 +374,8 @@ export function warmupBlock(type, day = null, today = null) {
       if (!today || day !== today) return;
       // Kept to the last few weeks, so the synced settings do not grow.
       const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
-      saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: true } });
+      // The day keeps the exercises done (true in logs from before), for the activity's detail.
+      saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: plan.exercises } });
       window.dispatchEvent(new Event("settings-change"));
     },
     intro: { title: t("warmupStart", { minutes: plan.minutes }), note: after, exercises: plan.exercises.map((id) => ({ id, seconds: plan.seconds[id] })) },
@@ -455,7 +458,7 @@ export function strengthBlock(today, { type = null, taper = null } = {}) {
     doneNote: t("strengthDoneNote"),
     intro: { title: t("strengthStart", { minutes: session.minutes }), note: t("strengthIntro", { rounds: session.rounds }), exercises: session.doses },
     onDone: () => {
-      saveDefaults({ strengthLog: { ...strengthLog(), [today]: true } });
+      saveDefaults({ strengthLog: { ...strengthLog(), [today]: session.doses.map((dose) => dose.id) } });
       window.dispatchEvent(new Event("settings-change"));
     },
   }));
