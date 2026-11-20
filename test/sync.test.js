@@ -69,6 +69,13 @@ test("the excuses emptied later win over filled ones, as removing the last is on
   assert.deepEqual(Object.keys(mergeStates(state([], {}, emptied), state([], {}, refilled)).settings.defaults.trainingExcuses), ["2026-11-20"]);
 });
 
+test("the strength and warm-up logs keep the days done on either device", () => {
+  const phone = { defaults: { strengthLog: { "2026-11-19": ["squat"] } }, changedAt: { strengthLog: 1000 } };
+  const desktop = { defaults: { strengthLog: { "2026-11-16": ["plank"] } }, changedAt: { strengthLog: 2000 } };
+  const merged = mergeStates(state([], {}, phone), state([], {}, desktop)).settings.defaults.strengthLog;
+  assert.deepEqual(Object.keys(merged).sort(), ["2026-11-16", "2026-11-19"]);
+});
+
 test("changesFor tells each side what to write and delete", () => {
   const here = state([activity("a", { changedAt: 1000 }), activity("c", { day: 3 })]);
   const there = state([activity("a", { changedAt: 2000 }), activity("b", { day: 2 })], { c: 5000 });

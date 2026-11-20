@@ -58,6 +58,7 @@ const blank = (value) => value == null || (typeof value === "object" && Object.k
 // so a device that has not set anything up cannot wipe what another has. The excuses are the exception: removing
 // the last one empties them on purpose, so there the later change wins, blank or not.
 const clearable = new Set(["trainingExcuses"]);
+const dayLogs = new Set(["strengthLog", "warmupLog"]);
 
 // The histories of two sides joined (see history.js), each value now in force set as the one of the joined history.
 // A value without a history comes from the newer side unless it is blank there and filled on the older: as with the
@@ -93,9 +94,11 @@ export function mergeSettings(local, remote) {
     const byTime = clearable.has(key) || blank(here.value) === blank(there.value);
     const pick = byTime ? (there.at > here.at ? there : here) : blank(here.value) ? there : here;
     // The fitness settings from the side changed last, but the histories of both: a change made on either holds.
-    const value = key === "fitness" && !blank(here.value) && !blank(there.value)
+    // The day logs (strength, warm-ups) from both: a session done on either device counts.
+    const both = !blank(here.value) && !blank(there.value);
+    const value = key === "fitness" && both
       ? mergeFitness(pick === here ? there.value : here.value, pick.value)
-      : pick.value;
+      : dayLogs.has(key) && both ? { ...(pick === here ? there.value : here.value), ...pick.value } : pick.value;
     if (value !== undefined) defaults[key] = value;
     changedAt[key] = pick.at;
   }
