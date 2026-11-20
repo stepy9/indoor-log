@@ -1,9 +1,9 @@
 // The activity detail: everything known about one activity, read only, opened from the calendar, the library and
 // wherever else an activity is clicked. Comparing it and editing it are a button away.
-import { bestAverage, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
-import { deleteEntry, listEntries } from "../library.js";
+import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
+import { deleteEntry, listEntries, saveEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
-import { aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
+import { activityLoad, aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
 import { dayKey } from "../diary.js";
 import { hasTraining, planLog, scoreFor } from "./score.js";
 import { scoreBadge } from "./diary.js";
@@ -81,6 +81,7 @@ function tiles(entry, settings) {
     [t("compareAvgCadence"), unit(summary.avgCadence, cadenceUnit(sport))],
     [t("compareCalories"), unit(summary.calories, "kcal")],
     [t("compareWork"), unit(workKilojoules(entry), "kJ")],
+    [t("activityLoad"), loadText(entry, settings)],
     [t("compareBenefit"), benefit ? benefitText(benefit.benefit) : null],
     [t("compareAerobicEffect"), effect ? `${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null],
   ];
@@ -207,18 +208,110 @@ function lapsTable(entry) {
   return card;
 }
 
+// Each activity's best power over a time and best time over a distance, kept while the dialog is open: the records
+// compare one activity against all the earlier ones.
+const bestCache = new Map();
+function cachedBest(entry, key, compute) {
+  const id = `${entry.id}:${key}`;
+  if (!bestCache.has(id)) bestCache.set(id, compute());
+  return bestCache.get(id);
+}
+
+// How the effort stands against the same sport's earlier activities: a personal record (★) when none before beat it,
+// else the best of the last 90 days (☆); null otherwise or with nothing earlier to beat.
+function recordMark(entry, value, key, compute, higherBetter) {
+  if (!Number.isFinite(value)) return null;
+  const earlier = view.entries.filter((other) => other.sport === entry.sport && other.startMs < entry.startMs);
+  if (!earlier.length) return null;
+  const better = (a, b) => (higherBetter ? a > b : a < b);
+  const beats = (list) => list.every((other) => {
+    const theirs = cachedBest(other, key, () => compute(other));
+    return !Number.isFinite(theirs) || !better(theirs, value) && theirs !== value;
+  });
+  if (beats(earlier)) return "record";
+  const recent = earlier.filter((other) => other.startMs >= entry.startMs - 90 * 86_400_000);
+  return recent.length && beats(recent) ? "recent" : null;
+}
+
 function bestEfforts(entry) {
-  const durations = [10, 60, 300, 1200].filter((seconds) => (entry.records?.seconds?.at(-1) ?? 0) >= seconds);
-  const values = durations.map((seconds) => [seconds, bestAverage(entry, "power", seconds)]).filter(([, watts]) => Number.isFinite(watts));
-  if (!values.length) return null;
+  const end = entry.records?.seconds?.at(-1) ?? 0;
+  const powers = [10, 60, 300, 1200].filter((seconds) => end >= seconds).map((seconds) => {
+    const compute = (one) => bestAverage(one, "power", seconds);
+    const watts = cachedBest(entry, `p${seconds}`, () => compute(entry));
+    return { label: formatDuration(seconds), value: unit(watts, "W"), mark: recordMark(entry, watts, `p${seconds}`, compute, true), ok: Number.isFinite(watts) };
+  });
+  const times = (effortDistances[entry.sport] ?? []).filter((meters) => (entry.summary.distance ?? 0) >= meters).map((meters) => {
+    const compute = (one) => (one.records?.distance ? bestTime(one, meters) : null);
+    const seconds = cachedBest(entry, `d${meters}`, () => compute(entry));
+    return { label: meters >= 1000 ? `${displayNumber(meters / 1000, meters % 1000 ? 1 : 0)} km` : `${meters} m`, value: Number.isFinite(seconds) ? formatDuration(seconds) : null, mark: recordMark(entry, seconds, `d${meters}`, compute, false), ok: Number.isFinite(seconds) };
+  });
+  const items = [...powers, ...times].filter((item) => item.ok);
+  if (!items.length) return null;
   const card = el("section", "card");
   const box = el("div", "diary-tiles activity-tiles is-compact");
-  box.append(...values.map(([seconds, watts]) => {
-    const tile = el("div", "diary-tile");
-    tile.append(el("span", "diary-tile-label", formatDuration(seconds)), el("span", "diary-tile-value", unit(watts, "W")));
+  box.append(...items.map((item) => {
+    const tile = el("div", `diary-tile${item.mark ? ` is-${item.mark}` : ""}`);
+    const value = el("span", "diary-tile-value", item.value);
+    if (item.mark) {
+      value.append(el("span", "activity-record", item.mark === "record" ? " ★" : " ☆"));
+      tile.title = t(item.mark === "record" ? "activityRecord" : "activityRecent");
+    }
+    tile.append(el("span", "diary-tile-label", item.label), value);
     return tile;
   }));
   card.append(el("span", "field-label", t("activityBest")), box);
+  if (items.some((item) => item.mark)) card.append(el("p", "field-note", t("activityRecordNote")));
+  return card;
+}
+
+// The activity's load and its share of the week's (Monday to Sunday, every sport), as the form curve counts it.
+function loadText(entry, settings) {
+  const own = activityLoad(entry, settings);
+  if (!own) return null;
+  const day = dayKey(entry.startMs, zone);
+  const noon = Date.parse(`${day}T12:00:00Z`);
+  const monday = new Date(noon - ((new Date(noon).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+  const sunday = new Date(Date.parse(`${monday}T12:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
+  const week = view.entries.filter((other) => {
+    const key = dayKey(other.startMs, zone);
+    return key >= monday && key <= sunday;
+  }).reduce((sum, other) => sum + (other.id === entry.id ? own.load : activityLoad(other, settings)?.load ?? 0), 0);
+  const share = week > 0 ? Math.round((own.load / week) * 100) : null;
+  return [displayNumber(own.load), share != null && share < 100 ? t("activityLoadShare", { share }) : null].filter(Boolean).join(" · ");
+}
+
+// A note of the user's own on the activity, kept with it in the library (the FIT has no place for one): read as
+// text, and changed in place with its own Save, the one thing the detail edits besides the converter.
+function noteCard(entry) {
+  const card = el("section", "card activity-note");
+  const head = el("div", "panel-title-row");
+  const edit = el("button", "link-button", t(entry.note ? "activityNoteEdit" : "activityNoteAdd"));
+  edit.type = "button";
+  head.append(el("span", "field-label", t("activityNote")), edit);
+  const text = el("p", "activity-note-text", entry.note ?? "");
+  text.hidden = !entry.note;
+  card.append(head, text);
+  edit.addEventListener("click", () => {
+    const area = Object.assign(document.createElement("textarea"), { className: "activity-note-input", value: entry.note ?? "", rows: 3, maxLength: 2000 });
+    area.placeholder = t("activityNotePlaceholder");
+    const actions = el("div", "activity-note-actions");
+    const save = el("button", "export-button", t("save"));
+    const cancel = el("button", "outline-button", t("cancel"));
+    save.type = cancel.type = "button";
+    actions.append(cancel, save);
+    edit.hidden = true;
+    text.hidden = true;
+    card.append(area, actions);
+    area.focus();
+    cancel.addEventListener("click", () => card.replaceWith(noteCard(entry)));
+    save.addEventListener("click", async () => {
+      const note = area.value.trim();
+      if (note) entry.note = note;
+      else delete entry.note;
+      await saveEntries([entry]).catch(() => {});
+      card.replaceWith(noteCard(entry));
+    });
+  });
   return card;
 }
 
@@ -356,7 +449,7 @@ function render() {
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
   renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), planCard(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
+    tiles(entry, settings), planCard(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
   ].filter(Boolean));
 }
 
@@ -385,6 +478,7 @@ function close() {
 }
 
 export async function openActivity(entry) {
+  bestCache.clear();
   view.entries = await listEntries();
   // The newest copy from the library, so an edit since the click shows.
   view.entry = view.entries.find((other) => other.id === entry.id) ?? entry;
