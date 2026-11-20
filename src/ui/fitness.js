@@ -10,7 +10,7 @@ import { sleepText } from "./diary.js";
 import { bodyHistory, goalOn, addFtpRecord, currentFtp, dismiss, dismissed, openSettings, perKgText, setByHand, setMaxHeartRate, settingsFor, typedMaxHeartRate } from "./settings.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
-import { excuses } from "./excuse.js";
+import { excuses, swaps } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
 import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
@@ -217,10 +217,12 @@ export function trainingPlan(entries, chosen = "all") {
   plan.kinomap = pickWorkouts(kinomapWorkouts(settings, sport), plan.intervals);
   const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
   const excused = excuses();
-  const days = weekPlan(plan, workouts, today(), weekdays, excused);
+  // Workouts swapped by hand between two days trade places.
+  const swapped = swaps(sport);
+  const days = weekPlan(plan, workouts, today(), weekdays, excused, swapped);
   // With the Training section filled in, each day's plan is kept as it stands before the day, to score it by.
   if (hasTraining(settings, sport)) keepPlan(sport, days, plan, today());
-  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays, excused), longest: longestByWeek(workouts, today()) };
+  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays, excused, swapped), workouts, longest: longestByWeek(workouts, today()) };
 }
 
 // The names of the sport's workouts in the Kinomap creator: as typed in the Training section, else the ones made.

@@ -242,7 +242,9 @@ export function trainingDays(workouts, today, chosen = null) {
 // one, the usual workout on the rest. A longer workout already done this week moves to the next week's days.
 // [{ day, type: "long" | "intervals" | "usual" }]
 // Days excused ({ "YYYY-MM-DD": excuse }) are no training days: the workouts go to the others.
-export function weekPlan(plan, workouts, today, days, excused = {}) {
+// swaps: { "YYYY-MM-DD": "YYYY-MM-DD" }, two days whose workouts trade places, laid out first as above; a pair with a
+// day no longer open (ridden, excused, gone by) or with the goal or its opener in it is left as laid out.
+export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) {
   if (!plan || !days.length) return [];
   const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const trained = new Set(workouts.map((workout) => workout.day));
@@ -309,6 +311,12 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
   // The goal itself, and the day before it a short easy ride with a few efforts at the goal's pace, to open up.
   if (goal && types.has(goal)) types.set(goal, "goal");
   if (goal && types.has(addDays(goal, -1))) types.set(addDays(goal, -1), "opener");
+  for (const [one, other] of Object.entries(swaps ?? {})) {
+    const pair = [types.get(one), types.get(other)];
+    if (pair.some((type) => !type || type === "goal" || type === "opener")) continue;
+    types.set(one, pair[1]);
+    types.set(other, pair[0]);
+  }
   return open.map((day) => ({ day, type: types.get(day) }));
 }
 
@@ -316,11 +324,11 @@ export function weekPlan(plan, workouts, today, days, excused = {}) {
 // A day trained on is done, with its workouts; a training day gone by without one is missed; the days ahead
 // carry what weekPlan lays on them. [{ day, status: "done" | "missed" | "planned", type, workouts }]
 // A training day excused and not ridden shows as off ("off" planned ahead, missed gone by, the excuse telling why).
-export function weekChecklist(plan, workouts, today, days, excused = {}) {
+export function weekChecklist(plan, workouts, today, days, excused = {}, swaps = {}) {
   const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
-  const ahead = new Map(weekPlan(plan, workouts, today, days, excused).map((item) => [item.day, item.type]));
+  const ahead = new Map(weekPlan(plan, workouts, today, days, excused, swaps).map((item) => [item.day, item.type]));
   return week.flatMap((day) => {
     const done = workouts.filter((workout) => workout.day === day);
     if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.ftpTest) ? "ftpTest" : done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
@@ -328,6 +336,24 @@ export function weekChecklist(plan, workouts, today, days, excused = {}) {
     if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
     return [{ day, status: "planned", type: excused[day] ? "off" : ahead.get(day) ?? "usual", workouts: [] }];
   });
+}
+
+// What a week laid out breaks of weekPlan's rules, for a swap made by hand: a hard day (intervals, an FTP test) the
+// day after a longer workout, or the 20-minute test sooner than ftpTestGap days after the short one (planned or done).
+// days: [{ day, type }] in order; shortDone: the day the short test was ridden this week, or null.
+// [{ day, rule: "afterLong" | "testGap" }]
+export function planRuleBreaks(days, shortDone = null) {
+  const typeOn = new Map(days.map((item) => [item.day, item.type]));
+  const breaks = [];
+  for (const { day, type } of days) {
+    const hard = type === "intervals" || type?.startsWith("ftpTest");
+    if (hard && typeOn.get(addDays(day, -1)) === "long") breaks.push({ day, rule: "afterLong" });
+    if (type === "ftpTest") {
+      const short = days.find((item) => item.type === "ftpTestShort")?.day ?? shortDone;
+      if (short && (short > day || day < addDays(short, ftpTestGap))) breaks.push({ day, rule: "testGap" });
+    }
+  }
+  return breaks;
 }
 
 // The longest steady workout of each of the last weeks, oldest first, this week last:

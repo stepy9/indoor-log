@@ -84,3 +84,25 @@ export function openExcuse(day, onDone) {
   document.body.append(dialog);
   dialog.showModal();
 }
+
+// Two days of a sport's plan whose workouts trade places, by hand: { sport: { "YYYY-MM-DD": "YYYY-MM-DD" } },
+// kept with the synced settings. A day is in one pair at most.
+export function swaps(sport) {
+  return savedDefaults().trainingSwaps?.[sport] ?? {};
+}
+
+// The day a day's workout is swapped with, or null.
+export function swappedWith(sport, day) {
+  const pairs = swaps(sport);
+  return pairs[day] ?? Object.keys(pairs).find((key) => pairs[key] === day) ?? null;
+}
+
+// Swaps two days (other null: undoes the day's swap). Pairs wholly gone by are dropped.
+export function setSwap(sport, day, other, today) {
+  const pairs = Object.fromEntries(Object.entries(swaps(sport)).filter(([one, two]) => ![one, two].some((key) => key === day || key === other) && (one >= today || two >= today)));
+  if (other) {
+    const [one, two] = [day, other].sort();
+    pairs[one] = two;
+  }
+  saveDefaults({ trainingSwaps: { ...(savedDefaults().trainingSwaps ?? {}), [sport]: pairs } });
+}

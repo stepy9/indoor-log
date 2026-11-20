@@ -11,7 +11,8 @@ import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, s
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { infoHint } from "./info.js";
-import { excuses, excuseText, openExcuse } from "./excuse.js";
+import { excuses, excuseText, openExcuse, swappedWith } from "./excuse.js";
+import { openSwap } from "./swap.js";
 import { kindLabel } from "./library.js";
 import { workoutProfile } from "./workouts.js";
 import { planCalendar, plannedMinutes } from "../calendar.js";
@@ -577,7 +578,7 @@ function render() {
   if (week) {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render) });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day) });
     if (result.days.length) week.append(calendarRow(result));
   }
 }

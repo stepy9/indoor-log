@@ -95,7 +95,8 @@ function plannedWords(plan, sport, type, detail) {
 
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
-export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null } = {}) {
+// onSwap(day), when given, offers a swap on each day planned ahead; swappedWith(day) tells a day already swapped.
+export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -122,7 +123,8 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       row.append(cell);
       row.classList.add("has-score");
     }
-    row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: text }));
+    const swapped = item.status === "planned" && !excuse ? swappedWith?.(item.day) : null;
+    row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text, title: swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : "" }));
     // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness),
     // in a column of its own at the row's end, empty on the days ridden, so the links line up.
     if (onExcuse) {
@@ -131,6 +133,12 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       if (item.status !== "done") {
         const why = Object.assign(document.createElement("button"), { type: "button", className: "link-button diary-plan-why", textContent: excuse ? t("excuseEdit") : t(item.status === "missed" ? "excuseAsk" : "excuseSkip") });
         why.addEventListener("click", () => onExcuse(item.day));
+        // Ahead and not excused, the day's workout can trade places with another day's.
+        if (onSwap && item.status === "planned" && !excuse && result.days.length > 1) {
+          const swap = Object.assign(document.createElement("button"), { type: "button", className: "link-button diary-plan-why", textContent: t("swapAsk") });
+          swap.addEventListener("click", () => onSwap(item.day));
+          cell.append(swap);
+        }
         cell.append(why);
       }
       row.append(cell);

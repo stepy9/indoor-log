@@ -323,3 +323,18 @@ test("an FTP test the taper puts off comes the week after the goal", () => {
   const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", goal: "2026-11-14", prefs: { ftpTestWeeks: 6 } });
   assert.deepEqual(plan.outlook.map((week) => week.ftpTest), [false, false, true, false, false, false]);
 });
+
+test("weekPlan swaps two days' workouts by hand, and planRuleBreaks tells what a swap breaks", async () => {
+  const { planRuleBreaks } = await import("../src/plan.js");
+  const plan = nextStep({ workouts: weeks(4), today: "2026-11-04", prefs: {} });
+  const days = weekPlan(plan, weeks(4), "2026-11-04", [0, 1, 3, 5]);
+  const [one, two] = days.filter((item, index, all) => all.findIndex((other) => other.type === item.type) === index);
+  const swapped = weekPlan(plan, weeks(4), "2026-11-04", [0, 1, 3, 5], {}, { [one.day]: two.day });
+  assert.equal(swapped.find((item) => item.day === one.day).type, two.type);
+  assert.equal(swapped.find((item) => item.day === two.day).type, one.type);
+  // A pair with a day not open is left as laid out.
+  assert.deepEqual(weekPlan(plan, weeks(4), "2026-11-04", [0, 1, 3, 5], {}, { [one.day]: "2026-11-30" }), days);
+  assert.deepEqual(planRuleBreaks([{ day: "2026-11-21", type: "long" }, { day: "2026-11-22", type: "intervals" }]), [{ day: "2026-11-22", rule: "afterLong" }]);
+  assert.deepEqual(planRuleBreaks([{ day: "2026-11-20", type: "ftpTest" }], "2026-11-19"), [{ day: "2026-11-20", rule: "testGap" }]);
+  assert.deepEqual(planRuleBreaks([{ day: "2026-11-20", type: "ftpTest" }], "2026-11-18"), []);
+});
