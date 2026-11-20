@@ -1407,7 +1407,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-summary-fold { display: inline-grid; place-items: center; width: 20px; color: var(--muted); transition: transform .15s; }
 .training-summary[open] .training-summary-fold { transform: rotate(90deg); }
 .training-summary-head .diary-plan-text { color: var(--muted); }
-.training-summary .diary-plan-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.training-rides, .training-summary .diary-plan-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .training-summary-ride { display: flex; flex-direction: column; min-width: 0; color: var(--ink); font-weight: 400; text-align: left; }
 .training-summary-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .training-summary-meta { color: var(--muted); font-size: 12px; }

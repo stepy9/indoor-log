@@ -142,6 +142,24 @@ function workoutsCard(sport, scored) {
   return card;
 }
 
+// A day's workouts as in the calendar: each by its name, opening its detail, ✓ when stretched after it, its distance
+// and kind under; the day's warm-up and strength work by them. For the days ridden, this week's and last.
+function daysWorkouts(entries, day, sport) {
+  const cell = node("span", { class: "diary-plan-text training-rides" });
+  for (const entry of entries) {
+    const name = entry.name.replace(/^Kinomap - /, "");
+    const open = node("button", { type: "button", class: "link-button training-summary-ride", title: name });
+    const km = displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
+    const kind = /ftp/i.test(entry.name ?? "") ? t("scoreAs_ftpTest") : kindLabel(workoutKind(entry), sport);
+    open.append(node("span", { class: "training-summary-name" }, `${name}${entry.stretched ? " ✓" : ""}`), node("span", { class: "training-summary-meta" }, `${km} km · ${kind}`));
+    open.addEventListener("click", () => openActivity(entry));
+    cell.append(open);
+  }
+  const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
+  for (const [icon, title] of extras) cell.append(node("span", { class: "training-summary-extra", title }, icon));
+  return cell;
+}
+
 // Last week day by day, as the week's plan shows this one: each day ridden ticked with its score and workouts,
 // a planned day not ridden with what was planned, a free day left out; under it the week's numbers. Open from
 // Monday until the week's first workout, folded to one line for the rest of the week.
@@ -167,23 +185,10 @@ function summaryCard(scored, workouts, log, sport) {
     mark.setAttribute("aria-label", t(`planStatus_${status}`));
     const score = node("span", { class: "diary-plan-score" });
     for (const item of ridden) if (item.result) score.append(scoreBadge(item.result.score));
-    const km = (entry) => displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
     const text = ridden.length
       ? null
       : excuse ? `${excuseText(excuse)} · ${t("summaryPlanned", { planned: t(`scorePlanned_${planned.type}`) })}` : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
-    // As in the calendar: each workout opens its detail, ✓ when stretched after it; the day's warm-up and strength by it.
-    const textCell = node("span", { class: "diary-plan-text" });
-    if (ridden.length) {
-      for (const item of ridden) {
-        const name = item.entry.name.replace(/^Kinomap - /, "");
-        const open = node("button", { type: "button", class: "link-button training-summary-ride", title: name });
-        open.append(node("span", { class: "training-summary-name" }, `${name}${item.entry.stretched ? " ✓" : ""}`), node("span", { class: "training-summary-meta" }, `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`));
-        open.addEventListener("click", () => openActivity(item.entry));
-        textCell.append(open);
-      }
-    } else textCell.append(text);
-    const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
-    for (const [icon, title] of extras) textCell.append(node("span", { class: "training-summary-extra", title }, icon));
+    const textCell = ridden.length ? daysWorkouts(ridden.map((item) => item.entry), day, sport) : node("span", { class: "diary-plan-text" }, text);
     const whyCell = node("span", { class: "diary-plan-why-cell" });
     if (!ridden.length) {
       const why = node("button", { type: "button", class: "link-button diary-plan-why" }, excuse ? t("excuseEdit") : t("excuseAsk"));
@@ -607,7 +612,7 @@ function render() {
   if (week) {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day) });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day), doneCell: (day) => daysWorkouts(scored.filter((item) => item.day === day).sort((a, b) => a.entry.startMs - b.entry.startMs).map((item) => item.entry), day, sport) });
     // Why the plan holds back this week, under the days.
     const notes = planNotes(plan);
     if (notes.length) {

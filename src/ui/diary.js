@@ -96,7 +96,7 @@ function plannedWords(plan, sport, type, detail) {
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
 // onSwap(day), when given, offers a swap on each day planned ahead; swappedWith(day) tells a day already swapped.
-export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null } = {}) {
+export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null, doneCell = null } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -124,7 +124,9 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
       row.classList.add("has-score");
     }
     const swapped = item.status === "planned" && !excuse ? swappedWith?.(item.day) : null;
-    row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text, title: swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : "" }));
+    // A day ridden drawn by the caller when it can (its workouts opening their detail), else as text.
+    if (item.status === "done" && doneCell) row.append(doneCell(item.day));
+    else row.append(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text, title: swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : "" }));
     // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness),
     // in a column of its own at the row's end, empty on the days ridden, so the links line up.
     if (onExcuse) {
