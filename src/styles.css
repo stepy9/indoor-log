@@ -1940,3 +1940,14 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .activity-note-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .activity-note-actions > button { min-height: 36px; margin: 0; padding: 0 16px; box-shadow: none; }
 .activity-tile-sub { font-size: 12px; line-height: 1.35; }
+/* Every row of the detail's tiles one height, so stepping between activities does not shift the page: values up to
+   two lines, the small line under them up to two, the plan's ticks clipped past what fits. */
+@media (min-width: 641px) {
+  .activity-tiles:not(.is-compact) { grid-auto-rows: 140px; }
+  .activity-tiles:not(.is-compact) > .diary-tile > * { flex-shrink: 0; }
+  .activity-plan-tile .activity-tile-sub { -webkit-line-clamp: 1 !important; }
+  .activity-plan-tile .diary-tile-value { -webkit-line-clamp: 1 !important; }
+  .activity-tiles:not(.is-compact) > .diary-tile { overflow: hidden; }
+  .activity-tiles:not(.is-compact) .diary-tile-value { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+  .activity-tiles:not(.is-compact) .activity-tile-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}

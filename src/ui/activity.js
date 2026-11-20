@@ -357,15 +357,20 @@ function planTile(entry, settings) {
   // tells something: a day without a plan, a workout scored as other than planned, or one not scored.
   if (scored) byId("activityDetailName").append(scoreBadge(scored.score));
   const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
-  const same = planned && scored && planned.type === scored.as;
+  // Either FTP test planned (5 or 20 minutes) is scored as the FTP test: the same thing.
+  const kindOf = (type) => (type?.startsWith("ftpTest") ? "ftpTest" : type);
+  const same = planned && scored && kindOf(planned.type) === kindOf(scored.as);
   const head = planned ? capital(t(`scorePlanned_${planned.type}`)) : t("activityUnplanned");
   const tile = el("div", "diary-tile activity-plan-tile");
   const value = el("span", "diary-tile-value", head);
   tile.append(el("span", "diary-tile-label", t("activityPlan")), value);
-  if (!same) tile.append(el("span", "diary-tile-change activity-tile-sub", scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone")));
+  // A score without the day's plan says so beside what it was scored as, rather than as a line of its own.
+  const approx = scored?.approx ? t("scoreApprox") : null;
+  const sub = [same ? null : scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"), approx].filter(Boolean).join(" · ");
+  if (sub) tile.append(el("span", "diary-tile-change activity-tile-sub", sub));
   if (scored) {
     const list = el("ul", "activity-plan-parts");
-    list.append(...partsText(scored).split(" · ").filter(Boolean).map((part) => {
+    list.append(...partsText(scored).split(" · ").filter((part) => part && part !== approx).map((part) => {
       const mark = part[0];
       return el("li", mark === "✓" ? "is-good" : mark === "✗" ? "is-poor" : mark === "~" ? "is-fair" : "", part);
     }));
