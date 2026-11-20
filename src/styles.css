@@ -1884,7 +1884,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .activity-actions > button:not(.settings-close) { height: 38px; min-height: 38px; margin: 0; align-self: center; border: 1px solid transparent; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: none; }
 .activity-extras { margin-top: 8px; }
 .activity-actions > button.outline-button:not(.settings-close) { border-color: var(--line-strong); }
-.activity-head .activity-step .outline-button { margin: 0; width: 38px; height: 38px; padding: 0; font-size: 22px; line-height: 1; border-radius: 10px; }
+.activity-head .activity-step .outline-button { margin: 0; width: 38px; height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+.activity-step svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.activity-step .outline-button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .activity-actions .settings-close { width: 38px; height: 38px; }
 .activity-extras .warmup-block, .activity-extras .strength-done { margin: 0; }
 .activity-chart-card .panel-title-row { margin-bottom: 8px; }
