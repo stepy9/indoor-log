@@ -1909,7 +1909,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .activity-tiles .diary-tile-value { font-size: 17px; }
   .activity-chart-label { font-size: 26px; }
 }
-.activity-sessions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; align-self: center; }
+.activity-sessions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; align-self: flex-start; }
 .activity-chip { position: relative; display: inline-flex; align-items: center; box-sizing: border-box; height: 38px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); font-size: 14px; font-weight: 600; cursor: default; white-space: nowrap; }
 .activity-chip.is-done { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, var(--line-strong)); background: var(--success-soft); }
 .activity-sessions[hidden] { display: none; }
