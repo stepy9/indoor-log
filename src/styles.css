@@ -1408,8 +1408,11 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-summary[open] .training-summary-fold { transform: rotate(90deg); }
 .training-summary-head .diary-plan-text { color: var(--muted); }
 .training-summary .diary-plan-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.training-summary-ride { color: var(--ink); font-weight: 400; text-align: left; }
-.training-summary-ride:hover { color: var(--accent); text-decoration: underline; }
+.training-summary-ride { display: flex; flex-direction: column; min-width: 0; color: var(--ink); font-weight: 400; text-align: left; }
+.training-summary-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.training-summary-meta { color: var(--muted); font-size: 12px; }
+.training-summary-ride:hover .training-summary-name { text-decoration: underline; }
+.training-summary-ride:hover { color: var(--accent); }
 .training-summary-extra { cursor: default; }
 .training-summary .diary-plan-list { margin-top: 2px; }
 

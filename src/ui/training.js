@@ -175,7 +175,9 @@ function summaryCard(scored, workouts, log, sport) {
     const textCell = node("span", { class: "diary-plan-text" });
     if (ridden.length) {
       for (const item of ridden) {
-        const open = node("button", { type: "button", class: "link-button training-summary-ride", title: item.entry.name.replace(/^Kinomap - /, "") }, `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}${item.entry.stretched ? " ✓" : ""}`);
+        const name = item.entry.name.replace(/^Kinomap - /, "");
+        const open = node("button", { type: "button", class: "link-button training-summary-ride", title: name });
+        open.append(node("span", { class: "training-summary-name" }, `${name}${item.entry.stretched ? " ✓" : ""}`), node("span", { class: "training-summary-meta" }, `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`));
         open.addEventListener("click", () => openActivity(item.entry));
         textCell.append(open);
       }
