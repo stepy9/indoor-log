@@ -12,7 +12,7 @@ import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
 import { benefitText, openActivity } from "./activity.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
-import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
+import { aerobicEffect, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
