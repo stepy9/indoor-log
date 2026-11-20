@@ -49,7 +49,7 @@ export function trainingShown(entries) {
 }
 
 // The reasons under a score: each part marked ✓ (80 % and more), ~ (50 %) or ✗, with its numbers.
-function partsText(scored) {
+export function partsText(scored) {
   const mark = (share) => (share >= 0.8 ? "✓" : share >= 0.5 ? "~" : "✗");
   const parts = scored.parts.filter((part) => part.share != null).map((part) => `${mark(part.share)} ${t(`scorePart_${part.key}`, part)}`);
   if (scored.swapped) parts.push(t("scoreSwapped", { planned: t(`scorePlanned_${scored.planned}`) }));

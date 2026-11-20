@@ -3,7 +3,12 @@
 import { bestAverage, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
 import { deleteEntry, listEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
-import { aerobicEffect, benefitGroup, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
+import { aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
+import { dayKey } from "../diary.js";
+import { hasTraining, planLog, scoreFor } from "./score.js";
+import { scoreBadge } from "./diary.js";
+import { trainingPlan, zoneGroups } from "./fitness.js";
+import { partsText } from "./training.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { perKgText, settingsFor } from "./settings.js";
@@ -236,6 +241,61 @@ function sameWorkout(entry) {
   return card;
 }
 
+// What the day's plan asked for and how the workout kept it: the score with each part's tick, as the Training tab
+// lists them. Only for a sport with the Training section filled in, and a workout it scores.
+function planCard(entry, settings) {
+  if (!hasTraining(settings, entry.sport)) return null;
+  const plan = trainingPlan(view.entries, entry.sport)?.plan ?? null;
+  const scored = plan ? scoreFor(entry, plan, settings) : null;
+  const planned = planLog(entry.sport)[dayKey(entry.startMs, zone)] ?? null;
+  if (!scored && !planned) return null;
+  const card = el("section", "card activity-plan");
+  const head = el("div", "panel-title-row");
+  head.append(el("span", "field-label", t("activityPlan")));
+  if (scored) head.append(scoreBadge(scored.score));
+  const facts = el("p", "activity-plan-facts");
+  facts.textContent = [
+    planned ? t("activityPlanned", { planned: t(`scorePlanned_${planned.type}`) }) : t("activityUnplanned"),
+    scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"),
+  ].join(" · ");
+  card.append(head, facts);
+  if (scored) {
+    const list = el("ul", "activity-plan-parts");
+    list.append(...partsText(scored).split(" · ").filter(Boolean).map((part) => {
+      const mark = part[0];
+      return el("li", mark === "✓" ? "is-good" : mark === "✗" ? "is-poor" : mark === "~" ? "is-fair" : "", part);
+    }));
+    card.append(list);
+  }
+  return card;
+}
+
+// How hard it was: the time in each heart rate and power zone, as Analysis shows them for a period, and for a steady
+// workout the decoupling (the heart drifting from the work in the second half) and the work per heartbeat.
+function intensityCard(entry, settings) {
+  const drift = decoupling(entry);
+  const zones = el("div", "fitness-zones");
+  zones.append(...zoneGroups([entry], settings, entry.sport));
+  const card = el("section", "card");
+  card.append(el("span", "field-label", t("activityIntensity")), zones);
+  if (drift) {
+    const box = el("div", "diary-tiles activity-tiles is-compact activity-drift");
+    const tile = (label, value, className = "") => {
+      const node = el("div", "diary-tile");
+      node.append(el("span", "diary-tile-label", label), el("span", `diary-tile-value ${className}`, value));
+      return node;
+    };
+    const percent = drift.percent;
+    box.append(
+      tile(t("fitnessDecouplingTitle"), `${displayNumber(percent, 1)} %`, percent < 5 ? "is-better" : percent < 10 ? "" : "is-worse"),
+      tile(t("samePerBeat"), drift.by === "power" ? `${displayNumber(drift.efficiency, 2)} W/bpm` : `${displayNumber(drift.efficiency, 2)} m/bpm`),
+      tile(t("activityDriftHeart"), `${displayNumber(drift.heart)} bpm`),
+    );
+    card.append(box, el("p", "field-note", t(percent < 5 ? "activityDriftGood" : percent < 10 ? "activityDriftFair" : "activityDriftPoor")));
+  }
+  return card;
+}
+
 // A chip for a set of exercises done around the row; hovering it, or tapping it on a phone, lists the exercises.
 function sessionChip(label, ids, done) {
   const chip = el("span", `activity-chip${done ? " is-done" : ""}`);
@@ -293,7 +353,7 @@ function render() {
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
   renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
+    tiles(entry, settings), planCard(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
   ].filter(Boolean));
 }
 
