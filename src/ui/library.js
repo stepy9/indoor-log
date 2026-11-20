@@ -166,6 +166,13 @@ function renderRows() {
     actions.className = "library-actions";
     actions.append(edit, remove);
     row.append(actions);
+    // The row opens the activity's detail; the pencil and the bin stay shortcuts.
+    row.className = "is-link";
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("button, select, a")) return;
+      dialog.close();
+      onOpenEntry(entry);
+    });
     return row;
   }), `library:${librarySport}`);
 }
@@ -283,8 +290,10 @@ let onSettingsRestored = () => {};
 
 // onRestore lets the converter pick up trainers and defaults that a backup brought in.
 let onEditEntry = () => {};
+let onOpenEntry = () => {};
 
-export function setupLibrary({ onRestore, onEdit } = {}) {
+export function setupLibrary({ onRestore, onEdit, onOpen } = {}) {
+  if (onOpen) onOpenEntry = onOpen;
   if (onEdit) onEditEntry = onEdit;
   // Connecting or disconnecting Dropbox turns the reminder off or back on.
   let connected = cloudConnected();

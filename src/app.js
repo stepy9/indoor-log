@@ -12,7 +12,8 @@ import { kinomapPlanFor, perKgText, setupSettings } from "./ui/settings.js";
 import { setupCloud } from "./ui/cloud.js";
 import { detectedKind } from "./analysis.js";
 import { entryFromWorkout, workoutFromEntry } from "./library.js";
-import { leaveConverter, openConverter, rerenderCompare, setupCompare } from "./ui/compare.js";
+import { leaveConverter, openConverter, openInCompare, rerenderCompare, setupCompare } from "./ui/compare.js";
+import { openActivity, setupActivity } from "./ui/activity.js";
 import { setupInfoNotes } from "./ui/info.js";
 import { setupExercises } from "./ui/recovery.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
@@ -1141,12 +1142,13 @@ for (const button of document.querySelectorAll(".mode-button")) {
 
 setupChartTrim(render);
 setupChartLegend();
-setupLibrary({ onEdit: openLibraryEntry, onRestore: () => {
+setupLibrary({ onEdit: openLibraryEntry, onOpen: openActivity, onRestore: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, lastTrainerId(sport));
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();
 } });
 setupCompare({ onConverter: drawChart, canLeave: confirmLeave });
+setupActivity({ onCompare: openInCompare, onEdit: openLibraryEntry });
 // The version the page was built as, beside what the app does.
 const appVersion = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
 for (const element of document.querySelectorAll(".app-version")) element.textContent = appVersion ? `v ${appVersion}` : "";

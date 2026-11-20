@@ -733,6 +733,28 @@
         </div>
         <button class="accent-button recovery-finish" id="recoveryPlayerFinish" type="button" data-i18n="recoveryFinish">Dokončit</button>
       </dialog>
+      <dialog class="intervals-dialog activity-dialog" id="activityDialog" aria-labelledby="activityDetailName">
+        <div class="activity-head">
+          <div class="activity-step">
+            <button class="outline-button" id="activityOlder" type="button" aria-label="Starší aktivita" data-i18n-aria="activityOlder" title="Starší aktivita" data-i18n-title="activityOlder">‹</button>
+            <button class="outline-button" id="activityNewer" type="button" aria-label="Novější aktivita" data-i18n-aria="activityNewer" title="Novější aktivita" data-i18n-title="activityNewer">›</button>
+          </div>
+          <div class="activity-title">
+            <h2 id="activityDetailName"></h2>
+            <p class="field-note" id="activityMeta"></p>
+          </div>
+          <div class="activity-actions">
+            <button class="outline-button" id="activityCompare" type="button" data-i18n="activityCompare">Porovnat</button>
+            <button class="export-button" id="activityEdit" type="button" data-i18n="activityEdit">Upravit</button>
+            <button class="settings-close" id="activityClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
+          </div>
+        </div>
+        <div class="activity-body" id="activityBody"></div>
+        <div class="dialog-actions">
+          <span class="dialog-spacer"></span>
+          <button class="link-button danger-link" id="activityDelete" type="button" data-i18n="libraryDelete">Smazat</button>
+        </div>
+      </dialog>
       <dialog class="intervals-dialog library-dialog" id="libraryDialog" aria-labelledby="libraryTitle">
         <input id="libraryFilesInput" class="visually-hidden" type="file" multiple accept=".tcx,.pwx,.fit,application/xml,text/xml,application/octet-stream" />
         <div class="dialog-head">

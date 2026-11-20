@@ -10,6 +10,7 @@ import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
+import { openActivity } from "./activity.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
 import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
@@ -927,7 +928,7 @@ function renderTrendTable() {
     if (point.record) row.cells[4].title = t("trendRecord");
     if (!grouped) {
       row.className = "is-link";
-      row.addEventListener("click", () => openInCompare(point.entry));
+      row.addEventListener("click", () => openActivity(point.entry));
     }
     return row;
   }).reverse();
@@ -1041,11 +1042,11 @@ function nameTab(name) {
   title.textContent = label.textContent;
 }
 
-// One activity on its own in the comparison, as the diary opens it.
-function openInCompare(entry) {
+// An activity in the comparison, as its detail sends it: on its own, or beside another one (the same workout last time).
+export function openInCompare(entry, other = null) {
   view.sport = entry.sport;
   view.zoom = null;
-  view.slots = new Map([[entry.id, 1]]);
+  view.slots = new Map([[entry.id, 1], ...(other && other.sport === entry.sport ? [[other.id, 2]] : [])]);
   view.pickerOpen = false;
   showView("compare");
 }
@@ -1068,9 +1069,9 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     renderList();
   });
   nameTab("converter");
-  setupDiary({ onOpen: openInCompare });
-  setupFitness({ onOpen: openInCompare });
-  setupTraining({ onOpen: openInCompare });
+  setupDiary({ onOpen: openActivity });
+  setupFitness({ onOpen: openActivity });
+  setupTraining({ onOpen: openActivity });
   // The Training tab shows once a sport has the Training section filled in; on a phone it takes a sixth of the bar.
   const trainingTab = document.querySelector('[data-app-view="training"]');
   const showTrainingTab = async () => {

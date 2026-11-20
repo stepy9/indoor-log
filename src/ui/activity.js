@@ -1,0 +1,321 @@
+// The activity detail: everything known about one activity, read only, opened from the calendar, the library and
+// wherever else an activity is clicked. Comparing it and editing it are a button away.
+import { bestAverage, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
+import { deleteEntry, listEntries } from "../library.js";
+import { sameWorkoutHistory } from "../same-workout.js";
+import { aerobicEffect, benefitGroup, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
+import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
+import { kindLabel } from "./library.js";
+import { perKgText, settingsFor } from "./settings.js";
+import { stretchBlock } from "./recovery.js";
+
+const svgNs = "http://www.w3.org/2000/svg";
+const dialog = byId("activityDialog");
+const view = { entry: null, entries: [], metric: "power" };
+let onCompare = () => {};
+let onEdit = () => {};
+
+const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
+const longDate = (ms) => new Intl.DateTimeFormat(locale(), {
+  timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+}).format(new Date(ms));
+const dayDate = (ms) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(ms));
+const el = (tag, className = "", text = "") => Object.assign(document.createElement(tag), { className, textContent: text });
+const unit = (value, suffix, digits = 0) => (Number.isFinite(value) ? `${displayNumber(value, digits)} ${suffix}` : null);
+const cadenceUnit = (sport) => (sport === "running" ? "spm" : "rpm");
+
+function paceText(value, sport) {
+  if (!Number.isFinite(value)) return null;
+  if (sport === "cycling") return `${displayNumber(value, 1)} km/h`;
+  return `${formatDuration(value)} /${sport === "rowing" ? "500 m" : "km"}`;
+}
+
+function metricText(value, metric, sport) {
+  if (metric === "pace") return paceText(value, sport);
+  if (metric === "power") return unit(value, "W");
+  if (metric === "heartRate") return unit(value, "bpm");
+  return unit(value, cadenceUnit(sport));
+}
+
+const metricName = (metric, sport) => (metric === "pace" ? t(sport === "cycling" ? "lapSpeed" : "lapPace") : t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence" }[metric]));
+
+// The metrics the activity has data for, in the order the chart offers them.
+const metricsOf = (entry) => ["power", "pace", "heartRate", "cadence"].filter((metric) => {
+  const field = { power: "power", pace: "speed", heartRate: "heartRate", cadence: "cadence" }[metric];
+  return (entry.records?.[field] ?? []).some((value) => Number.isFinite(value) && value > 0);
+});
+
+function tiles(entry, settings) {
+  const { summary, sport } = entry;
+  const watts = (value) => (Number.isFinite(value) ? [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · ") : null);
+  const max = forSport(settings, sport, entry.startMs).maxHeartRate;
+  const beats = (value) => (Number.isFinite(value) ? [unit(value, "bpm"), max > 0 ? `${displayNumber((value / max) * 100)} %` : ""].filter(Boolean).join(" · ") : null);
+  const benefit = primaryBenefit(entry, settings);
+  const effect = aerobicEffect(entry, settings);
+  const list = [
+    [t("lapTime"), formatDuration(summary.timerSeconds)],
+    [t("lapDistanceColumn"), summary.distance > 0 ? unit(summary.distance / 1000, "km", 2) : null],
+    [metricName("pace", sport), paceText(paceFrom(summary.timerSeconds > 0 ? summary.distance / summary.timerSeconds : null, sport), sport)],
+    [t("compareAvgPower"), watts(summary.avgPower)],
+    [t("compareMaxPower"), watts(summary.maxPower)],
+    [t("compareAvgHeartRate"), beats(summary.avgHeartRate)],
+    [t("compareMaxHeartRate"), beats(summary.maxHeartRate)],
+    [t("compareAvgCadence"), unit(summary.avgCadence, cadenceUnit(sport))],
+    [t("compareCalories"), unit(summary.calories, "kcal")],
+    [t("compareWork"), unit(workKilojoules(entry), "kJ")],
+    [t("compareBenefit"), benefit ? `${t(`benefit_${benefit.benefit}`)} (${t(`benefitGroup_${benefitGroup[benefit.benefit]}`)})` : null],
+    [t("compareAerobicEffect"), effect ? `${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null],
+  ];
+  const box = el("div", "diary-tiles activity-tiles");
+  box.append(...list.filter(([, value]) => value).map(([label, value]) => {
+    const tile = el("div", "diary-tile");
+    tile.append(el("span", "diary-tile-label", label), el("span", "diary-tile-value", value));
+    return tile;
+  }));
+  return box;
+}
+
+// One line over time, the laps' intensities shaded behind it.
+function chart(entry) {
+  const metrics = metricsOf(entry);
+  if (!metrics.length || !(entry.records?.seconds?.length > 1)) return null;
+  if (!metrics.includes(view.metric)) view.metric = metrics[0];
+  const card = el("section", "card activity-chart-card");
+  const head = el("div", "panel-title-row");
+  const switcher = el("div", "segmented");
+  switcher.setAttribute("role", "group");
+  switcher.append(...metrics.map((metric) => {
+    const button = el("button", "", metricName(metric, entry.sport));
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(metric === view.metric));
+    button.addEventListener("click", () => {
+      view.metric = metric;
+      card.replaceWith(chart(entry));
+    });
+    return button;
+  }));
+  head.append(el("span", "field-label", t("activityCourse")), switcher);
+  const width = 800;
+  const height = 220;
+  const pad = { left: 52, right: 8, top: 10, bottom: 22 };
+  const svg = document.createElementNS(svgNs, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("class", "activity-chart");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", metricName(view.metric, entry.sport));
+  const points = downsample(series(entry, view.metric, { axis: "time", smoothSeconds: 10 }).filter((point) => Number.isFinite(point.y)), 600);
+  if (points.length < 2) return null;
+  const end = entry.records.seconds.at(-1) || 1;
+  const ys = points.map((point) => point.y);
+  let low = Math.min(...ys);
+  let high = Math.max(...ys);
+  if (high === low) high = low + 1;
+  const span = high - low;
+  low -= span * 0.05;
+  high += span * 0.05;
+  const inverted = view.metric === "pace" && entry.sport !== "cycling";
+  const x = (second) => pad.left + (second / end) * (width - pad.left - pad.right);
+  const y = (value) => {
+    const share = (value - low) / (high - low);
+    return pad.top + (inverted ? share : 1 - share) * (height - pad.top - pad.bottom);
+  };
+  const add = (tag, attributes, text = "") => {
+    const node = document.createElementNS(svgNs, tag);
+    for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+    if (text) node.textContent = text;
+    svg.append(node);
+    return node;
+  };
+  // The laps marked as warm-up, rest and the like, behind the line.
+  const laps = entry.laps ?? [];
+  laps.forEach((lap, index) => {
+    if (!lap.intensity || lap.intensity === "active") return;
+    const from = Math.max(0, (lap.startMs - entry.startMs) / 1000);
+    const to = laps[index + 1] ? (laps[index + 1].startMs - entry.startMs) / 1000 : end;
+    add("rect", { x: x(from), y: pad.top, width: Math.max(0, x(Math.min(to, end)) - x(from)), height: height - pad.top - pad.bottom, class: `activity-chart-rest is-${lap.intensity}` });
+  });
+  for (const value of [low + (high - low) * 0.1, (low + high) / 2, high - (high - low) * 0.1]) {
+    add("line", { x1: pad.left, x2: width - pad.right, y1: y(value), y2: y(value), class: "activity-chart-grid" });
+    add("text", { x: pad.left - 6, y: y(value) + 4, class: "activity-chart-label", "text-anchor": "end" },
+      view.metric === "pace" && entry.sport !== "cycling" ? formatDuration(value) : displayNumber(value, view.metric === "pace" ? 1 : 0));
+  }
+  const step = end > 3600 ? 900 : end > 1200 ? 300 : 60;
+  for (let second = step; second < end; second += step) {
+    add("text", { x: x(second), y: height - 6, class: "activity-chart-label", "text-anchor": "middle" }, formatDuration(second));
+  }
+  add("path", { d: points.map((point, index) => `${index ? "L" : "M"}${x(point.x).toFixed(1)},${y(point.y).toFixed(1)}`).join(""), class: "activity-chart-line" });
+  card.append(head, svg);
+  return card;
+}
+
+function lapsTable(entry) {
+  const laps = entry.laps ?? [];
+  if (laps.length < 2) return null;
+  const sport = entry.sport;
+  const intensityKey = { warmup: "intensityWarmup", active: "intensityActive", recovery: "intensityRecovery", rest: "intensityRest", cooldown: "intensityCooldown" };
+  const columns = [
+    [t("activityLap"), (lap, index) => `${index + 1}${intensityKey[lap.intensity] ? ` · ${t(intensityKey[lap.intensity])}` : ""}`],
+    [t("lapTime"), (lap) => formatDuration(lap.timerSeconds)],
+    [t("lapDistanceColumn"), (lap) => unit(lap.distance, "m")],
+    [metricName("pace", sport), (lap) => paceText(lapValue(lap, "pace", sport), sport)],
+    [metricName("power"), (lap) => unit(lap.avgPower, "W")],
+    [metricName("heartRate"), (lap) => unit(lap.avgHeartRate, "bpm")],
+    [metricName("cadence"), (lap) => unit(lap.avgCadence, cadenceUnit(sport))],
+    [t("resistance"), (lap) => (lap.resistance ?? entry.resistance ? String(lap.resistance ?? entry.resistance) : null)],
+  ].filter(([, cell]) => laps.some((lap, index) => cell(lap, index)));
+  const table = el("table", "laps-table card-table");
+  const head = document.createElement("tr");
+  head.append(...columns.map(([label]) => el("th", "", label)));
+  table.append(document.createElement("thead"), document.createElement("tbody"));
+  table.tHead.append(head);
+  table.tBodies[0].append(...laps.map((lap, index) => {
+    const row = document.createElement("tr");
+    row.append(...columns.map(([label, cell]) => {
+      const td = el("td", "", cell(lap, index) ?? "—");
+      td.dataset.label = label;
+      return td;
+    }));
+    return row;
+  }));
+  const card = el("section", "card");
+  const scroll = el("div", "laps-scroll");
+  scroll.append(table);
+  card.append(el("span", "field-label", t("activityLaps")), scroll);
+  return card;
+}
+
+function bestEfforts(entry) {
+  const durations = [10, 60, 300, 1200].filter((seconds) => (entry.records?.seconds?.at(-1) ?? 0) >= seconds);
+  const values = durations.map((seconds) => [seconds, bestAverage(entry, "power", seconds)]).filter(([, watts]) => Number.isFinite(watts));
+  if (!values.length) return null;
+  const card = el("section", "card");
+  const box = el("div", "diary-tiles activity-tiles is-compact");
+  box.append(...values.map(([seconds, watts]) => {
+    const tile = el("div", "diary-tile");
+    tile.append(el("span", "diary-tile-label", formatDuration(seconds)), el("span", "diary-tile-value", unit(watts, "W")));
+    return tile;
+  }));
+  card.append(el("span", "field-label", t("activityBest")), box);
+  return card;
+}
+
+// The last time through the same workout, against this one, and the way to put them side by side.
+function sameWorkout(entry) {
+  const history = sameWorkoutHistory(entry, view.entries);
+  if (!history?.earlier.length) return null;
+  const last = history.earlier[0];
+  const signed = (value, digits, suffix) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${suffix}`);
+  const text = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", {
+    day: dayDate(last.entry.startMs), power: signed(last.change.power, 0, " W"), heart: signed(last.change.heartRate, 0, " bpm"), efficiency: signed(last.change.efficiency, 1, " %"),
+  });
+  const card = el("section", "card");
+  const link = el("button", "link-button", t("activityCompareSame"));
+  link.type = "button";
+  link.addEventListener("click", () => compare(last.entry));
+  const line = el("p", "compare-same-summary", `${text} `);
+  line.append(link);
+  card.append(el("span", "field-label", t("sameTitle", { count: history.earlier.length })), line);
+  return card;
+}
+
+function render() {
+  const entry = view.entry;
+  const settings = settingsFor(view.entries);
+  byId("activityDetailName").textContent = entry.name.replace(/^Kinomap - /, "");
+  const meta = [longDate(entry.startMs), sportLabel(entry.sport), kindLabel(workoutKind(entry), entry.sport),
+    entry.resistance ? `${t("resistance")} ${entry.resistance}` : null].filter(Boolean);
+  byId("activityMeta").textContent = meta.join(" · ");
+  const index = view.entries.findIndex((other) => other.id === entry.id);
+  byId("activityNewer").disabled = index <= 0;
+  byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
+  const stretch = el("section", "card");
+  try {
+    stretch.append(el("span", "field-label", t("activityStretch")), stretchBlock(entry, settings));
+  } catch {
+    stretch.hidden = true;
+  }
+  byId("activityBody").replaceChildren(...[
+    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), entry.sport === "rowing" ? stretch : null,
+  ].filter(Boolean));
+}
+
+function show(entry) {
+  view.entry = entry;
+  render();
+  byId("activityBody").scrollTop = 0;
+}
+
+function compare(other = null) {
+  const entry = view.entry;
+  close();
+  onCompare(entry, other);
+}
+
+function step(by) {
+  const index = view.entries.findIndex((other) => other.id === view.entry.id);
+  const next = view.entries[index + by];
+  if (!next) return;
+  show(next);
+  history.replaceState(history.state, "", `#a=${encodeURIComponent(next.id)}`);
+}
+
+function close() {
+  if (dialog.open) dialog.close();
+}
+
+export async function openActivity(entry) {
+  view.entries = await listEntries();
+  // The newest copy from the library, so an edit since the click shows.
+  view.entry = view.entries.find((other) => other.id === entry.id) ?? entry;
+  render();
+  if (!dialog.open) {
+    dialog.showModal();
+    // Back on a phone closes the detail rather than leaving the app.
+    if (!location.hash.startsWith("#a=")) history.pushState({ activity: true }, "", `#a=${encodeURIComponent(view.entry.id)}`);
+  }
+  byId("activityBody").scrollTop = 0;
+}
+
+export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
+  onCompare = compareWith;
+  onEdit = edit;
+  byId("activityClose").addEventListener("click", close);
+  byId("activityCompare").addEventListener("click", () => compare());
+  byId("activityEdit").addEventListener("click", () => {
+    const entry = view.entry;
+    close();
+    onEdit(entry);
+  });
+  byId("activityDelete").addEventListener("click", async () => {
+    if (!window.confirm(t("libraryDeleteConfirm", { name: view.entry.name }))) return;
+    await deleteEntry(view.entry.id);
+    close();
+  });
+  byId("activityNewer").addEventListener("click", () => step(-1));
+  byId("activityOlder").addEventListener("click", () => step(1));
+  dialog.addEventListener("keydown", (event) => {
+    if (event.target.closest("input, select, textarea")) return;
+    if (event.key === "ArrowLeft") step(1);
+    if (event.key === "ArrowRight") step(-1);
+  });
+  dialog.addEventListener("close", () => {
+    if (location.hash.startsWith("#a=")) {
+      if (history.state?.activity) history.back();
+      else history.replaceState(null, "", location.pathname + location.search);
+    }
+  });
+  window.addEventListener("popstate", () => {
+    if (!location.hash.startsWith("#a=")) close();
+  });
+  window.addEventListener("settings-change", () => dialog.open && render());
+  // A link straight to an activity opens it once the library is there.
+  const match = location.hash.match(/^#a=(.+)$/);
+  if (match) {
+    const id = decodeURIComponent(match[1]);
+    listEntries().then((entries) => {
+      const entry = entries.find((other) => String(other.id) === id);
+      if (entry) openActivity(entry);
+      else history.replaceState(null, "", location.pathname + location.search);
+    }).catch(() => {});
+  }
+}
