@@ -1923,8 +1923,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .activity-sessions { order: 4; flex-basis: 100%; justify-content: flex-start; }
   .activity-chip-list { left: 0; right: auto; }
 }
-.activity-plan .panel-title-row { justify-content: space-between; }
-.activity-plan-facts { margin: 8px 0 6px; color: var(--muted); }
+.activity-plan-tile { grid-column: span 2; }
+.activity-plan-tile .activity-plan-parts { margin-top: 6px; font-size: 13px; }
 .activity-plan-parts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
 .activity-plan-parts li.is-good { color: var(--success); }
 .activity-plan-parts li.is-fair { color: var(--warning, #b7791f); }

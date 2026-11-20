@@ -99,6 +99,9 @@ function tiles(entry, settings) {
     if (sub) tile.append(el("span", "diary-tile-change activity-tile-sub", sub));
     return tile;
   }));
+  // The day's plan and how it was kept, a wide tile at the end.
+  const planned = planTile(entry, settings);
+  if (planned) box.append(planned);
   return box;
 }
 
@@ -344,34 +347,31 @@ function sameWorkout(entry) {
 
 // What the day's plan asked for and how the workout kept it: the score with each part's tick, as the Training tab
 // lists them. Only for a sport with the Training section filled in, and a workout it scores.
-function planCard(entry, settings) {
+function planTile(entry, settings) {
   if (!hasTraining(settings, entry.sport)) return null;
   const plan = trainingPlan(view.entries, entry.sport)?.plan ?? null;
   const scored = plan ? scoreFor(entry, plan, settings) : null;
   const planned = planLog(entry.sport)[dayKey(entry.startMs, zone)] ?? null;
   if (!scored && !planned) return null;
-  const card = el("section", "card activity-plan");
-  const head = el("div", "panel-title-row");
-  head.append(el("span", "field-label", t("activityPlan")));
-  card.append(head);
-  // The score sits by the title. What was planned and what it was scored as are said only when they tell something:
-  // a day without a plan, a workout scored as other than planned, or one not scored.
+  // The score sits by the title. The tile names what was planned, capitalised; what it was scored as only when that
+  // tells something: a day without a plan, a workout scored as other than planned, or one not scored.
   if (scored) byId("activityDetailName").append(scoreBadge(scored.score));
-  if (!(planned && scored && planned.type === scored.as)) {
-    card.append(el("p", "activity-plan-facts", [
-      planned ? t("activityPlanned", { planned: t(`scorePlanned_${planned.type}`) }) : t("activityUnplanned"),
-      scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"),
-    ].join(" · ")));
-  }
+  const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+  const same = planned && scored && planned.type === scored.as;
+  const head = planned ? capital(t(`scorePlanned_${planned.type}`)) : t("activityUnplanned");
+  const tile = el("div", "diary-tile activity-plan-tile");
+  const value = el("span", "diary-tile-value", head);
+  tile.append(el("span", "diary-tile-label", t("activityPlan")), value);
+  if (!same) tile.append(el("span", "diary-tile-change activity-tile-sub", scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone")));
   if (scored) {
     const list = el("ul", "activity-plan-parts");
     list.append(...partsText(scored).split(" · ").filter(Boolean).map((part) => {
       const mark = part[0];
       return el("li", mark === "✓" ? "is-good" : mark === "✗" ? "is-poor" : mark === "~" ? "is-fair" : "", part);
     }));
-    card.append(list);
+    tile.append(list);
   }
-  return card;
+  return tile;
 }
 
 // How hard it was: the time in each heart rate and power zone, as Analysis shows them for a period, and for a steady
@@ -457,7 +457,7 @@ function render() {
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
   renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), planCard(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
+    tiles(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
   ].filter(Boolean));
 }
 
