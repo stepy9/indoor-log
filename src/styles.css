@@ -288,7 +288,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .link-button { padding: 0; border: 0; color: var(--muted); background: none; font-weight: 600; cursor: pointer; }
 .link-button:hover { color: var(--accent); }
 .chart-hint { margin-left: 10px; color: var(--subtle); font-size: 12px; font-weight: 500; }
-.update-toast { position: fixed; bottom: 20px; left: 50%; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 16px; border-radius: 12px; color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 30px rgba(0, 0, 0, .25); font-size: 13px; font-weight: 600; transform: translateX(-50%); }
+.update-toast { position: fixed; bottom: 20px; left: 50%; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 16px; border-radius: 12px; color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 30px rgba(0, 0, 0, .25); font-size: 13px; font-weight: 600; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); }
 .update-toast[hidden] { display: none; }
 .update-toast .outline-button { margin-top: 0; color: var(--accent); }
 .chart-frame { position: relative; }
@@ -1025,6 +1025,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .app-nav button[aria-pressed="true"]::after { display: none; }
   .app-nav button[aria-pressed="true"] svg { color: #4d8dff; }
   .shell { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .update-toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
   .topbar-inner { min-height: 52px; }
   .compare-view.is-trend .compare-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .compare-view.is-trend .compare-filters input { grid-column: 1 / -1; }
