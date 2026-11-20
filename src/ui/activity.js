@@ -62,33 +62,41 @@ export function benefitText(benefit) {
 
 function tiles(entry, settings) {
   const { summary, sport } = entry;
-  const watts = (value) => (Number.isFinite(value) ? [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · ") : null);
   const max = forSport(settings, sport, entry.startMs).maxHeartRate;
-  const beats = (value) => (Number.isFinite(value) ? [unit(value, "bpm"), max > 0 ? `${displayNumber((value / max) * 100)} %` : ""].filter(Boolean).join(" · ") : null);
   const benefit = primaryBenefit(entry, settings);
   const effect = aerobicEffect(entry, settings);
   const feelFaces = { 0: "😫", 25: "🙁", 50: "😐", 75: "🙂", 100: "😄" };
+  // Average and maximum together, "86 / 121 W": either alone when the other is missing.
+  const pair = (low, high, suffix, digits = 0) => {
+    const values = [low, high].filter(Number.isFinite);
+    return values.length ? `${values.map((value) => displayNumber(value, digits)).join(" / ")} ${suffix}` : null;
+  };
+  const kg = [summary.avgPower, summary.maxPower].filter(Number.isFinite).map((watts) => perKgText(watts, entry.startMs).replace(" W/kg", "")).filter(Boolean);
+  const feel = summary.workoutFeel != null ? `${feelFaces[summary.workoutFeel] ?? ""} ${t(`feel${summary.workoutFeel}`)}`.trim() : null;
+  const effort = summary.workoutRpe ? `${summary.workoutRpe} – ${t(`rpe${summary.workoutRpe}`)}` : null;
+  // Pairs that belong together share a tile, the second value small under the first, so the numbers fit two rows.
   const list = [
-    [t("feel"), summary.workoutFeel != null ? `${feelFaces[summary.workoutFeel] ?? ""} ${t(`feel${summary.workoutFeel}`)}`.trim() : null],
-    [t("rpe"), summary.workoutRpe ? `${summary.workoutRpe} – ${t(`rpe${summary.workoutRpe}`)}` : null],
+    [t("feel"), feel ?? effort, feel && effort ? `${t("rpe")}: ${effort}` : null],
     [t("lapTime"), formatDuration(summary.timerSeconds)],
     [t("lapDistanceColumn"), summary.distance > 0 ? unit(summary.distance / 1000, "km", 2) : null],
     [metricName("pace", sport), paceText(paceFrom(summary.timerSeconds > 0 ? summary.distance / summary.timerSeconds : null, sport), sport)],
-    [t("compareAvgPower"), watts(summary.avgPower)],
-    [t("compareMaxPower"), watts(summary.maxPower)],
-    [t("compareAvgHeartRate"), beats(summary.avgHeartRate)],
-    [t("compareMaxHeartRate"), beats(summary.maxHeartRate)],
+    [t("activityPower"), pair(summary.avgPower, summary.maxPower, "W"), kg.length ? `${kg.join(" / ")} W/kg` : null],
+    [t("activityHeart"), pair(summary.avgHeartRate, summary.maxHeartRate, "bpm"),
+      max > 0 ? pair(...[summary.avgHeartRate, summary.maxHeartRate].map((value) => (Number.isFinite(value) ? (value / max) * 100 : null)), "% max") : null],
     [t("compareAvgCadence"), unit(summary.avgCadence, cadenceUnit(sport))],
     [t("compareCalories"), unit(summary.calories, "kcal")],
     [t("compareWork"), unit(workKilojoules(entry), "kJ")],
     [t("activityLoad"), loadText(entry, settings)],
-    [t("compareBenefit"), benefit ? benefitText(benefit.benefit) : null],
-    [t("compareAerobicEffect"), effect ? `${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null],
+    [t("compareBenefit"), benefit ? t(`benefit_${benefit.benefit}`) : effect ? `TE ${displayNumber(effect.value, 1)}` : null,
+      // The group only when the name does not say it already (benefitText adds it in brackets then).
+      [benefit && benefitText(benefit.benefit) !== t(`benefit_${benefit.benefit}`) ? t(`benefitGroup_${benefitGroup[benefit.benefit]}`) : null,
+        benefit && effect ? `TE ${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null].filter(Boolean).join(" · ") || null],
   ];
   const box = el("div", "diary-tiles activity-tiles");
-  box.append(...list.filter(([, value]) => value).map(([label, value]) => {
+  box.append(...list.filter(([, value]) => value).map(([label, value, sub]) => {
     const tile = el("div", "diary-tile");
     tile.append(el("span", "diary-tile-label", label), el("span", "diary-tile-value", value));
+    if (sub) tile.append(el("span", "diary-tile-change activity-tile-sub", sub));
     return tile;
   }));
   return box;

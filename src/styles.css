@@ -1939,3 +1939,4 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .activity-note-input { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); font: inherit; resize: vertical; }
 .activity-note-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .activity-note-actions > button { min-height: 36px; margin: 0; padding: 0 16px; box-shadow: none; }
+.activity-tile-sub { font-size: 12px; line-height: 1.35; }
