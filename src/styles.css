@@ -1820,6 +1820,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-today-extra { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
 .training-today-extra-title { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .training-today-extra .warmup-block, .training-today-extra .field-note, .training-today-extra .training-today-done { margin: 0; }
+.training-today-later { display: grid; gap: 4px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.training-today-later .field-note { margin: 0; }
+.training-today-done .link-button { font-weight: 400; margin-left: 8px; }
 @media (min-width: 1000px) {
   .training-today-body:not(.is-single) { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); }
   .training-today-side { padding-left: 24px; border-left: 1px solid var(--line); }

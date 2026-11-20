@@ -337,7 +337,10 @@ function todayCard(result, scored, fatigue, entries, settings) {
   const next = result.checklist.find((entry) => entry.status === "planned" && entry.day > now && !excused[entry.day]) ?? result.days.find((entry) => entry.day > now && !excused[entry.day]);
   const showing = item?.status === "planned" ? item : next;
   const head = node("div", { class: "panel-title-row" });
-  head.append(node("span", { class: "field-label" }, t(item?.status === "planned" ? "trainingToday" : "trainingNext", { day: showing ? format(showing.day, { weekday: "long", day: "numeric", month: "numeric" }) : "" })));
+  const dayLabel = (day) => format(day, { weekday: "long", day: "numeric", month: "numeric" });
+  // With today ridden the card stays on today; the next workout is only named under it.
+  const onToday = item?.status === "planned" || done;
+  head.append(node("span", { class: "field-label" }, t(onToday ? "trainingToday" : "trainingNext", { day: onToday ? dayLabel(now) : showing ? dayLabel(showing.day) : "" })));
   card.append(head);
   // The day's workout on the left; beside it on a wide screen (under it on a phone) what goes with it: the warm-up,
   // strength work and the least to ride, each under a small heading.
@@ -351,10 +354,24 @@ function todayCard(result, scored, fatigue, entries, settings) {
   if (excused[now]) main.append(node("p", { class: "training-today-done is-excused" }, t("trainingTodayExcused", { reason: excuseText(excused[now]) })));
   if (done) {
     const line = node("p", { class: "training-today-done" }, t("trainingTodayDone"));
-    for (const scoredItem of scored.filter((entry) => entry.day === now && entry.result)) line.append(" ", scoreBadge(scoredItem.result.score));
+    for (const scoredItem of scored.filter((entry) => entry.day === now)) {
+      if (scoredItem.result) line.append(" ", scoreBadge(scoredItem.result.score));
+      const open = node("button", { type: "button", class: "link-button" }, t("suggestOpen"));
+      open.addEventListener("click", () => openActivity(scoredItem.entry));
+      line.append(" ", open);
+    }
     main.append(line);
   }
-  if (showing) {
+  if (showing && done) {
+    // Tomorrow's (or the next) workout in short; its warm-up and the rest show on its day.
+    const later = node("div", { class: "training-today-later" });
+    later.append(
+      node("span", { class: "training-today-extra-title" }, t("trainingNext", { day: dayLabel(showing.day) })),
+      node("strong", {}, t(`scorePlanned_${showing.type}`)),
+      node("p", { class: "field-note" }, plannedText(result.plan, result.sport, showing.type)),
+    );
+    main.append(later);
+  } else if (showing) {
     main.append(
       node("strong", { class: "training-today-title" }, t(`scorePlanned_${showing.type}`)),
       node("p", { class: "training-today-text" }, plannedText(result.plan, result.sport, showing.type, { detail: true })),
@@ -373,7 +390,7 @@ function todayCard(result, scored, fatigue, entries, settings) {
   // Strength work twice a week on an easy day (or one without a workout), for the muscles rowing leaves out.
   const strength = strengthBlock(now, { type: item?.status === "planned" && !excused[now] ? item.type : null, taper: result.plan.taper ?? null });
   if (strength) extra(t("exercisesStrength"), strength);
-  if (result.plan.minimal && showing && !showing.type.startsWith("ftpTest")) {
+  if (result.plan.minimal && showing && !done && !showing.type.startsWith("ftpTest")) {
     const minimal = result.plan.kinomap?.minimal;
     extra(t("trainingLeast"), node("p", { class: "field-note" }, t("planMinimalShort", { minutes: result.plan.minimal.minutes }) + (minimal ? ` ${t("planKinomap", { name: minimal })}.` : "")));
   }
