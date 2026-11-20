@@ -10,7 +10,7 @@ import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
-import { openActivity } from "./activity.js";
+import { benefitText, openActivity } from "./activity.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
 import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
@@ -599,7 +599,7 @@ function renderTables() {
     [t("compareWork"), (entry) => unit(workKilojoules(entry), "kJ")],
     [t("compareBenefit"), (entry) => {
       const result = primaryBenefit(entry, settings);
-      return result ? `${t(`benefit_${result.benefit}`)} (${t(`benefitGroup_${benefitGroup[result.benefit]}`)}) · ${t(result.by === "power" ? "benefitByPower" : "benefitByHeartRate")}` : "—";
+      return result ? `${benefitText(result.benefit)} · ${t(result.by === "power" ? "benefitByPower" : "benefitByHeartRate")}` : "—";
     }],
     [t("compareAerobicEffect"), (entry) => {
       const effect = aerobicEffect(entry, settings);

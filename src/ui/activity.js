@@ -46,6 +46,13 @@ const metricsOf = (entry) => ["power", "pace", "heartRate", "cadence"].filter((m
   return (entry.records?.[field] ?? []).some((value) => Number.isFinite(value) && value > 0);
 });
 
+// The benefit with its group in brackets, unless its name says the group already ("Anaerobic capacity", not "… (Anaerobic)").
+export function benefitText(benefit) {
+  const name = t(`benefit_${benefit}`);
+  const group = t(`benefitGroup_${benefitGroup[benefit]}`);
+  return name.toLowerCase().includes(group.toLowerCase()) ? name : `${name} (${group})`;
+}
+
 function tiles(entry, settings) {
   const { summary, sport } = entry;
   const watts = (value) => (Number.isFinite(value) ? [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · ") : null);
@@ -67,7 +74,7 @@ function tiles(entry, settings) {
     [t("compareAvgCadence"), unit(summary.avgCadence, cadenceUnit(sport))],
     [t("compareCalories"), unit(summary.calories, "kcal")],
     [t("compareWork"), unit(workKilojoules(entry), "kJ")],
-    [t("compareBenefit"), benefit ? `${t(`benefit_${benefit.benefit}`)} (${t(`benefitGroup_${benefitGroup[benefit.benefit]}`)})` : null],
+    [t("compareBenefit"), benefit ? benefitText(benefit.benefit) : null],
     [t("compareAerobicEffect"), effect ? `${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null],
   ];
   const box = el("div", "diary-tiles activity-tiles");
