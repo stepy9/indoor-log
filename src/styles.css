@@ -1407,6 +1407,10 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-summary-fold { display: inline-grid; place-items: center; width: 20px; color: var(--muted); transition: transform .15s; }
 .training-summary[open] .training-summary-fold { transform: rotate(90deg); }
 .training-summary-head .diary-plan-text { color: var(--muted); }
+.training-summary .diary-plan-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.training-summary-ride { color: var(--ink); font-weight: 400; text-align: left; }
+.training-summary-ride:hover { color: var(--accent); text-decoration: underline; }
+.training-summary-extra { cursor: default; }
 .training-summary .diary-plan-list { margin-top: 2px; }
 
 /* Why a day went unridden. */

@@ -1,4 +1,5 @@
-import { strengthBlock, stretchBlock, warmupBlock } from "./recovery.js";
+import { strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
+import { openActivity } from "./activity.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -169,8 +170,19 @@ function summaryCard(scored, workouts, log, sport) {
     for (const item of ridden) if (item.result) score.append(scoreBadge(item.result.score));
     const km = (entry) => displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
     const text = ridden.length
-      ? ridden.map((item) => `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}`).join(", ")
+      ? null
       : excuse ? `${excuseText(excuse)} · ${t("summaryPlanned", { planned: t(`scorePlanned_${planned.type}`) })}` : t("summaryMissed", { planned: t(`scorePlanned_${planned.type}`) });
+    // As in the calendar: each workout opens its detail, ✓ when stretched after it; the day's warm-up and strength by it.
+    const textCell = node("span", { class: "diary-plan-text" });
+    if (ridden.length) {
+      for (const item of ridden) {
+        const open = node("button", { type: "button", class: "link-button training-summary-ride", title: item.entry.name.replace(/^Kinomap - /, "") }, `${km(item.entry)} km · ${kindLabel(workoutKind(item.entry), sport)}${item.entry.stretched ? " ✓" : ""}`);
+        open.addEventListener("click", () => openActivity(item.entry));
+        textCell.append(open);
+      }
+    } else textCell.append(text);
+    const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
+    for (const [icon, title] of extras) textCell.append(node("span", { class: "training-summary-extra", title }, icon));
     const whyCell = node("span", { class: "diary-plan-why-cell" });
     if (!ridden.length) {
       const why = node("button", { type: "button", class: "link-button diary-plan-why" }, excuse ? t("excuseEdit") : t("excuseAsk"));
@@ -178,7 +190,7 @@ function summaryCard(scored, workouts, log, sport) {
       whyCell.append(why);
     }
     row.classList.add("has-why");
-    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, node("span", { class: "diary-plan-text" }, text), whyCell);
+    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell, whyCell);
     list.append(row);
   }
   // The week as a whole in the line that folds, in the rows' columns: a fold mark for the tick, the week for the day,
