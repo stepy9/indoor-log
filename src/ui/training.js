@@ -142,8 +142,8 @@ function workoutsCard(sport, scored) {
   return card;
 }
 
-// A day's workouts as in the calendar: each by its name, opening its detail, ✓ when stretched after it, its distance
-// and kind under; the day's warm-up and strength work by them. For the days ridden, this week's and last.
+// A day's workouts as in the calendar: each by its name, opening its detail, its distance and kind under; by them
+// an icon each for the day's warm-up, stretching after a workout and strength work. For the days ridden, this week's and last.
 function daysWorkouts(entries, day, sport) {
   const cell = node("span", { class: "diary-plan-text training-rides" });
   for (const entry of entries) {
@@ -151,11 +151,11 @@ function daysWorkouts(entries, day, sport) {
     const open = node("button", { type: "button", class: "link-button training-summary-ride", title: name });
     const km = displayNumber(Math.round((entry.summary?.distance ?? 0) / 100) / 10, 1);
     const kind = /ftp/i.test(entry.name ?? "") ? t("scoreAs_ftpTest") : kindLabel(workoutKind(entry), sport);
-    open.append(node("span", { class: "training-summary-name" }, `${name}${entry.stretched ? " ✓" : ""}`), node("span", { class: "training-summary-meta" }, `${km} km · ${kind}`));
+    open.append(node("span", { class: "training-summary-name" }, name), node("span", { class: "training-summary-meta" }, `${km} km · ${kind}`));
     open.addEventListener("click", () => openActivity(entry));
     cell.append(open);
   }
-  const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
+  const extras = [...(warmupLog()[day] ? [["🤸", t("warmupDone")]] : []), ...(entries.some((entry) => entry.stretched) ? [["🧘", t("recoveryStretched")]] : []), ...(strengthLog()[day] ? [["💪", t("strengthDoneDay")]] : [])];
   for (const [icon, title] of extras) cell.append(node("span", { class: "training-summary-extra", title }, icon));
   return cell;
 }
