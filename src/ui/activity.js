@@ -7,7 +7,8 @@ import { aerobicEffect, benefitGroup, forSport, primaryBenefit, workKilojoules }
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { perKgText, settingsFor } from "./settings.js";
-import { stretchBlock } from "./recovery.js";
+import { stretchBlock, strengthLog, warmupLog } from "./recovery.js";
+import { afterWorkout, strengthLevel, strengthSession, warmupBefore } from "../recovery.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
 const dialog = byId("activityDialog");
@@ -226,6 +227,46 @@ function sameWorkout(entry) {
   return card;
 }
 
+// A chip for a set of exercises done around the row; hovering it, or tapping it on a phone, lists the exercises.
+function sessionChip(label, ids, done) {
+  const chip = el("span", `activity-chip${done ? " is-done" : ""}`);
+  chip.tabIndex = 0;
+  chip.append(el("span", "", `${done ? "✓ " : ""}${label}`));
+  if (ids.length) {
+    const list = el("ul", "activity-chip-list");
+    list.append(...ids.map((id) => el("li", "", t(`recovery_${id}`))));
+    chip.append(list);
+  }
+  return chip;
+}
+
+// The warm-up, the strength session and the stretching of the activity's day, beside its title. The warm-up and the
+// strength show once done (the logs keep the day, the sets follow from it); the stretching offers its button until done.
+// The warm-up's set is taken from the activity: the full one before intervals, the short one otherwise.
+function renderSessions(entry, settings) {
+  const box = byId("activitySessions");
+  box.replaceChildren();
+  if (entry.sport === "rowing") {
+    const day = new Date(entry.startMs).toISOString().slice(0, 10);
+    if (warmupLog()[day]) box.append(sessionChip(t("exercisesWarmup"), warmupBefore(workoutKind(entry) === "intervals" ? "intervals" : "steady", day).exercises, true));
+    if (strengthLog()[day]) box.append(sessionChip(t("exercisesStrength"), strengthSession(strengthLevel(strengthLog(), day).steps).doses.map((dose) => dose.id), true));
+    const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day });
+    if (entry.stretched) box.append(sessionChip(t("exercisesStretch"), plan.exercises, true));
+    else {
+      try {
+        const button = stretchBlock(entry, settings).querySelector("button");
+        if (button) {
+          button.className = "activity-chip is-action";
+          button.textContent = `▶ ${t("exercisesStretch")} · ${plan.minutes} min`;
+          button.title = plan.exercises.map((id) => t(`recovery_${id}`)).join(", ");
+          box.append(button);
+        }
+      } catch {}
+    }
+  }
+  box.hidden = !box.childElementCount;
+}
+
 function render() {
   const entry = view.entry;
   const settings = settingsFor(view.entries);
@@ -236,25 +277,9 @@ function render() {
   const index = view.entries.findIndex((other) => other.id === entry.id);
   byId("activityNewer").disabled = index <= 0;
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
-  const box = tiles(entry, settings);
-  // The stretching after a row is a tile beside the numbers: a tick once done, the button to start it otherwise,
-  // what the set is for on hovering it.
-  if (entry.sport === "rowing") {
-    try {
-      const block = stretchBlock(entry, settings);
-      const tile = el("div", "diary-tile activity-stretch-tile");
-      const note = block.querySelector(".warmup-note")?.textContent ?? "";
-      const action = block.querySelector("button") ?? block;
-      if (note) tile.title = note;
-      // The tile names the stretching already; its button says only what it does and for how long.
-      const minutes = action.tagName === "BUTTON" && action.textContent.match(/\d+/)?.[0];
-      if (minutes) action.textContent = `▶ ${t("recoveryStartNow")} · ${minutes} min`;
-      tile.append(el("span", "diary-tile-label", t("activityStretch")), action);
-      box.append(tile);
-    } catch {}
-  }
+  renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    box, chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
+    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
   ].filter(Boolean));
 }
 
