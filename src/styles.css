@@ -1867,7 +1867,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-year-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
 
 /* Activity detail */
-.intervals-dialog.activity-dialog { width: min(1000px, calc(100vw - 48px)); max-height: calc(100vh - 32px); }
+.intervals-dialog.activity-dialog { width: min(1400px, calc(100vw - 48px)); max-height: calc(100vh - 32px); }
 .intervals-dialog.activity-dialog[open] { display: flex; flex-direction: column; gap: 14px; }
 .activity-head { display: flex; align-items: flex-start; gap: 12px; }
 .activity-step { display: flex; gap: 4px; flex: none; }
