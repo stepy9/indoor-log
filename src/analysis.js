@@ -153,6 +153,8 @@ const average = (list) => (list.length ? list.reduce((sum, value) => sum + value
 export const workoutKinds = ["steady", "intervals", "tempo", "test", "race", "recovery"];
 
 export const workoutKind = (entry) => entry.kind || detectedKind(entry);
+// An FTP test for the plan and its score: "FTP" in the name, or any workout of the kind test (by its name or picked).
+export const isFtpTest = (entry) => /\bftp\b/i.test(entry.name ?? "") || workoutKind(entry) === "test";
 
 // The kind the data and laps give, ignoring any hand-picked one.
 export function detectedKind(entry) {

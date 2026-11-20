@@ -1,5 +1,5 @@
 import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
-import { bestTime, effortDistances, workoutKind } from "../analysis.js";
+import { bestTime, effortDistances, isFtpTest, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
@@ -181,8 +181,8 @@ export function trainingPlan(entries, chosen = "all") {
       km: (entry.summary?.distance ?? 0) / 1000,
       seconds: entry.summary?.timerSeconds ?? 0,
       kind: workoutKind(entry),
-      // An FTP test, by its name: the Kinomap workouts made for it carry "FTP" in theirs.
-      ftpTest: /ftp/i.test(entry.name ?? ""),
+      // An FTP test, by its name (the Kinomap workouts made for it carry "FTP" in theirs) or its kind.
+      ftpTest: isFtpTest(entry),
       decoupling: decoupling(entry)?.percent ?? null,
       hardShare: total ? (zones[3] + zones[4]) / total : null,
       level: entry.resistance ?? null,

@@ -1,4 +1,4 @@
-import { workoutKind } from "../analysis.js";
+import { isFtpTest, workoutKind } from "../analysis.js";
 import { dayKey } from "../diary.js";
 import { decoupling, forSport, heartRateAt, heartRateOf, steps } from "../fitness.js";
 import { valueOn } from "../history.js";
@@ -25,7 +25,7 @@ export const anyTraining = (settings) => Object.keys(settings.sports ?? {}).some
 // What scoring reads from a workout: its time, kind, the heart rate against the zone 2 range after the first three
 // minutes, the drift, the laps and an FTP test's all-out part.
 export function workoutFacts(entry, heart, planned) {
-  const ftpTest = /\bftp\b/i.test(entry.name ?? "");
+  const ftpTest = isFtpTest(entry);
   const named = workoutFromName(entry.name ?? "");
   const extra = named.kind === "extra" ? named.extra : null;
   let heartTimes = null;
