@@ -252,13 +252,16 @@ function planCard(entry, settings) {
   const card = el("section", "card activity-plan");
   const head = el("div", "panel-title-row");
   head.append(el("span", "field-label", t("activityPlan")));
-  if (scored) head.append(scoreBadge(scored.score));
-  const facts = el("p", "activity-plan-facts");
-  facts.textContent = [
-    planned ? t("activityPlanned", { planned: t(`scorePlanned_${planned.type}`) }) : t("activityUnplanned"),
-    scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"),
-  ].join(" · ");
-  card.append(head, facts);
+  card.append(head);
+  // The score sits by the title. What was planned and what it was scored as are said only when they tell something:
+  // a day without a plan, a workout scored as other than planned, or one not scored.
+  if (scored) byId("activityDetailName").append(scoreBadge(scored.score));
+  if (!(planned && scored && planned.type === scored.as)) {
+    card.append(el("p", "activity-plan-facts", [
+      planned ? t("activityPlanned", { planned: t(`scorePlanned_${planned.type}`) }) : t("activityUnplanned"),
+      scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"),
+    ].join(" · ")));
+  }
   if (scored) {
     const list = el("ul", "activity-plan-parts");
     list.append(...partsText(scored).split(" · ").filter(Boolean).map((part) => {

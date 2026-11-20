@@ -1873,6 +1873,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .activity-step { display: flex; gap: 4px; flex: none; }
 .activity-title { flex: 1; min-width: 0; }
 .activity-title h2 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.activity-title h2 .score-badge { margin-left: 10px; vertical-align: 2px; }
 .activity-title .field-note { margin: 4px 0 0; }
 .activity-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 .activity-body { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; flex: 1; }
