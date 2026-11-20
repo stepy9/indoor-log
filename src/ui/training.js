@@ -153,6 +153,8 @@ function summaryCard(scored, workouts, log, sport) {
   const card = node("details", { class: "card training-summary" });
   card.open = showsWeekSummary(workouts.map((workout) => workout.day), now);
   const list = node("div", { class: "diary-plan-list" });
+  // The week's distance, for the line that folds.
+  const weekMeters = scored.filter((item) => item.day >= monday && item.day <= sunday).reduce((sum, item) => sum + (item.entry.summary?.distance ?? 0), 0);
   for (let index = 0; index < 7; index += 1) {
     const day = addDays(monday, index);
     const ridden = scored.filter((item) => item.day === day);
@@ -197,7 +199,7 @@ function summaryCard(scored, workouts, log, sport) {
     node("span", { class: "training-summary-fold", "aria-hidden": "true" }, "▸"),
     node("span", { class: "field-label" }, t("summaryWeek", { week: weekNumber(monday) })),
     score,
-    node("span", { class: "diary-plan-text" }, t("summaryLast")),
+    node("span", { class: "diary-plan-text" }, `${t("summaryLast")} · ${displayNumber(Math.round(weekMeters / 100) / 10, 1)} km`),
   );
   card.append(head, list);
   return card;
