@@ -1892,7 +1892,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .activity-chart-line { fill: none; stroke: var(--compare-1); stroke-width: 2; stroke-linejoin: round; }
 .activity-chart-grid { stroke: var(--line); stroke-width: 1; }
 .activity-chart-label { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.activity-chart-rest { fill: var(--muted); opacity: .12; }
+.activity-chart-band { fill: var(--accent); }
+.activity-chart-split { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .85; }
+.activity-chart-band.is-warmup { fill: #f2c230; } .activity-chart-split.is-warmup { stroke: #f2c230; }
+.activity-chart-band.is-recovery { fill: #43b649; } .activity-chart-split.is-recovery { stroke: #43b649; }
+.activity-chart-band.is-rest { fill: #9aa4b2; } .activity-chart-split.is-rest { stroke: #9aa4b2; }
+.activity-chart-band.is-cooldown { fill: #1e88e5; } .activity-chart-split.is-cooldown { stroke: #1e88e5; }
 .library-table tr.is-link { cursor: pointer; }
 .library-table tr.is-link:hover td { background: var(--surface-2, rgba(127, 127, 127, .08)); }
 @media (max-width: 640px) {

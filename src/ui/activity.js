@@ -100,7 +100,7 @@ function chart(entry) {
   head.append(el("span", "field-label", t("activityCourse")), switcher);
   const width = 800;
   const height = 220;
-  const pad = { left: 52, right: 8, top: 10, bottom: 22 };
+  const pad = { left: 52, right: 8, top: 16, bottom: 22 };
   const svg = document.createElementNS(svgNs, "svg");
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("class", "activity-chart");
@@ -129,14 +129,19 @@ function chart(entry) {
     svg.append(node);
     return node;
   };
-  // The laps marked as warm-up, rest and the like, behind the line.
+  // Interval laps as the converter's chart shows them: a band along the top coloured by the lap's type
+  // and a dashed line where each one starts. A steady row's distance laps are left out.
   const laps = entry.laps ?? [];
-  laps.forEach((lap, index) => {
-    if (!lap.intensity || lap.intensity === "active") return;
-    const from = Math.max(0, (lap.startMs - entry.startMs) / 1000);
-    const to = laps[index + 1] ? (laps[index + 1].startMs - entry.startMs) / 1000 : end;
-    add("rect", { x: x(from), y: pad.top, width: Math.max(0, x(Math.min(to, end)) - x(from)), height: height - pad.top - pad.bottom, class: `activity-chart-rest is-${lap.intensity}` });
-  });
+  if (laps.length >= 2 && (entry.intervalLaps || laps.some((lap) => lap.intensity && lap.intensity !== "active"))) {
+    laps.forEach((lap, index) => {
+      const from = Math.max(0, (lap.startMs - entry.startMs) / 1000);
+      const to = Math.min(end, laps[index + 1] ? (laps[index + 1].startMs - entry.startMs) / 1000 : end);
+      if (!(to > from)) return;
+      const type = lap.intensity ?? "active";
+      add("rect", { x: x(from) + (index ? 1 : 0), y: 2, width: Math.max(1, x(to) - x(from) - (index ? 1 : 0)), height: 5, class: `activity-chart-band is-${type}` });
+      if (index) add("line", { x1: x(from), x2: x(from), y1: 8, y2: height - pad.bottom, class: `activity-chart-split is-${type}` });
+    });
+  }
   for (const value of [low + (high - low) * 0.1, (low + high) / 2, high - (high - low) * 0.1]) {
     add("line", { x1: pad.left, x2: width - pad.right, y1: y(value), y2: y(value), class: "activity-chart-grid" });
     add("text", { x: pad.left - 6, y: y(value) + 4, class: "activity-chart-label", "text-anchor": "end" },
