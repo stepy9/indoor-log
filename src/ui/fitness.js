@@ -281,17 +281,20 @@ export function renderNextStep(card, entries, sport = "all") {
   if (!plan.ftpTest?.due) rows.push(plan.intervals.due
     ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
     : line(t("nextIntervals"), t(["tired", "hrvLow", "shortSleep", "illnessSigns"].some((hold) => plan.holds.includes(hold)) ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
-  // Why it holds back, or that this is a lighter week.
-  const notes = [
+  const head = node("div", { class: "panel-title-row" });
+  head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
+  card.replaceChildren(head, ...rows, ...planNotes(plan), infoHint(t("nextNote")));
+}
+
+// Why the plan holds back, or that this is a lighter week, as notes to show beside it.
+export function planNotes(plan) {
+  return [
     ...(plan.lighter ? [t("nextLighter")] : []),
     ...(plan.taper ? [t(`nextTaper_${plan.taper}`, { day: dayText(plan.goal, { weekday: "short", day: "numeric", month: "numeric" }) })] : []),
     ...plan.holds.map((hold) => t(`nextHold_${hold}`)),
     ...(plan.tooHard ? [t("nextTooHard")] : []),
     ...(plan.focus ? [t(`nextFocus_${plan.focus}`)] : []),
-  ];
-  const head = node("div", { class: "panel-title-row" });
-  head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
-  card.replaceChildren(head, ...rows, ...notes.map((text) => node("p", { class: "field-note fitness-next-note" }, text)), infoHint(t("nextNote")));
+  ].map((text) => node("p", { class: "field-note fitness-next-note" }, text));
 }
 
 function renderTiles(history, settings) {

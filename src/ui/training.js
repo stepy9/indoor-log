@@ -5,7 +5,7 @@ import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
 import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
 import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
-import { lastFtpTyped, renderNextStep, trainingPlan } from "./fitness.js";
+import { lastFtpTyped, planNotes, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -563,8 +563,6 @@ function render() {
   if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport), settings));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;
   if (week) cards.push(week);
-  const next = node("section", { class: "card fitness-next" });
-  cards.push(next);
   if (plan?.outlook) cards.push(outlookCard(plan));
   cards.push(adherenceCard(sport, workouts, log));
   if (plan) cards.push(progressCard(sport, view.entries.filter((entry) => entry.sport === sport), plan, settings));
@@ -574,11 +572,17 @@ function render() {
   cards.push(settingsLink);
   content.replaceChildren(...cards);
   // Drawn once in the page, as the week's figures measure their column.
-  renderNextStep(next, view.entries, sport);
   if (week) {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
     drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day) });
+    // Why the plan holds back this week, under the days.
+    const notes = planNotes(plan);
+    if (notes.length) {
+      const box = node("div", { class: "fitness-next" });
+      box.append(...notes);
+      week.append(box);
+    }
     if (result.days.length) week.append(calendarRow(result));
   }
 }
