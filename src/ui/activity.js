@@ -236,19 +236,25 @@ function render() {
   const index = view.entries.findIndex((other) => other.id === entry.id);
   byId("activityNewer").disabled = index <= 0;
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
-  // The stretching after a row sits in the head, under the date: a tick once done, the button to start it otherwise.
-  const extras = byId("activityExtras");
-  extras.replaceChildren();
+  const box = tiles(entry, settings);
+  // The stretching after a row is a tile beside the numbers: a tick once done, the button to start it otherwise,
+  // what the set is for on hovering it.
   if (entry.sport === "rowing") {
     try {
       const block = stretchBlock(entry, settings);
-      block.querySelector(":scope > p.field-note:last-child")?.remove();
-      extras.append(block);
+      const tile = el("div", "diary-tile activity-stretch-tile");
+      const note = block.querySelector(".warmup-note")?.textContent ?? "";
+      const action = block.querySelector("button") ?? block;
+      if (note) tile.title = note;
+      // The tile names the stretching already; its button says only what it does and for how long.
+      const minutes = action.tagName === "BUTTON" && action.textContent.match(/\d+/)?.[0];
+      if (minutes) action.textContent = `▶ ${t("recoveryStartNow")} · ${minutes} min`;
+      tile.append(el("span", "diary-tile-label", t("activityStretch")), action);
+      box.append(tile);
     } catch {}
   }
-  extras.hidden = !extras.childElementCount;
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
+    box, chart(entry), lapsTable(entry), bestEfforts(entry), sameWorkout(entry),
   ].filter(Boolean));
 }
 
