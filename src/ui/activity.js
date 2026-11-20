@@ -11,6 +11,8 @@ import { stretchBlock, strengthLog, warmupLog } from "./recovery.js";
 import { afterWorkout, strengthLevel, strengthSession, warmupBefore } from "../recovery.js";
 
 const svgNs = "http://www.w3.org/2000/svg";
+// The day stretching after a row came into the app.
+const stretchingSince = "2026-11-18";
 const dialog = byId("activityDialog");
 const view = { entry: null, entries: [], metric: "power" };
 let onCompare = () => {};
@@ -263,7 +265,8 @@ function renderSessions(entry, settings) {
     if (strong) box.append(sessionChip(t("exercisesStrength"), kept(strong, () => strengthSession(strengthLevel(strengthLog(), day).steps).doses.map((dose) => dose.id)), true));
     const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day });
     if (entry.stretched) box.append(sessionChip(t("exercisesStretch"), entry.stretchedExercises ?? plan.exercises, true));
-    else {
+    // Stretching came in on 18 November 2026: an activity before it is not offered one it could not have had.
+    else if (day >= stretchingSince) {
       try {
         const button = stretchBlock(entry, settings).querySelector("button");
         if (button) {
