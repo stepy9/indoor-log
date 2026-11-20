@@ -296,7 +296,7 @@ export function exerciseViews(id) {
   return [{ key: view, poses, focus, blocks, far, arrows }, ...more.map((other) => ({ focus, blocks: [], ...other }))];
 }
 
-// The pause before each exercise, and between its sides.
+// The pause before each exercise, the same in every set (warm-up, stretching, strength), and between its sides.
 export const restSeconds = 10;
 export const switchSeconds = 5;
 
@@ -355,7 +355,7 @@ export function afterWorkout({ benefit = null, seconds = 0, day = null }) {
 // The warm-up before a rowing workout: moves for the back, shoulders and hips done in rhythm, short pauses between.
 // Before intervals, an FTP test or the goal the full set, then easy minutes on the rower building up to a few
 // strokes at the effort's pace; before a steady workout the short set, the first minutes on the rower easy anyway.
-export const warmupRest = 5;
+export const warmupRest = restSeconds;
 // The short warm-up takes two of the moves in turn beside cat–cow; the full one takes them all.
 const warmups = {
   short: { core: ["catCow"], pool: ["armSwings", "squat", "bridge", "hipHinge", "legSwings"], take: 2, seconds: { catCow: 30, squat: 30 } },
@@ -401,7 +401,7 @@ export function exerciseCatalog() {
 export const strengthPlan = {
   rounds: 2,
   moreRoundsFrom: 6,
-  rest: 20,
+  rest: restSeconds,
   roundRest: 60,
   // In the order they run: standing, on the hands, then lying.
   exercises: [

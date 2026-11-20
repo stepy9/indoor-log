@@ -1494,8 +1494,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .recovery-player { width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; display: none; flex-direction: column; }
   .recovery-player[open] { display: flex; }
   .recovery-player-how { flex: 1; }
-  .recovery-card .panel-title-row { flex-wrap: wrap; }
-  .recovery-card #compareRecoveryStart { width: 100%; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .recovery-figure animate { display: none; } }
 

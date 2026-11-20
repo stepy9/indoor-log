@@ -1,7 +1,7 @@
-// The stretching card after a rowing workout in the activity's detail: the set, its time, and each exercise with
-// its dose, how-to and, where it has one, a figure moving between its two poses in time with the breath. A button
-// runs the set step by step, full screen on a phone: a countdown per exercise and side, a short rest between,
-// and at the end the workout is marked as stretched.
+// The players of the Training tab's day: the warm-up before a rowing workout, the stretching after it and the strength
+// work, each exercise with its dose, how-to and, where it has one, a figure moving between its two poses in time with
+// the breath. A button runs the set step by step, full screen on a phone: a countdown per exercise and side, a short
+// rest between, and at the end the set is marked done.
 import { afterWorkout, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
@@ -71,6 +71,8 @@ function openAudio() {
 function tones(list) {
   if (!soundOn() || !audio) return;
   try {
+    // iOS leaves the context interrupted after speech: wake it before each sound.
+    if (audio.state !== "running") audio.resume();
     let at = audio.currentTime + 0.02;
     for (const [frequency, seconds, gap = 0.08] of list) {
       const tone = audio.createOscillator();
@@ -167,7 +169,14 @@ function showStep() {
     byId("recoveryPlayerClock").textContent = `${step.reps}×`;
     return;
   }
-  if (!work) announce(coming);
+  // The pause between rounds says so first and names the next exercise in its last ten seconds; any other pause
+  // names it at once.
+  player.roundPause = !work && step.seconds > 20;
+  if (player.roundPause) {
+    speak(t("speakRoundPause", { seconds: step.seconds }));
+    byId("recoveryPlayerPhase").textContent = t("strengthRoundPause", { round: coming?.round ?? step.round });
+  }
+  else if (!work) announce(coming);
   player.left = step.seconds;
   player.endsAt = Date.now() + step.seconds * 1000;
   player.ticked = null;
@@ -191,14 +200,14 @@ function tick() {
   if (player.paused || !player.list.length || player.list[player.index]?.reps) return;
   const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
   byId("recoveryPlayerClock").textContent = formatDuration(left);
-  // During a timed exercise of 30 s or more the voice says the half, and from 15 s the last five; once each.
+  // During a timed exercise of 30 s or more the voice says the half; once.
   const step = player.list[player.index];
-  if (step.type === "work" && player.said !== left) {
-    if (step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t("speakHalf"), 0);
-    else if (step.seconds >= 15 && left === 5) speak(t("speakLastFive"), 0);
+  if (player.said !== left) {
+    if (step.type === "work" && step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t("speakHalf"), 0);
+    if (player.roundPause && left === 10) announce(player.list[player.index + 1]);
     player.said = left;
   }
-  // The last three seconds of a pause or a hold tick, once each.
+  // The last three seconds of a pause or a timed exercise tick, once each; the change then sounds as the next step starts.
   if (left > 0 && left <= 3 && player.ticked !== left) {
     player.ticked = left;
     sounds.tick();
@@ -316,40 +325,39 @@ function wirePlayer() {
   dialog.addEventListener("close", stop);
 }
 
-// Shown for one rowing workout picked; hidden otherwise.
-export function renderRecovery(picked, settings, onStretched = () => {}) {
-  const card = byId("compareRecovery");
-  const entry = picked.length === 1 && picked[0].sport === "rowing" ? picked[0] : null;
-  card.hidden = !entry;
-  if (!entry) return;
+// The stretching after today's rowing workout, for the Training tab's day: the set picked by the workout's benefit
+// and length behind a button, or, once done, a tick. entry: the last rowing workout of today.
+export function stretchBlock(entry, settings) {
   wirePlayer();
+  if (entry.stretched) return element("p", "training-today-done strength-done", t("recoveryDoneToday"));
   const plan = afterWorkout({ benefit: primaryBenefit(entry, settings)?.benefit ?? null, seconds: entry.summary.timerSeconds, day: new Date(entry.startMs).toISOString().slice(0, 10) });
-  byId("compareRecoveryTitle").textContent = t("recoveryTitle", { minutes: plan.minutes });
-  byId("compareRecoveryNote").textContent = t(plan.cooldown ? "recoveryCooldown" : `recoveryNote_${plan.set}`);
-  const status = byId("compareRecoveryDone");
-  const showStatus = () => {
-    status.hidden = !entry.stretched;
-    if (entry.stretched) status.textContent = t("recoveryDoneOn", { when: new Date(entry.stretched).toLocaleString(document.documentElement.lang || undefined, { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) });
-  };
-  showStatus();
-  const button = byId("compareRecoveryStart");
+  const note = t(plan.cooldown ? "recoveryCooldown" : `recoveryNote_${plan.set}`);
+  const block = element("div", "warmup-block");
+  const head = element("div", "warmup-head");
+  const button = element("button", "outline-button warmup-button", t("stretchStart", { minutes: plan.minutes }));
+  button.type = "button";
   // The button opens the set first, what is coming and for how long, and runs it from there.
-  button.onclick = () => start(steps(plan.exercises), {
-    intro: { title: t("recoveryTitle", { minutes: plan.minutes }), note: byId("compareRecoveryNote").textContent, exercises: plan.exercises.map((id) => ({ id })) },
+  button.addEventListener("click", () => start(steps(plan.exercises), {
+    intro: { title: t("recoveryTitle", { minutes: plan.minutes }), note, exercises: plan.exercises.map((id) => ({ id })) },
     onDone: async () => {
       entry.stretched = Date.now();
       await saveEntries([entry]).catch(() => {});
-      showStatus();
-      onStretched();
+      window.dispatchEvent(new Event("settings-change"));
     },
-  });
+  }));
+  head.append(button, element("span", "field-note warmup-note", note));
+  block.append(head, element("p", "field-note", t("recoveryCaution")));
+  return block;
 }
 
 // The warm-up before a rowing workout planned, for the Training tab's day: a button that opens the set in the same
 // player and runs it from there, and what follows on the rower beside it.
-export function warmupBlock(type, day = null) {
+export const warmupLog = () => savedDefaults().warmupLog ?? {};
+export function warmupBlock(type, day = null, today = null) {
   wirePlayer();
   const plan = warmupBefore(type, day);
+  // Today's warm-up done: a tick in place of the button.
+  if (today && day === today && warmupLog()[today]) return element("p", "training-today-done strength-done", t("warmupDoneToday"));
   const block = element("div", "warmup-block");
   const head = element("div", "warmup-head");
   const button = element("button", "outline-button warmup-button", t("warmupStart", { minutes: plan.minutes }));
@@ -359,6 +367,14 @@ export function warmupBlock(type, day = null) {
   button.addEventListener("click", () => start(steps(plan.exercises, { rest: warmupRest, seconds: plan.seconds }), {
     doneKey: "warmupDone",
     doneNote: after,
+    // Only today's warm-up is kept; one for a day ahead is a try.
+    onDone: () => {
+      if (!today || day !== today) return;
+      // Kept to the last few weeks, so the synced settings do not grow.
+      const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
+      saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: true } });
+      window.dispatchEvent(new Event("settings-change"));
+    },
     intro: { title: t("warmupStart", { minutes: plan.minutes }), note: after, exercises: plan.exercises.map((id) => ({ id, seconds: plan.seconds[id] })) },
   }));
   head.append(button, element("span", "field-note warmup-note", after));

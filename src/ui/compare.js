@@ -10,7 +10,6 @@ import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { infoHint } from "./info.js";
-import { renderRecovery } from "./recovery.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
 import { aerobicEffect, benefitGroup, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
 
@@ -616,8 +615,6 @@ function renderTables() {
     ...powerDurations.map((seconds) => [t("compareBestPower", { duration: formatDuration(seconds) }), (entry) => watts(bestAverage(entry, "power", seconds), entry)]),
   ], picked);
   renderSame(all);
-  // A set finished marks the workout in the diary, which reads the library afresh.
-  renderRecovery(all, settings, showDiary);
 }
 
 

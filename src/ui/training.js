@@ -1,4 +1,4 @@
-import { strengthBlock, warmupBlock } from "./recovery.js";
+import { strengthBlock, stretchBlock, warmupBlock } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -324,7 +324,7 @@ function extraFor(kinomap, item) {
 
 // What to ride today, large: today's planned workout, or with today done or free the next one; the least workout
 // under it, and a warning when the last workouts felt harder than usual.
-function todayCard(result, scored, fatigue, entries) {
+function todayCard(result, scored, fatigue, entries, settings) {
   const card = node("section", { class: "card training-today" });
   const now = today();
   const excused = excuses();
@@ -361,8 +361,11 @@ function todayCard(result, scored, fatigue, entries) {
     const suggestions = showing.type === "usual" || showing.type === "long" ? suggestionsButton(result, entries, showing.type) : null;
     if (suggestions) main.append(suggestions);
     // Before a row, a warm-up for the back, shoulders and hips, longer before the hard days.
-    if (result.sport === "rowing") extra(t("trainingBefore"), warmupBlock(showing.type, showing.day));
+    if (result.sport === "rowing") extra(t("trainingBefore"), warmupBlock(showing.type, showing.day, now));
   } else if (!done) main.append(node("p", { class: "field-note" }, t("trainingTodayFree")));
+  // After today's row, its stretching: the set for the last one of the day, or a tick once done.
+  const rowed = result.sport === "rowing" ? scored.filter((entry) => entry.day === now).map((entry) => entry.entry).sort((a, b) => a.startMs - b.startMs).at(-1) : null;
+  if (rowed) extra(t("trainingAfter"), stretchBlock(rowed, settings));
   if (fatigue) main.append(node("p", { class: "training-warning" }, t("trainingFatigue", { rpe: fatigue.rpe ?? "—", usual: fatigue.usualRpe ?? "—", minutes: result.plan.minimal?.minutes ?? 10 })));
   // Strength work twice a week on an easy day (or one without a workout), for the muscles rowing leaves out.
   const strength = strengthBlock(now, { type: item?.status === "planned" && !excused[now] ? item.type : null, taper: result.plan.taper ?? null });
@@ -556,7 +559,7 @@ function render() {
   if (ftpCard) cards.push(ftpCard);
   const summary = summaryCard(scored, workouts, log, sport);
   if (summary) cards.push(summary);
-  if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport)));
+  if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport), settings));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;
   if (week) cards.push(week);
   const next = node("section", { class: "card fitness-next" });
