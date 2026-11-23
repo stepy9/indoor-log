@@ -50,14 +50,6 @@ function segmented(holder, values, label, now, onPick) {
 function renderCustom(picked) {
   const list = picked.custom ?? [];
   const update = (next) => { saveChoice({ custom: next }); render(); };
-  const select = byId("routineAddSelect");
-  const keep = select.value;
-  select.replaceChildren(...exerciseGroups().map(({ group, ids }) => {
-    const optgroup = Object.assign(document.createElement("optgroup"), { label: t(`routineGroup_${group}`) });
-    optgroup.append(...ids.map((id) => new Option(t(`recovery_${id}`), id)));
-    return optgroup;
-  }));
-  if (keep) select.value = keep;
   byId("routineCustomList").replaceChildren(...(list.length ? list.map((item, index) => {
     const row = element("li", "routine-custom-item");
     const name = element("span", "routine-custom-name", t(`recovery_${item.id}`));
@@ -82,6 +74,35 @@ function renderCustom(picked) {
     row.append(name, amount, unit, up, down, button("link-button", "✕", () => update(list.filter((_, at) => at !== index)), t("routineRemove")));
     return row;
   }) : [element("li", "field-note", t("routineCustomEmpty"))]));
+}
+
+// An exercise's card: its figures, name and mode, dose, how-to and the book's video; more: anything added under it.
+function card(id, doseText, more = []) {
+  const item = element("li", "recovery-item");
+  const pictures = element("div", "recovery-views");
+  pictures.append(...figures(id));
+  const text = element("div", "recovery-text");
+  text.append(nameLine(id), element("span", "recovery-dose", doseText), element("p", "", t(`recoveryHow_${id}`)));
+  if (exercises[id].book) text.append(element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
+  text.append(...more);
+  item.append(pictures, text);
+  return item;
+}
+
+// Every exercise of a group to add to the hand-made set, the group picked by its buttons; one added says how often.
+function renderCatalog(picked) {
+  const groups = exerciseGroups();
+  const group = groups.some((item) => item.group === picked.group) ? picked.group : groups[0].group;
+  segmented(byId("routineGroups"), groups.map((item) => item.group), (value) => t(`routineGroup_${value}`), group, (value) => { saveChoice({ group: value }); render(); });
+  const list = picked.custom ?? [];
+  byId("routineCatalog").replaceChildren(...groups.find((item) => item.group === group).ids.map((id) => {
+    const count = list.filter((item) => item.id === id).length;
+    const add = button("outline-button routine-add-button", `+ ${t("routineAdd")}${count ? ` · ${count}×` : ""}`, () => {
+      saveChoice({ custom: [...(choice().custom ?? []), { id, ...defaultDose(id) }] });
+      render();
+    });
+    return card(id, dose(id), [add]);
+  }));
 }
 
 // The saved sets, each to start or take out.
@@ -125,7 +146,12 @@ function render() {
   segmented(byId("routineReps"), balanceReps, String, picked.reps, pick("reps"));
   // The rows that belong to the style chosen.
   for (const row of byId("exercisesRoutine").querySelectorAll("[data-routine-for]")) row.hidden = !row.dataset.routineFor.split(" ").includes(picked.style);
-  if (custom) renderCustom(picked);
+  if (custom) {
+    renderCustom(picked);
+    renderCatalog(picked);
+  }
+  byId("routineCatalogBox").hidden = !custom;
+  byId("routineList").hidden = custom;
   const set = buildRoutine(current(picked));
   const hold = Object.values(set.seconds)[0];
   // Yin has nothing of its own for some areas: the set says it is for the whole body then.
@@ -154,17 +180,8 @@ function render() {
   const planned = Object.entries(plan).sort(([a], [b]) => a - b).map(([weekday, item]) => `${weekdayName(Number(weekday))} ${setText(buildRoutine(item))}`);
   byId("routinePlanNote").textContent = planned.length ? t("routinePlanList", { list: planned.join(", ") }) : t("routinePlanEmpty");
   renderSaved();
-  byId("routineList").replaceChildren(...[...new Set(set.exercises)].map((id) => {
-    const item = element("li", "recovery-item");
-    const pictures = element("div", "recovery-views");
-    pictures.append(...figures(id));
-    const text = element("div", "recovery-text");
-    const extra = set.weak && set.weak !== "none" ? ` · ${t(`routineWeakMore_${set.weak}`, { extra: weakerExtra })}` : "";
-    text.append(nameLine(id), element("span", "recovery-dose", dose(id, set.seconds[id], set.reps?.[id]) + extra), element("p", "", t(`recoveryHow_${id}`)));
-    if (exercises[id].book) text.append(element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
-    item.append(pictures, text);
-    return item;
-  }));
+  const extra = set.weak && set.weak !== "none" ? ` · ${t(`routineWeakMore_${set.weak}`, { extra: weakerExtra })}` : "";
+  if (!custom) byId("routineList").replaceChildren(...[...new Set(set.exercises)].map((id) => card(id, dose(id, set.seconds[id], set.reps?.[id]) + extra)));
   return set;
 }
 
@@ -207,12 +224,6 @@ export function setupRoutine() {
     const set = render();
     byId("exercisesDialog").close();
     playSet(set, today(), { intro: false });
-  });
-  byId("routineAdd").addEventListener("click", () => {
-    const id = byId("routineAddSelect").value;
-    if (!exercises[id]) return;
-    saveChoice({ custom: [...(choice().custom ?? []), { id, ...defaultDose(id) }] });
-    render();
   });
   // Saved as it is now, so it runs the same however the automatic sets change later.
   byId("routineSave").addEventListener("click", () => {

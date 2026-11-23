@@ -2013,18 +2013,33 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .routine-custom-item .link-button, .routine-saved-item .link-button { min-width: 28px; font-size: 16px; }
 .routine-custom-item .link-button:disabled { opacity: .3; cursor: default; }
 /* The pick and the start rows: every control one height, in a line, and a gap above so a focus ring clears the text. */
-.routine-add { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.routine-add select { flex: 0 1 420px; min-width: 0; }
-.routine-add select, .routine-name { height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); }
-.routine-add select:focus, .routine-name:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
-.routine-add .outline-button, .routine-actions > button { height: 38px; margin: 0; padding-block: 0; }
+.routine-name { height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); }
+.routine-name:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.routine-actions > button { height: 38px; margin: 0; padding-block: 0; }
 .routine-saved { margin: 12px 0 4px; }
 .routine-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 0; }
 .routine-actions .routine-start { margin: 0; }
 .routine-name { flex: 0 1 300px; min-width: 0; }
 @media (max-width: 640px) {
   .routine-actions .routine-start { flex: 1 1 100%; }
-  .routine-add select, .routine-name { flex: 1 1 0; }
+  .routine-name { flex: 1 1 0; }
   .routine-custom-name { flex-basis: 100%; }
   .routine-custom-first { margin-left: auto; }
 }
+
+/* The Set tab on a wide screen: the choices in a column at the left, staying in view, the cards beside them. */
+.routine-layout { display: grid; gap: 16px; }
+.routine-side .routine-choices { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.routine-side .routine-choices .segmented { margin-bottom: 6px; }
+.routine-side .routine-mode { margin-top: 0; }
+.routine-main .recovery-list { margin-top: 0; }
+.routine-groups { flex-wrap: wrap; margin-bottom: 12px; }
+.routine-add-button { margin-top: 8px; height: 32px; padding-block: 0; }
+@media (min-width: 900px) {
+  .routine-layout { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .routine-side { position: sticky; top: 0; max-height: calc(100vh - 220px); overflow-y: auto; padding-right: 4px; }
+  .routine-side .routine-name { flex: 1 1 140px; }
+}
+/* In the narrow column a hand-made set's row puts the name on its own line, the time and the arrows under it. */
+.routine-side .routine-custom-name { flex-basis: 100%; }
+.routine-side .routine-custom-first { margin-left: auto; }
