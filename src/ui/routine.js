@@ -5,6 +5,7 @@
 import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
+import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, state, t } from "./context.js";
 
@@ -91,7 +92,7 @@ function card(id, doseText, more = []) {
   pictures.append(...figures(id));
   const text = element("div", "recovery-text");
   text.append(nameLine(id), element("span", "recovery-dose", doseText), element("p", "", t(`recoveryHow_${id}`)));
-  if (exercises[id].book) text.append(element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
+  if (exercises[id].book) text.append(videoButton(exercises[id].book) ?? element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
   text.append(...more);
   item.append(pictures, text);
   return item;

@@ -5,6 +5,7 @@
 import { afterWorkout, sessionDetail, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
+import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
 import { byId, formatDuration, state, t } from "./context.js";
@@ -171,6 +172,10 @@ function showStep() {
   byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${what}` : what) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
   byId("recoveryPlayerHow").textContent = t(`recoveryHow_${id}`);
+  // The book's video for the exercise, played in the app; the set pauses while it plays.
+  const video = videoButton(exercises[id].book, () => { if (!player.paused) byId("recoveryPlayerPause").click(); });
+  byId("recoveryPlayerVideo").replaceChildren(...(video ? [video] : []));
+  byId("recoveryPlayerVideo").hidden = !video;
   const art = figures(id);
   byId("recoveryPlayerFigure").replaceChildren(...art);
   byId("recoveryPlayerFigure").classList.toggle("has-views", art.length > 1);
@@ -242,6 +247,7 @@ async function finish() {
   byId("recoveryPlayerPhase").textContent = "";
   byId("recoveryPlayerName").textContent = t(player.doneKey);
   byId("recoveryPlayerHow").textContent = player.doneNote ?? "";
+  byId("recoveryPlayerVideo").hidden = true;
   byId("recoveryPlayerClock").textContent = "✓";
   byId("recoveryPlayerFinish").focus();
   // Anything the set asks at its end (how the stabilization went), under the tick.
