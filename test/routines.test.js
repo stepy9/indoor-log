@@ -172,3 +172,18 @@ test("every exercise from the book has its video", async () => {
   assert.equal(books.length, 32);
   for (const book of books) assert.ok(videoOf(book), book);
 });
+
+test("pilates runs the classical order near its length, the teaser and more repeats only at the advanced level", async () => {
+  const { pilatesMoves } = await import("../src/routines.js");
+  for (const level of ["basic", "advanced"]) {
+    for (const minutes of routineMinutes) {
+      const set = buildRoutine({ style: "pilates", minutes, level });
+      assert.ok(Math.abs(set.minutes - minutes) <= 1, `${level} ${minutes}: ${set.minutes}`);
+      assert.equal(set.exercises.includes("teaser"), level === "advanced");
+      assert.deepEqual(set.exercises, [...set.exercises].sort((a, b) => pilatesMoves.indexOf(a) - pilatesMoves.indexOf(b)));
+      assert.equal(set.exercises.at(-1), "shoulderBridge");
+      for (const id of set.exercises) assert.ok(translations.cs[`recoveryBreath_${id}`] && translations.en[`recoveryBreath_${id}`], id);
+    }
+  }
+  assert.ok(buildRoutine({ style: "pilates", level: "advanced" }).reps.rollUp > buildRoutine({ style: "pilates" }).reps.rollUp);
+});

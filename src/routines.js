@@ -7,7 +7,7 @@
 // No DOM here, so it is tested on its own.
 import { exercises, restSeconds, switchSeconds } from "./recovery.js";
 
-export const routineStyles = ["mobility", "flexibility", "yin", "stability", "balance", "gear"];
+export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "stability", "balance", "gear"];
 // The equipment there may be at home; a set with it is offered only when it is there. gearStyleTools: those the
 // "gear" style is built around (the ball and the dumbbell have their own in stability and balance).
 export const gearTools = ["ball", "dumbbell", "band", "bosu", "roller"];
@@ -64,6 +64,7 @@ export function buildRoutine(choice = {}) {
   if (choice.style === "stability") return stabilitySet(choice);
   if (choice.style === "balance") return balanceSet(choice);
   if (choice.style === "gear") return gearSet(choice);
+  if (choice.style === "pilates") return pilatesSet(choice);
   return lengthSet(choice);
 }
 
@@ -127,6 +128,7 @@ export function exerciseGroups(owned = gearTools) {
     { group: "flexibility", ids: take(orders.flexibility) },
     { group: "yin", ids: take(orders.yin.filter((id) => exercises[id].style === "yin")) },
     { group: "stability", ids: take(stability) },
+    { group: "pilates", ids: take(pilatesMoves) },
     { group: "balance", ids: take(balanceMoves) },
     ...gearStyleTools.map((tool) => ({ group: tool, ids: take(toolMoves(tool)) })),
     { group: "rowing", ids: take(Object.keys(exercises).filter((id) => !exercises[id].style)) },
@@ -158,6 +160,43 @@ function gearSet({ tool = "band", minutes = 10 } = {}) {
     style: "gear", tool, rounds, minutes: length, steps, exercises: ids,
     seconds: Object.fromEntries(ids.filter((id) => !exercises[id].reps).map((id) => [id, exercises[id].seconds])),
     reps: Object.fromEntries(ids.filter((id) => exercises[id].reps).map((id) => [id, exercises[id].reps])),
+  };
+}
+
+// Pilates: { minutes, level: "basic" | "advanced" }. The classical order from the hundred to the bridge, round
+// again where the length allows; the advanced set adds the teaser and a quarter more repeats (the harder form of
+// each move is in its how-to: the legs long and low, the head up).
+export const pilatesLevels = ["basic", "advanced"];
+export const pilatesMoves = ["hundred", "rollUp", "legCircles", "rollingBall", "singleLegStretch", "doubleLegStretch", "crissCross", "spineStretch", "saw", "swimming", "sideKick", "teaser", "shoulderBridge"];
+const pilatesDrop = ["rollingBall", "saw", "legCircles", "doubleLegStretch", "spineStretch", "sideKick", "swimming", "crissCross", "rollUp"];
+function pilatesSet({ minutes = 10, level = "basic" } = {}) {
+  const advanced = level === "advanced";
+  const pool = pilatesMoves.filter((id) => advanced || !exercises[id].advanced);
+  const dose = (id) => (exercises[id].reps ? { reps: advanced ? Math.round(exercises[id].reps * 1.25) : exercises[id].reps } : { seconds: exercises[id].seconds });
+  const cost = (id) => restSeconds + exercises[id].sides * (dose(id).reps ? dose(id).reps * repSeconds : dose(id).seconds) + (exercises[id].sides - 1) * switchSeconds;
+  const target = minutes * 60;
+  const sum = (ids) => ids.reduce((all, id) => all + cost(id), 0);
+  const picked = [];
+  let total = 0;
+  // Whole rounds while they fit; then a round short of the time left leaves out the least needed moves first,
+  // keeping the hundred, the leg stretch, the bridge (and the teaser) and the order.
+  for (let round = 1; round <= 4; round += 1) {
+    // The hundred warms up once; a later round goes without it.
+    let ids = round > 1 ? pool.filter((id) => id !== "hundred") : [...pool];
+    for (const drop of pilatesDrop) if (total + sum(ids) > target + 30) ids = ids.filter((id) => id !== drop);
+    if (picked.length && (ids.length < 3 || total + sum(ids) > target + 30)) break;
+    picked.push(...ids.map((id) => ({ id, round })));
+    total += sum(ids);
+    if (ids.length < pool.length) break;
+  }
+  const rounds = Math.max(1, ...picked.map((item) => item.round));
+  const work = picked.flatMap(({ id, round }) => sidesOf(id, () => ({ ...dose(id), ...(rounds > 1 ? { round } : {}) })));
+  const { steps, minutes: length } = stepsOf(work);
+  const ids = [...new Set(picked.map((item) => item.id))];
+  return {
+    style: "pilates", level, rounds, minutes: length, steps, exercises: ids,
+    seconds: Object.fromEntries(ids.filter((id) => !exercises[id].reps).map((id) => [id, dose(id).seconds])),
+    reps: Object.fromEntries(ids.filter((id) => exercises[id].reps).map((id) => [id, dose(id).reps])),
   };
 }
 

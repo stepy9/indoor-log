@@ -2,7 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
+import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
 import { videoButton } from "./video.js";
@@ -34,7 +34,7 @@ const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(state.l
 const setText = (set) => set.name ? `${set.name} · ${set.minutes} min` : t("routineWhat", { style: t(`routineStyle_${set.style}`), minutes: set.minutes });
 // mode: "auto" or "custom"; levels: each stabilization chain's level; ball: the pelvis's ball moves; weak, reps:
 // the balance's; custom: the hand-made set, [{ id, seconds | reps }].
-const choice = () => ({ mode: "auto", gear: defaultGear, tool: "band", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, custom: [], ...(savedDefaults().routine ?? {}) });
+const choice = () => ({ mode: "auto", gear: defaultGear, tool: "band", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, level: "basic", custom: [], ...(savedDefaults().routine ?? {}) });
 const saveChoice = (change) => saveDefaults({ routine: { ...choice(), ...change } });
 // What the set is built from: the hand-made list, or the automatic choice, without the ball where there is none
 // and with a tool that is there.
@@ -190,6 +190,7 @@ function render() {
   }
   segmented(byId("routineBall"), [true, false], (value) => t(value ? "routineBallOn" : "routineBallOff"), picked.ball !== false, pick("ball"));
   segmented(byId("routineWeak"), balanceWeak, (value) => t(`routineWeak_${value}`), picked.weak, pick("weak"));
+  segmented(byId("routinePilatesLevel"), pilatesLevels, (value) => t(`routinePilatesLevel_${value}`), picked.level ?? "basic", pick("level"));
   segmented(byId("routineReps"), balanceReps, String, picked.reps, pick("reps"));
   // The rows that belong to the style chosen; the ball's only with a ball at home.
   for (const row of byId("exercisesRoutine").querySelectorAll("[data-routine-for]")) row.hidden = !row.dataset.routineFor.split(" ").includes(picked.style);

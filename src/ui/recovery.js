@@ -134,7 +134,9 @@ function announce(coming) {
   // The first exercise of the last of several rounds says so first.
   const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
   const lastRound = rounds > 1 && coming.round === rounds && !player.list.slice(0, player.list.indexOf(coming)).some((item) => item.type === "work" && item.round === rounds);
-  speak(`${lastRound ? `${t("speakLastRound")} ` : ""}${t("speakNext", { name })}${side}. ${amount}.`);
+  // A pilates move says how to breathe with it.
+  const breath = exercises[coming.id].breath ? ` ${t(`recoveryBreath_${coming.id}`)}` : "";
+  speak(`${lastRound ? `${t("speakLastRound")} ` : ""}${t("speakNext", { name })}${side}. ${amount}.${breath}`);
 }
 
 // A long hold (yin's) said in minutes, as the screen shows it: "Výdrž dvě a půl minuty", "Hold for 3 minutes".

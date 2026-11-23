@@ -587,6 +587,113 @@ function bosuLunge() {
   return { props: [bosuDome(52)], poses: [a, b], far: { legs: [1] }, focus: ["thigh0"] };
 }
 
+// ---- Pilates on the mat: the classical order, lying on the back, sitting, on the front, on the side, the bridge
+// last. The head and shoulders curled up from the mat where the move asks for it.
+const backFlat = { trunk: [[128, 140], [88, 141], [48, 140]], neck: [36, 139], head: [26, 138] };
+const curled = { trunk: [[128, 140], [96, 136], [64, 124]], neck: [54, 118], head: [45, 111] };
+const longLegs = [[[128, 140], [168, 142], [204, 144]], [[128, 140], [166, 140], [200, 142]]];
+const longFeet = [[212, 136], [208, 134]];
+
+// The hundred: curled up, the legs in a table, the long arms pumping a hand's breadth above the mat.
+function hundred() {
+  const legs = [[[128, 140], [128, 90], [174, 90]], [[128, 140], [126, 88], [172, 88]]];
+  const shape = (y) => ({ ...curled, arms: [[[64, 124], [92, y], [120, y + 2]]], legs, feet: [[184, 84], [182, 82]] });
+  return { poses: [shape(122), shape(132)], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Roll-up: from lying with the arms overhead, peeled up vertebra by vertebra and over the long legs.
+function rollUp() {
+  const a = { ...backFlat, arms: [[[48, 140], [24, 140], [2, 140]]], legs: longLegs, feet: longFeet };
+  const b = { trunk: [[128, 140], [150, 96], [178, 108]], neck: [186, 114], head: [194, 120], arms: [[[178, 108], [192, 124], [204, 136]]], legs: longLegs, feet: longFeet };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Leg circles: on the back, one leg straight up drawing small circles, the pelvis still.
+function legCircles() {
+  const arms = [[[48, 140], [78, 144], [108, 146]]];
+  const down = [[128, 140], [168, 142], [204, 144]];
+  const a = { ...backFlat, arms, legs: [down, [[128, 140], [130, 92], [132, 46]]], feet: [[212, 136], [136, 34]] };
+  const b = { ...backFlat, arms, legs: [down, [[128, 140], [148, 96], [166, 54]]], feet: [[212, 136], [172, 42]] };
+  return { poses: [a, b], far: { legs: [0] }, focus: ["thigh1", "trunk"] };
+}
+// Rolling like a ball: balanced behind the sit bones, the knees held to the chest, rolling back to the shoulder
+// blades and up again.
+function rollingBall() {
+  const a = { trunk: [[120, 140], [104, 112], [96, 86]], neck: [96, 76], head: [98, 66], arms: [[[96, 86], [124, 92], [142, 108]]], legs: [[[120, 140], [140, 96], [148, 128]], [[120, 140], [138, 94], [146, 126]]], feet: [[160, 132], [158, 130]] };
+  const b = { trunk: [[130, 114], [108, 130], [80, 138]], neck: [70, 136], head: [62, 132], arms: [[[80, 138], [104, 100], [124, 82]]], legs: [[[130, 114], [110, 82], [140, 74]], [[130, 114], [112, 80], [142, 72]]], feet: [[150, 64], [152, 62]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Single leg stretch: curled up, one knee drawn in, the other leg long and low, changing legs.
+function singleLegStretch() {
+  const bent = [[128, 140], [104, 108], [134, 90]];
+  const long = [[128, 140], [172, 118], [212, 100]];
+  const a = { ...curled, arms: [[[64, 124], [88, 112], [104, 108]]], legs: [bent, long], feet: [[144, 82], [220, 92]] };
+  const b = { ...curled, arms: [[[64, 124], [88, 112], [104, 108]]], legs: [long, bent], feet: [[220, 92], [144, 82]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Double leg stretch: curled round the knees, then the arms long overhead and the legs long and low at once.
+function doubleLegStretch() {
+  const a = { ...curled, arms: [[[64, 124], [88, 112], [104, 108]]], legs: [[[128, 140], [104, 108], [134, 90]], [[128, 140], [106, 106], [136, 88]]], feet: [[144, 82], [146, 80]] };
+  const b = { ...curled, arms: [[[64, 124], [40, 110], [18, 96]]], legs: [[[128, 140], [168, 112], [204, 86]], [[128, 140], [166, 110], [202, 84]]], feet: [[212, 78], [210, 76]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Criss-cross: the hands behind the head, the trunk turning the elbow towards the knee drawn in, changing sides.
+function crissCross() {
+  const bent = [[128, 140], [104, 108], [134, 90]];
+  const long = [[128, 140], [172, 118], [212, 100]];
+  const arms = [[[64, 124], [52, 104], [40, 112]]];
+  const a = { trunk: [[128, 140], [98, 132], [70, 116]], neck: [60, 110], head: [52, 102], arms: [[[70, 116], [62, 96], [50, 102]]], legs: [bent, long], feet: [[144, 82], [220, 92]] };
+  const b = { ...curled, arms, legs: [long, bent], feet: [[220, 92], [144, 82]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Spine stretch forward: sitting tall with the legs long, the arms ahead, then the back rounding forward, the head
+// last, and building up again.
+function spineStretch() {
+  const hip = [100, 140];
+  const legs = [[hip, [148, 142], [196, 142]], [hip, [146, 140], [192, 140]]];
+  const feet = [[200, 128], [196, 126]];
+  const a = { trunk: [hip, [100, 100], [100, 60]], neck: [100, 48], head: [101, 37], arms: [[[100, 60], [128, 60], [156, 60]]], legs, feet };
+  const b = { trunk: [hip, [112, 96], [140, 96]], neck: [148, 104], head: [156, 112], arms: [[[140, 96], [166, 110], [190, 124]]], legs, feet };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Saw: seen from the front, sitting wide with the arms out, the trunk turning and the hand reaching past the other
+// foot, the back arm rising behind.
+function saw() {
+  const legs = [[[102, 136], [60, 140], [20, 142]], [[118, 136], [160, 140], [200, 142]]];
+  const feet = [[16, 130], [204, 130]];
+  const a = { trunk: [[110, 134], [110, 106], [110, 78]], neck: [110, 66], head: [110, 54], arms: [[[98, 80], [70, 80], [42, 80]], [[122, 80], [150, 80], [178, 80]]], legs, feet };
+  const b = { trunk: [[110, 134], [128, 114], [146, 98]], neck: [154, 98], head: [164, 100], arms: [[[140, 98], [170, 118], [196, 134]], [[156, 96], [150, 70], [138, 46]]], legs, feet };
+  return { view: "front", poses: [a, b], focus: ["trunk"] };
+}
+// Swimming: on the front, the arms and legs long and just off the mat, fluttering opposite arm and leg.
+function swimming() {
+  const body = { trunk: [[132, 138], [96, 136], [62, 132]], neck: [50, 128], head: [39, 124] };
+  const up = (from, to) => [from, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2 - 2], to];
+  const a = { ...body, arms: [up([62, 132], [14, 116]), up([62, 132], [14, 136])], legs: [up([132, 138], [204, 144]), up([132, 138], [204, 124])], feet: [[214, 144], [214, 122]] };
+  const b = { ...body, arms: [up([62, 132], [14, 136]), up([62, 132], [14, 116])], legs: [up([132, 138], [204, 124]), up([132, 138], [204, 144])], feet: [[214, 122], [214, 144]] };
+  return { poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["trunk"] };
+}
+// Side kick: lying on the side, the head on the hand, the top leg swinging up and down long, the trunk still.
+function sideKick() {
+  const body = { trunk: [[130, 130], [96, 133], [62, 134]], neck: [50, 133], head: [38, 130], arms: [[[62, 134], [46, 118], [32, 124]]] };
+  const bottom = [[130, 132], [170, 136], [206, 140]];
+  const a = { ...body, legs: [bottom, [[130, 128], [170, 130], [206, 134]]], feet: [[214, 132], [214, 126]] };
+  const b = { ...body, legs: [bottom, [[130, 128], [166, 110], [200, 92]]], feet: [[214, 132], [208, 84]] };
+  return { view: "front", poses: [a, b], far: { legs: [0] }, focus: ["thigh1"] };
+}
+// Shoulder bridge: on the back, the knees bent and the feet flat, the hips rolled up into a line from shoulders to
+// knees and down again.
+function shoulderBridge() {
+  const arms = [[[48, 140], [78, 144], [108, 146]]];
+  const a = { ...backFlat, arms, legs: [[[128, 140], [152, 104], [176, 144]], [[128, 140], [150, 102], [172, 142]]], feet: [[190, 146], [186, 144]] };
+  const b = { trunk: [[132, 108], [90, 126], [48, 140]], neck: [36, 139], head: [26, 138], arms, legs: [[[132, 108], [168, 102], [176, 146]], [[132, 108], [166, 100], [172, 144]]], feet: [[190, 146], [186, 144]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk", "thigh0"] };
+}
+// Teaser: from lying, the arms overhead, up into a V on the sit bones, the arms reaching along the legs.
+function teaser() {
+  const a = { ...backFlat, arms: [[[48, 140], [24, 140], [2, 140]]], legs: longLegs, feet: longFeet };
+  const b = { trunk: [[110, 140], [90, 104], [74, 70]], neck: [70, 60], head: [68, 49], arms: [[[74, 70], [100, 62], [126, 54]]], legs: [[[110, 140], [148, 112], [184, 84]], [[110, 140], [146, 110], [182, 82]]], feet: [[192, 76], [190, 74]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+
 const build = (make, extra) => ({ ...make(), ...extra });
 
 // Styles: "mobility" moved, "flexibility" and "yin" held. areas: "hips", "back", "shoulders", "legs".
@@ -617,6 +724,21 @@ export const routineExercises = {
   banana: build(banana, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["back", "shoulders"] }),
   // Beyond the book, a well-known mobility move.
   threadNeedle: build(threadNeedle, { style: "mobility", seconds: 45, sides: 2, areas: ["back", "shoulders"] }),
+  // Pilates: breath, a hint of how to breathe said with the move (recoveryBreath_<id>); advanced, only in the
+  // harder set. A move changing legs as it goes counts the repeats of both together.
+  hundred: build(hundred, { style: "pilates", seconds: 100, sides: 1, areas: ["back"], breath: true }),
+  rollUp: build(rollUp, { style: "pilates", reps: 6, seconds: 40, sides: 1, areas: ["back", "legs"], breath: true }),
+  legCircles: build(legCircles, { style: "pilates", reps: 10, seconds: 40, sides: 2, areas: ["hips"], breath: true }),
+  rollingBall: build(rollingBall, { style: "pilates", reps: 8, seconds: 30, sides: 1, areas: ["back"], breath: true }),
+  singleLegStretch: build(singleLegStretch, { style: "pilates", reps: 16, seconds: 45, sides: 1, areas: ["back", "hips"], breath: true }),
+  doubleLegStretch: build(doubleLegStretch, { style: "pilates", reps: 8, seconds: 40, sides: 1, areas: ["back", "shoulders"], breath: true }),
+  crissCross: build(crissCross, { style: "pilates", reps: 16, seconds: 45, sides: 1, areas: ["back"], breath: true }),
+  spineStretch: build(spineStretch, { style: "pilates", reps: 5, seconds: 30, sides: 1, areas: ["back", "legs"], breath: true }),
+  saw: build(saw, { style: "pilates", reps: 10, seconds: 40, sides: 1, areas: ["back", "legs"], breath: true }),
+  swimming: build(swimming, { style: "pilates", seconds: 30, sides: 1, areas: ["back", "shoulders"], breath: true }),
+  sideKick: build(sideKick, { style: "pilates", reps: 10, seconds: 40, sides: 2, areas: ["hips", "legs"], breath: true }),
+  teaser: build(teaser, { style: "pilates", reps: 5, seconds: 30, sides: 1, areas: ["back"], advanced: true, breath: true }),
+  shoulderBridge: build(shoulderBridge, { style: "pilates", reps: 8, seconds: 40, sides: 1, areas: ["hips", "back"], breath: true }),
   // chain and level: a stabilization exercise's place; reps: the repeats a moved one is counted in; gear: what it needs.
   stabFront1: build(front1, { style: "stability", chain: "front", level: 1, hold: true, seconds: 60, sides: 1, book: "9.1" }),
   stabFront2: build(front2, { style: "stability", chain: "front", level: 2, seconds: 60, sides: 1, book: "9.2" }),
