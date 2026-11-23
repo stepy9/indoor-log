@@ -236,6 +236,8 @@ test("the primary benefit is the hardest zone held long enough, by heart rate be
   assert.equal(primaryBenefit(entry({ power: (second) => (second % 300 < 60 ? 300 : 120), heartRate: () => 130 }), both).benefit, "anaerobic");
   // Short hard openers before ten minutes in the top heart rate zone, as a 20-minute FTP test: VO2 Max, not anaerobic.
   assert.equal(primaryBenefit(entry({ power: (second) => (second < 180 ? 300 : 120), heartRate: (second) => (second > 1200 && second < 1800 ? 185 : 130) }), both).benefit, "vo2max");
+  // One 5-minute effort far over the FTP, the heart rate not long at the top yet: VO2 Max, not anaerobic.
+  assert.equal(primaryBenefit(entry({ power: (second) => (second >= 600 && second < 900 ? 300 : 120), heartRate: (second) => (second >= 700 && second < 900 ? 185 : 130) }), both).benefit, "vo2max");
   assert.deepEqual(primaryBenefit(entry({ heartRate: () => 185 }), { maxHeartRate: 200 }), { benefit: "vo2max", by: "heartRate" });
   assert.equal(primaryBenefit(entry({ heartRate: () => 130 }), { maxHeartRate: 200 }).benefit, "base");
   assert.equal(primaryBenefit(entry(), {}), null);

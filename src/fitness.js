@@ -412,13 +412,14 @@ export function primaryBenefit(entry, allSettings) {
   // rate zone) is VO2max, the one below it the threshold, then tempo.
   const top = zones.length - 1;
   const vo2max = by === "power" ? top - 1 : top;
-  // Anaerobic efforts none longer than half a minute make a sprint workout.
+  // Anaerobic efforts none longer than half a minute make a sprint workout; one held three minutes or more,
+  // as a 5-minute FTP test, is VO2max work, however far above the FTP.
   const powerZoneTimes = hasPower ? (by === "power" ? zones : timeInZones([entry], "power", allSettings)) : null;
   // They lose to a longer time in the VO2max zone itself, as the openers of a 20-minute FTP test do: Garmin
   // calls that VO2 Max with no anaerobic effect.
   const anaerobicSeconds = powerZoneTimes?.at(-1) ?? 0;
-  const anaerobic = anaerobicSeconds >= 120 && anaerobicSeconds >= zones[vo2max]
-    ? (longestAbove(entry, settings.ftp * settings.powerZones.at(-1)) <= 30 ? "sprint" : "anaerobic") : null;
+  const longest = anaerobicSeconds >= 120 && anaerobicSeconds >= zones[vo2max] ? longestAbove(entry, settings.ftp * settings.powerZones.at(-1)) : null;
+  const anaerobic = longest == null ? null : longest <= 30 ? "sprint" : longest >= 180 ? "vo2max" : "anaerobic";
   const benefit = anaerobic ?? (from(vo2max) >= 300 ? "vo2max"
     : from(vo2max - 1) >= Math.max(900, total * 0.45) ? "threshold"
     : from(vo2max - 2) >= Math.max(300, total * 0.5) ? "tempo"
