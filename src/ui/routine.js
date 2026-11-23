@@ -4,7 +4,7 @@
 // The choices are remembered; a set done is logged by day.
 import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
-import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
+import { dose, figures, minutesText, nameLine, openExercises, playSteps } from "./recovery.js";
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, state, t } from "./context.js";
@@ -299,9 +299,7 @@ function playSet(set, day, { intro = true } = {}) {
 export function openRoutine() {
   byId("exercisesTabs").querySelector('[data-exercises-tab="Routine"]')?.click();
   render();
-  const dialog = byId("exercisesDialog");
-  if (!dialog.open) dialog.showModal();
-  dialog.scrollTop = 0;
+  openExercises();
 }
 
 let wired = false;

@@ -1396,12 +1396,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-view .fitness-content > .link-button { justify-self: start; }
 /* Shown only with the Training section: the tab, and the diary's plan switch only without it. */
 .app-nav button[hidden], .diary-plan-toggle[hidden] { display: none; }
-/* Exercises sits in the bottom bar on a phone, in the settings menu elsewhere. */
-.app-nav .app-nav-exercises { display: none; }
-@media (max-width: 640px) {
-  .app-nav .app-nav-exercises { display: flex; }
-  .topbar-more #exercisesButton { display: none; }
-}
+/* Exercises is a tab in the bar like the others; the settings menu no longer holds it. */
+.topbar-more #exercisesButton { display: none !important; }
 .training-today-title { display: block; margin-top: 8px; font-size: 20px; }
 .training-today-text { margin: 4px 0 6px; font-size: 15px; line-height: 1.45; }
 .training-today-done { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; color: var(--success); font-weight: 600; }
@@ -1786,6 +1782,20 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .exercises-tabs { display: flex; }
   .exercises-dialog > .exercises-tabs { align-self: stretch; }
   .exercises-tabs button { flex: 1; padding-block: 8px; }
+}
+/* A tab as the others: in the page's flow under the bar, the other views and the footer hidden, no close button,
+   the caution stuck to the screen's foot; a phone drops the intro too. */
+body.is-exercises-page .shell > :not(#exercisesDialog) { display: none; }
+body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercises) { color: var(--topbar-muted); }
+body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercises)::after { display: none; }
+.intervals-dialog.exercises-dialog:not(:modal) { position: static; width: auto; max-width: none; height: auto; max-height: none; margin: 0; padding: 16px 0 0; overflow: visible; color: inherit; background: transparent; box-shadow: none; }
+.exercises-dialog:not(:modal) > .dialog-head { display: none; }
+.exercises-dialog:not(:modal) > .field-note { margin-top: 0; }
+.exercises-dialog:not(:modal) .exercises-footer { bottom: 0; margin: auto 0 0; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: var(--bg); }
+@media (max-width: 640px) {
+  .exercises-dialog:not(:modal) > .field-note { display: none; }
+  .exercises-dialog:not(:modal) > .exercises-tabs { margin-top: 0; }
+  .exercises-dialog:not(:modal) .exercises-footer { margin-inline: -16px; padding-inline: 16px; }
 }
 
 /* Whether an exercise is held still or repeated: a small tag beside its name, the hold calm, the move in the accent. */

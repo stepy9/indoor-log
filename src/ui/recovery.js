@@ -459,6 +459,24 @@ export function warmupBlock(type, day = null, today = null) {
   return block;
 }
 
+// The catalogue is a tab of its own, as the others: the dialog opened without a backdrop and laid in the page's
+// flow, the tab in the bar marked, a phone's header naming it.
+let pageTitle = null;
+export function openExercises() {
+  const dialog = byId("exercisesDialog");
+  if (dialog.open) { dialog.scrollTop = 0; window.scrollTo({ top: 0 }); return; }
+  {
+    const title = byId("topbarTitle");
+    pageTitle = title.dataset.i18n;
+    title.dataset.i18n = "exercisesTitle";
+    title.textContent = t("exercisesTitle");
+    byId("navExercisesButton")?.setAttribute("aria-pressed", "true");
+    document.body.classList.add("is-exercises-page");
+    dialog.show();
+    window.scrollTo({ top: 0 });
+  }
+}
+
 // The catalogue of every exercise, from the gear's menu: the warm-up's moves and the stretches, each with its figure,
 // time, how-to and the sets it is in.
 export function setupExercises(beforeOpen = () => {}) {
@@ -504,10 +522,23 @@ export function setupExercises(beforeOpen = () => {}) {
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
     render();
-    dialog.showModal();
-    dialog.scrollTop = 0;
+    openExercises();
   });
   byId("exercisesClose").addEventListener("click", () => dialog.close());
+  // Leaving the page for another tab closes it; the page's marks go with it.
+  for (const button of document.querySelectorAll("[data-app-view], #addButton")) {
+    button.addEventListener("click", () => { if (dialog.open && !dialog.matches(":modal")) dialog.close(); });
+  }
+  dialog.addEventListener("close", () => {
+    if (!document.body.classList.contains("is-exercises-page")) return;
+    document.body.classList.remove("is-exercises-page");
+    byId("navExercisesButton")?.setAttribute("aria-pressed", "false");
+    if (pageTitle) {
+      const title = byId("topbarTitle");
+      title.dataset.i18n = pageTitle;
+      title.textContent = t(pageTitle);
+    }
+  });
 }
 
 // The days strength work was done, kept with the synced settings: { "YYYY-MM-DD": true }.
