@@ -129,11 +129,22 @@ function announce(coming) {
   // inside the sentence, the side after it.
   const name = t(`recovery_${coming.id}`).toLocaleLowerCase();
   const side = coming.side === 1 ? `, ${t("recoverySide_1").toLocaleLowerCase()}` : "";
-  const amount = coming.reps ? t("speakReps", { reps: coming.reps }) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds });
+  const amount = coming.reps ? t("speakReps", { reps: coming.reps }) : hold && coming.seconds >= 120 ? spokenMinutes(coming.seconds) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds });
   // The first exercise of the last of several rounds says so first.
   const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
   const lastRound = rounds > 1 && coming.round === rounds && !player.list.slice(0, player.list.indexOf(coming)).some((item) => item.type === "work" && item.round === rounds);
   speak(`${lastRound ? `${t("speakLastRound")} ` : ""}${t("speakNext", { name })}${side}. ${amount}.`);
+}
+
+// A long hold (yin's) said in minutes, as the screen shows it: "Výdrž dvě a půl minuty", "Hold for 3 minutes".
+// Czech says the number as a word, so it agrees with "minuty" (2–4) or "minut" (5 on); a half reads "a půl minuty".
+const czechNumbers = ["nula", "jedna", "dvě", "tři", "čtyři", "pět", "šest", "sedm", "osm", "devět", "deset"];
+export function spokenMinutes(seconds, language = state.language) {
+  const whole = Math.floor(seconds / 60);
+  const half = seconds % 60 >= 30;
+  const number = language === "en" ? String(whole) : (czechNumbers[whole] ?? String(whole));
+  if (half) return t("speakHoldMinutesHalf", { minutes: number });
+  return t(language !== "en" && whole >= 5 ? "speakHoldMinutesMany" : "speakHoldMinutesFew", { minutes: number });
 }
 
 // The change into the step now showing: a start into work, a stop out of it.
