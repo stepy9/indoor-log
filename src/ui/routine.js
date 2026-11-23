@@ -122,6 +122,9 @@ function renderSaved() {
     const text = element("span", "routine-saved-name", entry.name);
     text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min`));
     const remove = button("link-button", "✕", () => {
+      // A set in the plan asks first, naming its days: they stay empty, what was there before does not come back.
+      const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
+      if (days.length && !window.confirm(t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }))) return;
       saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
       changed();
       render();
