@@ -165,3 +165,10 @@ test("a chain's level goes up after two easy minutes in a row at it, down after 
   assert.equal(recordFeel(log, "front", "2026-11-22", 2, "ok").front.at(-1).feel, "ok");
   assert.deepEqual(nextLevel(recordFeel({}, "front", "1", 4, "easy").front.concat({ day: "2", level: 4, feel: "easy" }), 4).change, 0);
 });
+
+test("every exercise from the book has its video", async () => {
+  const { videoOf } = await import("../src/book-videos.js");
+  const books = Object.values(exercises).filter((exercise) => exercise.book).map((exercise) => exercise.book);
+  assert.equal(books.length, 32);
+  for (const book of books) assert.ok(videoOf(book), book);
+});
