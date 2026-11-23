@@ -12,7 +12,7 @@ import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
 import { hoverTip, infoHint } from "./info.js";
 import { sessionTip } from "./recovery.js";
-import { routineTip } from "./routine.js";
+import { breathTip, routineTip } from "./routine.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { goalFor, yearLine, yearProgress } from "../year-goal.js";
@@ -709,6 +709,8 @@ function renderCalendar(range, entries) {
     // The sets on the mat done that day.
     const mat = routineTip(day);
     if (mat) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `🧎 ${t("routineDay")}` }), mat));
+    const breathed = breathTip(day);
+    if (breathed) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `🌬️ ${t("breathDay")}` }), breathed));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {

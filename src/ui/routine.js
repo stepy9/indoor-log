@@ -349,7 +349,13 @@ export function routineBlock(day = today()) {
 }
 
 // A day's sets for a tooltip: the title, then each set one a line. "" when none.
+// The breathing apart, under its own mark (🌬️), so a day breathed shows at a glance; the other sets under 🧎.
+const isBreath = (item) => item.style === "breath";
 export function routineTip(day) {
-  const done = routineLog()[day] ?? [];
+  const done = (routineLog()[day] ?? []).filter((item) => !isBreath(item));
   return done.length ? [t("routineTitle"), ...done.map((item) => `· ${setText(item)}`)].join("\n") : "";
+}
+export function breathTip(day) {
+  const done = (routineLog()[day] ?? []).filter(isBreath);
+  return done.length ? [t("routineStyle_breath"), ...done.map((item) => `· ${setText(item)}`)].join("\n") : "";
 }
