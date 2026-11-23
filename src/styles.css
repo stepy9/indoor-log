@@ -1990,3 +1990,26 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .routine-choices .segmented button { flex: 1 1 auto; padding-block: 8px; }
   .routine-start { width: 100%; }
 }
+
+/* The Set tab: the mode, a hand-made set's list, the saved sets and the start and save row. */
+.routine-mode { margin: 12px 0 4px; }
+.routine-custom-list, .routine-saved-list { display: grid; gap: 6px; margin: 8px 0; padding: 0; list-style: none; }
+.routine-custom-item, .routine-saved-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.routine-custom-name { flex: 1 1 160px; font-weight: 600; }
+.routine-saved-name { display: grid; flex: 1 1 0; min-width: 0; font-weight: 600; }
+.routine-saved-name .field-note { font-weight: 400; }
+.routine-custom-amount { width: 64px; height: 30px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); font-variant-numeric: tabular-nums; }
+.routine-custom-unit { color: var(--muted); font-size: 13px; }
+.routine-custom-item .link-button, .routine-saved-item .link-button { min-width: 28px; font-size: 16px; }
+.routine-custom-item .link-button:disabled { opacity: .3; cursor: default; }
+.routine-add { display: flex; gap: 8px; }
+.routine-add select { flex: 1; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); }
+.routine-saved { margin: 12px 0 4px; }
+.routine-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 0; }
+.routine-actions .routine-start { margin: 0; }
+.routine-name { flex: 1 1 160px; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); }
+@media (max-width: 640px) {
+  .routine-actions .routine-start { flex: 1 1 100%; }
+  .routine-custom-name { flex-basis: 100%; }
+  .routine-custom-first { margin-left: auto; }
+}

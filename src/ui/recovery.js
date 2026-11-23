@@ -435,7 +435,7 @@ export function setupExercises(beforeOpen = () => {}) {
   for (const button of tabs) button.addEventListener("click", () => { show(button.dataset.exercisesTab); dialog.scrollTop = 0; });
   let saved = null;
   try { saved = localStorage.getItem("exercisesTab"); } catch {}
-  show(tabs.some((button) => button.dataset.exercisesTab === saved) ? saved : "Warmup");
+  show(tabs.some((button) => button.dataset.exercisesTab === saved) ? saved : "Routine");
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
     render();

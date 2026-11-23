@@ -1018,8 +1018,8 @@ const closeTopbarMore = () => {
   byId("topbarMoreButton").setAttribute("aria-expanded", "false");
 };
 setupExercises(closeTopbarMore);
-// The sets on demand, "On the mat", from the same menu.
-setupRoutine(closeTopbarMore);
+// The Exercises dialog's Set tab: sets built automatically or by hand, saved and planned.
+setupRoutine();
 setupSettings({ currentSport: () => state.kinomap?.sport, onTrainers: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, elements.trainer.value || lastTrainerId(sport));

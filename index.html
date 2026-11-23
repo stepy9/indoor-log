@@ -36,7 +36,6 @@
           <div class="topbar-more" id="topbarMore">
           <button class="library-button" id="settingsButton" type="button"><span data-i18n="settingsTitle">Nastavení</span></button>
           <button class="library-button" id="exercisesButton" type="button"><span data-i18n="exercisesTitle">Cviky</span></button>
-          <button class="library-button" id="routineButton" type="button"><span data-i18n="routineTitle">Na podložce</span></button>
           <div class="language-control" id="languageControl">
             <span class="visually-hidden" data-i18n="language">Jazyk</span>
             <button id="languageButton" class="language-button" type="button" aria-label="Jazyk" data-i18n-aria="language" aria-haspopup="listbox" aria-expanded="false" aria-controls="languageMenu">
@@ -702,60 +701,72 @@
         </div>
         <p class="field-note" data-i18n="exercisesIntro">Všechny cviky rozcvičky před veslováním a protažení po něm. Sestavu podle tréninku nabízí karta Dnes v Tréninku a detail aktivity.</p>
         <div class="segmented exercises-tabs" id="exercisesTabs" role="group" aria-label="Cviky" data-i18n-aria="exercisesTitle">
+          <button type="button" data-exercises-tab="Routine" data-i18n="exercisesRoutine">Sestava</button>
           <button type="button" data-exercises-tab="Warmup" data-i18n="exercisesWarmup">Rozcvička</button>
           <button type="button" data-exercises-tab="Stretch" data-i18n="exercisesStretch">Protažení</button>
           <button type="button" data-exercises-tab="Strength" data-i18n="exercisesStrength">Posilování</button>
         </div>
-        <ul class="recovery-list exercises-panel" id="exercisesWarmup"></ul>
+        <div class="exercises-panel routine-panel" id="exercisesRoutine">
+          <div class="routine-saved" id="routineSavedBox" hidden>
+            <span class="field-label" data-i18n="routineSavedLabel">Uložené sestavy</span>
+            <ul class="routine-saved-list" id="routineSaved"></ul>
+          </div>
+          <div class="segmented routine-mode" id="routineMode" role="group" aria-label="Sestava" data-i18n-aria="exercisesRoutine"></div>
+          <div class="routine-custom" id="routineCustom" hidden>
+            <p class="field-note" data-i18n="routineCustomIntro">Vyberte cviky v pořadí, v jakém je chcete cvičit.</p>
+            <div class="routine-add">
+              <select id="routineAddSelect" aria-label="Cvik" data-i18n-aria="routineAddLabel"></select>
+              <button class="outline-button" id="routineAdd" type="button" data-i18n="routineAdd">Přidat</button>
+            </div>
+            <ol class="routine-custom-list" id="routineCustomList"></ol>
+          </div>
+          <div class="routine-choices" id="routineAuto">
+            <span class="field-label" data-i18n="routineStyleLabel">Styl</span>
+            <div class="segmented" id="routineStyle" role="group" aria-label="Styl" data-i18n-aria="routineStyleLabel"></div>
+            <div class="routine-row" data-routine-for="mobility flexibility yin">
+              <span class="field-label" data-i18n="routineAreaLabel">Oblast</span>
+              <div class="segmented" id="routineArea" role="group" aria-label="Oblast" data-i18n-aria="routineAreaLabel"></div>
+              <span class="field-label" data-i18n="routineMinutesLabel">Délka</span>
+              <div class="segmented" id="routineMinutes" role="group" aria-label="Délka" data-i18n-aria="routineMinutesLabel"></div>
+            </div>
+            <div class="routine-row" data-routine-for="flexibility">
+              <span class="field-label" data-i18n="routineAimLabel">Cíl</span>
+              <div class="segmented" id="routineAim" role="group" aria-label="Cíl" data-i18n-aria="routineAimLabel"></div>
+            </div>
+            <div class="routine-row" data-routine-for="stability">
+              <span class="field-label" data-i18n="routineChain_front">Přední řetězec</span>
+              <div class="segmented" id="routineLevel_front" role="group" aria-label="Přední řetězec" data-i18n-aria="routineChain_front"></div>
+              <span class="field-label" data-i18n="routineChain_back">Zadní řetězec</span>
+              <div class="segmented" id="routineLevel_back" role="group" aria-label="Zadní řetězec" data-i18n-aria="routineChain_back"></div>
+              <span class="field-label" data-i18n="routineChain_side">Boční řetězec</span>
+              <div class="segmented" id="routineLevel_side" role="group" aria-label="Boční řetězec" data-i18n-aria="routineChain_side"></div>
+              <span class="field-label" data-i18n="routineBallLabel">Pánev s míčem</span>
+              <div class="segmented" id="routineBall" role="group" aria-label="Pánev s míčem" data-i18n-aria="routineBallLabel"></div>
+            </div>
+            <div class="routine-row" data-routine-for="balance">
+              <span class="field-label" data-i18n="routineWeakLabel">Slabší strana</span>
+              <div class="segmented" id="routineWeak" role="group" aria-label="Slabší strana" data-i18n-aria="routineWeakLabel"></div>
+              <span class="field-label" data-i18n="routineRepsLabel">Opakování</span>
+              <div class="segmented" id="routineReps" role="group" aria-label="Opakování" data-i18n-aria="routineRepsLabel"></div>
+            </div>
+          </div>
+          <div class="routine-choices routine-plan">
+            <span class="field-label" data-i18n="routinePlanLabel">V plánu</span>
+            <div class="segmented" id="routinePlanDays" role="group" aria-label="V plánu" data-i18n-aria="routinePlanLabel"></div>
+          </div>
+          <p class="field-note" id="routinePlanNote"></p>
+          <p class="field-note" id="routineNote"></p>
+          <div class="routine-actions">
+            <button class="accent-button routine-start" id="routineStart" type="button"></button>
+            <input class="routine-name" id="routineName" type="text" maxlength="60" aria-label="Název sestavy" data-i18n-aria="routineNameLabel" />
+            <button class="outline-button" id="routineSave" type="button" data-i18n="routineSave">Uložit</button>
+          </div>
+          <ul class="recovery-list" id="routineList"></ul>
+        </div>
+        <ul class="recovery-list exercises-panel" id="exercisesWarmup" hidden></ul>
         <ul class="recovery-list exercises-panel" id="exercisesStretch" hidden></ul>
         <ul class="recovery-list exercises-panel" id="exercisesStrength" hidden></ul>
         <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti. Bolest, která neodchází, patří k fyzioterapeutovi.</p>
-      </dialog>
-      <dialog class="intervals-dialog exercises-dialog routine-dialog" id="routineDialog" aria-labelledby="routineTitle">
-        <div class="dialog-head">
-          <h2 id="routineTitle" data-i18n="routineTitle">Na podložce</h2>
-          <button class="settings-close library-close" id="routineClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
-        </div>
-        <p class="field-note" data-i18n="routineIntro">Sestava na vyžádání.</p>
-        <div class="routine-choices">
-          <span class="field-label" data-i18n="routineStyleLabel">Styl</span>
-          <div class="segmented" id="routineStyle" role="group" aria-label="Styl" data-i18n-aria="routineStyleLabel"></div>
-          <div class="routine-row" data-routine-for="mobility flexibility yin">
-            <span class="field-label" data-i18n="routineAreaLabel">Oblast</span>
-            <div class="segmented" id="routineArea" role="group" aria-label="Oblast" data-i18n-aria="routineAreaLabel"></div>
-            <span class="field-label" data-i18n="routineMinutesLabel">Délka</span>
-            <div class="segmented" id="routineMinutes" role="group" aria-label="Délka" data-i18n-aria="routineMinutesLabel"></div>
-          </div>
-          <div class="routine-row" data-routine-for="flexibility">
-            <span class="field-label" data-i18n="routineAimLabel">Cíl</span>
-            <div class="segmented" id="routineAim" role="group" aria-label="Cíl" data-i18n-aria="routineAimLabel"></div>
-          </div>
-          <div class="routine-row" data-routine-for="stability">
-            <span class="field-label" data-i18n="routineChain_front">Přední řetězec</span>
-            <div class="segmented" id="routineLevel_front" role="group" aria-label="Přední řetězec" data-i18n-aria="routineChain_front"></div>
-            <span class="field-label" data-i18n="routineChain_back">Zadní řetězec</span>
-            <div class="segmented" id="routineLevel_back" role="group" aria-label="Zadní řetězec" data-i18n-aria="routineChain_back"></div>
-            <span class="field-label" data-i18n="routineChain_side">Boční řetězec</span>
-            <div class="segmented" id="routineLevel_side" role="group" aria-label="Boční řetězec" data-i18n-aria="routineChain_side"></div>
-            <span class="field-label" data-i18n="routineBallLabel">Pánev s míčem</span>
-            <div class="segmented" id="routineBall" role="group" aria-label="Pánev s míčem" data-i18n-aria="routineBallLabel"></div>
-          </div>
-          <div class="routine-row" data-routine-for="balance">
-            <span class="field-label" data-i18n="routineWeakLabel">Slabší strana</span>
-            <div class="segmented" id="routineWeak" role="group" aria-label="Slabší strana" data-i18n-aria="routineWeakLabel"></div>
-            <span class="field-label" data-i18n="routineRepsLabel">Opakování</span>
-            <div class="segmented" id="routineReps" role="group" aria-label="Opakování" data-i18n-aria="routineRepsLabel"></div>
-          </div>
-        </div>
-        <div class="routine-choices routine-plan">
-          <span class="field-label" data-i18n="routinePlanLabel">V plánu</span>
-          <div class="segmented" id="routinePlanDays" role="group" aria-label="V plánu" data-i18n-aria="routinePlanLabel"></div>
-        </div>
-        <p class="field-note" id="routinePlanNote"></p>
-        <p class="field-note" id="routineNote"></p>
-        <button class="accent-button routine-start" id="routineStart" type="button"></button>
-        <ul class="recovery-list" id="routineList"></ul>
-        <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti.</p>
       </dialog>
       <dialog class="recovery-player" id="recoveryPlayer" aria-labelledby="recoveryPlayerName">
         <div class="recovery-player-head">

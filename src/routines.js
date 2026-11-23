@@ -29,8 +29,18 @@ const orders = {
   // Seated first, then on the front and the knees, lying on the back last.
   yin: ["butterfly", "caterpillar", "ninetyNinety", "swan", "dragon", "childPose", "sphinx", "supineTwist"],
 };
-// Child's pose comes from the stretching after rowing; in yin it is held long and works these.
-const ownAreas = { childPose: ["back", "hips"] };
+// The warm-up's moves and the stretches after rowing, filling in where the book has few for an area: after its own
+// exercises, in this order. Child's pose is one of yin's.
+const extras = {
+  mobility: ["catCow", "openBook", "armSwings", "hipHinge", "squat", "legSwings"],
+  flexibility: ["hamstring", "calf", "quadStretch", "hipFlexor", "figureFour", "chest", "latStretch", "forearm"],
+};
+export const extrasOf = (style) => extras[style] ?? [];
+const ownAreas = {
+  childPose: ["back", "hips"],
+  catCow: ["back"], openBook: ["back", "shoulders"], armSwings: ["shoulders"], hipHinge: ["legs", "back"], squat: ["legs", "hips"], legSwings: ["hips", "legs"],
+  hamstring: ["legs"], calf: ["legs"], quadStretch: ["legs", "hips"], hipFlexor: ["hips"], figureFour: ["hips"], chest: ["shoulders"], latStretch: ["shoulders", "back"], forearm: ["shoulders"],
+};
 export const areasOf = (id) => exercises[id].areas ?? ownAreas[id] ?? [];
 
 // A yin pose's hold by the set's length, so even five minutes give a few poses; a change of pose takes a little
@@ -44,6 +54,7 @@ const mobilitySeconds = 45;
 // rounds, steps }. Mobility and flexibility go round their area's exercises as many times as fit; yin takes the
 // area's poses and, short of them, the others, each once.
 export function buildRoutine(choice = {}) {
+  if (choice.style === "custom") return customSet(choice.custom);
   if (choice.style === "stability") return stabilitySet(choice);
   if (choice.style === "balance") return balanceSet(choice);
   return lengthSet(choice);
@@ -84,24 +95,58 @@ function balanceSet({ weak = "none", reps = 10 } = {}) {
   return { style: "balance", weak, rounds: 1, exercises: balanceMoves, seconds: {}, reps: Object.fromEntries(balanceMoves.map((id) => [id, reps])), minutes, steps };
 }
 
+// A set put together by hand: [{ id, seconds | reps }] in the order given, each per side where it has two.
+export const defaultDose = (id) => (exercises[id].reps ? { reps: exercises[id].reps } : { seconds: exercises[id].seconds });
+function customSet(items = []) {
+  const list = items.filter((item) => exercises[item.id]);
+  const work = list.flatMap((item) => sidesOf(item.id, () => (item.reps ? { reps: item.reps } : { seconds: item.seconds ?? exercises[item.id].seconds })));
+  const { steps, minutes } = stepsOf(work);
+  return {
+    style: "custom", rounds: 1, minutes, steps,
+    exercises: list.map((item) => item.id),
+    seconds: Object.fromEntries(list.filter((item) => !item.reps).map((item) => [item.id, item.seconds ?? exercises[item.id].seconds])),
+    reps: Object.fromEntries(list.filter((item) => item.reps).map((item) => [item.id, item.reps])),
+  };
+}
+
+// Every exercise to pick from by hand, in groups: each style's own, then those around rowing. [{ group, ids }].
+export function exerciseGroups() {
+  const used = new Set();
+  const take = (ids) => ids.filter((id) => exercises[id] && !used.has(id) && used.add(id));
+  const stability = Object.keys(exercises).filter((id) => exercises[id].style === "stability");
+  return [
+    { group: "mobility", ids: take(orders.mobility) },
+    { group: "flexibility", ids: take(orders.flexibility) },
+    { group: "yin", ids: take(orders.yin.filter((id) => exercises[id].style === "yin")) },
+    { group: "stability", ids: take(stability) },
+    { group: "balance", ids: take(balanceMoves) },
+    { group: "rowing", ids: take(Object.keys(exercises).filter((id) => !exercises[id].style)) },
+  ];
+}
+
 function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep" } = {}) {
-  const order = orders[style] ?? orders.mobility;
-  const inArea = area === "all" ? order : order.filter((id) => areasOf(id).includes(area));
+  const own = orders[style] ?? orders.mobility;
+  // The flow: the book's (or yin's) own first, the fillers after.
+  const order = [...own, ...extrasOf(style)];
+  const inArea = area === "all" ? own : own.filter((id) => areasOf(id).includes(area));
+  const extraInArea = extrasOf(style).filter((id) => area === "all" || areasOf(id).includes(area));
   const rest = style === "yin" ? yinRest : restSeconds;
   let hold = style === "yin" ? (yinHold[minutes] ?? 120) : style === "flexibility" ? (flexibilityHold[aim] ?? 20) : mobilitySeconds;
   const cost = (id) => rest + exercises[id].sides * hold + (exercises[id].sides - 1) * Math.min(rest, switchSeconds);
   const target = minutes * 60;
   // Within half a minute over the length is near enough; never fewer than one exercise.
   const slack = 30;
-  // An area whose own exercises would go round more than three times to fill the time takes the style's others
-  // after them, so the set is not one move over and over (the book has a set done two or three times).
-  const roundCost = inArea.reduce((sum, id) => sum + cost(id), 0);
-  const pool = inArea.length >= 2 && roundCost * 3 >= target - slack ? inArea : [...inArea, ...order.filter((id) => !inArea.includes(id))];
+  // An area whose own exercises would go round more than three times to fill the time takes the fillers for the
+  // area after them, then the style's others, so the set is not one move over and over (the book has a set done
+  // two or three times).
+  const enough = (list) => list.length >= 2 && list.reduce((sum, id) => sum + cost(id), 0) * 3 >= target - slack;
+  const withExtras = [...inArea, ...extraInArea.filter((id) => !inArea.includes(id))];
+  const pool = enough(inArea) ? inArea : enough(withExtras) ? withExtras : [...withExtras, ...own.filter((id) => !withExtras.includes(id))];
   const picked = [];
   let total = 0;
   if (style === "yin") {
     // The area's poses first, then the rest in their order, each once.
-    for (const id of [...pool, ...order.filter((item) => !pool.includes(item))]) {
+    for (const id of [...pool, ...own.filter((item) => !pool.includes(item))]) {
       if (picked.length && total + cost(id) > target + slack) continue;
       picked.push({ id, round: 1 });
       total += cost(id);

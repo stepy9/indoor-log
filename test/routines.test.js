@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exercises } from "../src/recovery.js";
 import { translations } from "../src/i18n.js";
-import { areasOf, balanceMoves, buildRoutine, byLength, logRoutine, pelvisMoves, routineAreas, routineMinutes, routineStyles, weakerExtra } from "../src/routines.js";
+import { areasOf, balanceMoves, buildRoutine, byLength, extrasOf, logRoutine, pelvisMoves, routineAreas, routineMinutes, routineStyles, weakerExtra } from "../src/routines.js";
 
 test("every set comes out near its length, from its own style's exercises", () => {
   for (const style of routineStyles.filter(byLength)) {
@@ -13,7 +13,7 @@ test("every set comes out near its length, from its own style's exercises", () =
         assert.ok(set.exercises.length >= 1, label);
         assert.ok(Math.abs(set.minutes - minutes) <= 2, `${label}: ${set.minutes}`);
         for (const id of set.exercises) assert.ok(exercises[id], `${label}: ${id}`);
-        if (style !== "yin") for (const id of set.exercises) assert.equal(exercises[id].style, style, `${label}: ${id}`);
+        if (style !== "yin") for (const id of set.exercises) assert.ok(exercises[id].style === style || extrasOf(style).includes(id), `${label}: ${id}`);
         const total = set.steps.reduce((sum, step) => sum + step.seconds, 0);
         assert.equal(set.minutes, Math.max(1, Math.round(total / 60)), label);
       }
@@ -96,4 +96,26 @@ test("the plan keeps a set by weekday, a second tap on its style taking the day 
   plan = togglePlanDay(plan, 2, { style: "stability" });
   assert.equal(plannedRoutine(plan, "2026-11-25").style, "stability");
   assert.deepEqual(togglePlanDay(plan, 2, { style: "stability" }), {});
+});
+
+test("the warm-up's moves and the stretches fill in where the book has few for an area", () => {
+  const legs = buildRoutine({ style: "mobility", area: "legs", minutes: 10 });
+  assert.equal(legs.exercises[0], "lungeReach");
+  assert.ok(legs.exercises.some((id) => ["hipHinge", "squat", "legSwings"].includes(id)), legs.exercises.join());
+  assert.ok(legs.exercises.every((id) => areasOf(id).includes("legs")), legs.exercises.join());
+  const shoulders = buildRoutine({ style: "flexibility", area: "shoulders", minutes: 20, aim: "gain" });
+  assert.ok(shoulders.exercises.includes("chest") || shoulders.exercises.includes("latStretch"), shoulders.exercises.join());
+  // The whole body keeps to the book.
+  assert.ok(buildRoutine({ style: "flexibility", minutes: 15 }).exercises.every((id) => exercises[id].style === "flexibility"));
+});
+
+test("a set by hand runs its exercises in the order given, each with its own time or repeats", async () => {
+  const { exerciseGroups } = await import("../src/routines.js");
+  const set = buildRoutine({ style: "custom", custom: [{ id: "swan", seconds: 120 }, { id: "ballLower", reps: 12 }, { id: "nothing" }] });
+  assert.deepEqual(set.exercises, ["swan", "ballLower"]);
+  assert.deepEqual(set.steps.filter((step) => step.type === "work").map((step) => [step.id, step.side, step.seconds ?? step.reps]), [["swan", 1, 120], ["swan", 2, 120], ["ballLower", null, 12]]);
+  const groups = exerciseGroups();
+  const all = groups.flatMap((group) => group.ids);
+  assert.equal(new Set(all).size, all.length);
+  assert.equal(all.length, Object.keys(exercises).length);
 });
