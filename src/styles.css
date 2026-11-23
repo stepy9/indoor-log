@@ -1757,7 +1757,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 
 /* The exercises' catalogue: a dialog of the warm-up's moves and the stretches as cards, two groups one under
    the other; the whole screen on a phone, as the library. In the gear's menu its button sits under the settings. */
-.intervals-dialog.exercises-dialog { width: min(1000px, calc(100vw - 32px)); overflow-y: auto; }
+/* One size whatever the tab: as wide as the screen allows up to five columns of exercises, and its full height. */
+.intervals-dialog.exercises-dialog { width: min(1500px, calc(100vw - 48px)); max-width: none; height: calc(100vh - 48px); overflow-y: auto; }
+.exercises-dialog .recovery-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .exercises-tabs { margin: 12px 0 0; }
 .exercises-panel { margin-top: 14px; }
 .exercises-panel[hidden] { display: none; }
