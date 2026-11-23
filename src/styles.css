@@ -1396,6 +1396,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-view .fitness-content > .link-button { justify-self: start; }
 /* Shown only with the Training section: the tab, and the diary's plan switch only without it. */
 .app-nav button[hidden], .diary-plan-toggle[hidden] { display: none; }
+/* Exercises sits in the bottom bar on a phone, in the settings menu elsewhere. */
+.app-nav .app-nav-exercises { display: none; }
+@media (max-width: 640px) {
+  .app-nav .app-nav-exercises { display: flex; }
+  .topbar-more #exercisesButton { display: none; }
+}
 .training-today-title { display: block; margin-top: 8px; font-size: 20px; }
 .training-today-text { margin: 4px 0 6px; font-size: 15px; line-height: 1.45; }
 .training-today-done { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; color: var(--success); font-weight: 600; }

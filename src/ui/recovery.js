@@ -499,6 +499,8 @@ export function setupExercises(beforeOpen = () => {}) {
   let saved = null;
   try { saved = localStorage.getItem("exercisesTab"); } catch {}
   show(tabs.some((button) => button.dataset.exercisesTab === saved) ? saved : "Routine");
+  // On a phone the bottom bar's button opens it the same way.
+  byId("navExercisesButton")?.addEventListener("click", () => byId("exercisesButton").click());
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
     render();
