@@ -130,3 +130,19 @@ test("a saved set holds its weekdays by its id, and taking it out clears them", 
   assert.deepEqual(togglePlanDay(plan, 1, { style: "saved", saved: "a" }), { 3: { style: "saved", saved: "b" } });
   assert.deepEqual(withoutSaved({ ...plan, 5: { style: "yin" } }, "b"), { 1: { style: "saved", saved: "a" }, 5: { style: "yin" } });
 });
+
+test("with equipment: a tool's exercises fill the length, and what is not at home is left out of the catalogue", async () => {
+  const { exerciseGroups, gearStyleTools, hasGear, toolMoves } = await import("../src/routines.js");
+  for (const tool of gearStyleTools) {
+    assert.ok(toolMoves(tool).length >= 4, tool);
+    const set = buildRoutine({ style: "gear", tool, minutes: 10 });
+    assert.ok(Math.abs(set.minutes - 10) <= 2, `${tool}: ${set.minutes}`);
+    assert.ok(set.exercises.every((id) => exercises[id].gear === tool), tool);
+  }
+  assert.equal(buildRoutine({ style: "gear", tool: null }).steps.length, 0);
+  const groups = exerciseGroups(["band"]);
+  const ids = groups.flatMap((group) => group.ids);
+  assert.ok(ids.includes("bandRow") && !ids.includes("rollQuads") && !ids.includes("chop") && !ids.includes("ballLower"));
+  assert.ok(!groups.some((group) => group.group === "balance" || group.group === "roller"));
+  assert.equal(hasGear("catCow", []), true);
+});

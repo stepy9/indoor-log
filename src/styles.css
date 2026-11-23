@@ -2047,3 +2047,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .routine-saved-item { flex-wrap: wrap; }
 .routine-saved-days { flex: 1 1 100%; justify-content: space-between; }
 .routine-saved-days button { flex: 1; padding: 3px 0; font-size: 12px; }
+/* The equipment at home: several can be on, each on one tinted, so it does not read as a single choice. */
+#routineGear button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent-soft); box-shadow: none; }
+#routineGear button[aria-pressed="true"]::before { content: "✓ "; }

@@ -7,7 +7,13 @@
 // No DOM here, so it is tested on its own.
 import { exercises, restSeconds, switchSeconds } from "./recovery.js";
 
-export const routineStyles = ["mobility", "flexibility", "yin", "stability", "balance"];
+export const routineStyles = ["mobility", "flexibility", "yin", "stability", "balance", "gear"];
+// The equipment there may be at home; a set with it is offered only when it is there. gearStyleTools: those the
+// "gear" style is built around (the ball and the dumbbell have their own in stability and balance).
+export const gearTools = ["ball", "dumbbell", "band", "bosu", "roller"];
+export const gearStyleTools = ["band", "bosu", "roller"];
+export const defaultGear = ["ball", "dumbbell"];
+export const hasGear = (id, owned = gearTools) => !exercises[id]?.gear || owned.includes(exercises[id].gear);
 // Whether a style is put together by area and length, or by its own choices (levels, sides, repeats).
 export const byLength = (style) => ["mobility", "flexibility", "yin"].includes(style);
 export const stabilityChains = ["front", "back", "side"];
@@ -57,6 +63,7 @@ export function buildRoutine(choice = {}) {
   if (choice.style === "custom") return customSet(choice.custom);
   if (choice.style === "stability") return stabilitySet(choice);
   if (choice.style === "balance") return balanceSet(choice);
+  if (choice.style === "gear") return gearSet(choice);
   return lengthSet(choice);
 }
 
@@ -65,7 +72,7 @@ export function buildRoutine(choice = {}) {
 function stepsOf(work, rest = restSeconds) {
   const steps = [];
   for (const item of work) {
-    steps.push({ type: "rest", seconds: item.side === 2 ? switchSeconds : rest, next: item.id });
+    steps.push({ type: "rest", seconds: item.side === 2 ? switchSeconds : rest, next: item.id, ...(item.round ? { round: item.round } : {}) });
     steps.push({ type: "work", ...item });
   }
   const total = steps.reduce((sum, step) => sum + (step.seconds ?? step.reps * repSeconds), 0);
@@ -109,8 +116,9 @@ function customSet(items = []) {
   };
 }
 
-// Every exercise to pick from by hand, in groups: each style's own, then those around rowing. [{ group, ids }].
-export function exerciseGroups() {
+// Every exercise to pick from by hand, in groups: each style's own, each tool's, then those around rowing; with
+// owned, only those whose equipment is at home (a group left empty out). [{ group, ids }].
+export function exerciseGroups(owned = gearTools) {
   const used = new Set();
   const take = (ids) => ids.filter((id) => exercises[id] && !used.has(id) && used.add(id));
   const stability = Object.keys(exercises).filter((id) => exercises[id].style === "stability");
@@ -120,8 +128,37 @@ export function exerciseGroups() {
     { group: "yin", ids: take(orders.yin.filter((id) => exercises[id].style === "yin")) },
     { group: "stability", ids: take(stability) },
     { group: "balance", ids: take(balanceMoves) },
+    ...gearStyleTools.map((tool) => ({ group: tool, ids: take(toolMoves(tool)) })),
     { group: "rowing", ids: take(Object.keys(exercises).filter((id) => !exercises[id].style)) },
-  ];
+  ].map((item) => ({ ...item, ids: item.ids.filter((id) => hasGear(id, owned)) })).filter((item) => item.ids.length);
+}
+
+// With a tool: { tool, minutes } its exercises in turn, round after round, to fill the length; each by its own time
+// or repeats, per side where it has two.
+export const toolMoves = (tool) => Object.keys(exercises).filter((id) => exercises[id].style === "gear" && exercises[id].gear === tool);
+function gearSet({ tool = "band", minutes = 10 } = {}) {
+  const pool = toolMoves(tool);
+  const cost = (id) => restSeconds + exercises[id].sides * (exercises[id].reps ? exercises[id].reps * repSeconds : exercises[id].seconds) + (exercises[id].sides - 1) * switchSeconds;
+  const target = minutes * 60;
+  const picked = [];
+  let total = 0;
+  for (let round = 1; round <= 8 && pool.length; round += 1) {
+    for (const id of pool) {
+      if (picked.length && total + cost(id) > target + 30) break;
+      picked.push({ id, round });
+      total += cost(id);
+    }
+    if (total + Math.min(...pool.map(cost)) > target + 30) break;
+  }
+  const rounds = Math.max(1, ...picked.map((item) => item.round));
+  const work = picked.flatMap(({ id, round }) => sidesOf(id, () => ({ ...defaultDose(id), ...(rounds > 1 ? { round } : {}) })));
+  const { steps, minutes: length } = stepsOf(work);
+  const ids = [...new Set(picked.map((item) => item.id))];
+  return {
+    style: "gear", tool, rounds, minutes: length, steps, exercises: ids,
+    seconds: Object.fromEntries(ids.filter((id) => !exercises[id].reps).map((id) => [id, exercises[id].seconds])),
+    reps: Object.fromEntries(ids.filter((id) => exercises[id].reps).map((id) => [id, exercises[id].reps])),
+  };
 }
 
 function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep" } = {}) {

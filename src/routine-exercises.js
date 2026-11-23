@@ -450,6 +450,94 @@ function backLungePress() {
   return { poses: [a, b], far: { arms: [1], legs: [1] }, weights: [0], focus: ["thigh0", "arm0"] };
 }
 
+// ---- With equipment at home: a foam roller, a resistance band, a BOSU. The roller is drawn end on (a circle that
+// stays while the body rolls over it), the band as a strap between its ends, the BOSU as a dome on the mat.
+const roller = (x, y = 136) => [x, y, 10];
+const bosuDome = (x, width = 62) => ({ x, y: 132, width, height: 18, rx: 9, class: "pad" });
+
+// Upper back on the roller, feet flat, hands behind the head: the body rolls up and down over it.
+function rollThoracic() {
+  const a = { trunk: [[124, 128], [92, 124], [60, 122]], neck: [48, 120], head: [37, 117], arms: [[[60, 122], [46, 104], [34, 114]]], legs: [[[124, 128], [150, 96], [168, 146]], [[124, 128], [146, 94], [164, 146]]], feet: [[182, 146], [178, 146]], ball: roller(76, 134) };
+  const b = { trunk: [[136, 126], [104, 120], [72, 116]], neck: [60, 113], head: [49, 110], arms: [[[72, 116], [58, 98], [46, 108]]], legs: [[[136, 126], [158, 96], [168, 146]], [[136, 126], [154, 94], [164, 146]]], feet: [[182, 146], [178, 146]], ball: roller(76, 134) };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+// Front of the thighs: face down on the forearms, the roller under the thighs, rolling from hip to knee.
+function rollQuads() {
+  const shape = (hip) => ({ trunk: [[hip, 120], [hip - 36, 120], [hip - 72, 118]], neck: [hip - 84, 116], head: [hip - 95, 113], arms: [[[hip - 72, 118], [hip - 70, 146], [hip - 98, 146]]], legs: [[[hip, 120], [hip + 40, 124], [hip + 78, 130]], [[hip, 120], [hip + 38, 122], [hip + 76, 128]]], feet: [[hip + 86, 140], [hip + 84, 138]], ball: roller(156, 136) });
+  return { poses: [shape(124), shape(146)], far: { arms: [], legs: [1] }, focus: ["thigh0"] };
+}
+// Glutes: sitting on the roller, one ankle over the other knee, a hand behind; rolling over the crossed side's buttock.
+function rollGlutes() {
+  const shape = (x) => ({ trunk: [[x, 124], [x - 8, 96], [x - 18, 68]], neck: [x - 22, 57], head: [x - 25, 46], arms: [[[x - 18, 68], [x - 26, 106], [x - 32, 146]]], legs: [[[x, 124], [x + 30, 96], [x + 46, 146]], [[x, 124], [x + 26, 104], [x + 34, 98]]], feet: [[x + 60, 146], null], ball: roller(118, 136) });
+  return { poses: [shape(112), shape(124)], far: { legs: [0] }, focus: ["thigh1"] };
+}
+// Calves: sitting, legs long with the calves on the roller, the hips lifted on the hands, rolling ankle to knee.
+function rollCalves() {
+  const shape = (x) => ({ trunk: [[x, 128], [x - 6, 100], [x - 10, 72]], neck: [x - 12, 61], head: [x - 13, 50], arms: [[[x - 10, 72], [x - 16, 110], [x - 22, 146]]], legs: [[[x, 128], [x + 46, 124], [x + 92, 124]], [[x, 128], [x + 44, 122], [x + 90, 122]]], feet: [[x + 96, 112], [x + 94, 110]], ball: roller(166, 136) });
+  return { poses: [shape(86), shape(108)], far: { legs: [1] }, focus: ["leg0"] };
+}
+
+// A standing figure seen from the front, for the band's arm work.
+const frontStand = { trunk: [[110, 100], [110, 74], [110, 46]], neck: [110, 36], head: [110, 24], legs: [[[104, 100], [102, 124], [100, 146]], [[116, 100], [118, 124], [120, 146]]], feet: [[92, 146], [128, 146]] };
+// Pull-apart: the band held in straight arms before the chest, pulled wide until it touches the chest.
+function bandPullApart() {
+  const a = { ...frontStand, arms: [[[98, 48], [92, 58], [100, 64]], [[122, 48], [128, 58], [120, 64]]], strap: [[100, 64], [120, 64]] };
+  const b = { ...frontStand, arms: [[[98, 48], [70, 48], [42, 48]], [[122, 48], [150, 48], [178, 48]]], strap: [[42, 48], [178, 48]] };
+  return { view: "front", poses: [a, b], focus: ["arm0", "arm1"] };
+}
+// Seated row: legs long, the band round the feet, the elbows drawn back past the body.
+function bandRow() {
+  const body = { trunk: [[100, 140], [98, 104], [96, 68]], neck: [95, 57], head: [94, 46], legs: [[[100, 140], [148, 142], [196, 142]], [[100, 140], [146, 140], [192, 140]]], feet: [[200, 128], [196, 126]] };
+  const a = { ...body, arms: [[[96, 68], [124, 86], [150, 104]]], strap: [[150, 104], [198, 132]] };
+  const b = { ...body, arms: [[[96, 68], [76, 86], [100, 96]]], strap: [[100, 96], [198, 132]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["arm0"] };
+}
+// Clamshell: on the side, knees bent and the band round them, the top knee opens with the feet together.
+function bandClamshell() {
+  const body = { trunk: [[130, 130], [96, 133], [62, 134]], neck: [50, 133], head: [38, 130], arms: [[[62, 134], [46, 118], [32, 124]]] };
+  const a = { ...body, legs: [[[130, 132], [156, 114], [184, 132]], [[130, 128], [158, 108], [184, 128]]], strap: [[158, 108], [156, 114]] };
+  const b = { ...body, legs: [[[130, 132], [156, 114], [184, 132]], [[130, 128], [146, 90], [184, 128]]], strap: [[146, 90], [156, 114]] };
+  return { view: "front", poses: [a, b], far: { legs: [0] }, focus: ["thigh1"] };
+}
+// External rotation: the elbow kept at the side, bent at a right angle, the forearm turning out against the band.
+function bandRotation() {
+  const a = { ...frontStand, arms: [[[98, 48], [96, 72], [106, 80]], [[122, 48], [124, 72], [126, 96]]], strap: [[106, 80], [204, 80]] };
+  const b = { ...frontStand, arms: [[[98, 48], [96, 72], [72, 76]], [[122, 48], [124, 72], [126, 96]]], strap: [[72, 76], [204, 80]] };
+  return { view: "front", poses: [a, b], far: { arms: [1] }, focus: ["arm0"] };
+}
+// Side steps: the band round the knees, half-squatting, a step to the side and the other foot after it.
+function bandSideStep() {
+  const body = (x) => ({ trunk: [[x, 104], [x, 80], [x, 54]], neck: [x, 43], head: [x, 31], arms: [[[x - 12, 56], [x - 16, 78], [x - 8, 92]], [[x + 12, 56], [x + 16, 78], [x + 8, 92]]] });
+  const a = { ...body(110), legs: [[[104, 104], [94, 124], [96, 146]], [[116, 104], [126, 124], [124, 146]]], feet: [[86, 146], [134, 146]], strap: [[94, 124], [126, 124]] };
+  const b = { ...body(120), legs: [[[114, 104], [96, 124], [86, 146]], [[126, 104], [150, 124], [158, 146]]], feet: [[76, 146], [168, 146]], strap: [[96, 124], [150, 124]] };
+  return { view: "front", poses: [a, b], focus: ["thigh0", "thigh1"] };
+}
+
+// Squat on the BOSU: both feet on the dome, down and up again.
+function bosuSquat() {
+  const a = { trunk: [[110, 88], [111, 62], [110, 36]], neck: [108, 26], head: [106, 15], arms: [[[110, 36], [84, 38], [58, 40]]], legs: [[[110, 88], [110, 110], [110, 132]], [[110, 88], [114, 110], [116, 132]]], feet: [[96, 133], [102, 133]] };
+  const b = { trunk: [[128, 106], [116, 84], [104, 62]], neck: [99, 52], head: [94, 41], arms: [[[104, 62], [78, 64], [52, 66]]], legs: [[[128, 106], [100, 110], [110, 132]], [[128, 106], [104, 112], [116, 132]]], feet: [[96, 133], [102, 133]] };
+  return { props: [bosuDome(80)], poses: [a, b], far: { legs: [1] }, focus: ["thigh0"] };
+}
+// One leg on the BOSU, the other lifted bent behind, held still.
+function bosuBalance() {
+  const a = { trunk: [[110, 88], [111, 62], [110, 36]], neck: [108, 26], head: [106, 15], arms: [[[110, 36], [96, 58], [88, 80]], [[110, 36], [124, 58], [132, 80]]], legs: [[[110, 88], [110, 110], [110, 132]], [[110, 88], [114, 110], [116, 132]]], feet: [[96, 133], [102, 133]] };
+  const b = { ...a, arms: [[[110, 36], [88, 50], [66, 58]], [[110, 36], [132, 50], [154, 58]]], legs: [[[110, 88], [110, 110], [110, 132]], [[110, 88], [118, 110], [140, 112]]], feet: [[96, 133], [148, 104]] };
+  return { props: [bosuDome(80)], poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["leg0"] };
+}
+// Plank with the hands on the BOSU's flat side, the body one line, held.
+function bosuPlank() {
+  const a = { trunk: [[140, 120], [106, 112], [72, 104]], neck: [61, 101], head: [50, 98], arms: [[[72, 104], [72, 118], [72, 130]], [[72, 104], [68, 118], [66, 130]]], legs: [[[140, 120], [170, 134], [198, 146]], [[140, 120], [166, 134], [194, 146]]], feet: [[204, 140], [200, 140]] };
+  const b = { ...a, trunk: [[140, 112], [106, 108], [72, 104]], legs: [[[140, 112], [170, 130], [198, 146]], [[140, 112], [166, 130], [194, 146]]] };
+  return { props: [{ x: 40, y: 130, width: 64, height: 16, rx: 6, class: "pad" }], poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["trunk"] };
+}
+// Lunge with the front foot on the BOSU: down until the back knee nearly touches, and up.
+function bosuLunge() {
+  const a = { trunk: [[116, 92], [117, 64], [116, 36]], neck: [114, 26], head: [112, 15], arms: [[[116, 36], [118, 62], [120, 86]]], legs: [[[116, 92], [94, 112], [80, 132]], [[116, 92], [138, 118], [156, 140]]], feet: [[68, 133], [166, 146]] };
+  const b = { trunk: [[118, 112], [119, 84], [118, 56]], neck: [116, 46], head: [114, 35], arms: [[[118, 56], [120, 82], [122, 106]]], legs: [[[118, 112], [88, 110], [80, 132]], [[118, 112], [134, 140], [164, 142]]], feet: [[68, 133], [174, 146]] };
+  return { props: [bosuDome(52)], poses: [a, b], far: { legs: [1] }, focus: ["thigh0"] };
+}
+
 const build = (make, extra) => ({ ...make(), ...extra });
 
 // Styles: "mobility" moved, "flexibility" and "yin" held. areas: "hips", "back", "shoulders", "legs".
@@ -495,4 +583,18 @@ export const routineExercises = {
   bridgePress: build(bridgePress, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.30" }),
   sideLungeRaise: build(sideLungeRaise, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.31" }),
   backLungePress: build(backLungePress, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.32" }),
+  // With equipment at home: style "gear", gear the tool it needs.
+  rollThoracic: build(rollThoracic, { style: "gear", gear: "roller", seconds: 60, sides: 1, areas: ["back"] }),
+  rollQuads: build(rollQuads, { style: "gear", gear: "roller", seconds: 60, sides: 1, areas: ["legs", "hips"] }),
+  rollGlutes: build(rollGlutes, { style: "gear", gear: "roller", seconds: 45, sides: 2, areas: ["hips"] }),
+  rollCalves: build(rollCalves, { style: "gear", gear: "roller", seconds: 60, sides: 1, areas: ["legs"] }),
+  bandPullApart: build(bandPullApart, { style: "gear", gear: "band", reps: 15, seconds: 45, sides: 1, areas: ["shoulders", "back"] }),
+  bandRow: build(bandRow, { style: "gear", gear: "band", reps: 12, seconds: 45, sides: 1, areas: ["back", "shoulders"] }),
+  bandClamshell: build(bandClamshell, { style: "gear", gear: "band", reps: 15, seconds: 45, sides: 2, areas: ["hips"] }),
+  bandRotation: build(bandRotation, { style: "gear", gear: "band", reps: 12, seconds: 40, sides: 2, areas: ["shoulders"] }),
+  bandSideStep: build(bandSideStep, { style: "gear", gear: "band", reps: 10, seconds: 40, sides: 2, areas: ["hips", "legs"] }),
+  bosuSquat: build(bosuSquat, { style: "gear", gear: "bosu", reps: 12, seconds: 45, sides: 1, areas: ["legs", "hips"] }),
+  bosuBalance: build(bosuBalance, { style: "gear", gear: "bosu", hold: true, seconds: 30, sides: 2, areas: ["legs"] }),
+  bosuPlank: build(bosuPlank, { style: "gear", gear: "bosu", hold: true, seconds: 40, sides: 1, areas: ["back", "shoulders"] }),
+  bosuLunge: build(bosuLunge, { style: "gear", gear: "bosu", reps: 8, seconds: 40, sides: 2, areas: ["legs", "hips"] }),
 };

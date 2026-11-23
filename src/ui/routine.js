@@ -2,7 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
+import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -32,10 +32,17 @@ const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(state.l
 const setText = (set) => set.name ? `${set.name} · ${set.minutes} min` : t("routineWhat", { style: t(`routineStyle_${set.style}`), minutes: set.minutes });
 // mode: "auto" or "custom"; levels: each stabilization chain's level; ball: the pelvis's ball moves; weak, reps:
 // the balance's; custom: the hand-made set, [{ id, seconds | reps }].
-const choice = () => ({ mode: "auto", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, custom: [], ...(savedDefaults().routine ?? {}) });
+const choice = () => ({ mode: "auto", gear: defaultGear, tool: "band", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, custom: [], ...(savedDefaults().routine ?? {}) });
 const saveChoice = (change) => saveDefaults({ routine: { ...choice(), ...change } });
-// What the set is built from: the hand-made list, or the automatic choice.
-const current = (picked = choice()) => (picked.mode === "custom" ? { style: "custom", custom: picked.custom ?? [] } : picked);
+// What the set is built from: the hand-made list, or the automatic choice, without the ball where there is none
+// and with a tool that is there.
+const owned = (picked = choice()) => picked.gear ?? defaultGear;
+const ownTools = (picked) => gearStyleTools.filter((tool) => owned(picked).includes(tool));
+const current = (picked = choice()) => {
+  if (picked.mode === "custom") return { style: "custom", custom: picked.custom ?? [] };
+  const tools = ownTools(picked);
+  return { ...picked, ball: picked.ball !== false && owned(picked).includes("ball"), tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
+};
 
 // A row of buttons, one pressed, its value saved on a click.
 function segmented(holder, values, label, now, onPick) {
@@ -91,7 +98,7 @@ function card(id, doseText, more = []) {
 
 // Every exercise of a group to add to the hand-made set, the group picked by its buttons; one added says how often.
 function renderCatalog(picked) {
-  const groups = exerciseGroups();
+  const groups = exerciseGroups(owned(picked));
   const group = groups.some((item) => item.group === picked.group) ? picked.group : groups[0].group;
   segmented(byId("routineGroups"), groups.map((item) => item.group), (value) => t(`routineGroup_${value}`), group, (value) => { saveChoice({ group: value }); render(); });
   const list = picked.custom ?? [];
@@ -156,6 +163,17 @@ function render() {
   const picked = choice();
   const pick = (key) => (value) => { saveChoice({ [key]: value }); render(); };
   const custom = picked.mode === "custom";
+  // The equipment at home, each on or off.
+  byId("routineGear").replaceChildren(...gearTools.map((tool) => {
+    const item = button("", t(`routineGear_${tool}`), () => {
+      const now = owned(choice());
+      saveChoice({ gear: now.includes(tool) ? now.filter((each) => each !== tool) : [...now, tool] });
+      render();
+    });
+    item.setAttribute("aria-pressed", String(owned(picked).includes(tool)));
+    return item;
+  }));
+  segmented(byId("routineTool"), ownTools(picked), (value) => t(`routineGear_${value}`), current(picked).tool, pick("tool"));
   segmented(byId("routineMode"), ["auto", "custom"], (value) => t(`routineMode_${value}`), picked.mode, pick("mode"));
   byId("routineAuto").hidden = custom;
   byId("routineCustom").hidden = !custom;
@@ -169,8 +187,9 @@ function render() {
   segmented(byId("routineBall"), [true, false], (value) => t(value ? "routineBallOn" : "routineBallOff"), picked.ball !== false, pick("ball"));
   segmented(byId("routineWeak"), balanceWeak, (value) => t(`routineWeak_${value}`), picked.weak, pick("weak"));
   segmented(byId("routineReps"), balanceReps, String, picked.reps, pick("reps"));
-  // The rows that belong to the style chosen.
+  // The rows that belong to the style chosen; the ball's only with a ball at home.
   for (const row of byId("exercisesRoutine").querySelectorAll("[data-routine-for]")) row.hidden = !row.dataset.routineFor.split(" ").includes(picked.style);
+  for (const id of ["routineBall"]) byId(id).hidden = byId(id).previousElementSibling.hidden = !owned(picked).includes("ball");
   if (custom) {
     renderCustom(picked);
     renderCatalog(picked);
@@ -182,9 +201,12 @@ function render() {
   // Yin has nothing of its own for some areas: the set says it is for the whole body then.
   const noArea = !custom && byLength(picked.style) && picked.area !== "all" && !set.exercises.some((id) => areasOf(id).includes(picked.area));
   byId("routineNote").textContent = custom ? "" : [
-    t(`routineNote_${set.style}`, { time: hold >= 120 ? `${minutesText(hold)} min` : `${hold} s`, extra: weakerExtra }),
+    ...(set.style === "gear" && !set.steps.length ? [] : [t(`routineNote_${set.style === "stability" && !current(picked).ball ? "stabilityNoBall" : set.style}`, { time: hold >= 120 ? `${minutesText(hold)} min` : `${hold} s`, extra: weakerExtra, tool: t(`routineGear_${set.tool}`) })]),
     ...(set.rounds > 1 ? [t("routineRounds", { rounds: set.rounds })] : []),
     ...(noArea ? [t("routineNoArea")] : []),
+    // What the equipment at home leaves out.
+    ...(picked.style === "balance" && !owned(picked).includes("dumbbell") ? [t("routineNoDumbbell")] : []),
+    ...(picked.style === "gear" && !ownTools(picked).length ? [t("routineNoTool")] : []),
   ].join(" ");
   byId("routineStart").textContent = t("routineStart", { minutes: set.minutes });
   byId("routineStart").disabled = byId("routineSave").disabled = !set.steps.length;
