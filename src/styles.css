@@ -2054,6 +2054,22 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
   .routine-custom-first { margin-left: auto; }
 }
 
+/* The set's choices fold under a line summing them up on a phone; elsewhere they are always open, the line hidden. */
+.routine-summary { display: none; }
+@media (max-width: 640px) {
+  .routine-summary { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--ink); background: var(--surface); font-size: 14px; font-weight: 600; line-height: 1.35; cursor: pointer; list-style: none; }
+  .routine-summary::-webkit-details-marker { display: none; }
+  .routine-summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: auto; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
+  .routine-setup[open] > .routine-summary::after { transform: rotate(-135deg); }
+  /* Start stays at the screen's foot over the bar while the cards scroll; the name and Save stay in their place. */
+  .routine-panel .routine-layout { display: flex; flex-wrap: wrap; gap: 0 8px; }
+  .routine-side, .routine-actions { display: contents; }
+  .routine-layout .routine-side > *, .routine-main { flex: 1 1 100%; min-width: 0; }
+  .routine-panel .routine-main { margin-top: 12px; }
+  .routine-actions .routine-name { flex: 1 1 0; margin-top: 8px; }
+  .routine-actions #routineSave { flex: none; margin-top: 8px; }
+  .routine-actions .routine-start { order: 99; position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 3; height: 44px; margin-top: 12px; color: #fff; background: var(--accent); font-size: 15px; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+}
 /* The Set tab on a wide screen: the choices in a column at the left, staying in view, the cards beside them. */
 .routine-layout { display: grid; gap: 16px; }
 .routine-side .routine-choices { grid-template-columns: minmax(0, 1fr); gap: 4px; }

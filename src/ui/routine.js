@@ -234,9 +234,18 @@ function render() {
   const planned = Object.entries(plan).sort(([a], [b]) => a - b).flatMap(([weekday, item]) => { const set = plannedSet(item); return set ? [`${weekdayName(Number(weekday))} ${setText(set)}`] : []; });
   byId("routinePlanNote").textContent = planned.length ? t("routinePlanList", { list: planned.join(", ") }) : t("routinePlanEmpty");
   renderSaved();
+  summarize(custom);
   const extra = set.weak && set.weak !== "none" ? ` · ${t(`routineWeakMore_${set.weak}`, { extra: weakerExtra })}` : "";
   if (!custom) byId("routineList").replaceChildren(...[...new Set(set.exercises)].map((id) => card(id, dose(id, set.seconds[id], set.reps?.[id]) + extra)));
   return set;
+}
+
+// The choices in one line, the head of their fold on a phone: "Ball, Dumbbells · Mobility · Whole body · 10 min".
+function summarize(custom) {
+  const pressed = (holder) => [...holder.querySelectorAll('[aria-pressed="true"]')].map((item) => item.textContent.replace(/^✓s*/, ""));
+  const groups = custom ? [] : [...byId("routineAuto").querySelectorAll(".segmented")].filter((group) => !group.hidden && !group.closest("[hidden]"));
+  const gear = pressed(byId("routineGear")).join(", ");
+  byId("routineSummary").textContent = [gear, ...(custom ? [t("routineMode_custom")] : []), ...groups.flatMap(pressed)].filter(Boolean).join(" · ");
 }
 
 // A name the set would be saved under when none is typed: "Yin yoga · Hips", "Stability".
@@ -306,6 +315,11 @@ let wired = false;
 export function setupRoutine() {
   if (wired) return;
   wired = true;
+  // Folded on a phone, so the cards come first; open on a wider screen, where the fold's head is not shown.
+  const narrow = window.matchMedia("(max-width: 640px)");
+  const fold = () => { byId("routineSetup").open = !narrow.matches; };
+  fold();
+  narrow.addEventListener("change", fold);
   // The dialog opened from the menu shows the set as now chosen.
   byId("exercisesButton").addEventListener("click", render);
   byId("routineStart").addEventListener("click", () => {

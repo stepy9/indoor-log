@@ -714,6 +714,8 @@
                 <span class="field-label" data-i18n="routineSavedLabel">Uložené sestavy</span>
                 <ul class="routine-saved-list" id="routineSaved"></ul>
               </div>
+              <details class="routine-setup" id="routineSetup" open>
+              <summary class="routine-summary" id="routineSummary"></summary>
               <div class="routine-choices routine-gear">
                 <span class="field-label" data-i18n="routineGearLabel">Moje náčiní</span>
                 <div class="segmented" id="routineGear" role="group" aria-label="Moje náčiní" data-i18n-aria="routineGearLabel"></div>
@@ -765,15 +767,16 @@
                   <div class="segmented" id="routineReps" role="group" aria-label="Opakování" data-i18n-aria="routineRepsLabel"></div>
                 </div>
               </div>
-              <div class="routine-custom" id="routineCustom" hidden>
-                <p class="field-note" data-i18n="routineCustomIntro">Vyberte cviky v pořadí, v jakém je chcete cvičit.</p>
-                <ol class="routine-custom-list" id="routineCustomList"></ol>
-              </div>
               <div class="routine-choices routine-plan">
                 <span class="field-label" data-i18n="routinePlanLabel">V plánu</span>
                 <div class="segmented" id="routinePlanDays" role="group" aria-label="V plánu" data-i18n-aria="routinePlanLabel"></div>
               </div>
               <p class="field-note" id="routinePlanNote"></p>
+              </details>
+              <div class="routine-custom" id="routineCustom" hidden>
+                <p class="field-note" data-i18n="routineCustomIntro">Vyberte cviky v pořadí, v jakém je chcete cvičit.</p>
+                <ol class="routine-custom-list" id="routineCustomList"></ol>
+              </div>
               <p class="field-note" id="routineNote"></p>
               <div class="routine-actions">
                 <button class="accent-button routine-start" id="routineStart" type="button"></button>
