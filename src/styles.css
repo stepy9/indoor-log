@@ -1760,6 +1760,12 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* One size whatever the tab: as wide as the screen allows up to five columns of exercises, and its full height. */
 .intervals-dialog.exercises-dialog { width: min(1500px, calc(100vw - 48px)); max-width: none; height: calc(100vh - 48px); overflow-y: auto; }
 .exercises-dialog .recovery-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+/* A column, so the caution sits at the foot of the dialog, stuck there while the cards scroll under it. */
+.intervals-dialog.exercises-dialog[open] { display: flex; flex-direction: column; }
+.exercises-dialog[open] > * { flex-shrink: 0; }
+.exercises-dialog > .exercises-tabs { align-self: flex-start; }
+.exercises-footer { position: sticky; bottom: -22px; z-index: 1; margin: auto -22px -22px; padding: 12px 22px; border-top: 1px solid var(--line); background: var(--surface); }
+.routine-actions > button:disabled { opacity: .45; cursor: default; }
 .exercises-tabs { margin: 12px 0 0; }
 .exercises-panel { margin-top: 14px; }
 .exercises-panel[hidden] { display: none; }
@@ -1770,7 +1776,9 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 @media (max-width: 640px) {
   .intervals-dialog.exercises-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: calc(14px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)); border-radius: 0; }
   .exercises-dialog .recovery-list { grid-template-columns: minmax(0, 1fr); }
+  .exercises-footer { bottom: calc(-12px - env(safe-area-inset-bottom)); margin: auto -14px calc(-12px - env(safe-area-inset-bottom)); padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
   .exercises-tabs { display: flex; }
+  .exercises-dialog > .exercises-tabs { align-self: stretch; }
   .exercises-tabs button { flex: 1; padding-block: 8px; }
 }
 
@@ -1995,7 +2003,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 
 /* The Set tab: the mode, a hand-made set's list, the saved sets and the start and save row. */
 .routine-mode { margin: 12px 0 4px; }
-.routine-custom-list, .routine-saved-list { display: grid; gap: 6px; margin: 8px 0; padding: 0; list-style: none; }
+.routine-custom-list, .routine-saved-list { display: grid; gap: 6px; margin: 12px 0; padding: 0; list-style: none; }
 .routine-custom-item, .routine-saved-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
 .routine-custom-name { flex: 1 1 160px; font-weight: 600; }
 .routine-saved-name { display: grid; flex: 1 1 0; min-width: 0; font-weight: 600; }
@@ -2004,14 +2012,19 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .routine-custom-unit { color: var(--muted); font-size: 13px; }
 .routine-custom-item .link-button, .routine-saved-item .link-button { min-width: 28px; font-size: 16px; }
 .routine-custom-item .link-button:disabled { opacity: .3; cursor: default; }
-.routine-add { display: flex; gap: 8px; }
-.routine-add select { flex: 1; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); }
+/* The pick and the start rows: every control one height, in a line, and a gap above so a focus ring clears the text. */
+.routine-add { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.routine-add select { flex: 0 1 420px; min-width: 0; }
+.routine-add select, .routine-name { height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); }
+.routine-add select:focus, .routine-name:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.routine-add .outline-button, .routine-actions > button { height: 38px; margin: 0; padding-block: 0; }
 .routine-saved { margin: 12px 0 4px; }
-.routine-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 0; }
+.routine-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 0; }
 .routine-actions .routine-start { margin: 0; }
-.routine-name { flex: 1 1 160px; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); }
+.routine-name { flex: 0 1 300px; min-width: 0; }
 @media (max-width: 640px) {
   .routine-actions .routine-start { flex: 1 1 100%; }
+  .routine-add select, .routine-name { flex: 1 1 0; }
   .routine-custom-name { flex-basis: 100%; }
   .routine-custom-first { margin-left: auto; }
 }
