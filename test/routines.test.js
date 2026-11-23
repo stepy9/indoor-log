@@ -119,3 +119,14 @@ test("a set by hand runs its exercises in the order given, each with its own tim
   assert.equal(new Set(all).size, all.length);
   assert.equal(all.length, Object.keys(exercises).length);
 });
+
+test("a saved set holds its weekdays by its id, and taking it out clears them", async () => {
+  const { togglePlanDay, withoutSaved } = await import("../src/routines.js");
+  let plan = togglePlanDay({}, 1, { style: "saved", saved: "a" });
+  plan = togglePlanDay(plan, 3, { style: "saved", saved: "a" });
+  // Another saved set on the same day takes it over; the same one again takes it out.
+  plan = togglePlanDay(plan, 3, { style: "saved", saved: "b" });
+  assert.deepEqual(plan, { 1: { style: "saved", saved: "a" }, 3: { style: "saved", saved: "b" } });
+  assert.deepEqual(togglePlanDay(plan, 1, { style: "saved", saved: "a" }), { 3: { style: "saved", saved: "b" } });
+  assert.deepEqual(withoutSaved({ ...plan, 5: { style: "yin" } }, "b"), { 1: { style: "saved", saved: "a" }, 5: { style: "yin" } });
+});

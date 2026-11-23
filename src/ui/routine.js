@@ -2,7 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
+import { areasOf, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -105,7 +105,14 @@ function renderCatalog(picked) {
   }));
 }
 
-// The saved sets, each to start or take out.
+// A planned day's set: a saved one as it was saved (null when it has since been taken out), else built from its choice.
+function plannedSet(item) {
+  if (item?.style !== "saved") return item ? buildRoutine(item) : null;
+  const entry = routineSaved().find((saved) => saved.id === item.saved);
+  return entry ? { ...entry.set, name: entry.name } : null;
+}
+
+// The saved sets, each to start, put on weekdays in the plan or take out (its days in the plan with it).
 function renderSaved() {
   const saved = routineSaved();
   byId("routineSavedBox").hidden = !saved.length;
@@ -115,14 +122,29 @@ function renderSaved() {
     const text = element("span", "routine-saved-name", entry.name);
     text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min`));
     const remove = button("link-button", "✕", () => {
-      saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id) });
+      saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
       changed();
-      renderSaved();
+      render();
     }, t("routineRemove"));
     row.append(text, button("outline-button", t("routineSavedStart"), () => {
       byId("exercisesDialog").close();
       playSet({ ...entry.set, name: entry.name }, today());
     }), remove);
+    // Its weekdays in the plan; a day held by another set changes over to this one.
+    const plan = routinePlan();
+    const days = element("div", "segmented routine-saved-days");
+    days.setAttribute("role", "group");
+    days.setAttribute("aria-label", t("routinePlanLabel"));
+    days.append(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
+      const day = button("", weekdayName(weekday), () => {
+        saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, { style: "saved", saved: entry.id }) });
+        changed();
+        render();
+      });
+      day.setAttribute("aria-pressed", String(plan[weekday]?.style === "saved" && plan[weekday].saved === entry.id));
+      return day;
+    }));
+    row.append(days);
     return row;
   }));
 }
@@ -177,7 +199,7 @@ function render() {
     day.setAttribute("aria-pressed", String(plan[weekday]?.style === style));
     return day;
   }));
-  const planned = Object.entries(plan).sort(([a], [b]) => a - b).map(([weekday, item]) => `${weekdayName(Number(weekday))} ${setText(buildRoutine(item))}`);
+  const planned = Object.entries(plan).sort(([a], [b]) => a - b).flatMap(([weekday, item]) => { const set = plannedSet(item); return set ? [`${weekdayName(Number(weekday))} ${setText(set)}`] : []; });
   byId("routinePlanNote").textContent = planned.length ? t("routinePlanList", { list: planned.join(", ") }) : t("routinePlanEmpty");
   renderSaved();
   const extra = set.weak && set.weak !== "none" ? ` · ${t(`routineWeakMore_${set.weak}`, { extra: weakerExtra })}` : "";
@@ -246,8 +268,9 @@ export function routineBlock(day = today()) {
   const block = element("div", "warmup-block");
   const done = routineLog()[day] ?? [];
   const planned = plannedRoutine(routinePlan(), day);
-  if (planned && !done.some((item) => item.style === planned.style)) {
-    const set = buildRoutine(planned);
+  const set = plannedSet(planned);
+  // Done once a set of its style (a saved one: of its name) is logged that day.
+  if (set && !done.some((item) => item.style === set.style && (set.name == null || item.name === set.name))) {
     const head = element("div", "warmup-head");
     head.append(button("outline-button warmup-button", t("routinePlanned", { what: setText(set) }), () => playSet(set, day)));
     block.append(head);

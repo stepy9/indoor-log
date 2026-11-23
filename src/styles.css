@@ -2043,3 +2043,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* In the narrow column a hand-made set's row puts the name on its own line, the time and the arrows under it. */
 .routine-side .routine-custom-name { flex-basis: 100%; }
 .routine-side .routine-custom-first { margin-left: auto; }
+/* A saved set's weekdays in the plan, a small row under its name. */
+.routine-saved-item { flex-wrap: wrap; }
+.routine-saved-days { flex: 1 1 100%; justify-content: space-between; }
+.routine-saved-days button { flex: 1; padding: 3px 0; font-size: 12px; }

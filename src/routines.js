@@ -194,10 +194,14 @@ function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep
 // planned for a day, or null.
 export const weekdayOf = (day) => (new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7;
 export const plannedRoutine = (plan = {}, day) => plan[weekdayOf(day)] ?? null;
-// A weekday put in the plan with the choice now made, or taken out when it already has that style.
+// A plan without the days of a saved set taken out.
+export const withoutSaved = (plan = {}, id) => Object.fromEntries(Object.entries(plan).filter(([, item]) => !(item.style === "saved" && item.saved === id)));
+// A weekday put in the plan with the choice now made, or taken out when it already has that style (a saved set:
+// { style: "saved", saved: its id }, the very set).
+const samePlanned = (a, b) => a?.style === b.style && (b.style !== "saved" || a.saved === b.saved);
 export function togglePlanDay(plan = {}, weekday, choice) {
   const next = { ...plan };
-  if (next[weekday]?.style === choice.style) delete next[weekday];
+  if (samePlanned(next[weekday], choice)) delete next[weekday];
   else next[weekday] = choice;
   return next;
 }
