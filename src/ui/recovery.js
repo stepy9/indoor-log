@@ -38,14 +38,18 @@ export function figures(id) {
 }
 
 // The time, said as a hold or as a move to repeat, and per side where it has two.
-function dose(id, seconds = exercises[id].seconds, reps = null) {
+export function dose(id, seconds = exercises[id].seconds, reps = null) {
   const { sides, hold } = exercises[id];
-  const time = reps ? t("strengthReps", { reps }) : t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
+  // A long hold (yin's) in minutes.
+  const time = reps ? t("strengthReps", { reps }) : hold && seconds >= 120 ? t("recoveryHoldForMinutes", { minutes: minutesText(seconds) }) : t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
   return sides > 1 ? `${time} ${t("recoveryEachSide")}` : time;
 }
 
+// Minutes as the app's language writes them, a half as ",5" in Czech.
+export const minutesText = (seconds) => new Intl.NumberFormat(state.language === "en" ? "en-GB" : "cs-CZ", { maximumFractionDigits: 1 }).format(seconds / 60);
+
 // A tag saying whether to hold still or to move, beside the name.
-const nameLine = (id) => {
+export const nameLine = (id) => {
   const line = element("strong", "exercise-name", t(`recovery_${id}`));
   line.append(" ", modeTag(id));
   return line;
@@ -323,6 +327,13 @@ function wirePlayer() {
   byId("recoveryPlayerStart").addEventListener("click", run);
   byId("recoveryPlayerFinish").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", stop);
+}
+
+// Any set of steps in the player, straight away (the set already shown by whoever asks): for the sets put
+// together on demand.
+export function playSteps(list, options = {}) {
+  wirePlayer();
+  return start(list, options);
 }
 
 // The stretching after today's rowing workout, for the Training tab's day: the set picked by the workout's benefit

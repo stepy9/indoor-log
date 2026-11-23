@@ -16,6 +16,7 @@ import { leaveConverter, openConverter, openInCompare, rerenderCompare, setupCom
 import { openActivity, setupActivity } from "./ui/activity.js";
 import { setupInfoNotes } from "./ui/info.js";
 import { setupExercises } from "./ui/recovery.js";
+import { setupRoutine } from "./ui/routine.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
@@ -1012,10 +1013,13 @@ elements.resistance.addEventListener("input", () => {
   render();
 });
 // The exercises' catalogue from the gear's menu, which closes as it opens.
-setupExercises(() => {
+const closeTopbarMore = () => {
   byId("topbarMore").classList.remove("is-open");
   byId("topbarMoreButton").setAttribute("aria-expanded", "false");
-});
+};
+setupExercises(closeTopbarMore);
+// The sets on demand, "On the mat", from the same menu.
+setupRoutine(closeTopbarMore);
 setupSettings({ currentSport: () => state.kinomap?.sport, onTrainers: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, elements.trainer.value || lastTrainerId(sport));

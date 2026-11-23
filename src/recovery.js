@@ -3,6 +3,8 @@
 // The set runs as timed steps with a short rest between. No DOM here, so it is tested on its own; the names and
 // how-tos live in i18n under recovery_<id> and recoveryHow_<id>.
 
+import { routineExercises } from "./routine-exercises.js";
+
 // A pose of the side-view figure in a 220 × 170 box, the mat's top at y 150: the trunk from the hip through a
 // control point to the shoulder, the neck's end and the head's centre, arms and legs as joint lists from the
 // shoulder and the hip. focus names the parts drawn over in the accent colour: "trunk", "arm<i>", "leg<i>" or
@@ -283,6 +285,8 @@ export const exercises = {
     ],
     focus: ["leg1"],
   },
+  // The sets put together on demand: mobility, flexibility and yin yoga (routine-exercises.js).
+  ...routineExercises,
 };
 
 // The views an exercise is drawn in, for figure-svg.js: its side view first (on the mat, by its wall and props,

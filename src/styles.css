@@ -1975,3 +1975,15 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .activity-tiles:not(.is-compact) .diary-tile-value { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
   .activity-tiles:not(.is-compact) .activity-tile-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
+
+/* On the mat: the set's choices as labelled rows of buttons, the area's wrapping on a phone. */
+.routine-choices { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; margin: 12px 0 4px; }
+.routine-choices .segmented { justify-self: start; flex-wrap: wrap; }
+.routine-choices [hidden] { display: none; }
+.routine-start { margin: 8px 0 0; }
+@media (max-width: 640px) {
+  .routine-choices { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .routine-choices .segmented { display: flex; justify-self: stretch; margin-bottom: 6px; }
+  .routine-choices .segmented button { flex: 1 1 auto; padding-block: 8px; }
+  .routine-start { width: 100%; }
+}

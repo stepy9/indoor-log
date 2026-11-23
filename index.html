@@ -36,6 +36,7 @@
           <div class="topbar-more" id="topbarMore">
           <button class="library-button" id="settingsButton" type="button"><span data-i18n="settingsTitle">Nastavení</span></button>
           <button class="library-button" id="exercisesButton" type="button"><span data-i18n="exercisesTitle">Cviky</span></button>
+          <button class="library-button" id="routineButton" type="button"><span data-i18n="routineTitle">Na podložce</span></button>
           <div class="language-control" id="languageControl">
             <span class="visually-hidden" data-i18n="language">Jazyk</span>
             <button id="languageButton" class="language-button" type="button" aria-label="Jazyk" data-i18n-aria="language" aria-haspopup="listbox" aria-expanded="false" aria-controls="languageMenu">
@@ -709,6 +710,27 @@
         <ul class="recovery-list exercises-panel" id="exercisesStretch" hidden></ul>
         <ul class="recovery-list exercises-panel" id="exercisesStrength" hidden></ul>
         <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti. Bolest, která neodchází, patří k fyzioterapeutovi.</p>
+      </dialog>
+      <dialog class="intervals-dialog exercises-dialog routine-dialog" id="routineDialog" aria-labelledby="routineTitle">
+        <div class="dialog-head">
+          <h2 id="routineTitle" data-i18n="routineTitle">Na podložce</h2>
+          <button class="settings-close library-close" id="routineClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
+        </div>
+        <p class="field-note" data-i18n="routineIntro">Sestava na vyžádání.</p>
+        <div class="routine-choices">
+          <span class="field-label" data-i18n="routineStyleLabel">Styl</span>
+          <div class="segmented" id="routineStyle" role="group" aria-label="Styl" data-i18n-aria="routineStyleLabel"></div>
+          <span class="field-label" data-i18n="routineAreaLabel">Oblast</span>
+          <div class="segmented routine-wrap" id="routineArea" role="group" aria-label="Oblast" data-i18n-aria="routineAreaLabel"></div>
+          <span class="field-label" data-i18n="routineMinutesLabel">Délka</span>
+          <div class="segmented" id="routineMinutes" role="group" aria-label="Délka" data-i18n-aria="routineMinutesLabel"></div>
+          <span class="field-label routine-aim-label" id="routineAimRow"><span data-i18n="routineAimLabel">Cíl</span></span>
+          <div class="segmented" id="routineAim" role="group" aria-label="Cíl" data-i18n-aria="routineAimLabel"></div>
+        </div>
+        <p class="field-note" id="routineNote"></p>
+        <button class="accent-button routine-start" id="routineStart" type="button"></button>
+        <ul class="recovery-list" id="routineList"></ul>
+        <p class="field-note" data-i18n="recoveryCaution">Protahujte se do mírného tahu, ne do bolesti.</p>
       </dialog>
       <dialog class="recovery-player" id="recoveryPlayer" aria-labelledby="recoveryPlayerName">
         <div class="recovery-player-head">

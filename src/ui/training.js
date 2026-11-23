@@ -1,3 +1,4 @@
+import { routineBlock } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
@@ -410,6 +411,8 @@ function todayCard(result, scored, fatigue, entries, settings) {
   // Strength work twice a week on an easy day (or one without a workout), for the muscles rowing leaves out.
   const strength = strengthBlock(now, { type: item?.status === "planned" && !excused[now] ? item.type : null, taper: result.plan.taper ?? null });
   if (strength) extra(t("exercisesStrength"), strength);
+  // A set on the mat any day: mobility, flexibility or yin, and what of it was done today.
+  extra(t("routineTitle"), routineBlock(now));
   if (result.plan.minimal && showing && !done && !showing.type.startsWith("ftpTest")) {
     const minimal = result.plan.kinomap?.minimal;
     extra(t("trainingLeast"), node("p", { class: "field-note" }, t("planMinimalShort", { minutes: result.plan.minimal.minutes }) + (minimal ? ` ${t("planKinomap", { name: minimal })}.` : "")));
