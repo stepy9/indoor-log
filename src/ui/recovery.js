@@ -244,6 +244,11 @@ async function finish() {
   byId("recoveryPlayerHow").textContent = player.doneNote ?? "";
   byId("recoveryPlayerClock").textContent = "✓";
   byId("recoveryPlayerFinish").focus();
+  // Anything the set asks at its end (how the stabilization went), under the tick.
+  const after = byId("recoveryPlayerAfter");
+  after.replaceChildren();
+  player.after?.(after);
+  after.hidden = !after.children.length;
   await player.onDone?.();
 }
 
@@ -257,8 +262,11 @@ function stop() {
 
 // list: the steps to run; doneKey and doneNote what the end says; onDone what a set finished does.
 // intro, when given ({ title, note, exercises: [{ id, seconds }] }), shows the set first, the steps starting on its button.
-async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = null, intro = null } = {}) {
-  Object.assign(player, { list, index: 0, paused: false, doneKey, doneNote, onDone });
+// after, when given, fills a box on the end screen (holder) with whatever the set asks then.
+async function start(list, { doneKey = "recoveryDone", doneNote = "", onDone = null, intro = null, after = null } = {}) {
+  Object.assign(player, { list, index: 0, paused: false, doneKey, doneNote, onDone, after });
+  byId("recoveryPlayerAfter").replaceChildren();
+  byId("recoveryPlayerAfter").hidden = true;
   const dialog = byId("recoveryPlayer");
   dialog.classList.remove("is-done", "is-paused");
   byId("recoveryPlayerPause").textContent = t("recoveryPause");

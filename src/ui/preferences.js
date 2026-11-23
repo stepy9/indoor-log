@@ -54,7 +54,7 @@ export function saveDefaults(patch) {
 // The settings kept the same on every device: thresholds, weight, goals, trainers and the plan of each day gone by. What a page shows last
 // (a sport, a period, a range, the trainer used last) stays with each device, so browsing on one does not undo
 // a change on another.
-export const syncedKeys = ["fitness", "trainers", "trainingLog", "trainingExcuses", "strengthLog", "warmupLog", "routine", "routinePlan", "routineLog", "routineSaved"];
+export const syncedKeys = ["fitness", "trainers", "trainingLog", "trainingExcuses", "strengthLog", "warmupLog", "routine", "routinePlan", "routineLog", "routineSaved", "stabilityLog"];
 const localFitness = ["sport", "range", "bodySeries"];
 const syncedChangedKey = "kinomap-settings-changed";
 

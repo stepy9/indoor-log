@@ -146,3 +146,22 @@ test("with equipment: a tool's exercises fill the length, and what is not at hom
   assert.ok(!groups.some((group) => group.group === "balance" || group.group === "roller"));
   assert.equal(hasGear("catCow", []), true);
 });
+
+test("a chain's level goes up after two easy minutes in a row at it, down after two hard ones, and stays for 'just right'", async () => {
+  const { nextLevel, recordFeel } = await import("../src/routines.js");
+  let log = recordFeel({}, "front", "2026-11-20", 2, "easy");
+  assert.deepEqual(nextLevel(log.front, 2), { level: 2, change: 0 });
+  log = recordFeel(log, "front", "2026-11-22", 2, "easy");
+  assert.deepEqual(nextLevel(log.front, 2), { level: 3, change: 1 });
+  // Done, but struggling: no rise however many times.
+  const struggled = ["2026-11-20", "2026-11-22", "2026-11-24"].reduce((acc, day) => recordFeel(acc, "back", day, 1, "ok"), {});
+  assert.deepEqual(nextLevel(struggled.back, 1), { level: 1, change: 0 });
+  // One easy after a just-right is not two in a row.
+  assert.deepEqual(nextLevel(recordFeel(struggled, "back", "2026-11-26", 1, "easy").back, 1).change, 0);
+  const hard = recordFeel(recordFeel({}, "side", "2026-11-20", 3, "hard"), "side", "2026-11-22", 3, "hard");
+  assert.deepEqual(nextLevel(hard.side, 3), { level: 2, change: -1 });
+  // Answers at a level left behind do not count at the new one; a day answered again replaces its answer.
+  assert.equal(nextLevel(log.front, 3).change, 0);
+  assert.equal(recordFeel(log, "front", "2026-11-22", 2, "ok").front.at(-1).feel, "ok");
+  assert.deepEqual(nextLevel(recordFeel({}, "front", "1", 4, "easy").front.concat({ day: "2", level: 4, feel: "easy" }), 4).change, 0);
+});

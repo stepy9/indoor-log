@@ -227,6 +227,25 @@ function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep
   };
 }
 
+// How a stabilization chain's minute went, said at the set's end: { front: [{ day, level, feel }], … }, feel one
+// of these. Two sets running at the same level that came easily raise it; two hard ones lower it; "ok" (done,
+// but with effort) keeps it, so a minute struggled through does not count as mastered.
+export const stabilityFeels = ["easy", "ok", "hard"];
+export const feelKeep = 20;
+export function recordFeel(log = {}, chain, day, level, feel) {
+  const entries = (log[chain] ?? []).filter((entry) => entry.day !== day);
+  return { ...log, [chain]: [...entries, { day, level, feel }].sort((a, b) => a.day.localeCompare(b.day)).slice(-feelKeep) };
+}
+// The level a chain goes on at: its last two answers both at this level and both easy, one up (to 4); both hard,
+// one down (to 1); otherwise the same. { level, change: 1 | -1 | 0 }.
+export function nextLevel(entries = [], level = 1) {
+  const last = entries.slice(-2);
+  const both = (feel) => last.length === 2 && last.every((entry) => entry.level === level && entry.feel === feel);
+  if (both("easy") && level < 4) return { level: level + 1, change: 1 };
+  if (both("hard") && level > 1) return { level: level - 1, change: -1 };
+  return { level, change: 0 };
+}
+
 // The plan: weekdays (0 Monday … 6 Sunday) each with the choice of a set, { "2": { style: "yin", … } }. The set
 // planned for a day, or null.
 export const weekdayOf = (day) => (new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7;

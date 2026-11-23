@@ -2,7 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
+import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
 import { exercises } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, playSteps } from "./recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -26,6 +26,7 @@ export const routineLog = () => savedDefaults().routineLog ?? {};
 export const routinePlan = () => savedDefaults().routinePlan ?? {};
 // Saved sets, each as it was when saved: [{ id, name, set: { style, minutes, exercises, seconds, reps, steps } }].
 export const routineSaved = () => savedDefaults().routineSaved ?? [];
+export const stabilityLog = () => savedDefaults().stabilityLog ?? {};
 // A weekday's short name in the app's language, 0 Monday (1 January 2024 was one).
 const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(state.language === "en" ? "en-GB" : "cs-CZ", { weekday: form, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + weekday)));
 // A set's short description: its name when it has one, else "Yin yoga 15 min".
@@ -114,6 +115,8 @@ function renderCatalog(picked) {
 
 // A planned day's set: a saved one as it was saved (null when it has since been taken out), else built from its choice.
 function plannedSet(item) {
+  // Stabilization in the plan goes at the levels reached since, not those it was planned at.
+  if (item?.style === "stability") return buildRoutine({ ...item, levels: choice().levels });
   if (item?.style !== "saved") return item ? buildRoutine(item) : null;
   const entry = routineSaved().find((saved) => saved.id === item.saved);
   return entry ? { ...entry.set, name: entry.name } : null;
@@ -239,12 +242,48 @@ function defaultName(picked, set) {
   return byLength(picked.style) && picked.area !== "all" ? `${style} · ${t(`routineArea_${picked.area}`)}` : style;
 }
 
+// At the end of a set with stabilization chains: how each chain's minute went. An answer is kept by day and moves
+// the chain's level by nextLevel (two easy in a row up, two hard down); changing one's mind recounts from the level
+// the set began at. A chain done at another level than its current one (an old saved set) is kept but moves nothing.
+function askFeel(set, day) {
+  const chains = [...new Set(set.exercises)].filter((id) => exercises[id].chain && exercises[id].level).map((id) => ({ chain: exercises[id].chain, level: exercises[id].level }));
+  if (!chains.length) return null;
+  return (holder) => {
+    holder.append(element("p", "stability-feel-title", t("feelTitle")));
+    for (const { chain, level } of chains) {
+      const base = choice().levels?.[chain] ?? 1;
+      const row = element("div", "stability-feel-row");
+      const buttons = element("div", "segmented");
+      buttons.setAttribute("role", "group");
+      const result = element("span", "stability-feel-result");
+      const answer = (feel) => {
+        const log = recordFeel(stabilityLog(), chain, day, level, feel);
+        const next = level === base ? nextLevel(log[chain], base) : { level: base, change: 0 };
+        saveDefaults({ stabilityLog: log, routine: { ...choice(), levels: { ...choice().levels, [chain]: next.level } } });
+        for (const item of buttons.children) item.setAttribute("aria-pressed", String(item.dataset.feel === feel));
+        result.textContent = next.change > 0 ? t("feelUp", { level: next.level }) : next.change < 0 ? t("feelDown", { level: next.level }) : t(`feelSame_${feel}`, { level: base });
+        changed();
+      };
+      buttons.append(...stabilityFeels.map((feel) => {
+        const item = button("", t(`feel_${feel}`), () => answer(feel));
+        item.dataset.feel = feel;
+        item.setAttribute("aria-pressed", "false");
+        return item;
+      }));
+      buttons.setAttribute("aria-label", t(`routineChain_${chain}`));
+      row.append(element("span", "field-label", t("feelChain", { chain: t(`routineChain_${chain}`), level })), buttons, result);
+      holder.append(row);
+    }
+  };
+}
+
 // A set in the player; done, the day is logged. intro: its list shown first (from the plan or the saved ones).
 function playSet(set, day, { intro = true } = {}) {
   playSteps(set.steps, {
     doneKey: "routineDone",
     doneNote: t(set.style === "stability" ? "routineDoneNoteStability" : "routineDoneNote"),
     ...(intro ? { intro: { title: setText(set), note: "", exercises: [...new Set(set.exercises)].map((id) => ({ id, seconds: set.seconds[id], reps: set.reps?.[id] })) } } : {}),
+    after: askFeel(set, day),
     onDone: () => {
       saveDefaults({ routineLog: logRoutine(routineLog(), day, { style: set.style, minutes: set.minutes, exercises: set.exercises, ...(set.name ? { name: set.name } : {}) }) });
       changed();
