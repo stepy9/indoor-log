@@ -1876,6 +1876,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .regularity-label { color: var(--muted); font-size: 11px; font-weight: 600; }
 .regularity-count { color: var(--ink); font-size: 20px; font-weight: 600; line-height: 1.1; }
 .regularity-stretched { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.regularity-mat { min-height: 1em; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .regularity-dots { display: flex; gap: 3px; min-height: 8px; }
 .regularity-dot { width: 7px; height: 7px; border: 1.5px solid var(--line-strong); border-radius: 50%; }
 .regularity-dot.is-done { border-color: var(--accent); background: var(--accent); }

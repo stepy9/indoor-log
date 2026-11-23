@@ -16,7 +16,7 @@ import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
 import { goalFor, yearProgress } from "../year-goal.js";
 import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
-import { infoHint } from "./info.js";
+import { hoverTip, infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
@@ -1140,6 +1140,8 @@ function renderRegularity(entries) {
   const result = regularity({
     workouts: entries.map((entry) => ({ day: dayKey(entry.startMs, zone), stretched: Boolean(entry.stretched) })),
     strengthDays: Object.keys(savedDefaults().strengthLog ?? {}).filter((day) => savedDefaults().strengthLog[day]),
+    // The sets from Exercises, each day's one by one.
+    mat: Object.entries(savedDefaults().routineLog ?? {}).flatMap(([day, sets]) => sets.map((set) => ({ day, style: set.style, minutes: set.minutes }))),
     today: today(),
   });
   const { totals, weeks, strengthGoal } = result;
@@ -1150,10 +1152,12 @@ function renderRegularity(entries) {
     tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.stretchable }), [share(totals.stretched, totals.stretchable), ...(weeks[0].stretchTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.stretchTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].filter(Boolean).join(" · ")),
     tile(t("regStrength"), t("regOf", { done: totals.strength, total: totals.strengthGoal }), [t("regStrengthGoal", { goal: strengthGoal }), ...(weeks[0].strengthTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.strengthTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].join(" · ")),
     tile(t("regStreak"), plural(result.streak), t("regKept", { kept: totals.kept, weeks: weeks.length })),
+    // The sets from Exercises: how many and how long, and the styles most done.
+    tile(t("regMat"), t("regMatCount", { count: totals.mat, minutes: totals.matMinutes }), totals.mat ? Object.entries(totals.matStyles).slice(0, 3).map(([style, count]) => `${t(`routineStyle_${style}`)} ${count}×`).join(" · ") : t("regMatNone")),
   );
   byId("fitnessRegularityWeeks").replaceChildren(...weeks.map((week) => {
     const cell = node("div", { class: `regularity-week${week.kept ? " is-kept" : ""}${week.running ? " is-running" : ""}` });
-    cell.title = t("regWeekTitle", { week: weekNumber(week.monday), workouts: week.workouts, stretched: week.stretched, strength: week.strength });
+    const tip = t("regWeekTitle", { week: weekNumber(week.monday), workouts: week.workouts, stretched: week.stretched, strength: week.strength }) + (week.mat ? t("regWeekMat", { count: week.mat, minutes: week.matMinutes }) : "");
     const dots = node("span", { class: "regularity-dots" });
     for (let index = 0; index < (week.strengthTracked ? Math.max(strengthGoal, week.strength) : 0); index += 1) dots.append(node("span", { class: `regularity-dot${index < week.strength ? " is-done" : ""}` }));
     cell.append(
@@ -1161,8 +1165,9 @@ function renderRegularity(entries) {
       node("span", { class: "regularity-count" }, String(week.workouts)),
       node("span", { class: "regularity-stretched" }, week.stretchTracked ? `✓ ${week.stretched}` : ""),
       dots,
+      node("span", { class: "regularity-mat" }, week.mat ? `🧎 ${week.mat}` : ""),
     );
-    return cell;
+    return hoverTip(cell, tip);
   }));
   byId("fitnessRegularityNote").textContent = t("regNote", { goal: strengthGoal });
 }

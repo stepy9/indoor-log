@@ -77,3 +77,15 @@ test("regularity without any stretching or strength yet judges the past by the w
   assert.equal(result.weeks.at(-2).kept, true);
   assert.equal(result.weeks.at(-1).stretchTracked, true);
 });
+
+test("the sets from Exercises are counted by week and style, without deciding whether a week is kept", () => {
+  const today = "2026-11-23";
+  const mat = [{ day: "2026-11-23", style: "yin", minutes: 15 }, { day: "2026-11-18", style: "yin", minutes: 10 }, { day: "2026-11-17", style: "stability", minutes: 8 }, { day: "2026-11-30", style: "yin", minutes: 9 }];
+  const result = regularity({ workouts: [], strengthDays: [], today, mat });
+  assert.equal(result.weeks.at(-1).mat, 1);
+  assert.equal(result.weeks.at(-2).mat, 2);
+  assert.equal(result.weeks.at(-2).matMinutes, 18);
+  assert.deepEqual(result.totals.matStyles, { yin: 2, stability: 1 });
+  assert.equal(result.totals.matMinutes, 33);
+  assert.equal(result.weeks.at(-2).kept, false);
+});

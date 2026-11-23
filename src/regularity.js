@@ -5,6 +5,8 @@ import { addDays } from "./diary.js";
 // A week is kept with at least one workout, most of its workouts stretched and the strength sessions aimed at.
 // Stretching and strength count only from the first time each was done: the weeks before had no such feature, so
 // they are judged by the workouts alone and show no stretching or strength at all.
+// The sets from Exercises (mobility, yoga, stability…) are counted beside them, by week and by style, but have no
+// aim and do not decide whether a week is kept: they are extra, done when and as often as wanted.
 
 const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
 
@@ -12,12 +14,14 @@ const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay
 // The first stretch is the earliest workout stretched; the first strength the earliest day logged; without one, today.
 // { weeks: [{ monday, workouts, stretched, strength, stretchTracked, strengthTracked, kept, running }] oldest first,
 // streak, totals: { workouts, stretchable (workouts since stretching began), stretched, strength, strengthGoal, kept } }
-export function regularity({ workouts, strengthDays, today, count = 8, strengthGoal = 2 }) {
+// mat: [{ day, style, minutes }] the sets from Exercises; each week gets mat (sets) and matMinutes, the totals the
+// same and matStyles: { style: sets } most first.
+export function regularity({ workouts, strengthDays, today, count = 8, strengthGoal = 2, mat = [] }) {
   const thisMonday = mondayOf(today);
   const past = workouts.filter((workout) => workout.day <= today);
   const stretchSince = past.filter((workout) => workout.stretched).map((workout) => workout.day).sort()[0] ?? today;
   const strengthSince = strengthDays.filter((day) => day <= today).sort()[0] ?? today;
-  const weeks = Array.from({ length: count }, (_, index) => ({ monday: addDays(thisMonday, (index - count + 1) * 7), workouts: 0, stretchable: 0, stretched: 0, strength: 0 }));
+  const weeks = Array.from({ length: count }, (_, index) => ({ monday: addDays(thisMonday, (index - count + 1) * 7), workouts: 0, stretchable: 0, stretched: 0, strength: 0, mat: 0, matMinutes: 0 }));
   const byMonday = new Map(weeks.map((week) => [week.monday, week]));
   for (const workout of workouts) {
     const week = byMonday.get(mondayOf(workout.day));
@@ -30,6 +34,14 @@ export function regularity({ workouts, strengthDays, today, count = 8, strengthG
     const week = byMonday.get(mondayOf(day));
     if (week && day <= today) week.strength += 1;
   }
+  const matStyles = {};
+  for (const set of mat) {
+    const week = byMonday.get(mondayOf(set.day));
+    if (!week || set.day > today) continue;
+    week.mat += 1;
+    week.matMinutes += set.minutes ?? 0;
+    matStyles[set.style] = (matStyles[set.style] ?? 0) + 1;
+  }
   for (const week of weeks) {
     week.running = week.monday === thisMonday;
     week.stretchTracked = addDays(week.monday, 6) >= stretchSince;
@@ -40,5 +52,5 @@ export function regularity({ workouts, strengthDays, today, count = 8, strengthG
   let streak = weeks.at(-1).kept ? 1 : 0;
   for (let index = weeks.length - 2; index >= 0 && weeks[index].kept; index -= 1) streak += 1;
   const sum = (key) => weeks.reduce((total, week) => total + week[key], 0);
-  return { weeks, streak, strengthGoal, totals: { workouts: sum("workouts"), stretchable: sum("stretchable"), strengthGoal: strengthGoal * weeks.filter((week) => week.strengthTracked).length, stretched: sum("stretched"), strength: sum("strength"), kept: weeks.filter((week) => week.kept).length } };
+  return { weeks, streak, strengthGoal, totals: { workouts: sum("workouts"), stretchable: sum("stretchable"), strengthGoal: strengthGoal * weeks.filter((week) => week.strengthTracked).length, stretched: sum("stretched"), strength: sum("strength"), kept: weeks.filter((week) => week.kept).length, mat: sum("mat"), matMinutes: sum("matMinutes"), matStyles: Object.fromEntries(Object.entries(matStyles).sort((a, b) => b[1] - a[1])) } };
 }
