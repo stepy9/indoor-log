@@ -738,6 +738,15 @@ export const routineExercises = {
   swimming: build(swimming, { style: "pilates", seconds: 30, sides: 1, areas: ["back", "shoulders"], breath: true }),
   sideKick: build(sideKick, { style: "pilates", reps: 10, seconds: 40, sides: 2, areas: ["hips", "legs"], breath: true }),
   teaser: build(teaser, { style: "pilates", reps: 5, seconds: 30, sides: 1, areas: ["back"], advanced: true, breath: true }),
+  // Breathing: no figure, the player draws a circle growing with the breath in and shrinking with it out instead.
+  // pattern: the phases of one breath, [phase, seconds], phase one of in, top (a second breath in on top of the
+  // first), hold (full) and empty (held out). seconds: the length it is offered at first.
+  resonant: { style: "breath", hold: true, seconds: 300, sides: 1, pattern: [["in", 5.5], ["out", 5.5]] },
+  diaphragm: { style: "breath", hold: true, seconds: 300, sides: 1, pattern: [["in", 4], ["out", 6]], book: "12.1" },
+  longExhale: { style: "breath", hold: true, seconds: 300, sides: 1, pattern: [["in", 4], ["out", 7]] },
+  box: { style: "breath", hold: true, seconds: 300, sides: 1, pattern: [["in", 4], ["hold", 4], ["out", 4], ["empty", 4]] },
+  fourSevenEight: { style: "breath", hold: true, seconds: 120, sides: 1, pattern: [["in", 4], ["hold", 7], ["out", 8]] },
+  sigh: { style: "breath", hold: true, seconds: 120, sides: 1, pattern: [["in", 2], ["top", 1], ["out", 6]] },
   shoulderBridge: build(shoulderBridge, { style: "pilates", reps: 8, seconds: 40, sides: 1, areas: ["hips", "back"], breath: true }),
   // chain and level: a stabilization exercise's place; reps: the repeats a moved one is counted in; gear: what it needs.
   stabFront1: build(front1, { style: "stability", chain: "front", level: 1, hold: true, seconds: 60, sides: 1, book: "9.1" }),

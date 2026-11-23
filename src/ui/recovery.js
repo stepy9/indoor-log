@@ -41,6 +41,8 @@ export function figures(id) {
 // The time, said as a hold or as a move to repeat, and per side where it has two.
 export function dose(id, seconds = exercises[id].seconds, reps = null) {
   const { sides, hold } = exercises[id];
+  // A breathing exercise: just its length.
+  if (exercises[id].pattern) return `${minutesText(seconds)} min`;
   // A long hold (yin's) in minutes.
   const time = reps ? t("strengthReps", { reps }) : hold && seconds >= 120 ? t("recoveryHoldForMinutes", { minutes: minutesText(seconds) }) : t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
   return sides > 1 ? `${time} ${t("recoveryEachSide")}` : time;
@@ -55,7 +57,8 @@ export const nameLine = (id) => {
   line.append(" ", modeTag(id));
   return line;
 };
-const modeTag = (id) => element("span", `exercise-mode is-${exercises[id].hold ? "hold" : "move"}`, t(exercises[id].hold ? "recoveryModeHold" : "recoveryModeMove"));
+const modeKind = (id) => (exercises[id].pattern ? "breath" : exercises[id].hold ? "hold" : "move");
+const modeTag = (id) => element("span", `exercise-mode is-${modeKind(id)}`, t(`recoveryMode_${modeKind(id)}`));
 
 const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
 
@@ -98,6 +101,9 @@ const sounds = {
   tick: () => tones([[660, 0.12]]),
   start: () => { tones([[990, 0.45]]); buzz(250); },
   stop: () => { tones([[520, 0.15], [520, 0.15]]); buzz([120, 80, 120]); },
+  breathIn: () => tones([[392, 0.35]]),
+  breathTop: () => tones([[523, 0.2]]),
+  breathOut: () => tones([[294, 0.4]]),
   done: () => { tones([[660, 0.18], [880, 0.18], [1100, 0.4]]); buzz([200, 100, 200, 100, 300]); },
 };
 // The next exercise said aloud in the app's language as a pause starts, or "Right side" before the switch; muted by
@@ -169,7 +175,7 @@ function showStep() {
   byId("recoveryPlayerProgress").textContent = rounds > 1 ? `${t("strengthRound", { round: step.round, rounds })} · ${progress}` : progress;
   const coming = player.list[player.index + 1];
   // In work the side, if any, and whether to hold or move.
-  const mode = t(exercises[id].hold ? "recoveryModeHold" : "recoveryModeMove");
+  const mode = t(`recoveryMode_${modeKind(id)}`);
   const what = work && step.reps ? t("strengthReps", { reps: step.reps }) : mode;
   byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${what}` : what) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
@@ -178,7 +184,9 @@ function showStep() {
   const video = videoButton(exercises[id].book, () => { if (!player.paused) byId("recoveryPlayerPause").click(); });
   byId("recoveryPlayerVideo").replaceChildren(...(video ? [video] : []));
   byId("recoveryPlayerVideo").hidden = !video;
-  const art = figures(id);
+  const pacer = exercises[id].pattern ? [Object.assign(element("div", "breath-pacer"), { innerHTML: '<div class="breath-circle"></div>' })] : [];
+  const art = pacer.length ? pacer : figures(id);
+  player.breath = null;
   byId("recoveryPlayerFigure").replaceChildren(...art);
   byId("recoveryPlayerFigure").classList.toggle("has-views", art.length > 1);
   byId("recoveryPlayerFigure").hidden = !art.length;
@@ -222,8 +230,9 @@ function tick() {
   if (player.paused || !player.list.length || player.list[player.index]?.reps) return;
   const left = Math.max(0, Math.ceil((player.endsAt - Date.now()) / 1000));
   byId("recoveryPlayerClock").textContent = formatDuration(left);
-  // During a timed exercise of 30 s or more the voice says the half; once.
   const step = player.list[player.index];
+  if (step.type === "work" && exercises[step.id].pattern) breathe(step);
+  // During a timed exercise of 30 s or more the voice says the half; once.
   if (player.said !== left) {
     if (step.type === "work" && step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t("speakHalf"), 0);
     if (player.roundPause && left === 10) announce(player.list[player.index + 1]);
@@ -236,6 +245,30 @@ function tick() {
   }
   if (left > 0) return;
   advance();
+}
+
+// The breath's phase now: [phase, seconds] of the pattern, by the time gone in the step. A new phase sets the circle
+// going to its size over the phase's time left (all of it, or what is left after a pause) and sounds its tone.
+function breathe(step) {
+  const { pattern } = exercises[step.id];
+  const cycle = pattern.reduce((sum, [, seconds]) => sum + seconds, 0);
+  const gone = Math.max(0, step.seconds - (player.endsAt - Date.now()) / 1000);
+  let at = gone % cycle;
+  let index = 0;
+  while (index < pattern.length - 1 && at >= pattern[index][1]) at -= pattern[index++][1];
+  const [phase, seconds] = pattern[index];
+  byId("recoveryPlayerPhase").textContent = `${t(`breathPhase_${phase}`)} · ${Math.max(1, Math.ceil(seconds - at))}`;
+  const key = `${Math.floor(gone / cycle)}:${index}`;
+  if (player.breath === key) return;
+  player.breath = key;
+  const circle = byId("recoveryPlayerFigure").querySelector(".breath-circle");
+  const size = { in: pattern.some(([name]) => name === "top") ? 0.82 : 1, top: 1, out: 0.4 }[phase];
+  if (circle && size != null) {
+    circle.style.transitionDuration = `${Math.max(0.2, seconds - at)}s`;
+    circle.style.transform = `scale(${size})`;
+  }
+  circle?.setAttribute("data-phase", phase);
+  if (at < 0.5) ({ in: sounds.breathIn, top: sounds.breathTop, out: sounds.breathOut })[phase]?.();
 }
 
 async function finish() {
@@ -324,6 +357,9 @@ function wirePlayer() {
     player.paused = !player.paused;
     if (player.paused) player.left = Math.max(0, (player.endsAt - Date.now()) / 1000);
     else player.endsAt = Date.now() + player.left * 1000;
+    const circle = byId("recoveryPlayerFigure").querySelector(".breath-circle");
+    if (circle && player.paused) Object.assign(circle.style, { transform: getComputedStyle(circle).transform, transitionDuration: "0s" });
+    player.breath = null;
     dialog.classList.toggle("is-paused", player.paused);
     byId("recoveryPlayerPause").textContent = t(player.paused ? "recoveryResume" : "recoveryPause");
   });

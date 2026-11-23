@@ -169,7 +169,7 @@ test("a chain's level goes up after two easy minutes in a row at it, down after 
 test("every exercise from the book has its video", async () => {
   const { videoOf } = await import("../src/book-videos.js");
   const books = Object.values(exercises).filter((exercise) => exercise.book).map((exercise) => exercise.book);
-  assert.equal(books.length, 32);
+  assert.equal(books.length, 33);
   for (const book of books) assert.ok(videoOf(book), book);
 });
 
@@ -186,4 +186,18 @@ test("pilates runs the classical order near its length, the teaser and more repe
     }
   }
   assert.ok(buildRoutine({ style: "pilates", level: "advanced" }).reps.rollUp > buildRoutine({ style: "pilates" }).reps.rollUp);
+});
+
+test("breathing runs one technique in whole breaths for its length", async () => {
+  const { breathTechniques, breathCycle } = await import("../src/routines.js");
+  for (const technique of breathTechniques) {
+    for (const minutes of [2, 5, 10]) {
+      const set = buildRoutine({ style: "breath", technique, breathMinutes: minutes });
+      const [work] = set.steps.filter((step) => step.type === "work");
+      assert.equal(work.id, technique);
+      assert.ok(Math.abs(work.seconds / breathCycle(technique) - Math.round(work.seconds / breathCycle(technique))) < 1e-9, technique);
+      assert.ok(Math.abs(work.seconds - minutes * 60) <= breathCycle(technique), `${technique} ${minutes}`);
+    }
+  }
+  assert.equal(buildRoutine({ style: "breath", technique: "nothing" }).technique, "resonant");
 });

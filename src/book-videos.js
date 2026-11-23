@@ -36,6 +36,8 @@ export const bookVideos = {
   "9.30": "SGSUzY3beo4",
   "9.31": "S_KzO5Lmp58",
   "9.32": "YYx4oxIhNm8",
+  // Chapter 12: breathing.
+  "12.1": "KzDRFktyYrQ",
 };
 export const videoOf = (book) => (book && /^[\w-]{11}$/.test(bookVideos[book] ?? "") ? bookVideos[book] : null);
 export const embedUrl = (id) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1`;

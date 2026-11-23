@@ -7,7 +7,7 @@
 // No DOM here, so it is tested on its own.
 import { exercises, restSeconds, switchSeconds } from "./recovery.js";
 
-export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "stability", "balance", "gear"];
+export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "breath", "stability", "balance", "gear"];
 // The equipment there may be at home; a set with it is offered only when it is there. gearStyleTools: those the
 // "gear" style is built around (the ball and the dumbbell have their own in stability and balance).
 export const gearTools = ["ball", "dumbbell", "band", "bosu", "roller"];
@@ -65,6 +65,7 @@ export function buildRoutine(choice = {}) {
   if (choice.style === "balance") return balanceSet(choice);
   if (choice.style === "gear") return gearSet(choice);
   if (choice.style === "pilates") return pilatesSet(choice);
+  if (choice.style === "breath") return breathSet(choice);
   return lengthSet(choice);
 }
 
@@ -129,6 +130,7 @@ export function exerciseGroups(owned = gearTools) {
     { group: "yin", ids: take(orders.yin.filter((id) => exercises[id].style === "yin")) },
     { group: "stability", ids: take(stability) },
     { group: "pilates", ids: take(pilatesMoves) },
+    { group: "breath", ids: take(breathTechniques) },
     { group: "balance", ids: take(balanceMoves) },
     ...gearStyleTools.map((tool) => ({ group: tool, ids: take(toolMoves(tool)) })),
     { group: "rowing", ids: take(Object.keys(exercises).filter((id) => !exercises[id].style)) },
@@ -168,6 +170,17 @@ function gearSet({ tool = "band", minutes = 10 } = {}) {
 // each move is in its how-to: the legs long and low, the head up).
 export const pilatesLevels = ["basic", "advanced"];
 export const pilatesMoves = ["hundred", "rollUp", "legCircles", "rollingBall", "singleLegStretch", "doubleLegStretch", "crissCross", "spineStretch", "saw", "swimming", "sideKick", "teaser", "shoulderBridge"];
+// Breathing: { technique, breathMinutes }. One exercise for the length, in whole breaths.
+export const breathTechniques = ["resonant", "diaphragm", "longExhale", "box", "fourSevenEight", "sigh"];
+export const breathMinutes = [2, 5, 10];
+export const breathCycle = (id) => exercises[id].pattern.reduce((sum, [, seconds]) => sum + seconds, 0);
+function breathSet({ technique = "resonant", breathMinutes: minutes = 5 } = {}) {
+  const id = breathTechniques.includes(technique) ? technique : "resonant";
+  const seconds = Math.round(Math.max(1, Math.round((minutes * 60) / breathCycle(id))) * breathCycle(id));
+  const { steps, minutes: length } = stepsOf([{ id, side: null, seconds }]);
+  return { style: "breath", technique: id, rounds: 1, minutes: length, steps, exercises: [id], seconds: { [id]: seconds }, reps: {} };
+}
+
 const pilatesDrop = ["rollingBall", "saw", "legCircles", "doubleLegStretch", "spineStretch", "sideKick", "swimming", "crissCross", "rollUp"];
 function pilatesSet({ minutes = 10, level = "basic" } = {}) {
   const advanced = level === "advanced";
