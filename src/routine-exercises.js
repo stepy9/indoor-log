@@ -70,7 +70,17 @@ function hipSwitch() {
   const turn = k.trunk(hip, -105, { neck: -150 });
   const down = [k.leg(hip, 172, 20), k.leg(hip, 176, 15)];
   const b = pose(turn, [k.arm(turn.shoulder, -170, -175), k.arm(turn.shoulder, 70, 80)], down, [k.toe(down[0], 0), k.toe(down[1], 0)]);
-  return { poses: [a, b], far: { arms: [1], legs: [0] }, focus: ["thigh1"] };
+  // From above, head up and the feet down: the knees up and apart, then both fallen to one side, the trunk turning
+  // after them and the arm reaching across.
+  const top = {
+    key: "top",
+    blocks: [{ x: 30, y: 6, width: 160, height: 158, rx: 10 }],
+    poses: [
+      { trunk: [[110, 96], [110, 82], [110, 68]], neck: [110, 58], head: [110, 46], arms: [[[98, 70], [88, 50], [84, 30]], [[122, 70], [132, 50], [136, 30]]], legs: [[[103, 98], [76, 124], [94, 150]], [[117, 98], [144, 124], [126, 150]]] },
+      { trunk: [[110, 96], [104, 84], [100, 70]], neck: [96, 60], head: [92, 48], arms: [[[88, 70], [80, 50], [84, 30]], [[112, 72], [92, 98], [70, 118]]], legs: [[[103, 98], [64, 108], [72, 142]], [[117, 98], [90, 124], [102, 154]]] },
+    ],
+  };
+  return { poses: [a, b], far: { arms: [1], legs: [0] }, focus: ["thigh1"], more: [top] };
 }
 
 // 9.19 Sitting with the legs long, hands beside the hips, then the hips up into a table: head, trunk and thighs in line.
@@ -215,7 +225,17 @@ function butterfly() {
   const legs = [[hip, [88, 124], [104, 142]], [hip, [92, 118], [106, 140]]];
   const a = { ...up, arms: [[[118, 62], [108, 92], [100, 118]]], legs, feet: [[94, 144], [96, 142]] };
   const b = { ...folded, arms: [[[74, 112], [88, 130], [98, 142]]], legs, feet: [[94, 144], [96, 142]] };
-  return { poses: [a, b], far: { legs: [1] }, focus: ["thigh0", "trunk"] };
+  // From the front: the soles together, the knees out to the sides, the trunk folding down towards the feet.
+  const front = {
+    key: "front",
+    blocks: [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }],
+    focus: ["thigh0", "thigh1"],
+    poses: [
+      { trunk: [[110, 132], [110, 104], [110, 76]], neck: [110, 64], head: [110, 52], arms: [[[98, 78], [92, 104], [104, 136]], [[122, 78], [128, 104], [116, 136]]], legs: [[[102, 134], [56, 132], [104, 146]], [[118, 134], [164, 132], [116, 146]]] },
+      { trunk: [[110, 132], [110, 120], [110, 108]], neck: [110, 104], head: [110, 98], arms: [[[96, 110], [92, 124], [104, 140]], [[124, 110], [128, 124], [116, 140]]], legs: [[[102, 134], [56, 132], [104, 146]], [[118, 134], [164, 132], [116, 146]]] },
+    ],
+  };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["thigh0", "trunk"], more: [front] };
 }
 
 // Caterpillar: seated, the legs long, folding forward and letting the back round over them.
@@ -279,6 +299,157 @@ function supineTwist() {
 
 // Child's pose in yin: the knees wide and the forehead down, the arms long ahead; drawn as recovery.js's own.
 
+// ---- Stabilization (the book's 9.1–9.16): the front, back and side chains, each in four levels: 1 held still,
+// 2 the legs and trunk still with the arms moving, 3 the arms and trunk still with the legs moving, 4 both moving.
+// A minute at a level before the next. Then four moves with a gym ball for the pelvis.
+
+// On all fours, the knees hovering a hand's breadth over the mat (9.1, 9.2), or on the forearms (9.3, 9.4).
+const hands4 = { trunk: [[140, 88], [100, 90], [60, 92]], neck: [48, 89], head: [37, 86], arms: [[[60, 92], [62, 119], [64, 146]], [[60, 92], [58, 119], [58, 146]]], legs: [[[140, 88], [142, 138], [186, 144]], [[140, 88], [138, 138], [182, 144]]], feet: [[198, 138], [194, 138]] };
+const forearms4 = { trunk: [[146, 96], [108, 98], [70, 100]], neck: [58, 98], head: [47, 96], arms: [[[70, 100], [72, 146], [42, 146]], [[70, 100], [68, 146], [38, 146]]], legs: [[[146, 96], [148, 140], [192, 146]], [[146, 96], [144, 140], [188, 146]]], feet: [[204, 140], [200, 140]] };
+
+function front1() {
+  const down = { ...hands4, trunk: [[140, 94], [100, 94], [60, 94]], arms: [[[60, 94], [62, 120], [64, 146]], [[60, 94], [58, 120], [58, 146]]], legs: [[[140, 94], [142, 146], [186, 146]], [[140, 94], [138, 146], [182, 146]]], feet: [[198, 140], [194, 140]] };
+  return { poses: [down, hands4], far: { arms: [1], legs: [1] }, focus: ["trunk"] };
+}
+function front2() {
+  const reach = { ...hands4, arms: [hands4.arms[0], [[60, 92], [34, 90], [8, 88]]] };
+  return { poses: [hands4, reach], far: { arms: [0], legs: [1] }, focus: ["trunk", "arm1"] };
+}
+function front3() {
+  const lift = { ...forearms4, legs: [forearms4.legs[0], [[146, 96], [176, 92], [206, 88]]], feet: [[204, 140], [214, 78]] };
+  return { poses: [forearms4, lift], far: { arms: [1], legs: [0] }, focus: ["trunk", "leg1"] };
+}
+function front4() {
+  const lift = { ...forearms4, arms: [forearms4.arms[0], [[70, 100], [44, 96], [16, 92]]], legs: [forearms4.legs[0], [[146, 96], [176, 92], [206, 88]]], feet: [[204, 140], [214, 78]] };
+  return { poses: [forearms4, lift], far: { arms: [0], legs: [0] }, focus: ["trunk", "leg1"] };
+}
+
+// A bridge on the heels, the arms overhead on the mat: shoulders, hips and thighs in one line (9.5–9.8).
+const bridgeUp = { trunk: [[120, 119], [86, 132], [52, 140]], neck: [40, 140], head: [29, 139], arms: [[[52, 140], [28, 144], [4, 146]], [[52, 140], [30, 142], [6, 143]]], legs: [[[120, 119], [168, 104], [168, 146]], [[120, 119], [164, 102], [164, 146]]], feet: [[176, 134], [172, 134]] };
+const bridgeDown = { ...bridgeUp, trunk: [[124, 140], [88, 140], [52, 140]], legs: [[[124, 140], [150, 96], [168, 146]], [[124, 140], [146, 94], [164, 146]]] };
+
+function back1() {
+  return { poses: [bridgeDown, bridgeUp], far: { arms: [1], legs: [1] }, focus: ["trunk", "thigh0"] };
+}
+function back2() {
+  const along = { ...bridgeUp, arms: [[[52, 140], [76, 144], [100, 146]], [[52, 140], [74, 142], [98, 143]]] };
+  return { poses: [bridgeUp, along], far: { arms: [1], legs: [1] }, arrows: ["M18,128 A44,44 0 0 1 96,128"], focus: ["trunk", "arm0"] };
+}
+function back3() {
+  const leg = { ...bridgeUp, legs: [[[120, 119], [166, 105], [210, 91]], bridgeUp.legs[1]], feet: [[214, 78], [172, 134]] };
+  return { poses: [bridgeUp, leg], far: { arms: [1], legs: [1] }, focus: ["trunk", "leg0"] };
+}
+function back4() {
+  const leg = { ...bridgeUp, arms: [bridgeUp.arms[0], [[52, 140], [54, 112], [56, 84]]], legs: [[[120, 119], [166, 105], [210, 91]], bridgeUp.legs[1]], feet: [[214, 78], [172, 134]] };
+  return { poses: [bridgeUp, leg], far: { arms: [1], legs: [1] }, focus: ["trunk", "leg0"] };
+}
+
+// Lying on the side, seen from the front: up on the lower forearm and the lower knee (bent to a right angle), the
+// top leg long, the body one line (9.9–9.12).
+const sideUp = { trunk: [[140, 116], [102, 106], [64, 98]], neck: [54, 94], head: [43, 91], arms: [[[64, 98], [64, 146], [30, 146]], [[64, 98], [36, 84], [8, 70]]], legs: [[[140, 116], [148, 146], [194, 146]], [[140, 116], [176, 122], [212, 128]]], feet: [null, [216, 116]] };
+const sideDown = { ...sideUp, trunk: [[140, 136], [102, 124], [64, 110]], neck: [54, 105], head: [43, 101], arms: [[[64, 110], [64, 146], [30, 146]], [[64, 110], [36, 96], [8, 82]]], legs: [[[140, 136], [148, 146], [194, 146]], [[140, 136], [176, 138], [212, 140]]], feet: [null, [216, 128]] };
+
+function side1() {
+  return { view: "front", poses: [sideDown, sideUp], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+}
+function side2() {
+  // The top arm bent at a right angle swinging back and forward, as in running.
+  const back = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [90, 90], [100, 66]]] };
+  const forward = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [40, 86], [44, 60]]] };
+  return { view: "front", poses: [back, forward], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+}
+function side3() {
+  // The top leg drawn up to the chest and long again, kept at the hip's height.
+  const drawn = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [36, 84], [8, 70]]], legs: [sideUp.legs[0], [[140, 116], [104, 112], [134, 124]]], feet: [null, [146, 118]] };
+  return { view: "front", poses: [sideUp, drawn], far: { arms: [0], legs: [0] }, focus: ["trunk", "thigh1"] };
+}
+function side4() {
+  // Running on the side: the arm back as the knee comes forward, and the other way round.
+  const a = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [90, 90], [100, 66]]], legs: [sideUp.legs[0], [[140, 116], [106, 112], [118, 138]]], feet: [null, [106, 142]] };
+  const b = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [40, 86], [44, 60]]], legs: [sideUp.legs[0], [[140, 116], [178, 124], [214, 130]]], feet: [null, [218, 118]] };
+  return { view: "front", poses: [a, b], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+}
+
+// On the back with a gym ball between the heels and the buttocks (9.13–9.16), its weight pressed by the heels.
+const lying = { trunk: [[128, 140], [88, 140], [48, 140]], neck: [36, 139], head: [26, 138] };
+function ballLower() {
+  const a = { ...lying, arms: [[[48, 140], [60, 146], [84, 146]]], legs: [[[128, 140], [150, 100], [176, 122]], [[128, 140], [146, 98], [172, 120]]], feet: [[184, 110], [180, 108]], ball: [158, 124, 22] };
+  // The hips and lower back peel up, the knees to the chest, the ball lifting with them.
+  const b = { trunk: [[130, 124], [92, 136], [52, 140]], neck: [40, 139], head: [29, 138], arms: a.arms.map((arm) => [[52, 140], ...arm.slice(1)]), legs: [[[130, 124], [110, 84], [148, 74]], [[130, 124], [106, 82], [144, 72]]], feet: [[156, 62], [152, 60]], ball: [130, 92, 22] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+function ballUpper() {
+  // The legs held up with the ball, the hands behind the head: the head and shoulders curl up towards the knees.
+  const legs = [[[128, 140], [130, 90], [176, 92]], [[128, 140], [126, 88], [172, 90]]];
+  const a = { ...lying, arms: [[[48, 140], [36, 126], [28, 140]]], legs, feet: [[180, 78], [176, 76]], ball: [152, 116, 20] };
+  const b = { trunk: [[128, 140], [96, 138], [70, 116]], neck: [60, 108], head: [52, 100], arms: [[[70, 116], [52, 98], [46, 108]]], legs, feet: [[180, 78], [176, 76]], ball: [152, 116, 20] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+function ballBoth() {
+  const a = { ...lying, arms: [[[48, 140], [36, 126], [28, 140]]], legs: [[[128, 140], [150, 100], [176, 122]], [[128, 140], [146, 98], [172, 120]]], feet: [[184, 110], [180, 108]], ball: [158, 124, 22] };
+  const b = { trunk: [[130, 130], [96, 134], [68, 114]], neck: [58, 106], head: [50, 98], arms: [[[68, 114], [50, 96], [44, 106]]], legs: [[[130, 130], [112, 86], [150, 76]], [[130, 130], [108, 84], [146, 74]]], feet: [[158, 64], [154, 62]], ball: [132, 96, 22] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+}
+function ballOblique() {
+  // From above, head up: the arms out, the ball held up between the legs and tipped to one side, then the other.
+  const body = { trunk: [[110, 104], [110, 78], [110, 52]], neck: [110, 40], head: [110, 28], arms: [[[98, 54], [72, 56], [44, 58]], [[122, 54], [148, 56], [176, 58]]] };
+  const a = { ...body, legs: [[[103, 106], [76, 122], [70, 148]], [[117, 106], [94, 128], [86, 152]]], ball: [72, 136, 18] };
+  const b = { ...body, legs: [[[103, 106], [126, 128], [134, 152]], [[117, 106], [144, 122], [150, 148]]], ball: [148, 136, 18] };
+  return { view: "top", floor: false, props: [{ x: 30, y: 6, width: 160, height: 158, rx: 10 }], poses: [a, b], focus: ["trunk"] };
+}
+
+// ---- Muscle balance (the book's 9.28–9.32): one side at a time with a dumbbell, 8–15 repeats, more on the weaker side.
+
+function chop() {
+  // Half-kneeling, seen from the front: both hands with the dumbbell from beside the hip diagonally up over the other shoulder.
+  const legs = [[[102, 114], [86, 128], [90, 146]], [[118, 114], [124, 132], [126, 146]]];
+  const body = { trunk: [[110, 114], [110, 88], [110, 62]], neck: [110, 50], head: [110, 38], legs, feet: [[78, 146], [136, 146]] };
+  const a = { ...body, arms: [[[98, 64], [112, 88], [132, 110]], [[122, 64], [134, 88], [136, 110]]] };
+  const b = { ...body, arms: [[[98, 64], [86, 40], [80, 16]], [[122, 64], [102, 40], [84, 14]]] };
+  return { view: "front", poses: [a, b], far: { arms: [0] }, weights: [1], arrows: ["M150,104 Q110,70 70,8"], focus: ["trunk"] };
+}
+function kneelRow() {
+  // Kneeling on one knee, the other leg long behind, a hand on the mat: the dumbbell drawn up to the ribs.
+  const body = { trunk: [[140, 96], [102, 96], [64, 96]], neck: [52, 94], head: [41, 92], legs: [[[140, 96], [142, 146], [188, 146]], [[140, 96], [178, 96], [214, 96]]], feet: [[200, 140], [218, 84]] };
+  const a = { ...body, arms: [[[64, 96], [62, 121], [60, 146]], [[66, 96], [68, 120], [70, 142]]] };
+  const b = { ...body, arms: [[[64, 96], [62, 121], [60, 146]], [[66, 96], [94, 80], [86, 104]]] };
+  return { poses: [a, b], far: { arms: [0], legs: [0] }, weights: [1], focus: ["arm1"] };
+}
+function bridgePress() {
+  // A bridge on the upper back, the free arm straight up; the dumbbell pressed up beside it from a bent elbow.
+  const body = { trunk: [[120, 112], [86, 130], [52, 140]], neck: [40, 140], head: [29, 139], legs: [[[120, 112], [164, 100], [168, 146]], [[120, 112], [160, 98], [164, 146]]], feet: [[182, 146], [178, 146]] };
+  const a = { ...body, arms: [[[52, 140], [54, 112], [56, 84]], [[52, 140], [70, 132], [64, 108]]] };
+  const b = { ...body, arms: [[[52, 140], [54, 112], [56, 84]], [[52, 140], [58, 112], [62, 84]]] };
+  return { poses: [a, b], far: { arms: [0], legs: [1] }, weights: [1], focus: ["arm1", "trunk"] };
+}
+function sideLungeRaise() {
+  // Seen from the front: from standing, a long step to the side into a lunge, the dumbbell raised to the shoulder.
+  const k = kit(0.72);
+  const hip = [110, 94];
+  const up = k.trunk(hip, -90);
+  const standing = [k.leg([104, 94], 92, 90), k.leg([116, 94], 88, 90)];
+  const a = { ...up, arms: [[[98, 38], [94, 60], [92, 82]], [[122, 38], [126, 60], [128, 82]]], legs: standing, feet: [[96, 146], [124, 146]] };
+  delete a.shoulder;
+  const low = [100, 108];
+  const b = { trunk: [low, [100, 80], [102, 52]], neck: [102, 41], head: [103, 30], arms: [[[90, 54], [84, 66], [92, 78]], [[114, 54], [138, 54], [162, 54]]], legs: [[[94, 108], [70, 128], [58, 146]], [[106, 108], [140, 116], [174, 140]]], feet: [[46, 146], [184, 146]] };
+  return { view: "front", poses: [a, b], far: { arms: [0] }, weights: [1], focus: ["thigh1"] };
+}
+function backLungePress() {
+  // From standing, the dumbbell at the shoulder: a step back down into a lunge, the arm pressing straight up beside the head.
+  const k = kit(0.72);
+  const hip = [110, 94];
+  const up = k.trunk(hip, -90);
+  const legs = [k.leg(hip, 90, 90), k.leg(hip, 92, 90)];
+  const a = { ...up, arms: [[up.shoulder, [112, 60], [96, 46]], [up.shoulder, [114, 58], [116, 80]]], legs, feet: [[96, 146], [98, 146]] };
+  delete a.shoulder;
+  const low = [114, 112];
+  const down = k.trunk(low, -90);
+  const lunge = [[low, [80, 114], [80, 146]], [low, [130, 140], [164, 146]]];
+  const b = { ...down, arms: [[down.shoulder, [114, 30], [116, 6]], [down.shoulder, [118, 78], [120, 100]]], legs: lunge, feet: [[66, 146], [176, 142]] };
+  delete b.shoulder;
+  return { poses: [a, b], far: { arms: [1], legs: [1] }, weights: [0], focus: ["thigh0", "arm0"] };
+}
+
 const build = (make, extra) => ({ ...make(), ...extra });
 
 // Styles: "mobility" moved, "flexibility" and "yin" held. areas: "hips", "back", "shoulders", "legs".
@@ -302,4 +473,26 @@ export const routineExercises = {
   swan: build(swan, { style: "yin", hold: true, seconds: 180, sides: 2, areas: ["hips"] }),
   ninetyNinety: build(ninetyNinety, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["hips"] }),
   supineTwist: build(supineTwist, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["back"] }),
+  // chain and level: a stabilization exercise's place; reps: the repeats a moved one is counted in; gear: what it needs.
+  stabFront1: build(front1, { style: "stability", chain: "front", level: 1, hold: true, seconds: 60, sides: 1, book: "9.1" }),
+  stabFront2: build(front2, { style: "stability", chain: "front", level: 2, seconds: 60, sides: 1, book: "9.2" }),
+  stabFront3: build(front3, { style: "stability", chain: "front", level: 3, seconds: 60, sides: 1, book: "9.3" }),
+  stabFront4: build(front4, { style: "stability", chain: "front", level: 4, seconds: 60, sides: 1, book: "9.4" }),
+  stabBack1: build(back1, { style: "stability", chain: "back", level: 1, hold: true, seconds: 60, sides: 1, book: "9.5" }),
+  stabBack2: build(back2, { style: "stability", chain: "back", level: 2, seconds: 60, sides: 1, book: "9.6" }),
+  stabBack3: build(back3, { style: "stability", chain: "back", level: 3, seconds: 60, sides: 1, book: "9.7" }),
+  stabBack4: build(back4, { style: "stability", chain: "back", level: 4, seconds: 60, sides: 1, book: "9.8" }),
+  stabSide1: build(side1, { style: "stability", chain: "side", level: 1, hold: true, seconds: 60, sides: 2, book: "9.9" }),
+  stabSide2: build(side2, { style: "stability", chain: "side", level: 2, seconds: 60, sides: 2, book: "9.10" }),
+  stabSide3: build(side3, { style: "stability", chain: "side", level: 3, seconds: 60, sides: 2, book: "9.11" }),
+  stabSide4: build(side4, { style: "stability", chain: "side", level: 4, seconds: 60, sides: 2, book: "9.12" }),
+  ballLower: build(ballLower, { style: "stability", chain: "pelvis", reps: 15, seconds: 45, sides: 1, gear: "ball", book: "9.13" }),
+  ballUpper: build(ballUpper, { style: "stability", chain: "pelvis", reps: 15, seconds: 45, sides: 1, gear: "ball", book: "9.14" }),
+  ballBoth: build(ballBoth, { style: "stability", chain: "pelvis", reps: 15, seconds: 45, sides: 1, gear: "ball", book: "9.15" }),
+  ballOblique: build(ballOblique, { style: "stability", chain: "pelvis", reps: 15, seconds: 45, sides: 1, gear: "ball", book: "9.16" }),
+  chop: build(chop, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.28" }),
+  kneelRow: build(kneelRow, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.29" }),
+  bridgePress: build(bridgePress, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.30" }),
+  sideLungeRaise: build(sideLungeRaise, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.31" }),
+  backLungePress: build(backLungePress, { style: "balance", reps: 10, seconds: 40, sides: 2, gear: "dumbbell", book: "9.32" }),
 };

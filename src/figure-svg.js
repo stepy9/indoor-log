@@ -2,7 +2,8 @@
 // A view: { poses, focus, blocks, far, arrows }. A pose: { trunk, neck, head, arms, legs, feet } as in recovery.js;
 // feet, when given, the toe of each leg (null for none). far: { arms: [index], legs: [index] }, the limbs on the
 // side away from the eye, drawn darker and behind the body. arrows: SVG paths showing a move's way, drawn faint
-// ({ d, both } for one headed at both ends). A pose's strap: a towel from the hand to the foot. A close-up's
+// ({ d, both } for one headed at both ends). A pose's strap: a towel from the hand to the foot; its ball: a gym ball
+// [x, y, r] moving with the pose. weights: the arms holding a dumbbell, drawn across the hand. A close-up's
 // pose has bands instead of a body, each a polyline as wide as the view's bandWidths says; focus "band<i>" names one.
 // blocks: rects behind the figure (the mat, a wall, a door frame), each with an optional class ("pad" for a cushion).
 
@@ -28,7 +29,8 @@ export function figureParts(pose, view) {
   const bands = (wantFar) => (pose.bands ?? []).flatMap((band, index) => (isFar("bands", index) === wantFar
     ? [["polyline", `limb band${wantFar ? " far" : ""}`, { points: points(band), style: `stroke-width: ${view.bandWidths?.[index] ?? 12}px` }]] : []));
   const list = [
-    // A towel or strap held, from the hand to the foot.
+    // A gym ball behind the body, and a towel or strap held, from the hand to the foot.
+    ...(pose.ball ? [["circle", "ball", { cx: pose.ball[0], cy: pose.ball[1], r: pose.ball[2] ?? 20 }]] : []),
     ...(pose.strap ? [["polyline", "strap", { points: points(pose.strap) }]] : []),
     ...bands(true),
     ...limbs("legs", true),
@@ -41,6 +43,15 @@ export function figureParts(pose, view) {
     ...limbs("legs", false),
     ...limbs("arms", false),
     ...bands(false),
+    // A dumbbell across the hand, square to the forearm.
+    ...(view.weights ?? []).map((index) => {
+      const arm = pose.arms[index];
+      const [hx, hy] = arm.at(-1);
+      const [px, py] = arm.at(-2);
+      const length = Math.hypot(hx - px, hy - py) || 1;
+      const [dx, dy] = [((py - hy) / length) * 11, ((hx - px) / length) * 11];
+      return ["line", "weight", { x1: Math.round(hx - dx), y1: Math.round(hy - dy), x2: Math.round(hx + dx), y2: Math.round(hy + dy) }];
+    }),
   ];
   // The muscle that stretches or works: a soft band over its part rather than a line.
   for (const name of view.focus ?? []) {

@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exercises } from "../src/recovery.js";
 import { translations } from "../src/i18n.js";
-import { areasOf, buildRoutine, logRoutine, routineAreas, routineMinutes, routineStyles } from "../src/routines.js";
+import { areasOf, balanceMoves, buildRoutine, byLength, logRoutine, pelvisMoves, routineAreas, routineMinutes, routineStyles, weakerExtra } from "../src/routines.js";
 
 test("every set comes out near its length, from its own style's exercises", () => {
-  for (const style of routineStyles) {
+  for (const style of routineStyles.filter(byLength)) {
     for (const area of routineAreas) {
       for (const minutes of routineMinutes) {
         const set = buildRoutine({ style, area, minutes });
@@ -65,4 +65,35 @@ test("the new exercises have a name and a how-to in both languages", () => {
   for (const key of ["routineTitle", ...routineStyles.map((style) => `routineStyle_${style}`), ...routineAreas.map((area) => `routineArea_${area}`)]) {
     assert.ok(translations.cs[key] && translations.en[key], key);
   }
+});
+
+test("stabilization takes each chain at its level, then the ball moves counted, or none without a ball", () => {
+  const set = buildRoutine({ style: "stability", levels: { front: 2, back: 4, side: 1 } });
+  assert.deepEqual(set.exercises, ["stabFront2", "stabBack4", "stabSide1", ...pelvisMoves]);
+  const work = set.steps.filter((step) => step.type === "work");
+  assert.deepEqual(work.filter((step) => step.id === "stabSide1").map((step) => [step.side, step.seconds]), [[1, 60], [2, 60]]);
+  assert.ok(work.filter((step) => pelvisMoves.includes(step.id)).every((step) => step.reps > 0 && !step.seconds));
+  assert.deepEqual(buildRoutine({ style: "stability", ball: false }).exercises, ["stabFront1", "stabBack1", "stabSide1"]);
+  for (const chain of ["Front", "Back", "Side"]) for (let level = 1; level <= 4; level += 1) assert.equal(exercises[`stab${chain}${level}`].level, level);
+});
+
+test("balance does every move on the left, then the right, the weaker side more", () => {
+  const set = buildRoutine({ style: "balance", weak: "right", reps: 12 });
+  assert.deepEqual(set.exercises, balanceMoves);
+  const chop = set.steps.filter((step) => step.type === "work" && step.id === "chop");
+  assert.deepEqual(chop.map((step) => [step.side, step.reps]), [[1, 12], [2, 12 + weakerExtra]]);
+  assert.ok(set.minutes >= 3 && set.minutes <= 12, String(set.minutes));
+  for (const id of balanceMoves) assert.equal(exercises[id].gear, "dumbbell");
+});
+
+test("the plan keeps a set by weekday, a second tap on its style taking the day out", async () => {
+  const { plannedRoutine, togglePlanDay, weekdayOf } = await import("../src/routines.js");
+  assert.equal(weekdayOf("2026-11-23"), 0);
+  assert.equal(weekdayOf("2026-11-29"), 6);
+  let plan = togglePlanDay({}, 2, { style: "yin", minutes: 15 });
+  assert.equal(plannedRoutine(plan, "2026-11-25").style, "yin");
+  assert.equal(plannedRoutine(plan, "2026-11-24"), null);
+  plan = togglePlanDay(plan, 2, { style: "stability" });
+  assert.equal(plannedRoutine(plan, "2026-11-25").style, "stability");
+  assert.deepEqual(togglePlanDay(plan, 2, { style: "stability" }), {});
 });

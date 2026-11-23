@@ -1,4 +1,4 @@
-import { routineBlock } from "./routine.js";
+import { routineBlock, routineTip } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
@@ -158,7 +158,7 @@ function daysWorkouts(entries, day, sport) {
   }
   const stretched = entries.filter((entry) => entry.stretched);
   const stretchTip = stretched.length ? [t("recoveryStretched"), ...stretched.flatMap((entry) => (entry.stretchedExercises ?? []).map((id) => `· ${t(`recovery_${id}`)}`))].join("\n") : "";
-  const extras = [...(warmupLog()[day] ? [["🤸", sessionTip("warmup", day)]] : []), ...(stretchTip ? [["🧘", stretchTip]] : []), ...(strengthLog()[day] ? [["💪", sessionTip("strength", day)]] : [])];
+  const extras = [...(warmupLog()[day] ? [["🤸", sessionTip("warmup", day)]] : []), ...(stretchTip ? [["🧘", stretchTip]] : []), ...(strengthLog()[day] ? [["💪", sessionTip("strength", day)]] : []), ...(routineTip(day) ? [["🧎", routineTip(day)]] : [])];
   for (const [icon, title] of extras) cell.append(hoverTip(node("span", { class: "training-summary-extra" }, icon), title));
   return cell;
 }

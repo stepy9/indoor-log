@@ -1824,6 +1824,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .recovery-figure .ghost { opacity: .16; }
 .recovery-figure .move-arrow { stroke: var(--orange); stroke-width: 3; fill: none; stroke-dasharray: 5 5; opacity: .85; }
 .recovery-figure .move-arrow-head { fill: var(--orange); stroke: none; }
+.recovery-figure .ball { fill: color-mix(in srgb, var(--accent) 30%, var(--surface)); stroke: color-mix(in srgb, var(--accent) 60%, var(--surface)); stroke-width: 2; }
+.recovery-figure .weight { stroke: var(--ink); stroke-width: 8; }
 .recovery-figure .strap { stroke: color-mix(in srgb, var(--accent) 60%, var(--surface)); stroke-width: 4; }
 
 /* Strength: under the day's workout like the warm-up; in the player a set of repeats shows its count in place of
@@ -1979,6 +1981,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* On the mat: the set's choices as labelled rows of buttons, the area's wrapping on a phone. */
 .routine-choices { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; margin: 12px 0 4px; }
 .routine-choices .segmented { justify-self: start; flex-wrap: wrap; }
+.routine-row { display: contents; }
 .routine-choices [hidden] { display: none; }
 .routine-start { margin: 8px 0 0; }
 @media (max-width: 640px) {

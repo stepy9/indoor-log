@@ -720,13 +720,38 @@
         <div class="routine-choices">
           <span class="field-label" data-i18n="routineStyleLabel">Styl</span>
           <div class="segmented" id="routineStyle" role="group" aria-label="Styl" data-i18n-aria="routineStyleLabel"></div>
-          <span class="field-label" data-i18n="routineAreaLabel">Oblast</span>
-          <div class="segmented routine-wrap" id="routineArea" role="group" aria-label="Oblast" data-i18n-aria="routineAreaLabel"></div>
-          <span class="field-label" data-i18n="routineMinutesLabel">Délka</span>
-          <div class="segmented" id="routineMinutes" role="group" aria-label="Délka" data-i18n-aria="routineMinutesLabel"></div>
-          <span class="field-label routine-aim-label" id="routineAimRow"><span data-i18n="routineAimLabel">Cíl</span></span>
-          <div class="segmented" id="routineAim" role="group" aria-label="Cíl" data-i18n-aria="routineAimLabel"></div>
+          <div class="routine-row" data-routine-for="mobility flexibility yin">
+            <span class="field-label" data-i18n="routineAreaLabel">Oblast</span>
+            <div class="segmented" id="routineArea" role="group" aria-label="Oblast" data-i18n-aria="routineAreaLabel"></div>
+            <span class="field-label" data-i18n="routineMinutesLabel">Délka</span>
+            <div class="segmented" id="routineMinutes" role="group" aria-label="Délka" data-i18n-aria="routineMinutesLabel"></div>
+          </div>
+          <div class="routine-row" data-routine-for="flexibility">
+            <span class="field-label" data-i18n="routineAimLabel">Cíl</span>
+            <div class="segmented" id="routineAim" role="group" aria-label="Cíl" data-i18n-aria="routineAimLabel"></div>
+          </div>
+          <div class="routine-row" data-routine-for="stability">
+            <span class="field-label" data-i18n="routineChain_front">Přední řetězec</span>
+            <div class="segmented" id="routineLevel_front" role="group" aria-label="Přední řetězec" data-i18n-aria="routineChain_front"></div>
+            <span class="field-label" data-i18n="routineChain_back">Zadní řetězec</span>
+            <div class="segmented" id="routineLevel_back" role="group" aria-label="Zadní řetězec" data-i18n-aria="routineChain_back"></div>
+            <span class="field-label" data-i18n="routineChain_side">Boční řetězec</span>
+            <div class="segmented" id="routineLevel_side" role="group" aria-label="Boční řetězec" data-i18n-aria="routineChain_side"></div>
+            <span class="field-label" data-i18n="routineBallLabel">Pánev s míčem</span>
+            <div class="segmented" id="routineBall" role="group" aria-label="Pánev s míčem" data-i18n-aria="routineBallLabel"></div>
+          </div>
+          <div class="routine-row" data-routine-for="balance">
+            <span class="field-label" data-i18n="routineWeakLabel">Slabší strana</span>
+            <div class="segmented" id="routineWeak" role="group" aria-label="Slabší strana" data-i18n-aria="routineWeakLabel"></div>
+            <span class="field-label" data-i18n="routineRepsLabel">Opakování</span>
+            <div class="segmented" id="routineReps" role="group" aria-label="Opakování" data-i18n-aria="routineRepsLabel"></div>
+          </div>
         </div>
+        <div class="routine-choices routine-plan">
+          <span class="field-label" data-i18n="routinePlanLabel">V plánu</span>
+          <div class="segmented" id="routinePlanDays" role="group" aria-label="V plánu" data-i18n-aria="routinePlanLabel"></div>
+        </div>
+        <p class="field-note" id="routinePlanNote"></p>
         <p class="field-note" id="routineNote"></p>
         <button class="accent-button routine-start" id="routineStart" type="button"></button>
         <ul class="recovery-list" id="routineList"></ul>

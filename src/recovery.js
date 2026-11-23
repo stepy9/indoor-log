@@ -293,11 +293,11 @@ export const exercises = {
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
 // far, arrows }.
 export function exerciseViews(id) {
-  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true } = exercises[id];
+  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true, weights } = exercises[id];
   if (!poses) return [];
   // The floor under a side view; a view from above has its mat among the props.
   const blocks = [...(floor ? [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }] : []), ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
-  return [{ key: view, poses, focus, blocks, far, arrows }, ...more.map((other) => ({ focus, blocks: [], ...other }))];
+  return [{ key: view, poses, focus, blocks, far, arrows, weights }, ...more.map((other) => ({ focus, blocks: [], weights, ...other }))];
 }
 
 // The pause before each exercise, the same in every set (warm-up, stretching, strength), and between its sides.
