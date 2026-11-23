@@ -297,6 +297,55 @@ function supineTwist() {
   return { poses: [a, b], far: { legs: [0] }, focus: ["trunk"] };
 }
 
+// Frog: on the forearms, the knees wide apart and bent at a right angle, the hips sinking back between them.
+function frog() {
+  const shape = (x, y) => ({ trunk: [[x, y], [x - 34, y + 4], [70, 116]], neck: [60, 122], head: [50, 128], arms: [[[70, 116], [72, 146], [40, 146]]], legs: [[[x, y], [134, 146], [178, 146]], [[x, y], [130, 144], [174, 144]]], feet: [[186, 140], [182, 138]] });
+  return { poses: [shape(132, 108), shape(144, 116)], far: { legs: [1] }, focus: ["thigh0", "thigh1"] };
+}
+
+// Shoelace: seated, the knees stacked one over the other and the feet by the hips; folding forward over the knees.
+function shoelace() {
+  const hip = [110, 138];
+  const legs = [[hip, [158, 130], [124, 146]], [hip, [158, 120], [120, 140]]];
+  const up = { trunk: [hip, [106, 100], [102, 62]], neck: [101, 51], head: [100, 40], arms: [[[102, 62], [124, 90], [146, 116]]] };
+  const folded = { trunk: [hip, [134, 96], [158, 104]], neck: [166, 110], head: [174, 116], arms: [[[158, 104], [166, 124], [170, 140]]] };
+  return { poses: [{ ...up, legs, feet: [[112, 146], [108, 140]] }, { ...folded, legs, feet: [[112, 146], [108, 140]] }], far: { legs: [0] }, focus: ["thigh1"] };
+}
+
+// Dragonfly: seated with the legs wide apart, seen from the front, the trunk folding forward between them.
+function dragonfly() {
+  const legs = [[[102, 136], [60, 140], [20, 142]], [[118, 136], [160, 140], [200, 142]]];
+  const feet = [[16, 130], [204, 130]];
+  const up = { trunk: [[110, 134], [110, 106], [110, 78]], neck: [110, 66], head: [110, 54], arms: [[[98, 80], [90, 106], [84, 132]], [[122, 80], [130, 106], [136, 132]]] };
+  const folded = { trunk: [[110, 134], [110, 122], [110, 110]], neck: [110, 106], head: [110, 100], arms: [[[96, 112], [82, 128], [70, 140]], [[124, 112], [138, 128], [150, 140]]] };
+  return { view: "front", poses: [{ ...up, legs, feet }, { ...folded, legs, feet }], focus: ["thigh0", "thigh1"] };
+}
+
+// Happy baby: on the back, the knees drawn wide towards the armpits, the soles up and the hands holding the feet.
+function happyBaby() {
+  const flat = { trunk: [[128, 140], [88, 141], [48, 140]], neck: [36, 139], head: [26, 138] };
+  const shape = (knee, ankle) => ({ ...flat, arms: [[[48, 140], [76, 110], [ankle[0] - 2, ankle[1] + 4]]], legs: [[[128, 140], knee, ankle], [[128, 140], [knee[0] + 4, knee[1] - 2], [ankle[0] + 4, ankle[1] - 2]]], feet: [[ankle[0] + 14, ankle[1]], [ankle[0] + 18, ankle[1] - 2]] });
+  return { poses: [shape([98, 110], [104, 70]), shape([92, 112], [96, 74])], far: { legs: [1] }, focus: ["thigh0", "trunk"] };
+}
+
+// Banana: on the back, seen from above, the arms overhead; the feet and then the hands walked to one side, the body a
+// long curve.
+function banana() {
+  const straight = { trunk: [[110, 104], [110, 78], [110, 52]], neck: [110, 40], head: [110, 28], arms: [[[100, 54], [94, 30], [92, 8]], [[120, 54], [126, 30], [128, 8]]], legs: [[[104, 106], [102, 128], [100, 150]], [[116, 106], [118, 128], [120, 150]]] };
+  const curved = { trunk: [[106, 104], [124, 78], [106, 52]], neck: [98, 41], head: [90, 31], arms: [[[96, 54], [80, 34], [66, 16]], [[116, 52], [100, 30], [82, 14]]], legs: [[[100, 106], [86, 128], [74, 148]], [[112, 106], [98, 128], [86, 150]]] };
+  return { view: "top", floor: false, props: [{ x: 18, y: 2, width: 184, height: 158, rx: 10 }], poses: [straight, curved], focus: ["trunk"] };
+}
+
+// Thread the needle: on all fours, one arm opening up to the ceiling, then threaded under the body, the shoulder and
+// the side of the head down on the mat.
+function threadNeedle() {
+  const legs = [[[140, 96], [140, 146], [188, 146]], [[140, 96], [144, 146], [190, 146]]];
+  const feet = [[196, 140], [198, 140]];
+  const open = { trunk: [[140, 96], [100, 92], [62, 96]], neck: [52, 92], head: [42, 86], arms: [[[62, 96], [62, 121], [60, 146]], [[62, 96], [66, 68], [70, 40]]] };
+  const threaded = { trunk: [[140, 100], [104, 106], [72, 126]], neck: [62, 132], head: [52, 138], arms: [[[72, 126], [58, 136], [48, 146]], [[72, 126], [98, 140], [124, 146]]] };
+  return { poses: [{ ...open, legs, feet }, { ...threaded, legs, feet }], far: { arms: [0], legs: [1] }, focus: ["trunk", "arm1"] };
+}
+
 // Child's pose in yin: the knees wide and the forehead down, the arms long ahead; drawn as recovery.js's own.
 
 // ---- Stabilization (the book's 9.1–9.16): the front, back and side chains, each in four levels: 1 held still,
@@ -561,6 +610,13 @@ export const routineExercises = {
   swan: build(swan, { style: "yin", hold: true, seconds: 180, sides: 2, areas: ["hips"] }),
   ninetyNinety: build(ninetyNinety, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["hips"] }),
   supineTwist: build(supineTwist, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["back"] }),
+  frog: build(frog, { style: "yin", hold: true, seconds: 180, sides: 1, areas: ["hips"] }),
+  shoelace: build(shoelace, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["hips"] }),
+  dragonfly: build(dragonfly, { style: "yin", hold: true, seconds: 180, sides: 1, areas: ["legs", "hips"] }),
+  happyBaby: build(happyBaby, { style: "yin", hold: true, seconds: 120, sides: 1, areas: ["hips", "back"] }),
+  banana: build(banana, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["back", "shoulders"] }),
+  // Beyond the book, a well-known mobility move.
+  threadNeedle: build(threadNeedle, { style: "mobility", seconds: 45, sides: 2, areas: ["back", "shoulders"] }),
   // chain and level: a stabilization exercise's place; reps: the repeats a moved one is counted in; gear: what it needs.
   stabFront1: build(front1, { style: "stability", chain: "front", level: 1, hold: true, seconds: 60, sides: 1, book: "9.1" }),
   stabFront2: build(front2, { style: "stability", chain: "front", level: 2, seconds: 60, sides: 1, book: "9.2" }),

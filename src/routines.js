@@ -30,10 +30,10 @@ export const routineAims = ["keep", "gain"];
 
 // Each style's exercises in the order they run, one position leading to the next.
 const orders = {
-  mobility: ["lungeReach", "hipSwitch", "reverseTable", "forearmOpen", "archToHeels"],
+  mobility: ["lungeReach", "hipSwitch", "reverseTable", "forearmOpen", "archToHeels", "threadNeedle"],
   flexibility: ["triangle", "downDog", "kneelingQuad", "lungeSideBend", "lungeTwist", "allFoursSide"],
   // Seated first, then on the front and the knees, lying on the back last.
-  yin: ["butterfly", "caterpillar", "ninetyNinety", "swan", "dragon", "childPose", "sphinx", "supineTwist"],
+  yin: ["butterfly", "shoelace", "dragonfly", "caterpillar", "ninetyNinety", "swan", "dragon", "frog", "childPose", "sphinx", "banana", "happyBaby", "supineTwist"],
 };
 // The warm-up's moves and the stretches after rowing, filling in where the book has few for an area: after its own
 // exercises, in this order. Child's pose is one of yin's.
