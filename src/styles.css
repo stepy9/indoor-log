@@ -1785,7 +1785,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 }
 /* A tab as the others: in the page's flow under the bar, the other views and the footer hidden, no close button,
    the caution stuck to the screen's foot; a phone drops the intro too. */
-body.is-exercises-page .shell > :not(#exercisesDialog) { display: none; }
+/* The page in place of the others; a dialog opened over it (a video, the player) still shows. */
+body.is-exercises-page .shell > :not(#exercisesDialog):not(dialog[open]) { display: none; }
 body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercises) { color: var(--topbar-muted); }
 body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercises)::after { display: none; }
 .intervals-dialog.exercises-dialog:not(:modal) { flex: 1 0 auto; position: static; width: auto; max-width: none; height: auto; max-height: none; margin: 0; padding: 16px 0 0; overflow: visible; color: inherit; background: transparent; box-shadow: none; }
