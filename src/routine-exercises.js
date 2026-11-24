@@ -219,7 +219,17 @@ function allFoursSide() {
     arms: [[[72, 98], [70, 122], [70, 146]], [[72, 98], [44, 100], [14, 104]]],
     legs: [[[150, 96], [150, 146], [194, 146]], [[150, 96], [182, 120], [206, 142]]], feet: [[198, 147], [214, 147]],
   };
-  return { poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["trunk", "arm1", "leg1"] };
+  // From above, the head to the left: the right arm and leg lifted long in line with the trunk, then both swung
+  // across the middle to the left, the body a C.
+  const top = {
+    key: "top", blocks: [{ x: 6, y: 40, width: 208, height: 112, rx: 10 }],
+    poses: [
+      { trunk: [[150, 86], [110, 86], [70, 86]], neck: [58, 86], head: [46, 86], arms: [[[70, 92], [70, 102], [70, 110]], [[70, 80], [44, 78], [18, 76]]], legs: [[[150, 92], [150, 102], [150, 110]], [[150, 80], [180, 78], [208, 76]]] },
+      { trunk: [[148, 92], [112, 74], [76, 92]], neck: [66, 100], head: [58, 108], arms: [[[76, 98], [74, 108], [72, 116]], [[76, 86], [52, 112], [36, 140]]], legs: [[[148, 98], [148, 108], [148, 116]], [[148, 86], [172, 112], [186, 140]]] },
+    ],
+    focus: ["trunk", "arm1", "leg1"],
+  };
+  return { poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["trunk", "arm1", "leg1"], more: [top] };
 }
 
 // ---- Yin yoga: few poses, each held long and still, the muscles let go; every one gets its own few minutes.
