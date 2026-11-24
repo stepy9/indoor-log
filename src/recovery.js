@@ -309,6 +309,9 @@ export function exerciseViews(id) {
 // "id:view" for one of its other views.
 const arrowHints = {
   catCow: { on: "back" },
+  ankleRock: { on: "knee0" },
+  cossackShift: { on: "hip" },
+  scapPushUp: { on: "shoulder" },
   hundred: { off: 20 },
   swimming: { on: "ankle0" },
   shoulderBridge: { flip: true },

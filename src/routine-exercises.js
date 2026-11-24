@@ -708,6 +708,87 @@ function teaser() {
   return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
 }
 
+// ---- More of each area, so a set can change from day to day (beyond the book).
+// Rocking the knee forward over the front foot from a half kneel, the heel down: the ankle.
+function ankleRock() {
+  const back = (hip) => [hip, [140, 146], [184, 146]];
+  const a = { trunk: [[128, 98], [126, 70], [124, 44]], neck: [122, 32], head: [120, 20], arms: [[[124, 44], [106, 70], [86, 98]]], legs: [[[128, 98], [80, 102], [82, 146]], back([128, 98])], feet: [[68, 147], [196, 146]] };
+  const b = { trunk: [[104, 118], [102, 90], [100, 62]], neck: [98, 50], head: [96, 38], arms: [[[100, 62], [80, 84], [62, 106]]], legs: [[[104, 118], [58, 110], [82, 146]], back([104, 118])], feet: [[68, 147], [196, 146]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["leg0"] };
+}
+// From the front: wide feet, the weight over one bent knee, the other leg long, and across to the other side.
+const wideFeet = [[50, 146], [170, 146]];
+const shifted = (left) => {
+  const x = left ? 84 : 136;
+  const lean = left ? 2 : -2;
+  const legs = left
+    ? [[[x - 6, 108], [64, 126], [60, 146]], [[x + 6, 108], [126, 126], [160, 146]]]
+    : [[[x - 6, 108], [94, 126], [60, 146]], [[x + 6, 108], [156, 126], [160, 146]]];
+  return { trunk: [[x, 108], [x + lean, 82], [x + 2 * lean, 54]], neck: [x + 2 * lean, 44], head: [x + 2 * lean, 32], arms: [[[x - 8, 56], [x - 14, 74], [x, 82]], [[x + 16, 56], [x + 20, 74], [x + 6, 82]]], legs, feet: wideFeet };
+};
+function cossackShift() {
+  return { view: "front", poses: [shifted(true), shifted(false)], focus: ["thigh0", "thigh1"] };
+}
+// On all fours, the arms straight: the chest sinking between the shoulder blades, then the upper back pushed up.
+function scapPushUp() {
+  const legs = [[[140, 94], [147, 146], [191, 146]], [[140, 94], [140, 146], [184, 146]]];
+  const a = { trunk: [[140, 94], [100, 100], [60, 102]], neck: [46, 98], head: [36, 94], arms: [[[60, 102], [67, 146]], [[60, 102], [60, 146]]], legs };
+  const b = { trunk: [[140, 94], [100, 84], [60, 86]], neck: [46, 82], head: [36, 78], arms: [[[60, 86], [67, 146]], [[60, 86], [60, 146]]], legs };
+  return { poses: [a, b], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+}
+// From the front, hands on the hips: the pelvis drawn round in a wide circle, side to side.
+function hipCircles() {
+  const at = (x, lean) => ({
+    trunk: [[x, 100], [110 + (x - 110) * 0.4, 74], [110, 46]], neck: [110, 36], head: [110, 24],
+    arms: [[[98, 48], [84, 72], [x - 10, 96]], [[122, 48], [136, 72], [x + 10, 96]]],
+    legs: [[[x - 6, 100], [100 + lean, 124], [100, 146]], [[x + 6, 100], [120 + lean, 124], [120, 146]]], feet: [[92, 146], [128, 146]],
+  });
+  return { view: "front", poses: [at(98, -4), at(122, 4)], focus: ["trunk"] };
+}
+// Folded over the legs, the hands on the floor, then walked out to a plank and back.
+function inchworm() {
+  const a = { trunk: [[176, 80], [150, 92], [134, 118]], neck: [128, 126], head: [122, 134], arms: [[[134, 118], [130, 132], [128, 146]]], legs: [[[176, 80], [172, 114], [186, 146]], [[176, 80], [176, 114], [188, 146]]], feet: [[198, 147], [200, 147]] };
+  const b = { trunk: [[150, 124], [110, 120], [70, 114]], neck: [58, 112], head: [46, 110], arms: [[[70, 114], [68, 130], [66, 146]]], legs: [[[150, 124], [168, 135], [186, 146]], [[150, 124], [170, 136], [188, 146]]], feet: [[198, 147], [200, 147]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk", "arm0"] };
+}
+// From the front, wide: down over one bent knee, the other leg long, the inner thigh stretching.
+function sideLungeHold() {
+  const wide = { trunk: [[110, 98], [110, 72], [110, 44]], neck: [110, 34], head: [110, 22], arms: [[[98, 46], [92, 70], [104, 82]], [[122, 46], [128, 70], [116, 82]]], legs: [[[104, 98], [82, 122], [60, 146]], [[116, 98], [138, 122], [160, 146]]], feet: wideFeet };
+  return { view: "front", poses: [wide, shifted(true)], focus: ["thigh1"] };
+}
+// From the front: one straight arm across the chest, held above the elbow by the other.
+function crossArm() {
+  const a = { ...frontStand, arms: [[[98, 48], [94, 72], [92, 96]], [[122, 48], [126, 72], [128, 96]]] };
+  const b = { ...frontStand, arms: [[[98, 48], [94, 66], [106, 56]], [[122, 48], [100, 52], [76, 56]]] };
+  return { view: "front", poses: [a, b], focus: ["arm1"] };
+}
+// From the front: one arm up, the elbow bent so the hand drops behind the head, the other hand easing the elbow back.
+function tricepsOverhead() {
+  const a = { ...frontStand, arms: [[[98, 48], [94, 72], [92, 96]], [[122, 48], [126, 72], [128, 96]]] };
+  const b = { ...frontStand, arms: [[[98, 48], [100, 26], [120, 14]], [[122, 48], [124, 16], [108, 30]]] };
+  return { view: "front", poses: [a, b], focus: ["arm1"] };
+}
+// Melting heart: from all fours, the hips over the knees, the arms walked forward, the chest sinking to the mat.
+function meltingHeart() {
+  const legs = [[[140, 94], [147, 146], [191, 146]], [[140, 94], [140, 146], [184, 146]]];
+  const a = { trunk: [[140, 94], [100, 94], [60, 94]], neck: [46, 88], head: [36, 84], arms: [[[60, 94], [64, 120], [67, 146]], [[60, 94], [60, 120], [60, 146]]], legs };
+  const b = { trunk: [[140, 94], [96, 124], [62, 136]], neck: [50, 136], head: [40, 134], arms: [[[62, 136], [38, 142], [12, 144]], [[62, 136], [36, 140], [10, 142]]], legs };
+  return { poses: [a, b], far: { arms: [1], legs: [0] }, focus: ["trunk", "arm0"] };
+}
+// Toe squat: kneeling, the toes tucked under, then sitting back on the heels, the soles stretching.
+function toeSquat() {
+  const shins = (hip) => [[hip, [112, 146], [156, 138]], [hip, [116, 146], [160, 138]]];
+  const a = { trunk: [[112, 96], [112, 70], [110, 42]], neck: [108, 32], head: [106, 20], arms: [[[110, 42], [112, 68], [114, 92]]], legs: shins([112, 96]), feet: [[146, 147], [150, 147]] };
+  const b = { trunk: [[152, 126], [152, 92], [148, 52]], neck: [146, 42], head: [144, 30], arms: [[[148, 52], [138, 80], [128, 106]]], legs: shins([152, 126]), feet: [[146, 147], [150, 147]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["leg0"] };
+}
+// Yin squat: the feet apart, down into a deep squat, heels on the floor, the elbows inside the knees.
+function yinSquat() {
+  const a = { trunk: [[110, 98], [111, 70], [110, 42]], neck: [108, 32], head: [106, 21], arms: [[[110, 42], [112, 68], [114, 92]]], legs: [[[110, 98], [110, 122], [110, 146]], [[110, 98], [114, 122], [116, 146]]], feet: [[96, 147], [102, 147]] };
+  const b = { trunk: [[122, 130], [108, 98], [102, 64]], neck: [100, 54], head: [98, 42], arms: [[[102, 64], [86, 82], [82, 68]]], legs: [[[122, 130], [82, 112], [100, 146]], [[122, 130], [86, 114], [104, 146]]], feet: [[86, 147], [90, 147]] };
+  return { poses: [a, b], far: { legs: [1] }, focus: ["thigh0"] };
+}
+
 const build = (make, extra) => ({ ...make(), ...extra });
 
 // Styles: "mobility" moved, "flexibility" and "yin" held. areas: "hips", "back", "shoulders", "legs".
@@ -738,6 +819,17 @@ export const routineExercises = {
   banana: build(banana, { style: "yin", hold: true, seconds: 120, sides: 2, areas: ["back", "shoulders"] }),
   // Beyond the book, a well-known mobility move.
   threadNeedle: build(threadNeedle, { style: "mobility", seconds: 45, sides: 2, areas: ["back", "shoulders"] }),
+  ankleRock: build(ankleRock, { style: "mobility", seconds: 45, sides: 2, areas: ["legs"] }),
+  cossackShift: build(cossackShift, { style: "mobility", seconds: 45, sides: 1, areas: ["legs", "hips"] }),
+  scapPushUp: build(scapPushUp, { style: "mobility", seconds: 45, sides: 1, areas: ["shoulders", "back"] }),
+  hipCircles: build(hipCircles, { style: "mobility", seconds: 45, sides: 1, areas: ["hips", "back"] }),
+  inchworm: build(inchworm, { style: "mobility", seconds: 45, sides: 1, areas: ["legs", "shoulders", "back"] }),
+  sideLungeHold: build(sideLungeHold, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["legs", "hips"] }),
+  crossArm: build(crossArm, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["shoulders"] }),
+  tricepsOverhead: build(tricepsOverhead, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["shoulders"] }),
+  meltingHeart: build(meltingHeart, { style: "yin", hold: true, seconds: 120, sides: 1, areas: ["shoulders", "back"] }),
+  toeSquat: build(toeSquat, { style: "yin", hold: true, seconds: 60, sides: 1, areas: ["legs"] }),
+  yinSquat: build(yinSquat, { style: "yin", hold: true, seconds: 120, sides: 1, areas: ["hips", "legs"] }),
   // Pilates: breath, a hint of how to breathe said with the move (recoveryBreath_<id>); advanced, only in the
   // harder set. A move changing legs as it goes counts the repeats of both together.
   hundred: build(hundred, { style: "pilates", seconds: 100, sides: 1, areas: ["back"], breath: true }),

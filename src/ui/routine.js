@@ -122,10 +122,11 @@ function renderCatalog(picked) {
 }
 
 // A planned day's set: a saved one as it was saved (null when it has since been taken out), else built from its choice.
-function plannedSet(item) {
+// day: the day it is for, so a set by area takes that day's turn.
+function plannedSet(item, day = null) {
   // Stabilization in the plan goes at the levels reached since, not those it was planned at.
   if (item?.style === "stability") return buildRoutine({ ...item, levels: choice().levels });
-  if (item?.style !== "saved") return item ? buildRoutine(item) : null;
+  if (item?.style !== "saved") return item ? buildRoutine({ ...item, day }) : null;
   const entry = routineSaved().find((saved) => saved.id === item.saved);
   return entry ? { ...entry.set, name: entry.name } : null;
 }
@@ -229,7 +230,7 @@ function render() {
   const style = custom ? "custom" : picked.style;
   byId("routinePlanDays").replaceChildren(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
     const day = button("", weekdayName(weekday), () => {
-      saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, current(choice())) });
+      saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, (({ day, strengthSteps, ...kept }) => kept)(current(choice()))) });
       changed();
       render();
     });
@@ -368,7 +369,7 @@ export function routineBlock(day = today()) {
   const block = element("div", "warmup-block");
   const done = routineLog()[day] ?? [];
   const planned = plannedRoutine(routinePlan(), day);
-  const set = plannedSet(planned);
+  const set = plannedSet(planned, day);
   // Done once a set of its style (a saved one: of its name) is logged that day.
   if (set && !done.some((item) => item.style === set.style && (set.name == null || item.name === set.name))) {
     const head = element("div", "warmup-head");

@@ -21,13 +21,17 @@ test("every set comes out near its length, from its own style's exercises", () =
   }
 });
 
-test("an area's own exercises come first, and only they when there are enough", () => {
+test("an area's set keeps to the area, and changes from day to day", () => {
   const hips = buildRoutine({ style: "flexibility", area: "hips", minutes: 5 });
   for (const id of hips.exercises) assert.ok(areasOf(id).includes("hips"), id);
-  // Too few for the time: the style's others join after them.
   const legs = buildRoutine({ style: "mobility", area: "legs", minutes: 20 });
-  assert.equal(legs.steps.find((step) => step.type === "work").id, "lungeReach");
-  assert.ok(legs.exercises.length > 1);
+  assert.ok(legs.exercises.length > 3 && legs.exercises.every((id) => areasOf(id).includes("legs")), legs.exercises.join());
+  // Other days, other exercises first; over a few days most of the style comes.
+  const days = ["2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27"].map((day) => buildRoutine({ style: "mobility", minutes: 5, day }).exercises);
+  assert.ok(new Set(days.map((list) => list.join())).size > 1, days.join(" | "));
+  assert.ok(new Set(days.flat()).size >= 8, String(new Set(days.flat()).size));
+  const yin = ["2026-11-24", "2026-11-25"].map((day) => buildRoutine({ style: "yin", minutes: 15, day }).exercises.join());
+  assert.notEqual(yin[0], yin[1]);
 });
 
 test("mobility moves 45 s, flexibility holds 20 s or a minute, yin holds for minutes and never repeats", () => {
@@ -42,10 +46,10 @@ test("mobility moves 45 s, flexibility holds 20 s or a minute, yin holds for min
 });
 
 test("a set going round again numbers its rounds for the player; two sides switch with a short pause", () => {
-  const set = buildRoutine({ style: "flexibility", area: "all", minutes: 10 });
+  const set = buildRoutine({ style: "flexibility", area: "shoulders", minutes: 10 });
   assert.equal(set.rounds, 2);
   assert.ok(set.steps.every((step) => step.round === 1 || step.round === 2));
-  const sides = set.steps.filter((step) => step.id === "triangle" || step.next === "triangle").slice(0, 4);
+  const sides = set.steps.filter((step) => step.id === "crossArm" || step.next === "crossArm").slice(0, 4);
   assert.deepEqual(sides.map((step) => [step.type, step.side ?? null, step.seconds]), [["rest", null, 10], ["work", 1, 20], ["rest", null, 5], ["work", 2, 20]]);
 });
 
@@ -100,13 +104,12 @@ test("the plan keeps a set by weekday, a second tap on its style taking the day 
 
 test("the warm-up's moves and the stretches fill in where the book has few for an area", () => {
   const legs = buildRoutine({ style: "mobility", area: "legs", minutes: 10 });
-  assert.equal(legs.exercises[0], "lungeReach");
   assert.ok(legs.exercises.some((id) => ["hipHinge", "squat", "legSwings"].includes(id)), legs.exercises.join());
   assert.ok(legs.exercises.every((id) => areasOf(id).includes("legs")), legs.exercises.join());
   const shoulders = buildRoutine({ style: "flexibility", area: "shoulders", minutes: 20, aim: "gain" });
   assert.ok(shoulders.exercises.includes("chest") || shoulders.exercises.includes("latStretch"), shoulders.exercises.join());
-  // The whole body keeps to the book.
-  assert.ok(buildRoutine({ style: "flexibility", minutes: 15 }).exercises.every((id) => exercises[id].style === "flexibility"));
+  // The whole body takes the style's own and the stretches after rowing alike.
+  assert.ok(buildRoutine({ style: "flexibility", minutes: 15 }).exercises.every((id) => exercises[id].style === "flexibility" || extrasOf("flexibility").includes(id)));
 });
 
 test("a set by hand runs its exercises in the order given, each with its own time or repeats", async () => {

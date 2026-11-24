@@ -35,10 +35,10 @@ export const stretchKinds = ["easy", "long", "hard"];
 
 // Each style's exercises in the order they run, one position leading to the next.
 const orders = {
-  mobility: ["lungeReach", "hipSwitch", "reverseTable", "forearmOpen", "archToHeels", "threadNeedle"],
-  flexibility: ["triangle", "downDog", "kneelingQuad", "lungeSideBend", "lungeTwist", "allFoursSide"],
+  mobility: ["hipCircles", "cossackShift", "inchworm", "lungeReach", "ankleRock", "hipSwitch", "reverseTable", "forearmOpen", "scapPushUp", "archToHeels", "threadNeedle"],
+  flexibility: ["crossArm", "tricepsOverhead", "sideLungeHold", "triangle", "downDog", "kneelingQuad", "lungeSideBend", "lungeTwist", "allFoursSide"],
   // Seated first, then on the front and the knees, lying on the back last.
-  yin: ["butterfly", "shoelace", "dragonfly", "caterpillar", "ninetyNinety", "swan", "dragon", "frog", "childPose", "sphinx", "banana", "happyBaby", "supineTwist"],
+  yin: ["yinSquat", "butterfly", "shoelace", "dragonfly", "caterpillar", "ninetyNinety", "swan", "dragon", "toeSquat", "frog", "meltingHeart", "childPose", "sphinx", "banana", "happyBaby", "supineTwist"],
 };
 // The warm-up's moves and the stretches after rowing, filling in where the book has few for an area: after its own
 // exercises, in this order. Child's pose is one of yin's.
@@ -254,12 +254,15 @@ function pilatesSet({ minutes = 10, level = "basic" } = {}) {
   };
 }
 
-function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep" } = {}) {
+function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep", day = null } = {}) {
   const own = orders[style] ?? orders.mobility;
-  // The flow: the book's (or yin's) own first, the fillers after.
+  // The flow: the style's own first, the fillers after.
   const order = [...own, ...extrasOf(style)];
-  const inArea = area === "all" ? own : own.filter((id) => areasOf(id).includes(area));
-  const extraInArea = extrasOf(style).filter((id) => area === "all" || areasOf(id).includes(area));
+  // Each day starts the area's list further on, so the exercises taken change from day to day.
+  const shift = day ? Math.round(Date.parse(`${day}T12:00:00Z`) / 86_400_000) * 3 : 0;
+  const turn = (list) => list.map((_, index) => list[(index + shift) % list.length]);
+  const inArea = turn(own.filter((id) => area === "all" || areasOf(id).includes(area)));
+  const extraInArea = turn(extrasOf(style).filter((id) => area === "all" || areasOf(id).includes(area)));
   const rest = style === "yin" ? yinRest : restSeconds;
   let hold = style === "yin" ? (yinHold[minutes] ?? 120) : style === "flexibility" ? (flexibilityHold[aim] ?? 20) : mobilitySeconds;
   const cost = (id) => rest + exercises[id].sides * hold + (exercises[id].sides - 1) * Math.min(rest, switchSeconds);
@@ -271,12 +274,14 @@ function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep
   // two or three times).
   const enough = (list) => list.length >= 2 && list.reduce((sum, id) => sum + cost(id), 0) * 3 >= target - slack;
   const withExtras = [...inArea, ...extraInArea.filter((id) => !inArea.includes(id))];
-  const pool = enough(inArea) ? inArea : enough(withExtras) ? withExtras : [...withExtras, ...own.filter((id) => !withExtras.includes(id))];
+  // Mobility and flexibility take the fillers in too, so there is more to go round.
+  const wide = style === "yin" ? inArea : withExtras;
+  const pool = enough(wide) ? wide : enough(withExtras) ? withExtras : [...withExtras, ...turn(own).filter((id) => !withExtras.includes(id))];
   const picked = [];
   let total = 0;
   if (style === "yin") {
     // The area's poses first, then the rest in their order, each once.
-    for (const id of [...pool, ...own.filter((item) => !pool.includes(item))]) {
+    for (const id of [...pool, ...turn(own).filter((item) => !pool.includes(item))]) {
       if (picked.length && total + cost(id) > target + slack) continue;
       picked.push({ id, round: 1 });
       total += cost(id);
