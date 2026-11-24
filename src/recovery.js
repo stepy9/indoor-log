@@ -492,7 +492,8 @@ export const strengthPlan = {
     { id: "pushUp", reps: 8, most: 15 },
     { id: "plank", seconds: 30, most: 45 },
     { id: "sidePlank", seconds: 20, most: 30 },
-    { id: "deadBug", reps: 10, most: 16 },
+    // Both sides counted together, so it grows by a pair and stays even.
+    { id: "deadBug", reps: 10, most: 16, by: 2 },
     { id: "bridge", reps: 12, most: 15 },
   ],
 };
@@ -522,8 +523,8 @@ export const strengthRounds = (steps = 0) => strengthPlan.rounds + (steps >= str
 export function strengthDoses(steps = 0) {
   // With the third round the repeats start again from the bottom of their range.
   const within = steps >= strengthPlan.moreRoundsFrom ? steps - strengthPlan.moreRoundsFrom : steps;
-  return strengthPlan.exercises.map(({ id, reps, seconds, most }) => (reps
-    ? { id, reps: Math.min(most, reps + within) }
+  return strengthPlan.exercises.map(({ id, reps, seconds, most, by = 1 }) => (reps
+    ? { id, reps: Math.min(most, reps + within * by) }
     : { id, seconds: Math.min(most, seconds + within * 5) }));
 }
 
