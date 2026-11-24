@@ -28,7 +28,7 @@
           <button type="button" data-app-view="trend" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8m-5 0h5v5"/></svg><span data-i18n="navTrend">Vývoj</span></button>
           <button type="button" data-app-view="fitness" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span data-i18n="navFitness">Analýza</span></button>
           <button type="button" data-app-view="compare" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10m7 10V4m7 16v-7"/></svg><span data-i18n="navCompare">Porovnání</span></button>
-          <button type="button" class="app-nav-exercises" id="navExercisesButton"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M6 10l6 1.5 6-1.5M8 21l4-8 4 8"/></svg><span data-i18n="exercisesTitle">Cviky</span></button>
+          <button type="button" class="app-nav-exercises" id="navExercisesButton"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M6 10l6 1.5 6-1.5M8 21l4-8 4 8"/></svg><span data-i18n="exercisesTitle">Cvičení</span></button>
         </nav>
         <div class="topbar-actions">
           <button class="add-button" id="addButton" type="button" aria-pressed="false" aria-label="Přidat" data-i18n-aria="navAdd"><svg class="topbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="navAdd">Přidat</span></button>
@@ -36,7 +36,7 @@
           <button class="library-button topbar-more-button" id="topbarMoreButton" type="button" aria-label="Nastavení" data-i18n-aria="settingsTitle" aria-haspopup="true" aria-expanded="false" aria-controls="topbarMore"><svg class="topbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
           <div class="topbar-more" id="topbarMore">
           <button class="library-button" id="settingsButton" type="button"><span data-i18n="settingsTitle">Nastavení</span></button>
-          <button class="library-button" id="exercisesButton" type="button"><span data-i18n="exercisesTitle">Cviky</span></button>
+          <button class="library-button" id="exercisesButton" type="button"><span data-i18n="exercisesTitle">Cvičení</span></button>
           <div class="language-control" id="languageControl">
             <span class="visually-hidden" data-i18n="language">Jazyk</span>
             <button id="languageButton" class="language-button" type="button" aria-label="Jazyk" data-i18n-aria="language" aria-haspopup="listbox" aria-expanded="false" aria-controls="languageMenu">
@@ -697,11 +697,11 @@
       </section>
       <dialog class="intervals-dialog exercises-dialog" id="exercisesDialog" aria-labelledby="exercisesTitle">
         <div class="dialog-head">
-          <h2 id="exercisesTitle" data-i18n="exercisesTitle">Cviky</h2>
+          <h2 id="exercisesTitle" data-i18n="exercisesTitle">Cvičení</h2>
           <button class="settings-close library-close" id="exercisesClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" title="Zavřít" data-i18n-title="libraryCloseLabel">✕</button>
         </div>
         <p class="field-note" data-i18n="exercisesIntro">Všechny cviky rozcvičky před veslováním a protažení po něm. Sestavu podle tréninku nabízí karta Dnes v Tréninku a detail aktivity.</p>
-        <div class="segmented exercises-tabs" id="exercisesTabs" role="group" aria-label="Cviky" data-i18n-aria="exercisesTitle">
+        <div class="segmented exercises-tabs" id="exercisesTabs" role="group" aria-label="Cvičení" data-i18n-aria="exercisesTitle">
           <button type="button" data-exercises-tab="Routine" data-i18n="exercisesRoutine">Sestava</button>
           <button type="button" data-exercises-tab="Warmup" data-i18n="exercisesWarmup">Rozcvička</button>
           <button type="button" data-exercises-tab="Stretch" data-i18n="exercisesStretch">Protažení</button>
