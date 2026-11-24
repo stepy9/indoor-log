@@ -207,19 +207,19 @@ function lungeTwist() {
 // 9.27 On all fours, the back flat: one arm and the leg on its side lifted long, then both swung across behind,
 // the side of the body making a "C". Seen from the front.
 function allFoursSide() {
-  // From above, the head to the left: the hand and knee of one side on the mat (short, seen from above), the other
-  // side's arm and leg lifted long in line with the trunk, then swung across behind so the body bends into a C.
+  // From the side, as in the video: from all fours the far arm reaches long forward and out, the far leg long back
+  // and out with the toes on the floor, the head dropping towards the arm so the side of the body bends into a C.
   const a = {
-    trunk: [[150, 86], [110, 86], [70, 86]], neck: [58, 86], head: [46, 86],
-    arms: [[[70, 92], [70, 102], [70, 110]], [[70, 80], [44, 78], [18, 76]]],
-    legs: [[[150, 92], [150, 102], [150, 110]], [[150, 80], [180, 78], [208, 76]]],
+    trunk: [[150, 94], [110, 94], [70, 94]], neck: [58, 92], head: [47, 90],
+    arms: [[[70, 94], [70, 120], [70, 146]], [[70, 94], [66, 120], [64, 146]]],
+    legs: [[[150, 94], [150, 146], [194, 146]], [[150, 94], [146, 146], [190, 146]]], feet: [[198, 147], [194, 147]],
   };
   const b = {
-    trunk: [[148, 92], [112, 70], [76, 92]], neck: [66, 100], head: [58, 110],
-    arms: [[[76, 98], [74, 108], [72, 116]], [[76, 86], [56, 110], [44, 138]]],
-    legs: [[[148, 98], [148, 108], [148, 116]], [[148, 86], [168, 110], [180, 138]]],
+    trunk: [[150, 96], [110, 90], [72, 98]], neck: [62, 106], head: [54, 112],
+    arms: [[[72, 98], [70, 122], [70, 146]], [[72, 98], [44, 100], [14, 104]]],
+    legs: [[[150, 96], [150, 146], [194, 146]], [[150, 96], [182, 120], [206, 142]]], feet: [[198, 147], [214, 147]],
   };
-  return { view: "top", floor: false, props: [{ x: 6, y: 40, width: 208, height: 112, rx: 10 }], poses: [a, b], focus: ["trunk"] };
+  return { poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["trunk", "arm1", "leg1"] };
 }
 
 // ---- Yin yoga: few poses, each held long and still, the muscles let go; every one gets its own few minutes.
