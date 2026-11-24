@@ -1807,6 +1807,11 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .exercise-mode { display: block; width: fit-content; margin-top: 3px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .exercise-mode.is-hold { color: var(--muted); background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong) inset; }
 .exercise-mode.is-move { color: var(--accent-ink); background: var(--accent-soft); }
+.exercise-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.exercise-tags .exercise-mode { margin-top: 0; }
+.exercise-mode.is-gear { color: #b8621b; background: rgba(224, 138, 74, 0.14); }
+:root[data-theme="dark"] .exercise-mode.is-gear { color: #f0a868; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .exercise-mode.is-gear { color: #f0a868; } }
 .exercise-mode.is-breath { color: var(--muted); background: var(--surface); box-shadow: 0 0 0 1px var(--line) inset; }
 /* The breath's pacer: a circle growing with the breath in and shrinking with it out. */
 .breath-pacer { display: grid; place-items: center; width: min(60vw, 34vh, 260px); aspect-ratio: 1; margin: 0 auto; border-radius: 50%; box-shadow: 0 0 0 2px var(--line-strong) inset; }

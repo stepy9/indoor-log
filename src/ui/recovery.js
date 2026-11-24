@@ -54,7 +54,11 @@ export const minutesText = (seconds) => new Intl.NumberFormat(state.language ===
 // A tag saying whether to hold still or to move, beside the name.
 export const nameLine = (id) => {
   const line = element("strong", "exercise-name", t(`recovery_${id}`));
-  line.append(" ", modeTag(id));
+  // How it is done, and the equipment it takes, as tags under the name.
+  const tags = element("span", "exercise-tags");
+  tags.append(modeTag(id));
+  if (exercises[id].gear) tags.append(element("span", "exercise-mode is-gear", t(`routineGear_${exercises[id].gear}`)));
+  line.append(" ", tags);
   return line;
 };
 const modeKind = (id) => (exercises[id].pattern ? "breath" : exercises[id].hold ? "hold" : "move");

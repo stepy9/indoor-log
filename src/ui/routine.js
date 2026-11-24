@@ -2,7 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
+import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
@@ -38,18 +38,19 @@ const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(state.l
 const setText = (set) => set.name ? `${set.name} · ${set.minutes} min` : t("routineWhat", { style: t(`routineStyle_${set.style}`), minutes: set.minutes });
 // mode: "auto" or "custom"; levels: each stabilization chain's level; ball: the pelvis's ball moves; weak, reps:
 // the balance's; custom: the hand-made set, [{ id, seconds | reps }].
-const choice = () => ({ mode: "auto", gear: defaultGear, tool: "band", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, level: "basic", technique: "resonant", breathMinutes: 5, custom: [], ...(savedDefaults().routine ?? {}) });
+const choice = () => ({ mode: "auto", tool: "band", style: "mobility", area: "all", minutes: 10, aim: "keep", levels: { front: 1, back: 1, side: 1 }, ball: true, weak: "none", reps: 10, level: "basic", technique: "resonant", breathMinutes: 5, custom: [], ...(savedDefaults().routine ?? {}) });
 const saveChoice = (change) => saveDefaults({ routine: { ...choice(), ...change } });
 // What the set is built from: the hand-made list, or the automatic choice, without the ball where there is none
 // and with a tool that is there.
-const owned = (picked = choice()) => picked.gear ?? defaultGear;
-const ownTools = (picked) => gearStyleTools.filter((tool) => owned(picked).includes(tool));
+// Every piece of equipment is offered; each exercise's card names what it takes.
+const owned = () => gearTools;
+const ownTools = () => gearStyleTools;
 const current = (picked = choice()) => {
   if (picked.mode === "custom") return { style: "custom", custom: picked.custom ?? [] };
-  const tools = ownTools(picked);
+  const tools = ownTools();
   // The sets around rowing: the short warm-up's and the stretching's turn by today, strength at the level reached.
   const around = { day: today(), strengthSteps: strengthLevel(strengthLog(), today()).steps };
-  return { ...picked, ...around, ball: picked.ball !== false && owned(picked).includes("ball"), tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
+  return { ...picked, ...around, ball: picked.ball !== false, tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
 };
 
 // A row of buttons, one pressed, its value saved on a click.
@@ -106,7 +107,7 @@ function card(id, doseText, more = []) {
 
 // Every exercise of a group to add to the hand-made set, the group picked by its buttons; one added says how often.
 function renderCatalog(picked) {
-  const groups = exerciseGroups(owned(picked));
+  const groups = exerciseGroups(owned());
   const group = groups.some((item) => item.group === picked.group) ? picked.group : groups[0].group;
   segmented(byId("routineGroups"), groups.map((item) => item.group), (value) => t(`routineGroup_${value}`), group, (value) => { saveChoice({ group: value }); render(); });
   const list = picked.custom ?? [];
@@ -173,17 +174,7 @@ function render() {
   const picked = choice();
   const pick = (key) => (value) => { saveChoice({ [key]: value }); render(); };
   const custom = picked.mode === "custom";
-  // The equipment at home, each on or off.
-  byId("routineGear").replaceChildren(...gearTools.map((tool) => {
-    const item = button("", t(`routineGear_${tool}`), () => {
-      const now = owned(choice());
-      saveChoice({ gear: now.includes(tool) ? now.filter((each) => each !== tool) : [...now, tool] });
-      render();
-    });
-    item.setAttribute("aria-pressed", String(owned(picked).includes(tool)));
-    return item;
-  }));
-  segmented(byId("routineTool"), ownTools(picked), (value) => t(`routineGear_${value}`), current(picked).tool, pick("tool"));
+  segmented(byId("routineTool"), ownTools(), (value) => t(`routineGear_${value}`), current(picked).tool, pick("tool"));
   segmented(byId("routineMode"), ["auto", "custom"], (value) => t(`routineMode_${value}`), picked.mode, pick("mode"));
   byId("routineAuto").hidden = custom;
   byId("routineCustom").hidden = !custom;
@@ -205,7 +196,6 @@ function render() {
   segmented(byId("routineReps"), balanceReps, String, picked.reps, pick("reps"));
   // The rows that belong to the style chosen; the ball's only with a ball at home.
   for (const row of byId("exercisesRoutine").querySelectorAll("[data-routine-for]")) row.hidden = !row.dataset.routineFor.split(" ").includes(picked.style);
-  for (const id of ["routineBall"]) byId(id).hidden = byId(id).previousElementSibling.hidden = !owned(picked).includes("ball");
   if (custom) {
     renderCustom(picked);
     renderCatalog(picked);
@@ -228,8 +218,7 @@ function render() {
     ...(set.rounds > 1 ? [t("routineRounds", { rounds: set.rounds })] : []),
     ...(noArea ? [t("routineNoArea")] : []),
     // What the equipment at home leaves out.
-    ...(picked.style === "balance" && !owned(picked).includes("dumbbell") ? [t("routineNoDumbbell")] : []),
-    ...(picked.style === "gear" && !ownTools(picked).length ? [t("routineNoTool")] : []),
+    ...(picked.style === "balance" ? [t("routineNeedsDumbbell")] : []),
   ].join(" ");
   byId("routineStart").textContent = t("routineStart", { minutes: set.minutes });
   byId("routineStart").disabled = byId("routineSave").disabled = !set.steps.length;
@@ -260,8 +249,7 @@ function render() {
 function summarize(custom) {
   const pressed = (holder) => [...holder.querySelectorAll('[aria-pressed="true"]')].map((item) => item.textContent.replace(/^✓s*/, ""));
   const groups = custom ? [] : [...byId("routineAuto").querySelectorAll(".segmented")].filter((group) => !group.hidden && !group.closest("[hidden]"));
-  const gear = pressed(byId("routineGear")).join(", ");
-  byId("routineSummary").textContent = [gear, ...(custom ? [t("routineMode_custom")] : []), ...groups.flatMap(pressed)].filter(Boolean).join(" · ");
+  byId("routineSummary").textContent = [...(custom ? [t("routineMode_custom")] : []), ...groups.flatMap(pressed)].filter(Boolean).join(" · ");
 }
 
 // A name the set would be saved under when none is typed: "Yin yoga · Hips", "Stability".
