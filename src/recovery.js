@@ -293,11 +293,86 @@ export const exercises = {
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
 // far, arrows }.
 export function exerciseViews(id) {
-  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true, weights } = exercises[id];
+  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true, weights, hold } = exercises[id];
   if (!poses) return [];
   // The floor under a side view; a view from above has its mat among the props.
   const blocks = [...(floor ? [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }] : []), ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
-  return [{ key: view, poses, focus, blocks, far, arrows, weights }, ...more.map((other) => ({ focus, blocks: [], weights, ...other }))];
+  // A move without arrows drawn by hand gets one worked out from its poses.
+  const way = (list, own, key = view) => own ?? (hold ? undefined : moveArrows(list, arrowHints[`${id}:${key}`] ?? arrowHints[id]));
+  return [{ key: view, poses, focus, blocks, far, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
+}
+
+// The way a move goes, from its first pose to its second: a dashed arc beside the point that travels furthest (a
+// hand, a foot, a knee, the head…), bowed away from the body and headed at both ends, as the move goes there and
+// back. [] when nothing moves enough to show, or for a close-up without a body.
+// Where the worked-out arrow follows another point than the one moving most, or goes on the other side; by id, or
+// "id:view" for one of its other views.
+const arrowHints = {
+  catCow: { on: "back" },
+  hundred: { off: 20 },
+  swimming: { on: "ankle0" },
+  shoulderBridge: { flip: true },
+  kneelRow: { on: "hand1", flip: true },
+  bridgePress: { on: "hand1", flip: true },
+  sideLungeRaise: { on: ["hand1", null] },
+  backLungePress: { on: ["hand0", null] },
+  bandSideStep: { on: "knee1" },
+  bosuSquat: { on: "hip" },
+  bandRotation: { on: "hand0", flip: true },
+  "bandRotation:top": { on: "hand0" },
+};
+const arrowMin = 6;
+const shortArrow = 26;
+const curveFrom = 34;
+// hint: { on: the point to follow ("hand0", "ankle1", "knee0", "head"…), flip: the arc on the other side, off }.
+export function moveArrows(poses = [], hint = {}) {
+  // Several points, each its own arrow (null: the one moving most).
+  if (Array.isArray(hint.on)) return hint.on.flatMap((on) => moveArrows(poses, { ...hint, on }));
+  const [from, to] = poses;
+  if (!from?.trunk || !to?.trunk) return [];
+  const marks = (pose) => [
+    ["head", pose.head], ["shoulder", pose.trunk[2]], ["hip", pose.trunk[0]],
+    // The back's middle, on its curve.
+    ["back", [0, 1].map((axis) => (pose.trunk[0][axis] + 2 * pose.trunk[1][axis] + pose.trunk[2][axis]) / 4)],
+    ...pose.arms.flatMap((joints, index) => [[`hand${index}`, joints.at(-1)], [`elbow${index}`, joints[1]]]),
+    ...pose.legs.flatMap((joints, index) => [[`ankle${index}`, joints.at(-1)], [`knee${index}`, joints[1]]]),
+  ].filter(([, point]) => Array.isArray(point));
+  const after = Object.fromEntries(marks(to));
+  let best = null;
+  for (const [key, point] of marks(from)) {
+    const end = after[key];
+    if (!end || (hint.on && key !== hint.on)) continue;
+    const length = Math.hypot(end[0] - point[0], end[1] - point[1]);
+    if (!best || length > best.length + 2) best = { point, end, length };
+  }
+  if (!best || best.length < arrowMin) return [];
+  const all = marks(from).map(([, point]) => point);
+  const middle = [all.reduce((sum, [x]) => sum + x, 0) / all.length, all.reduce((sum, [, y]) => sum + y, 0) / all.length];
+  const [x0, y0] = best.point;
+  const [x1, y1] = best.end;
+  const ux = (x1 - x0) / best.length;
+  const uy = (y1 - y0) / best.length;
+  // The side away from the body's middle, the arc set off it a little so it does not lie on the limb.
+  let nx = -uy;
+  let ny = ux;
+  if ((x0 + x1) / 2 * 1 - middle[0] < 0 ? nx > 0 : nx < 0) { nx = -nx; ny = -ny; }
+  if (Math.abs(nx) < 0.2 && ((y0 + y1) / 2 - middle[1]) * ny < 0) { nx = -nx; ny = -ny; }
+  if (hint.flip) { nx = -nx; ny = -ny; }
+  const off = hint.off ?? (best.length < curveFrom ? 16 : 10);
+  const trim = Math.min(6, best.length / 5);
+  const clamp = (value, low, high) => Math.round(Math.min(high, Math.max(low, value)));
+  const point = (x, y) => `${clamp(x, 4, 216)},${clamp(y, 4, 166)}`;
+  // A short move as a straight arrow at least shortArrow long, beside the point; a longer one as an arc.
+  if (best.length < curveFrom) {
+    const half = Math.max(shortArrow, best.length) / 2;
+    const cx = (x0 + x1) / 2 + nx * off;
+    const cy = (y0 + y1) / 2 + ny * off;
+    return [{ d: `M${point(cx - ux * half, cy - uy * half)} L${point(cx + ux * half, cy + uy * half)}`, both: true }];
+  }
+  const start = point(x0 + ux * trim + nx * off, y0 + uy * trim + ny * off);
+  const finish = point(x1 - ux * trim + nx * off, y1 - uy * trim + ny * off);
+  const bow = point((x0 + x1) / 2 + nx * (off + best.length * 0.22), (y0 + y1) / 2 + ny * (off + best.length * 0.22));
+  return [{ d: `M${start} Q${bow} ${finish}`, both: true }];
 }
 
 // The pause before each exercise, the same in every set (warm-up, stretching, strength), and between its sides.

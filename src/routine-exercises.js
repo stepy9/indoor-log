@@ -552,7 +552,10 @@ function bandClamshell() {
 function bandRotation() {
   const a = { ...frontStand, arms: [[[98, 48], [96, 72], [106, 80]], [[122, 48], [124, 72], [126, 96]]], strap: [[106, 80], [204, 80]] };
   const b = { ...frontStand, arms: [[[98, 48], [96, 72], [72, 76]], [[122, 48], [124, 72], [126, 96]]], strap: [[72, 76], [204, 80]] };
-  return { view: "front", poses: [a, b], far: { arms: [1] }, focus: ["arm0"] };
+  // From above, the face down the picture: the elbow at the side, the forearm pointing ahead, then turned out.
+  const above = (hand) => ({ trunk: [[84, 70], [110, 66], [136, 70]], neck: [110, 76], head: [110, 84], arms: [[[84, 70], [80, 82], hand], [[136, 70], [140, 82], [140, 92]]], legs: [[[104, 70], [104, 72], [104, 74]], [[116, 70], [116, 72], [116, 74]]], strap: [hand, [204, hand[1]]] });
+  const top = { key: "top", blocks: [{ x: 30, y: 30, width: 160, height: 110, rx: 10 }], poses: [above([86, 118]), above([42, 98])], far: { arms: [1] }, focus: ["arm0"] };
+  return { view: "front", poses: [a, b], far: { arms: [1] }, focus: ["arm0"], more: [top] };
 }
 // Side steps: the band round the knees, half-squatting, a step to the side and the other foot after it.
 function bandSideStep() {
