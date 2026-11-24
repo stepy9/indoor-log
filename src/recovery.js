@@ -320,6 +320,7 @@ const arrowHints = {
   bosuSquat: { on: "hip" },
   bandRotation: { on: "hand0", flip: true },
   "bandRotation:top": { on: "hand0" },
+  "saw:top": { on: "hand1" },
 };
 const arrowMin = 6;
 const shortArrow = 26;

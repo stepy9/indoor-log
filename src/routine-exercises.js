@@ -343,7 +343,7 @@ function threadNeedle() {
   const feet = [[196, 140], [198, 140]];
   const open = { trunk: [[140, 96], [100, 92], [62, 96]], neck: [52, 92], head: [42, 86], arms: [[[62, 96], [62, 121], [60, 146]], [[62, 96], [66, 68], [70, 40]]] };
   const threaded = { trunk: [[140, 100], [104, 106], [72, 126]], neck: [62, 132], head: [52, 138], arms: [[[72, 126], [58, 136], [48, 146]], [[72, 126], [98, 140], [124, 146]]] };
-  return { poses: [{ ...open, legs, feet }, { ...threaded, legs, feet }], far: { arms: [0], legs: [1] }, focus: ["trunk", "arm1"] };
+return { poses: [{ ...open, legs, feet }, { ...threaded, legs, feet }], far: { arms: [0], legs: [1] }, focus: ["trunk", "arm1"] };
 }
 
 // Child's pose in yin: the knees wide and the forehead down, the arms long ahead; drawn as recovery.js's own.
@@ -645,7 +645,7 @@ function crissCross() {
   const arms = [[[64, 124], [52, 104], [40, 112]]];
   const a = { trunk: [[128, 140], [98, 132], [70, 116]], neck: [60, 110], head: [52, 102], arms: [[[70, 116], [62, 96], [50, 102]]], legs: [bent, long], feet: [[144, 82], [220, 92]] };
   const b = { ...curled, arms, legs: [long, bent], feet: [[220, 92], [144, 82]] };
-  return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
+return { poses: [a, b], far: { legs: [1] }, focus: ["trunk"] };
 }
 // Spine stretch forward: sitting tall with the legs long, the arms ahead, then the back rounding forward, the head
 // last, and building up again.
@@ -664,7 +664,18 @@ function saw() {
   const feet = [[16, 130], [204, 130]];
   const a = { trunk: [[110, 134], [110, 106], [110, 78]], neck: [110, 66], head: [110, 54], arms: [[[98, 80], [70, 80], [42, 80]], [[122, 80], [150, 80], [178, 80]]], legs, feet };
   const b = { trunk: [[110, 134], [128, 114], [146, 98]], neck: [154, 98], head: [164, 100], arms: [[[140, 98], [170, 118], [196, 134]], [[156, 96], [150, 70], [138, 46]]], legs, feet };
-  return { view: "front", poses: [a, b], focus: ["trunk"] };
+  // From above, the head over the hips and the legs apart down the picture: the arms out to the sides, then the
+  // shoulders turned and the front hand down past the opposite foot, the other arm back.
+  const legsAbove = [[[102, 100], [72, 124], [42, 150]], [[118, 100], [148, 124], [178, 150]]];
+  const top = {
+    key: "top", blocks: [{ x: 22, y: 14, width: 176, height: 148, rx: 10 }],
+    poses: [
+      { trunk: [[86, 80], [110, 78], [134, 80]], neck: [110, 88], head: [110, 100], arms: [[[86, 80], [60, 80], [34, 80]], [[134, 80], [160, 80], [186, 80]]], legs: legsAbove },
+      { trunk: [[84, 74], [104, 86], [124, 100]], neck: [100, 96], head: [96, 104], arms: [[[84, 74], [66, 56], [50, 38]], [[124, 100], [96, 122], [62, 140]]], legs: legsAbove },
+    ],
+    focus: ["trunk", "arm1"],
+  };
+  return { view: "front", poses: [a, b], focus: ["trunk"], more: [top] };
 }
 // Swimming: on the front, the arms and legs long and just off the mat, fluttering opposite arm and leg.
 function swimming() {
