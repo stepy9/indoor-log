@@ -7,6 +7,7 @@ import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
+import { listEntries, saveEntries } from "../library.js";
 import { byId, state, t } from "./context.js";
 
 const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
@@ -22,6 +23,9 @@ const today = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 const changed = () => window.dispatchEvent(new Event("settings-change"));
+const localDay = (ms) => { const at = new Date(ms); return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`; };
+// The day's last rowing workout not yet stretched after, which a stretching done here ticks as the Today card's does.
+const unstretched = async (day) => (await listEntries().catch(() => [])).filter((entry) => entry.sport === "rowing" && !entry.stretched && localDay(entry.startMs) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
 
 export const routineLog = () => savedDefaults().routineLog ?? {};
 export const routinePlan = () => savedDefaults().routinePlan ?? {};
@@ -309,7 +313,16 @@ function playSet(set, day, { intro = true } = {}) {
     doneNote: t(set.style === "stability" ? "routineDoneNoteStability" : "routineDoneNote"),
     ...(intro ? { intro: { title: setText(set), note: "", exercises: [...new Set(set.exercises)].map((id) => ({ id, seconds: set.seconds[id], reps: set.reps?.[id] })) } } : {}),
     after: askFeel(set, day),
-    onDone: () => {
+    onDone: async () => {
+      // A stretching on a day rowed ticks that workout, as after it on the Today card; on another day it is a set.
+      const rowed = set.style === "stretch" ? await unstretched(day) : null;
+      if (rowed) {
+        rowed.stretched = Date.now();
+        rowed.stretchedExercises = set.exercises;
+        await saveEntries([rowed]).catch(() => {});
+        changed();
+        return;
+      }
       // The warm-up and strength count where the Today card's do: by day in their own logs.
       if (set.style === "warmup" || set.style === "strength") {
         const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
