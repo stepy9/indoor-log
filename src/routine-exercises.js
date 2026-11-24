@@ -207,12 +207,19 @@ function lungeTwist() {
 // 9.27 On all fours, the back flat: one arm and the leg on its side lifted long, then both swung across behind,
 // the side of the body making a "C". Seen from the front.
 function allFoursSide() {
-  const hip = [150, 92];
-  const shoulder = [70, 92];
-  const flat = { trunk: [hip, [110, 92], shoulder], neck: [58, 92], head: [47, 92] };
-  const a = { ...flat, arms: [[shoulder, [70, 120], [70, 146]], [shoulder, [50, 80], [28, 70]]], legs: [[hip, [150, 120], [150, 146]], [hip, [176, 84], [204, 78]]], feet: [[166, 146], [214, 76]] };
-  const b = { trunk: [hip, [110, 82], shoulder], neck: [60, 86], head: [52, 78], arms: [[shoulder, [70, 120], [70, 146]], [shoulder, [92, 64], [120, 50]]], legs: [[hip, [150, 120], [150, 146]], [hip, [128, 70], [104, 58]]], feet: [[166, 146], [94, 52]] };
-  return { view: "front", poses: [a, b], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+  // From above, the head to the left: the hand and knee of one side on the mat (short, seen from above), the other
+  // side's arm and leg lifted long in line with the trunk, then swung across behind so the body bends into a C.
+  const a = {
+    trunk: [[150, 86], [110, 86], [70, 86]], neck: [58, 86], head: [46, 86],
+    arms: [[[70, 92], [70, 102], [70, 110]], [[70, 80], [44, 78], [18, 76]]],
+    legs: [[[150, 92], [150, 102], [150, 110]], [[150, 80], [180, 78], [208, 76]]],
+  };
+  const b = {
+    trunk: [[148, 92], [112, 70], [76, 92]], neck: [66, 100], head: [58, 110],
+    arms: [[[76, 98], [74, 108], [72, 116]], [[76, 86], [56, 110], [44, 138]]],
+    legs: [[[148, 98], [148, 108], [148, 116]], [[148, 86], [168, 110], [180, 138]]],
+  };
+  return { view: "top", floor: false, props: [{ x: 6, y: 40, width: 208, height: 112, rx: 10 }], poses: [a, b], focus: ["trunk"] };
 }
 
 // ---- Yin yoga: few poses, each held long and still, the muscles let go; every one gets its own few minutes.
@@ -764,9 +771,12 @@ function crossArm() {
 }
 // From the front: one arm up, the elbow bent so the hand drops behind the head, the other hand easing the elbow back.
 function tricepsOverhead() {
-  const a = { ...frontStand, arms: [[[98, 48], [94, 72], [92, 96]], [[122, 48], [126, 72], [128, 96]]] };
-  const b = { ...frontStand, arms: [[[98, 48], [100, 26], [120, 14]], [[122, 48], [124, 16], [108, 30]]] };
-  return { view: "front", poses: [a, b], focus: ["arm1"] };
+  // From the side, facing left: the near arm up, the elbow by the ear and the hand dropped behind the head; the far
+  // hand over the head on that elbow.
+  const body = { trunk: [[112, 106], [112, 80], [110, 54]], neck: [108, 44], head: [106, 33], legs: [[[112, 106], [112, 126], [112, 146]], [[112, 106], [114, 126], [116, 146]]], feet: [[98, 147], [102, 147]] };
+  const a = { ...body, arms: [[[110, 54], [112, 78], [114, 100]], [[110, 54], [110, 78], [112, 100]]] };
+  const b = { ...body, neck: [106, 44], head: [100, 34], arms: [[[112, 54], [118, 18], [134, 42]], [[110, 54], [92, 28], [114, 16]]] };
+  return { poses: [a, b], far: { arms: [1], legs: [1] }, focus: ["arm0"] };
 }
 // Melting heart: from all fours, the hips over the knees, the arms walked forward, the chest sinking to the mat.
 function meltingHeart() {
@@ -777,9 +787,10 @@ function meltingHeart() {
 }
 // Toe squat: kneeling, the toes tucked under, then sitting back on the heels, the soles stretching.
 function toeSquat() {
-  const shins = (hip) => [[hip, [112, 146], [156, 138]], [hip, [116, 146], [160, 138]]];
-  const a = { trunk: [[112, 96], [112, 70], [110, 42]], neck: [108, 32], head: [106, 20], arms: [[[110, 42], [112, 68], [114, 92]]], legs: shins([112, 96]), feet: [[146, 147], [150, 147]] };
-  const b = { trunk: [[152, 126], [152, 92], [148, 52]], neck: [146, 42], head: [144, 30], arms: [[[148, 52], [138, 80], [128, 106]]], legs: shins([152, 126]), feet: [[146, 147], [150, 147]] };
+  // Kneeling tall with the toes tucked, the heels up; then sitting back onto the heels, the soles stretched.
+  const shins = (hip) => [[hip, [100, 146], [148, 128]], [hip, [104, 146], [152, 128]]];
+  const a = { trunk: [[104, 94], [106, 66], [106, 38]], neck: [104, 28], head: [102, 16], arms: [[[106, 38], [108, 64], [110, 88]]], legs: shins([104, 94]), feet: [[156, 147], [160, 147]] };
+  const b = { trunk: [[146, 116], [144, 88], [140, 60]], neck: [138, 50], head: [136, 38], arms: [[[140, 60], [128, 84], [112, 108]]], legs: shins([146, 116]), feet: [[156, 147], [160, 147]] };
   return { poses: [a, b], far: { legs: [1] }, focus: ["leg0"] };
 }
 // Yin squat: the feet apart, down into a deep squat, heels on the floor, the elbows inside the knees.
