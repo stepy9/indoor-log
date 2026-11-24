@@ -115,9 +115,12 @@ test("a set by hand runs its exercises in the order given, each with its own tim
   assert.deepEqual(set.exercises, ["swan", "ballLower"]);
   assert.deepEqual(set.steps.filter((step) => step.type === "work").map((step) => [step.id, step.side, step.seconds ?? step.reps]), [["swan", 1, 120], ["swan", 2, 120], ["ballLower", null, 12]]);
   const groups = exerciseGroups();
-  const all = groups.flatMap((group) => group.ids);
-  assert.equal(new Set(all).size, all.length);
-  assert.equal(all.length, Object.keys(exercises).length);
+  // Each group lists an exercise once, every exercise is in some group, and one can be in several.
+  for (const group of groups) assert.equal(new Set(group.ids).size, group.ids.length, group.group);
+  assert.equal(new Set(groups.flatMap((group) => group.ids)).size, Object.keys(exercises).length);
+  const groupsOf = (id) => groups.filter((group) => group.ids.includes(id)).map((group) => group.group);
+  assert.deepEqual(groupsOf("catCow"), ["mobility", "pilates", "warmup", "stretch"]);
+  assert.ok(groupsOf("plank").includes("stability") && groupsOf("plank").includes("strength"));
 });
 
 test("a saved set holds its weekdays by its id, and taking it out clears them", async () => {
@@ -200,4 +203,16 @@ test("breathing runs one technique in whole breaths for its length", async () =>
     }
   }
   assert.equal(buildRoutine({ style: "breath", technique: "nothing" }).technique, "resonant");
+});
+
+test("the sets around rowing are built as the Today card builds them, their kind picked", async () => {
+  const { afterWorkout, strengthSession, warmupBefore } = await import("../src/recovery.js");
+  const full = buildRoutine({ style: "warmup", warmupKind: "full" });
+  assert.deepEqual(full.exercises, warmupBefore("intervals").exercises);
+  assert.equal(buildRoutine({ style: "warmup" }).kind, "short");
+  assert.deepEqual(buildRoutine({ style: "stretch", stretchKind: "hard" }).exercises, afterWorkout({ benefit: "threshold" }).exercises);
+  assert.equal(buildRoutine({ style: "stretch", stretchKind: "long" }).kind, "long");
+  const strength = buildRoutine({ style: "strength", strengthSteps: 6 });
+  assert.deepEqual(strength.steps, strengthSession(6).steps);
+  assert.equal(strength.rounds, 3);
 });

@@ -2,9 +2,9 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
-import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra } from "../routines.js";
-import { exercises } from "../recovery.js";
-import { dose, figures, minutesText, nameLine, openExercises, playSteps } from "./recovery.js";
+import { areasOf, defaultGear, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
+import { exercises, strengthLevel } from "../recovery.js";
+import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, state, t } from "./context.js";
@@ -43,7 +43,9 @@ const ownTools = (picked) => gearStyleTools.filter((tool) => owned(picked).inclu
 const current = (picked = choice()) => {
   if (picked.mode === "custom") return { style: "custom", custom: picked.custom ?? [] };
   const tools = ownTools(picked);
-  return { ...picked, ball: picked.ball !== false && owned(picked).includes("ball"), tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
+  // The sets around rowing: the short warm-up's and the stretching's turn by today, strength at the level reached.
+  const around = { day: today(), strengthSteps: strengthLevel(strengthLog(), today()).steps };
+  return { ...picked, ...around, ball: picked.ball !== false && owned(picked).includes("ball"), tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
 };
 
 // A row of buttons, one pressed, its value saved on a click.
@@ -182,6 +184,9 @@ function render() {
   byId("routineAuto").hidden = custom;
   byId("routineCustom").hidden = !custom;
   segmented(byId("routineStyle"), routineStyles, (value) => t(`routineStyle_${value}`), picked.style, pick("style"));
+  segmented(byId("routineTraining"), trainingStyles, (value) => t(`routineStyle_${value}`), picked.style, pick("style"));
+  segmented(byId("routineWarmupKind"), warmupKinds, (value) => t(`routineWarmupKind_${value}`), picked.warmupKind ?? "short", pick("warmupKind"));
+  segmented(byId("routineStretchKind"), stretchKinds, (value) => t(`routineStretchKind_${value}`), picked.stretchKind ?? "easy", pick("stretchKind"));
   segmented(byId("routineArea"), routineAreas, (value) => t(`routineArea_${value}`), picked.area, pick("area"));
   segmented(byId("routineMinutes"), routineMinutes, (value) => t("routineMinutesValue", { minutes: value }), picked.minutes, pick("minutes"));
   segmented(byId("routineAim"), routineAims, (value) => t(`routineAim_${value}`), picked.aim, pick("aim"));
@@ -207,7 +212,14 @@ function render() {
   const hold = Object.values(set.seconds)[0];
   // Yin has nothing of its own for some areas: the set says it is for the whole body then.
   const noArea = !custom && byLength(picked.style) && picked.area !== "all" && !set.exercises.some((id) => areasOf(id).includes(picked.area));
-  byId("routineNote").textContent = custom ? "" : [
+  const training = !custom && trainingStyles.includes(picked.style);
+  // What the set around rowing is for; these go by the day's workout on the Today card, so they are not planned here.
+  byId("routinePlanDays").closest(".routine-plan").hidden = byId("routinePlanNote").hidden = training;
+  byId("routineNote").textContent = custom ? "" : training ? (
+    set.style === "warmup" ? t(`exercisesWarmupSet_${set.kind}`)
+      : set.style === "stretch" ? t(`exercisesStretchSet_${set.kind}`)
+        : t("routineNote_strengthLevel", { rounds: set.rounds })
+  ) : [
     ...(set.style === "gear" && !set.steps.length ? [] : [t(`routineNote_${set.style === "stability" && !current(picked).ball ? "stabilityNoBall" : set.style}`, { time: hold >= 120 ? `${minutesText(hold)} min` : `${hold} s`, extra: weakerExtra, tool: t(`routineGear_${set.tool}`) })]),
     ...(set.rounds > 1 ? [t("routineRounds", { rounds: set.rounds })] : []),
     ...(noArea ? [t("routineNoArea")] : []),
@@ -293,11 +305,19 @@ function askFeel(set, day) {
 // A set in the player; done, the day is logged. intro: its list shown first (from the plan or the saved ones).
 function playSet(set, day, { intro = true } = {}) {
   playSteps(set.steps, {
-    doneKey: "routineDone",
+    doneKey: set.style === "warmup" ? "warmupDone" : set.style === "strength" ? "strengthDone" : "routineDone",
     doneNote: t(set.style === "stability" ? "routineDoneNoteStability" : "routineDoneNote"),
     ...(intro ? { intro: { title: setText(set), note: "", exercises: [...new Set(set.exercises)].map((id) => ({ id, seconds: set.seconds[id], reps: set.reps?.[id] })) } } : {}),
     after: askFeel(set, day),
     onDone: () => {
+      // The warm-up and strength count where the Today card's do: by day in their own logs.
+      if (set.style === "warmup" || set.style === "strength") {
+        const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
+        if (set.style === "warmup") saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [day]: set.exercises } });
+        else saveDefaults({ strengthLog: { ...strengthLog(), [day]: set.exercises } });
+        changed();
+        return;
+      }
       saveDefaults({ routineLog: logRoutine(routineLog(), day, { style: set.style, minutes: set.minutes, exercises: set.exercises, ...(set.name ? { name: set.name } : {}) }) });
       changed();
     },
@@ -306,7 +326,6 @@ function playSet(set, day, { intro = true } = {}) {
 
 // The Exercises dialog opened on its Set tab.
 export function openRoutine() {
-  byId("exercisesTabs").querySelector('[data-exercises-tab="Routine"]')?.click();
   render();
   openExercises();
 }

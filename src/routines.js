@@ -5,7 +5,7 @@
 // Stabilization takes each chain (front, back, side) at its own level for a minute, then the four ball moves for
 // the pelvis; balance does its five dumbbell moves one side at a time, more repeats on the weaker side.
 // No DOM here, so it is tested on its own.
-import { exercises, restSeconds, switchSeconds } from "./recovery.js";
+import { afterWorkout, exerciseCatalog, exercises, restSeconds, steps as timedSteps, strengthPlan, strengthSession, switchSeconds, warmupBefore, warmupRest } from "./recovery.js";
 
 export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "breath", "stability", "balance", "gear"];
 // The equipment there may be at home; a set with it is offered only when it is there. gearStyleTools: those the
@@ -27,6 +27,11 @@ const repSeconds = 3;
 export const routineAreas = ["all", "hips", "back", "shoulders", "legs"];
 export const routineMinutes = [5, 10, 15, 20];
 export const routineAims = ["keep", "gain"];
+// The sets around rowing, offered among the others under their own heading; each built as the Today card builds it,
+// its kind picked by hand instead of by the day's workout.
+export const trainingStyles = ["warmup", "stretch", "strength"];
+export const warmupKinds = ["short", "full"];
+export const stretchKinds = ["easy", "long", "hard"];
 
 // Each style's exercises in the order they run, one position leading to the next.
 const orders = {
@@ -66,7 +71,34 @@ export function buildRoutine(choice = {}) {
   if (choice.style === "gear") return gearSet(choice);
   if (choice.style === "pilates") return pilatesSet(choice);
   if (choice.style === "breath") return breathSet(choice);
+  if (choice.style === "warmup") return warmupSet(choice);
+  if (choice.style === "stretch") return stretchSet(choice);
+  if (choice.style === "strength") return strengthSet(choice);
   return lengthSet(choice);
+}
+
+const minutesOf = (list) => Math.max(1, Math.round(list.reduce((sum, step) => sum + (step.seconds ?? step.reps * repSeconds), 0) / 60));
+// The warm-up: the full one is that before intervals, the short one that before a steady row (its turn by day).
+function warmupSet({ warmupKind = "short", day = null } = {}) {
+  const plan = warmupBefore(warmupKind === "full" ? "intervals" : null, day);
+  const list = timedSteps(plan.exercises, { rest: warmupRest, seconds: plan.seconds });
+  return { style: "warmup", kind: plan.set, rounds: 1, exercises: plan.exercises, seconds: Object.fromEntries(plan.exercises.map((id) => [id, plan.seconds[id] ?? exercises[id].seconds])), reps: {}, minutes: minutesOf(list), steps: list };
+}
+// The stretching as after a short or easy workout, a longer steady one or a hard one.
+function stretchSet({ stretchKind = "easy", day = null } = {}) {
+  const plan = afterWorkout(stretchKind === "hard" ? { benefit: "threshold", day } : { seconds: stretchKind === "long" ? 3600 : 0, day });
+  const list = timedSteps(plan.exercises);
+  return { style: "stretch", kind: plan.set, rounds: 1, exercises: plan.exercises, seconds: Object.fromEntries(plan.exercises.map((id) => [id, exercises[id].seconds])), reps: {}, minutes: minutesOf(list), steps: list };
+}
+// Strength at the level reached (strengthSteps, from its log).
+function strengthSet({ strengthSteps = 0 } = {}) {
+  const session = strengthSession(strengthSteps);
+  const ids = session.doses.map((item) => item.id);
+  return {
+    style: "strength", rounds: session.rounds, exercises: ids, steps: session.steps, minutes: session.minutes,
+    seconds: Object.fromEntries(session.doses.filter((item) => item.seconds).map((item) => [item.id, item.seconds])),
+    reps: Object.fromEntries(session.doses.filter((item) => item.reps).map((item) => [item.id, item.reps])),
+  };
 }
 
 // A list of { id, seconds | reps, side } work into the player's steps, a rest before each exercise and a shorter one
@@ -118,23 +150,32 @@ function customSet(items = []) {
   };
 }
 
-// Every exercise to pick from by hand, in groups: each style's own, each tool's, then those around rowing; with
-// owned, only those whose equipment is at home (a group left empty out). [{ group, ids }].
+// Every exercise to pick from by hand, in groups: each style's own (with the moves around rowing that fit it), each
+// tool's, then the warm-up's, the stretching's and the strength's. An exercise is in every group it belongs to, so
+// cat–cow is in mobility, pilates and both sets around rowing. With owned, only those whose equipment is at home
+// (a group left empty out). [{ group, ids }].
+export const alsoIn = { pilates: ["catCow"], stability: ["plank", "sidePlank", "deadBug", "bridge"] };
 export function exerciseGroups(owned = gearTools) {
-  const used = new Set();
-  const take = (ids) => ids.filter((id) => exercises[id] && !used.has(id) && used.add(id));
+  const unique = (ids) => [...new Set(ids)].filter((id) => exercises[id]);
   const stability = Object.keys(exercises).filter((id) => exercises[id].style === "stability");
-  return [
-    { group: "mobility", ids: take(orders.mobility) },
-    { group: "flexibility", ids: take(orders.flexibility) },
-    { group: "yin", ids: take(orders.yin.filter((id) => exercises[id].style === "yin")) },
-    { group: "stability", ids: take(stability) },
-    { group: "pilates", ids: take(pilatesMoves) },
-    { group: "breath", ids: take(breathTechniques) },
-    { group: "balance", ids: take(balanceMoves) },
-    ...gearStyleTools.map((tool) => ({ group: tool, ids: take(toolMoves(tool)) })),
-    { group: "rowing", ids: take(Object.keys(exercises).filter((id) => !exercises[id].style)) },
-  ].map((item) => ({ ...item, ids: item.ids.filter((id) => hasGear(id, owned)) })).filter((item) => item.ids.length);
+  const catalog = exerciseCatalog();
+  const groups = [
+    { group: "mobility", ids: unique([...orders.mobility, ...extras.mobility]) },
+    { group: "flexibility", ids: unique([...orders.flexibility, ...extras.flexibility]) },
+    { group: "yin", ids: unique(orders.yin) },
+    { group: "stability", ids: unique([...stability, ...alsoIn.stability]) },
+    { group: "pilates", ids: unique([...alsoIn.pilates, ...pilatesMoves]) },
+    { group: "breath", ids: unique(breathTechniques) },
+    { group: "balance", ids: unique(balanceMoves) },
+    ...gearStyleTools.map((tool) => ({ group: tool, ids: unique(toolMoves(tool)) })),
+    { group: "warmup", ids: unique(catalog.warmup.map((item) => item.id)) },
+    { group: "stretch", ids: unique(catalog.stretch.map((item) => item.id)) },
+    { group: "strength", ids: unique(strengthPlan.exercises.map((item) => item.id)) },
+  ];
+  // Anything in none of them still to be found.
+  const placed = new Set(groups.flatMap((item) => item.ids));
+  groups.push({ group: "rowing", ids: Object.keys(exercises).filter((id) => !placed.has(id)) });
+  return groups.map((item) => ({ ...item, ids: item.ids.filter((id) => hasGear(id, owned)) })).filter((item) => item.ids.length);
 }
 
 // With a tool: { tool, minutes } its exercises in turn, round after round, to fill the length; each by its own time

@@ -2,7 +2,7 @@
 // work, each exercise with its dose, how-to and, where it has one, a figure moving between its two poses in time with
 // the breath. A button runs the set step by step, full screen on a phone: a countdown per exercise and side, a short
 // rest between, and at the end the set is marked done.
-import { afterWorkout, sessionDetail, exerciseCatalog, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
+import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { videoButton } from "./video.js";
@@ -477,51 +477,13 @@ export function openExercises() {
   }
 }
 
-// The catalogue of every exercise, from the gear's menu: the warm-up's moves and the stretches, each with its figure,
-// time, how-to and the sets it is in.
+// The Exercises page: its sets and every exercise live in the Set panel (ui/routine.js); this opens and closes it.
 export function setupExercises(beforeOpen = () => {}) {
   const dialog = byId("exercisesDialog");
-  const item = (entry, setKey) => {
-    const li = element("li", "recovery-item");
-    const art = figures(entry.id);
-    const text = element("div", "recovery-text");
-    text.append(
-      nameLine(entry.id),
-      element("span", "recovery-dose", dose(entry.id, entry.seconds, entry.reps)),
-      element("p", "", t(`recoveryHow_${entry.id}`)),
-      element("span", "field-note exercises-sets", t("exercisesIn", { sets: entry.sets.map((set) => t(`${setKey}_${set}`)).join(", ") })),
-    );
-    const pictures = element("div", "recovery-views");
-    pictures.append(...art);
-    li.append(pictures, text);
-    return li;
-  };
-  const render = () => {
-    const catalog = exerciseCatalog();
-    byId("exercisesWarmup").replaceChildren(...catalog.warmup.map((entry) => item(entry, "exercisesWarmupSet")));
-    byId("exercisesStretch").replaceChildren(...catalog.stretch.map((entry) => item(entry, "exercisesStretchSet")));
-    const level = strengthSession(strengthLevel(strengthLog(), new Date().toISOString().slice(0, 10)).steps);
-    byId("exercisesStrength").replaceChildren(...level.doses.map((entry) => item({ ...entry, sets: ["week"] }, "exercisesStrengthSet")));
-  };
-  // One group at a time, behind tabs; the last one picked comes back on the next opening.
-  const tabs = [...byId("exercisesTabs").querySelectorAll("[data-exercises-tab]")];
-  const show = (name) => {
-    for (const button of tabs) {
-      const on = button.dataset.exercisesTab === name;
-      button.setAttribute("aria-pressed", String(on));
-      byId(`exercises${button.dataset.exercisesTab}`).hidden = !on;
-    }
-    try { localStorage.setItem("exercisesTab", name); } catch {}
-  };
-  for (const button of tabs) button.addEventListener("click", () => { show(button.dataset.exercisesTab); dialog.scrollTop = 0; });
-  let saved = null;
-  try { saved = localStorage.getItem("exercisesTab"); } catch {}
-  show(tabs.some((button) => button.dataset.exercisesTab === saved) ? saved : "Routine");
   // On a phone the bottom bar's button opens it the same way.
   byId("navExercisesButton")?.addEventListener("click", () => byId("exercisesButton").click());
   byId("exercisesButton").addEventListener("click", () => {
     beforeOpen();
-    render();
     openExercises();
   });
   byId("exercisesClose").addEventListener("click", () => dialog.close());
