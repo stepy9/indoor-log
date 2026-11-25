@@ -483,7 +483,7 @@ function render() {
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
   renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), chart(entry, steadyTargets(entry, settings)), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
+    tiles(entry, settings), chart(entry, steadyTargets(entry, settings, trainingPlan(view.entries, entry.sport)?.workouts)), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
   ].filter(Boolean));
 }
 

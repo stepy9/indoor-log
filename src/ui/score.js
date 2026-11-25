@@ -2,7 +2,7 @@ import { isFtpTest, workoutKind } from "../analysis.js";
 import { dayKey } from "../diary.js";
 import { decoupling, forSport, heartRateAt, heartRateOf, steps } from "../fitness.js";
 import { valueOn } from "../history.js";
-import { steadyCadence } from "../plan.js";
+import { steadyCadence, steadyStartWatts } from "../plan.js";
 import { logPlan, plannedDay, progressionBuild, scoreWorkout, testPart, timeInRange, workoutFromName } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { zone } from "./context.js";
@@ -87,20 +87,24 @@ export function scoreFor(entry, plan, settings = null) {
 // What a steady workout was given to hold, for its chart: the heart rate in zone 2 and the cadence as ranges, the
 // power to start at as one value, each with the shares of time below, inside and above after the first three
 // minutes. From the day's plan as kept, else (before the plan kept them) zone 2 of the day and the sport's cadence;
-// the watts only from a kept plan. Null for a sport without the Training section then, or a workout not steady.
-export function steadyTargets(entry, settings) {
+// the watts only from a kept plan: one kept before it held them goes by the workouts before its day, as the plan
+// then did. workouts: the sport's, as nextStep's. Null for a sport without the Training section then, or a workout
+// not steady.
+export function steadyTargets(entry, settings, workouts = []) {
   if (!settings.sports?.[entry.sport]?.plan || workoutKind(entry) !== "steady" || isFtpTest(entry)) return null;
   const planned = planLog(entry.sport)[dayKey(entry.startMs, zone)] ?? null;
   const then = planned ? null : dayTargets(settings, entry);
   if (!planned && !then) return null;
   const heart = planned?.heart ?? then?.heart ?? null;
   const cadence = planned?.cadence ?? steadyCadence[entry.sport] ?? null;
+  const day = dayKey(entry.startMs, zone);
+  const watts = !planned ? null : "watts" in planned ? planned.watts : steadyStartWatts(workouts.filter((workout) => workout.day < day), planned.heart, day);
   const { seconds = [] } = entry.records ?? {};
   const shares = (values, range) => (range && values ? timeInRange(seconds, values, range, 180) : null);
   const targets = {
     heartRate: heart && { range: heart, shares: shares(entry.records?.heartRate ? heartRateOf(entry) : null, heart) },
     cadence: cadence && { range: cadence, shares: shares(entry.records?.cadence, cadence) },
-    power: planned?.watts ? { value: planned.watts } : null,
+    power: watts ? { value: watts } : null,
   };
   return Object.values(targets).some(Boolean) ? targets : null;
 }
