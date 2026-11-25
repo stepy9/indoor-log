@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { kmByKindByWeek, longTires, nextWeekPlan, weekKmByKind, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { plannedKm, kmByKindByWeek, longTires, nextWeekPlan, weekKmByKind, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -417,4 +417,15 @@ test("the distance by kind week by week, the week of the day given last", () => 
   assert.deepEqual(weeks[0].parts, []);
   assert.deepEqual(weeks[1].parts.map((part) => [part.kind, part.done]), [["usual", 2.5], ["long", 5.1]]);
   assert.deepEqual(weeks[2].parts.map((part) => [part.kind, part.done]), [["intervals", 3]]);
+});
+
+test("planned intervals come to the distance of the last ones ridden, else their minutes at the usual speed", () => {
+  const ridden = nextStep({ workouts: weeks(4), today: "2026-11-04" });
+  assert.ok(ridden.intervals.km > 0);
+  assert.equal(plannedKm("intervals", ridden), ridden.intervals.km);
+  assert.ok(plannedKm("ftpTest", ridden) > plannedKm("ftpTestShort", ridden));
+  assert.equal(plannedKm("intervals", { usual: { km: 2.4 }, intervals: {} }), 2.4);
+  // Without intervals ridden: their minutes at the usual speed, a number.
+  const none = nextStep({ workouts: weeks(4).filter((workout) => workout.kind !== "intervals"), today: "2026-11-04" });
+  assert.ok(Number.isFinite(none.intervals.km) && none.intervals.km > 0, String(none.intervals.km));
 });

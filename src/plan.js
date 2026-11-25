@@ -170,6 +170,12 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     rest: shape.rest,
     watts: ftp ? shape.power.map((share) => Math.round(ftp * share)) : null,
   };
+  // The distance an interval workout comes to, warm-up, rests and cool-down in: the median of the last four ridden,
+  // else its minutes with ten more for the warm-up and cool-down at the usual speed.
+  const lastIntervals = workouts.filter((workout) => workout.kind === "intervals" && !workout.ftpTest && workout.km > 0).slice(-4).map((workout) => workout.km);
+  intervals.km = tenthUp(lastIntervals.length ? median(lastIntervals) : kmFor(repeats * (minutes + shape.rest) + 10));
+  // The FTP tests' at the usual speed: the effort with a warm-up of ten minutes and five easy after.
+  const ftpTestKm = { ftpTestShort: tenthUp(kmFor(5 + 15)), ftpTest: tenthUp(kmFor(20 + 15)) };
   // The least to ride on a day without the will or the strength: easy, for the habit. Ten minutes unless set; 0 is none.
   const minimal = prefs.minimalMinutes === 0 ? null : { minutes: prefs.minimalMinutes > 0 ? prefs.minimalMinutes : 10 };
 
@@ -210,6 +216,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     longDone,
     doneLong,
     longDays: prefs.longDays?.length ? [...prefs.longDays] : null,
+    ftpTestKm,
     intervalDays: prefs.intervalDays?.length ? [...prefs.intervalDays] : null,
     restAfterLongMinutes: Number.isFinite(prefs.restAfterLongMinutes) ? prefs.restAfterLongMinutes : restAfterLongDefault,
     weekKm,
@@ -364,11 +371,13 @@ export function ridingKind(workout, plan) {
   return plan && workout.kind === "steady" && workout.km >= plan.long.fromKm - 0.05 ? "long" : "usual";
 }
 
-// The distance a planned day adds: a longer workout at its least, intervals as a usual workout, an opener half of
-// one; an FTP test, a day off and the goal nothing known ahead.
+// The distance a planned day adds: a longer workout at its least, intervals and an FTP test as they come to (see
+// nextStep; a usual workout for a plan without), an opener half a usual one; a day off and the goal nothing known.
 export function plannedKm(type, plan) {
   if (type === "long") return plan.long.fromKm;
-  if (["ftpTestShort", "ftpTest", "off", "goal"].includes(type)) return 0;
+  if (type === "intervals") return plan.intervals?.km ?? plan.usual.km;
+  if (type === "ftpTestShort" || type === "ftpTest") return plan.ftpTestKm?.[type] ?? 0;
+  if (["off", "goal"].includes(type)) return 0;
   return type === "opener" ? plan.usual.km / 2 : plan.usual.km;
 }
 
