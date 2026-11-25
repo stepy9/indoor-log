@@ -971,8 +971,19 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 12px; }
 .diary-plan-key { display: inline-flex; align-items: center; gap: 5px; }
 .diary-plan-key i { display: inline-block; width: 14px; height: 8px; border-radius: 4px; }
-.diary-plan-key.is-done i { background: var(--compare-1); }
-.diary-plan-key.is-ahead i { border: 1px dashed var(--compare-1); }
+.diary-plan-done.is-long, .diary-plan-key.is-long i { fill: var(--compare-3); background: var(--compare-3); }
+.diary-plan-done.is-intervals, .diary-plan-key.is-intervals i { fill: var(--compare-2); background: var(--compare-2); }
+.diary-plan-done.is-ftpTest, .diary-plan-key.is-ftpTest i { fill: var(--compare-6); background: var(--compare-6); }
+.diary-plan-key.is-usual i { background: var(--compare-1); }
+.diary-plan-ahead.is-long { stroke: var(--compare-3); }
+.diary-plan-ahead.is-intervals { stroke: var(--compare-2); }
+.diary-plan-ahead.is-ftpTest { stroke: var(--compare-6); }
+.diary-plan-key-note { flex-basis: 100%; }
+.diary-plan-done.is-past { opacity: .55; }
+.kind-weeks { position: relative; }
+.kind-weeks-tip { display: grid; gap: 3px; white-space: nowrap; }
+.kind-weeks-spot { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+.kind-weeks-spot:hover, .kind-weeks-spot:focus-visible { background: color-mix(in srgb, var(--ink) 6%, transparent); outline: none; }
 @media (max-width: 1000px) { .diary-plan-body { grid-template-columns: minmax(0, 1fr); } }
 
 /* The two record tables share their column widths, so they line up one under the other. */

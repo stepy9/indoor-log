@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { longTires, nextWeekPlan, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { kmByKindByWeek, longTires, nextWeekPlan, weekKmByKind, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -386,4 +386,35 @@ test("intervals go on the weekdays set for them, not the day after a longer work
   assert.deepEqual(on([5]), ["2026-11-28"]);
   // Monday 30th is the day after it, and next week: the plan picks another day.
   assert.notDeepEqual(on([0]), ["2026-11-30"]);
+});
+
+test("a week's distance splits by kind: ridden and still planned of each", () => {
+  const plan = { long: { fromKm: 5 }, usual: { km: 2.4 } };
+  const checklist = [
+    { status: "done", workouts: [{ km: 2.6, kind: "steady" }] },
+    { status: "done", workouts: [{ km: 5.2, kind: "steady" }, { km: 3, kind: "intervals" }] },
+    { status: "done", workouts: [{ km: 5.9, kind: "test", ftpTest: true }] },
+    { status: "planned", type: "long" },
+    { status: "planned", type: "intervals" },
+    { status: "planned", type: "usual" },
+    { status: "missed", type: null, workouts: [] },
+  ];
+  const parts = weekKmByKind(checklist, plan);
+  assert.deepEqual(parts.map((part) => part.kind), ["usual", "long", "intervals", "ftpTest"]);
+  const of = (kind) => parts.find((part) => part.kind === kind);
+  assert.deepEqual([of("usual").done, of("usual").ahead], [2.6, 2.4]);
+  assert.deepEqual([of("long").done, of("long").ahead], [5.2, 5]);
+  assert.deepEqual([of("intervals").done, of("intervals").ahead], [3, 2.4]);
+  assert.deepEqual([of("ftpTest").done, of("ftpTest").ahead], [5.9, 0]);
+  assert.deepEqual(weekKmByKind([{ status: "planned", type: "usual" }], plan).map((part) => part.kind), ["usual"]);
+});
+
+test("the distance by kind week by week, the week of the day given last", () => {
+  const plan = { long: { fromKm: 5 }, usual: { km: 2.4 } };
+  const workouts = [{ day: "2026-11-17", km: 2.5, kind: "steady" }, { day: "2026-11-22", km: 5.1, kind: "steady" }, { day: "2026-11-24", km: 3, kind: "intervals" }];
+  const weeks = kmByKindByWeek(workouts, plan, "2026-11-25", 3);
+  assert.deepEqual(weeks.map((week) => week.monday), ["2026-11-09", "2026-11-16", "2026-11-23"]);
+  assert.deepEqual(weeks[0].parts, []);
+  assert.deepEqual(weeks[1].parts.map((part) => [part.kind, part.done]), [["usual", 2.5], ["long", 5.1]]);
+  assert.deepEqual(weeks[2].parts.map((part) => [part.kind, part.done]), [["intervals", 3]]);
 });

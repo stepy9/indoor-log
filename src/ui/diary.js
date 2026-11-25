@@ -10,6 +10,7 @@ import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.
 import { hrvDays, hrvOn } from "../hrv.js";
 import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
+import { kmByKindByWeek, weekKmByKind } from "../plan.js";
 import { hoverTip, infoHint } from "./info.js";
 import { sessionTip } from "./recovery.js";
 import { breathTip, routineTip } from "./routine.js";
@@ -150,9 +151,6 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
   head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: title ?? `${t("planTitle")} · ${sportLabel(sport)}` }));
-  const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
-  // What the days ahead add, an interval workout counted as a usual one.
-  const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : ["ftpTestShort", "ftpTest", "off", "goal"].includes(item.type) ? 0 : item.type === "opener" ? plan.usual.km / 2 : plan.usual.km), 0);
   const list = Object.assign(document.createElement("div"), { className: "diary-plan-list" });
   list.append(...rows);
   if (plan.lighter) list.append(Object.assign(document.createElement("p"), { className: "field-note", textContent: t("planLighter") }));
@@ -167,42 +165,127 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
   card.replaceChildren(head, body, infoHint(`${t("planInfo")}\n${t(chosenDays ? "planDaysChosen" : "planDaysAuto")}`));
   // Drawn at the column's own width, so the text keeps its size.
   const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
-  side.append(weekBar(done, ahead, km, width, weekTitle), longestChart(longest, plan.long.fromKm, km, width, { label: longestLabel, note: longestNote }));
+  const parts = weekKmByKind(checklist, plan);
+  // The weeks before by kind, the week shown last with what is still planned of it.
+  const weeks = kmByKindByWeek(result.workouts ?? [], plan, checklist[0]?.day ?? today);
+  weeks[weeks.length - 1] = { ...weeks.at(-1), parts };
+  side.append(weekBar(parts, km, width, weekTitle), longestChart(longest, plan.long.fromKm, km, width, { label: longestLabel, note: longestNote }), kindWeeksChart(weeks, km, width, longestLabel));
 }
 
 // The week's distance bar alone, for a week drawn without drawPlanCard: done and still planned.
-export function weekDistance(done, ahead, width, title) {
-  return weekBar(done, ahead, (value) => displayNumber(value, value % 1 ? 1 : 0), width, title);
+export function weekDistance(parts, width, title) {
+  return weekBar(parts, (value) => displayNumber(value, value % 1 ? 1 : 0), width, title);
 }
 
 // The longest steady workouts by week alone, the last of them the week shown (without an aim: a week gone by).
+export function kindWeeks(weeks, width, label) {
+  return kindWeeksChart(weeks, (value) => displayNumber(value, value % 1 ? 1 : 0), width, label);
+}
+
+// The distance of each of the last weeks as a column stacked by kind (usual at the bottom, then longer, intervals,
+// FTP test), in the colours of the week's bar; the last column the week shown, what is still planned of it dashed
+// on top. weeks: [{ monday, parts }] with parts as weekKmByKind's; label: the last column's name ("now" by default).
+function kindWeeksChart(weeks, km, width, label = t("planThisWeek")) {
+  const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
+  const height = 130;
+  const bottom = 18;
+  const totals = weeks.map((week) => week.parts.reduce((sum, part) => sum + part.done + part.ahead, 0));
+  const top = Math.max(...totals, 0.5) * 1.15;
+  const slot = width / weeks.length;
+  const yFor = (value) => height - bottom - (value / top) * (height - bottom - 14);
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, class: "diary-plan-chart", role: "img", "aria-label": t("planKindsTitle") });
+  // Over each column a spot of the page that shows its split on hover (the app's tooltip lives outside the SVG).
+  const chart = Object.assign(document.createElement("div"), { className: "kind-weeks" });
+  const round = (value) => km(Math.round(value * 10) / 10);
+  weeks.forEach((week, index) => {
+    const x = index * slot + slot * 0.2;
+    const barWidth = slot * 0.6;
+    const isLast = index === weeks.length - 1;
+    let at = 0;
+    // Ridden first, kind by kind from the bottom, then what is planned on top of it.
+    for (const field of ["done", "ahead"]) {
+      for (const part of week.parts) {
+        if (!(part[field] > 0)) continue;
+        const from = yFor(at);
+        const to = yFor(at + part[field]);
+        svg.append(svgNode("rect", field === "done"
+          ? { x, y: to, width: barWidth, height: Math.max(0, from - to - 1), class: `diary-plan-done is-${part.kind}${isLast ? "" : " is-past"}` }
+          : { x: x + 0.75, y: to + 0.75, width: barWidth - 1.5, height: Math.max(0, from - to - 1.5), class: `diary-plan-ahead is-${part.kind}` }));
+        at += part[field];
+      }
+    }
+    if (totals[index] > 0) svg.append(svgNode("text", { x: x + barWidth / 2, y: yFor(totals[index]) - 3, class: "diary-plan-value" }, km(Math.round(totals[index] * 10) / 10)));
+    svg.append(svgNode("text", { x: x + barWidth / 2, y: height - 4, class: "diary-plan-week" }, isLast ? label : String(weekNumber(week.monday))));
+    const ahead = week.parts.some((part) => part.ahead > 0);
+    const title = totals[index] > 0 ? `${t("summaryWeek", { week: weekNumber(week.monday) })} · ${round(totals[index])} km` : t("planKindsNone", { week: weekNumber(week.monday) });
+    const rows = week.parts.map((part) => [part.kind, `${t(`planKind_${part.kind}`)} ${ahead ? t("planKindPlanned", { done: round(part.done), total: round(part.done + part.ahead) }) : `${round(part.done)} km`}`]);
+    // The app's tooltip, as hoverTip draws it, with each kind's colour as in the legend.
+    const spot = Object.assign(document.createElement("span"), { className: "kind-weeks-spot has-tip", tabIndex: 0 });
+    spot.style.left = `${(index * slot / width) * 100}%`;
+    spot.style.width = `${(slot / width) * 100}%`;
+    spot.setAttribute("aria-label", [title, ...rows.map(([, text]) => text)].join(", "));
+    const tip = Object.assign(document.createElement("span"), { className: "tile-info-text hover-tip-text kind-weeks-tip" });
+    tip.setAttribute("role", "tooltip");
+    tip.append(Object.assign(document.createElement("span"), { textContent: title }), ...rows.map(([kind, text]) => {
+      const row = Object.assign(document.createElement("span"), { className: `diary-plan-key is-${kind}` });
+      row.append(document.createElement("i"), text);
+      return row;
+    }));
+    spot.append(tip);
+    chart.append(spot);
+  });
+  chart.prepend(svg);
+  const head = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
+  head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planKindsTitle") }));
+  box.append(head, chart);
+  return box;
+}
+
 export function longestWeeks(weeks, width, label) {
   return longestChart(weeks, 0, (value) => displayNumber(value, value % 1 ? 1 : 0), width, { label, note: null });
 }
 
-// The week's distance as a bar: done solid, the days planned ahead dashed after it; their sum is the week's plan.
-function weekBar(done, ahead, km, width, title = t("planWeekTitle")) {
+// The week's distance as a bar split by kind (usual, longer, intervals, FTP test): each kind's ridden part solid,
+// what is planned of it dashed after, in the kind's colour; the legend with each kind's distance.
+// parts: weekKmByKind's.
+function weekBar(parts, km, width, title = t("planWeekTitle")) {
   const round = (value) => Math.round(value * 10) / 10;
+  const done = parts.reduce((sum, part) => sum + part.done, 0);
+  const ahead = parts.reduce((sum, part) => sum + part.ahead, 0);
   const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
   const total = Math.max(done + ahead, 0.1);
   const at = (value) => (value / total) * width;
   const svg = svgNode("svg", { viewBox: `0 0 ${width} 18`, class: "diary-plan-bar", role: "img", "aria-label": t("planWeek", { done: km(round(done)), target: km(round(done + ahead)) }) });
-  svg.append(
-    svgNode("rect", { x: 0, y: 3, width, height: 12, rx: 6, class: "diary-plan-track" }),
-    svgNode("rect", { x: 0, y: 3, width: Math.max(0, at(done)), height: 12, rx: 6, class: "diary-plan-done" }),
-    svgNode("rect", { x: at(done), y: 3, width: Math.max(0, at(ahead)), height: 12, class: "diary-plan-ahead" }),
-  );
+  const clip = `week-bar-${Math.random().toString(36).slice(2)}`;
+  const shape = svgNode("clipPath", { id: clip });
+  shape.append(svgNode("rect", { x: 0, y: 3, width, height: 12, rx: 6 }));
+  const segments = svgNode("g", { "clip-path": `url(#${clip})` });
+  segments.append(svgNode("rect", { x: 0, y: 3, width, height: 12, class: "diary-plan-track" }));
+  // The ridden parts first, kind by kind, then what is planned, so the bar reads done then ahead as before.
+  let x = 0;
+  for (const part of parts) {
+    if (part.done > 0) segments.append(svgNode("rect", { x, y: 3, width: at(part.done), height: 12, class: `diary-plan-done is-${part.kind}` }));
+    x += at(part.done);
+  }
+  for (const part of parts) {
+    if (part.ahead > 0) segments.append(svgNode("rect", { x: x + 0.75, y: 3.75, width: Math.max(0, at(part.ahead) - 1.5), height: 10.5, class: `diary-plan-ahead is-${part.kind}` }));
+    x += at(part.ahead);
+  }
+  svg.append(shape, segments);
   const label = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
   label.append(
     Object.assign(document.createElement("span"), { className: "field-label", textContent: title }),
     Object.assign(document.createElement("strong"), { textContent: ahead > 0 ? t("planWeek", { done: km(round(done)), target: km(round(done + ahead)) }) : `${km(round(done))} km` }),
   );
   const legend = Object.assign(document.createElement("div"), { className: "diary-plan-legend" });
-  legend.append(...[...(done > 0 || !(ahead > 0) ? [["is-done", t("planLegendDone")]] : []), ...(ahead > 0 ? [["is-ahead", t("planLegendAhead", { km: km(round(ahead)) })]] : [])].map(([className, text]) => {
-    const item = Object.assign(document.createElement("span"), { className: `diary-plan-key ${className}` });
-    item.append(Object.assign(document.createElement("i"), {}), text);
+  legend.append(...parts.map((part) => {
+    const item = Object.assign(document.createElement("span"), { className: `diary-plan-key is-${part.kind}` });
+    const text = part.ahead > 0 ? t("planKindPlanned", { done: km(round(part.done)), total: km(round(part.done + part.ahead)) }) : `${km(round(part.done))} km`;
+    item.append(Object.assign(document.createElement("i"), {}), `${t(`planKind_${part.kind}`)} ${text}`);
     return item;
   }));
+  // Solid and dashed told apart once, when the week has both.
+  if (done > 0 && ahead > 0) legend.append(Object.assign(document.createElement("span"), { className: "diary-plan-key-note", textContent: t("planKindNote") }));
   box.append(label, svg, legend);
   return box;
 }

@@ -5,7 +5,7 @@ import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
 import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
-import { drawPlanCard, longestWeeks, plannedText, scoreBadge, weekDistance } from "./diary.js";
+import { drawPlanCard, kindWeeks, longestWeeks, plannedText, scoreBadge, weekDistance } from "./diary.js";
 import { lastFtpTyped, planNotes, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
@@ -13,7 +13,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { hoverTip, infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
-import { longestByWeek, nextWeekPlan } from "../plan.js";
+import { kmByKindByWeek, longestByWeek, nextWeekPlan, weekKmByKind } from "../plan.js";
 import { openSwap } from "./swap.js";
 import { kindLabel } from "./library.js";
 import { workoutProfile } from "./workouts.js";
@@ -613,7 +613,7 @@ function drawWeek(week, { result, scored, sport, last, log, workouts }) {
     week.replaceChildren(head(), body);
     const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
     const lastWeekDay = addDays(today(), -7);
-    side.append(weekDistance(last.km, 0, width, t("summaryLast")), longestWeeks(longestByWeek(result.workouts, lastWeekDay), width, String(weekNumber(lastWeekDay))));
+    side.append(weekDistance(weekKmByKind([{ status: "done", workouts: result.workouts.filter((workout) => workout.day >= lastMondays(today(), 2)[0] && workout.day < lastMondays(today(), 1)[0]) }], plan), width, t("summaryLast")), longestWeeks(longestByWeek(result.workouts, lastWeekDay), width, String(weekNumber(lastWeekDay))), kindWeeks(kmByKindByWeek(result.workouts, plan, lastWeekDay), width, String(weekNumber(lastWeekDay))));
     return;
   }
   if (view.week === "next") {

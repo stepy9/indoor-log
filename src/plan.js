@@ -353,6 +353,50 @@ export function nextWeekPlan(plan, workouts, today, days, excused = {}, swaps = 
   };
 }
 
+// The kinds a week's distance splits into, in the order its bar shows them.
+export const weekKinds = ["usual", "long", "intervals", "ftpTest"];
+
+// A workout ridden by its kind for the week's distance: an FTP test, intervals, a longer workout by the plan's
+// length, else a usual one (an easy or recovery one too).
+export function ridingKind(workout, plan) {
+  if (workout.ftpTest) return "ftpTest";
+  if (workout.kind === "intervals") return "intervals";
+  return plan && workout.kind === "steady" && workout.km >= plan.long.fromKm - 0.05 ? "long" : "usual";
+}
+
+// The distance a planned day adds: a longer workout at its least, intervals as a usual workout, an opener half of
+// one; an FTP test, a day off and the goal nothing known ahead.
+export function plannedKm(type, plan) {
+  if (type === "long") return plan.long.fromKm;
+  if (["ftpTestShort", "ftpTest", "off", "goal"].includes(type)) return 0;
+  return type === "opener" ? plan.usual.km / 2 : plan.usual.km;
+}
+
+// A week's distance by kind: what was ridden and what is still planned of each, from a checklist as
+// weekChecklist's. [{ kind, done, ahead }] in weekKinds' order, the kinds with none left out.
+export function weekKmByKind(checklist, plan) {
+  const parts = Object.fromEntries(weekKinds.map((kind) => [kind, { kind, done: 0, ahead: 0 }]));
+  for (const item of checklist) {
+    if (item.status === "done") for (const workout of item.workouts) parts[ridingKind(workout, plan)].done += workout.km;
+    else if (item.status === "planned") {
+      const kind = item.type?.startsWith("ftpTest") ? "ftpTest" : item.type === "long" || item.type === "intervals" ? item.type : "usual";
+      parts[kind].ahead += plannedKm(item.type, plan);
+    }
+  }
+  return weekKinds.map((kind) => parts[kind]).filter((part) => part.done > 0 || part.ahead > 0);
+}
+
+// The distance ridden by kind in each of the last weeks, oldest first, the week of today last:
+// [{ monday, parts }] with parts as weekKmByKind's (all ridden).
+export function kmByKindByWeek(workouts, plan, today, weeks = 8) {
+  const thisMonday = mondayOf(today);
+  return Array.from({ length: weeks }, (_, index) => {
+    const monday = addDays(thisMonday, (index - weeks + 1) * 7);
+    const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7));
+    return { monday, parts: weekKmByKind([{ status: "done", workouts: inWeek }], plan) };
+  });
+}
+
 // This week, Monday to Sunday, as a checklist: each training day, and any other day trained on.
 // A day trained on is done, with its workouts; a training day gone by without one is missed; the days ahead
 // carry what weekPlan lays on them. [{ day, status: "done" | "missed" | "planned", type, workouts }]
