@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, testPart, planForName, defaultKinomapPlans, segmentsFromSteps, stepsFromSegments, stepsFromCreator, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, timeInRange, testPart, planForName, defaultKinomapPlans, segmentsFromSteps, stepsFromSegments, stepsFromCreator, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -279,4 +279,13 @@ test("a workout from Kinomap Creator gets its types by the resistance", () => {
   assert.deepEqual(steps.map((item) => [item.seconds, item.percent, item.intensity]), [[600, 37, "warmup"], [30, 44, "active"], [60, 30, "recovery"], [480, 37, "cooldown"]]);
   assert.deepEqual([steps[3].targetType, steps[3].target], ["cadence", 20]);
   assert.equal(stepsFromCreator({ data: {} }), null);
+});
+
+test("the time in a range leaves out the warm-up and dropouts and comes as shares", () => {
+  const seconds = Array.from({ length: 400 }, (_, index) => index);
+  const values = seconds.map((second) => (second < 100 ? 0 : second < 200 ? 120 : second < 350 ? 135 : 150));
+  const shares = timeInRange(seconds, values, [128, 142], 50);
+  assert.deepEqual(shares, { below: 100 / 300, inside: 150 / 300, above: 50 / 300 });
+  assert.equal(timeInRange(seconds.slice(0, 40), values.slice(0, 40), [128, 142]), null);
+  assert.equal(plannedDay("usual", { ...plan, cadence: [20, 24], startWatts: 95 }).cadence[1], 24);
 });

@@ -5,7 +5,7 @@ import { deleteEntry, listEntries, saveEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
 import { activityLoad, aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
 import { dayKey } from "../diary.js";
-import { hasTraining, planLog, scoreFor } from "./score.js";
+import { hasTraining, planLog, scoreFor, steadyTargets } from "./score.js";
 import { scoreBadge } from "./diary.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
 import { partsText } from "./training.js";
@@ -105,8 +105,9 @@ function tiles(entry, settings) {
   return box;
 }
 
-// One line over time, the laps' intensities shaded behind it.
-function chart(entry) {
+// One line over time, the laps' intensities shaded behind it, and what a steady workout was given to hold: a band
+// for a range, a dashed line for the power to start at, with the time kept in the range under the chart.
+function chart(entry, targets = null) {
   const metrics = metricsOf(entry);
   if (!metrics.length || !(entry.records?.seconds?.length > 1)) return null;
   if (!metrics.includes(view.metric)) view.metric = metrics[0];
@@ -120,7 +121,7 @@ function chart(entry) {
     button.setAttribute("aria-pressed", String(metric === view.metric));
     button.addEventListener("click", () => {
       view.metric = metric;
-      card.replaceWith(chart(entry));
+      card.replaceWith(chart(entry, targets));
     });
     return button;
   }));
@@ -137,8 +138,11 @@ function chart(entry) {
   if (points.length < 2) return null;
   const end = entry.records.seconds.at(-1) || 1;
   const ys = points.map((point) => point.y);
-  let low = Math.min(...ys);
-  let high = Math.max(...ys);
+  const target = targets?.[view.metric] ?? null;
+  // The target stays in view even where the workout kept away from it.
+  const bounds = target ? target.range ?? [target.value, target.value] : [];
+  let low = Math.min(...ys, ...bounds);
+  let high = Math.max(...ys, ...bounds);
   if (high === low) high = low + 1;
   const span = high - low;
   low -= span * 0.05;
@@ -174,13 +178,28 @@ function chart(entry) {
     add("text", { x: pad.left - 6, y: y(value) + 4, class: "activity-chart-label", "text-anchor": "end" },
       view.metric === "pace" && entry.sport !== "cycling" ? formatDuration(value) : displayNumber(value, view.metric === "pace" ? 1 : 0));
   }
+  if (target?.range) {
+    add("rect", { x: pad.left, width: width - pad.left - pad.right, y: Math.min(y(target.range[0]), y(target.range[1])), height: Math.abs(y(target.range[0]) - y(target.range[1])), class: "activity-chart-target" });
+  } else if (target) {
+    add("line", { x1: pad.left, x2: width - pad.right, y1: y(target.value), y2: y(target.value), class: "activity-chart-target-line" });
+  }
   const step = end > 3600 ? 900 : end > 1200 ? 300 : 60;
   for (let second = step; second < end; second += step) {
     add("text", { x: x(second), y: height - 6, class: "activity-chart-label", "text-anchor": "middle" }, formatDuration(second));
   }
   add("path", { d: points.map((point, index) => `${index ? "L" : "M"}${x(point.x).toFixed(1)},${y(point.y).toFixed(1)}`).join(""), class: "activity-chart-line" });
   card.append(head, svg);
+  if (target) card.append(el("p", "activity-chart-note", targetText(target, view.metric, entry.sport)));
   return card;
+}
+
+// The plan's target under the chart: "Plan 128–142 bpm · in it 78 % · below 15 % · above 7 %".
+function targetText(target, metric, sport) {
+  if (!target.range) return t("activityTargetStart", { value: metricText(target.value, metric, sport) });
+  const range = `${target.range.join("–")} ${metric === "heartRate" ? "bpm" : cadenceUnit(sport)}`;
+  const percent = (share) => `${Math.round(share * 100)} %`;
+  const { shares } = target;
+  return [t("activityTarget", { range }), shares && t("activityTargetShares", { inside: percent(shares.inside), below: percent(shares.below), above: percent(shares.above) })].filter(Boolean).join(" · ");
 }
 
 function lapsTable(entry) {
@@ -464,7 +483,7 @@ function render() {
   byId("activityOlder").disabled = index < 0 || index >= view.entries.length - 1;
   renderSessions(entry, settings);
   byId("activityBody").replaceChildren(...[
-    tiles(entry, settings), chart(entry), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
+    tiles(entry, settings), chart(entry, steadyTargets(entry, settings)), intensityCard(entry, settings), lapsTable(entry), bestEfforts(entry), sameWorkout(entry), noteCard(entry),
   ].filter(Boolean));
 }
 

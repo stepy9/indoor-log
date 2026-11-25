@@ -35,7 +35,8 @@ export function recentlyUnwell(excuses, today) {
 export const logDays = 26 * 7;
 
 // What a day's plan keeps: its type and the targets of every kind, so a workout of another kind can be scored too.
-// plan: nextStep's, with steadyHeartRate. { type, usualMinutes, longMinutes, minimalMinutes, heart, intervals }
+// plan: nextStep's, with steadyHeartRate, cadence and startWatts. { type, usualMinutes, longMinutes, minimalMinutes,
+// heart, cadence, watts, intervals }: cadence the range to hold and watts the power to start at, on a steady day.
 export function plannedDay(type, plan) {
   return {
     type,
@@ -43,6 +44,8 @@ export function plannedDay(type, plan) {
     longMinutes: plan.long?.minutes ?? null,
     minimalMinutes: plan.minimal?.minutes ?? null,
     heart: plan.steadyHeartRate ?? null,
+    cadence: plan.cadence ?? null,
+    watts: plan.startWatts ?? null,
     intervals: plan.intervals ? { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest, watts: plan.intervals.watts ?? null } : null,
   };
 }
@@ -55,6 +58,20 @@ export function logPlan(log, days, plan, today) {
   // Today's stays as planned when it is already done (weekPlan leaves out a day trained on).
   if (log?.[today] && !days.some((item) => item.day === today)) next[today] = log[today];
   return next;
+}
+
+// The time below, inside and above a range [low, high] from skip seconds on, from samples at seconds; values not
+// above zero (a strap's dropouts, a pause) left out. { below, inside, above } shares 0–1, or null with under a minute.
+export function timeInRange(seconds, values, range, skip = 0) {
+  const times = { below: 0, inside: 0, above: 0 };
+  const start = (seconds[0] ?? 0) + skip;
+  for (let index = 1; index < seconds.length; index += 1) {
+    const value = values[index];
+    if (seconds[index] <= start || !(value > 0)) continue;
+    times[value < range[0] ? "below" : value > range[1] ? "above" : "inside"] += Math.min(seconds[index] - seconds[index - 1], 10);
+  }
+  const total = times.below + times.inside + times.above;
+  return total >= 60 ? { below: times.below / total, inside: times.inside / total, above: times.above / total } : null;
 }
 
 // The score parts' weights, by the kind scored as.

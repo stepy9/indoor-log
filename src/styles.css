@@ -1963,6 +1963,9 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .activity-chart-grid { stroke: var(--line); stroke-width: 1; }
 .activity-chart-label { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .activity-chart-band { fill: var(--accent); }
+.activity-chart-target { fill: #43b649; opacity: .16; }
+.activity-chart-target-line { stroke: #43b649; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.activity-chart-note { margin: 6px 0 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .activity-chart-split { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .85; }
 .activity-chart-band.is-warmup { fill: #f2c230; } .activity-chart-split.is-warmup { stroke: #f2c230; }
 .activity-chart-band.is-recovery { fill: #43b649; } .activity-chart-split.is-recovery { stroke: #43b649; }
