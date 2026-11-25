@@ -224,7 +224,9 @@ function kindWeeksChart(weeks, km, width, label = t("planThisWeek")) {
     const title = totals[index] > 0 ? `${t("summaryWeek", { week: weekNumber(week.monday) })} · ${round(totals[index])} km` : t("planKindsNone", { week: weekNumber(week.monday) });
     const rows = week.parts.map((part) => [part.kind, `${t(`planKind_${part.kind}`)} ${ahead ? t("planKindPlanned", { done: round(part.done), total: round(part.done + part.ahead) }) : `${round(part.done)} km`}`]);
     // The app's tooltip, as hoverTip draws it, with each kind's colour as in the legend.
-    const spot = Object.assign(document.createElement("span"), { className: "kind-weeks-spot has-tip", tabIndex: 0 });
+    // A column in the right half opens its tooltip leftwards, so it never runs past the screen's edge.
+    const toLeft = (index + 0.5) * slot > width / 2;
+    const spot = Object.assign(document.createElement("span"), { className: `kind-weeks-spot has-tip${toLeft ? " opens-left" : " opens-right"}`, tabIndex: 0 });
     spot.style.left = `${(index * slot / width) * 100}%`;
     spot.style.width = `${(slot / width) * 100}%`;
     spot.setAttribute("aria-label", [title, ...rows.map(([, text]) => text)].join(", "));

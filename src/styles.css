@@ -983,6 +983,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .kind-weeks { position: relative; }
 .kind-weeks-tip { display: grid; gap: 3px; white-space: nowrap; }
 .kind-weeks-spot { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+.kind-weeks-spot.opens-right > .kind-weeks-tip { left: 0; right: auto; transform: none; }
+.kind-weeks-spot.opens-left > .kind-weeks-tip { left: auto; right: 0; transform: none; }
 .kind-weeks-spot:hover, .kind-weeks-spot:focus-visible { background: color-mix(in srgb, var(--ink) 6%, transparent); outline: none; }
 @media (max-width: 1000px) { .diary-plan-body { grid-template-columns: minmax(0, 1fr); } }
 
