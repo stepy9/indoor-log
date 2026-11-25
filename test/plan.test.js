@@ -338,3 +338,14 @@ test("weekPlan swaps two days' workouts by hand, and planRuleBreaks tells what a
   assert.deepEqual(planRuleBreaks([{ day: "2026-11-20", type: "ftpTest" }], "2026-11-19"), [{ day: "2026-11-20", rule: "testGap" }]);
   assert.deepEqual(planRuleBreaks([{ day: "2026-11-20", type: "ftpTest" }], "2026-11-18"), []);
 });
+
+test("weekPlan keeps this week's intervals in it, the day before a longer workout when every day is next to one", () => {
+  const plan = { long: { count: 2 }, intervals: { due: true, done: 0, max: 1, set: true }, longDone: 0 };
+  const days = weekPlan(plan, [{ day: "2026-11-23" }, { day: "2026-11-24" }], "2026-11-25", [0, 1, 2, 3, 4, 5, 6]);
+  const type = Object.fromEntries(days.map((item) => [item.day, item.type]));
+  assert.equal(type["2026-11-26"], "long");
+  assert.equal(type["2026-11-29"], "long");
+  const intervals = days.filter((item) => item.type === "intervals").map((item) => item.day);
+  assert.equal(intervals.length, 1);
+  assert.ok(intervals[0] < "2026-11-30" && ["2026-11-25", "2026-11-28"].includes(intervals[0]), intervals[0]);
+});

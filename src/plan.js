@@ -298,7 +298,13 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
   const wanted = plan.intervals.due ? Math.max(0, most - plan.intervals.done) : 0;
   const usualLeft = open.filter((day) => types.get(day) === "usual").length;
   const room = usualLeft >= 2 ? usualLeft - 1 : open.length === 2 && usualLeft === 1 ? 1 : 0;
-  const free = open.filter((day) => types.get(day) === "usual" && !nearLong(day) && !nearGoal(day));
+  // This week's are the ones still owed: on its days if any is away from the longer workouts, else on one the day
+  // before a longer workout (never the day after), rather than slipping into next week.
+  const usualDays = open.filter((day) => types.get(day) === "usual" && !nearGoal(day));
+  const away = usualDays.filter((day) => !nearLong(day));
+  const thisWeekAway = away.filter((day) => day < nextMonday);
+  const notAfter = usualDays.filter((day) => day < nextMonday && !longPicks.includes(addDays(day, -1)));
+  const free = thisWeekAway.length ? thisWeekAway : notAfter.length ? notAfter : away;
   const picks = [];
   // Spread out: the middle open day first, then the one farthest from those taken.
   for (let count = 0; count < Math.min(wanted, free.length, room); count += 1) {
