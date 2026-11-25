@@ -381,12 +381,34 @@ export function plannedKm(type, plan) {
   return type === "opener" ? plan.usual.km / 2 : plan.usual.km;
 }
 
+// The kind of each workout of one week as it was meant then: a steady one on a day the plan kept as a longer
+// workout is a longer one, on a day it kept as another a usual one; on a day without a kept plan the week's longest
+// steady workout is a longer one when it is a fifth or more over the others' median. FTP tests and intervals by
+// ridingKind. Before the plan began (start, "YYYY-MM-DD") every workout is a usual one: riding as it came, with no
+// kinds to tell. log: { "YYYY-MM-DD": plannedDay }. A function of the workout.
+export function kindsOfWeek(workouts, plan, log = {}, start = null) {
+  const steady = workouts.filter((workout) => ridingKind(workout, null) === "usual" && workout.kind === "steady");
+  const longest = steady.reduce((best, workout) => (!best || workout.km > best.km ? workout : best), null);
+  const others = steady.filter((workout) => workout !== longest).map((workout) => workout.km).sort((a, b) => a - b);
+  const middle = others.length ? (others.length % 2 ? others[(others.length - 1) / 2] : (others[others.length / 2 - 1] + others[others.length / 2]) / 2) : null;
+  return (workout) => {
+    if (start && workout.day < start) return "usual";
+    const kind = ridingKind(workout, null);
+    if (kind !== "usual" || workout.kind !== "steady") return kind;
+    const planned = log[workout.day];
+    if (planned) return planned.type === "long" ? "long" : "usual";
+    if (workout === longest && middle != null) return workout.km >= middle * 1.2 ? "long" : "usual";
+    return ridingKind(workout, plan);
+  };
+}
+
 // A week's distance by kind: what was ridden and what is still planned of each, from a checklist as
-// weekChecklist's. [{ kind, done, ahead }] in weekKinds' order, the kinds with none left out.
-export function weekKmByKind(checklist, plan) {
+// weekChecklist's; kindOf tells a ridden workout's kind (by the plan's length unless given).
+// [{ kind, done, ahead }] in weekKinds' order, the kinds with none left out.
+export function weekKmByKind(checklist, plan, kindOf = (workout) => ridingKind(workout, plan)) {
   const parts = Object.fromEntries(weekKinds.map((kind) => [kind, { kind, done: 0, ahead: 0 }]));
   for (const item of checklist) {
-    if (item.status === "done") for (const workout of item.workouts) parts[ridingKind(workout, plan)].done += workout.km;
+    if (item.status === "done") for (const workout of item.workouts) parts[kindOf(workout)].done += workout.km;
     else if (item.status === "planned") {
       const kind = item.type?.startsWith("ftpTest") ? "ftpTest" : item.type === "long" || item.type === "intervals" ? item.type : "usual";
       parts[kind].ahead += plannedKm(item.type, plan);
@@ -396,13 +418,13 @@ export function weekKmByKind(checklist, plan) {
 }
 
 // The distance ridden by kind in each of the last weeks, oldest first, the week of today last:
-// [{ monday, parts }] with parts as weekKmByKind's (all ridden).
-export function kmByKindByWeek(workouts, plan, today, weeks = 8) {
+// [{ monday, parts }] with parts as weekKmByKind's (all ridden), each workout's kind as kindsOfWeek tells it.
+export function kmByKindByWeek(workouts, plan, today, weeks = 8, log = {}, start = null) {
   const thisMonday = mondayOf(today);
   return Array.from({ length: weeks }, (_, index) => {
     const monday = addDays(thisMonday, (index - weeks + 1) * 7);
     const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7));
-    return { monday, parts: weekKmByKind([{ status: "done", workouts: inWeek }], plan) };
+    return { monday, parts: weekKmByKind([{ status: "done", workouts: inWeek }], plan, kindsOfWeek(inWeek.filter((workout) => !start || workout.day >= start), plan, log, start)) };
   });
 }
 

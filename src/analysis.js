@@ -162,8 +162,8 @@ export function detectedKind(entry) {
     const restLaps = entry.laps.filter((lap) => lap.intensity === "recovery" || lap.intensity === "rest").length;
     // Interval laps, even when every one is work, as in a stroke-rate fartlek; older entries show them by their targets.
     const intervalLaps = entry.intervalLaps || entry.laps.filter((lap) => lap.target != null).length >= 2;
-    // A test by its name: "FTP", "test" or "ramp", as in "FTP test 5 min".
-    if (/\b(ftp|test|ramp)\b/i.test(entry.name ?? "")) kinds.set(entry, "test");
+    // A test by "FTP" in its name, as in "FTP test 5 min"; a route with "test" or "ramp" in its name is none.
+    if (/\bftp\b/i.test(entry.name ?? "")) kinds.set(entry, "test");
     else kinds.set(entry, intervalLaps || restLaps >= 2 || clearRests(entry) >= 2 ? "intervals" : "steady");
   }
   return kinds.get(entry);

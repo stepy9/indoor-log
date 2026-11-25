@@ -158,3 +158,11 @@ test("series gives the metres per stroke from speed and stroke rate, none withou
   assert.equal(points[0].y, 10);
   assert.equal(points.find((point) => point.x === 330).y, 12.5);
 });
+
+test("only FTP in the name makes a test, not a route with test or ramp in it", async () => {
+  const { detectedKind } = await import("../src/analysis.js");
+  const entry = (name) => ({ name, laps: [], records: { seconds: [0, 1], power: [100, 100], cadence: [22, 22], speed: [3, 3] } });
+  assert.equal(detectedKind(entry("FTP test 5 min")), "test");
+  assert.notEqual(detectedKind(entry("Ramp to the lake")), "test");
+  assert.notEqual(detectedKind(entry("Test ride Bled")), "test");
+});

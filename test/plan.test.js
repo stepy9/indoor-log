@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { plannedKm, kmByKindByWeek, longTires, nextWeekPlan, weekKmByKind, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { kindsOfWeek, plannedKm, kmByKindByWeek, longTires, nextWeekPlan, weekKmByKind, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -428,4 +428,30 @@ test("planned intervals come to the distance of the last ones ridden, else their
   // Without intervals ridden: their minutes at the usual speed, a number.
   const none = nextStep({ workouts: weeks(4).filter((workout) => workout.kind !== "intervals"), today: "2026-11-04" });
   assert.ok(Number.isFinite(none.intervals.km) && none.intervals.km > 0, String(none.intervals.km));
+});
+
+test("a week gone by tells its longer workout by the plan kept for its day, else by standing out of the week", () => {
+  const plan = { long: { fromKm: 5.6 }, usual: { km: 2.4 } };
+  const week = [
+    { day: "2026-11-02", km: 2.4, kind: "steady" },
+    { day: "2026-11-04", km: 2.5, kind: "steady" },
+    { day: "2026-11-06", km: 3.5, kind: "steady" },
+    { day: "2026-11-07", km: 2.9, kind: "intervals" },
+  ];
+  // Planned as the longer workout: a longer one, however short of today's length.
+  const kept = kindsOfWeek(week, plan, { "2026-11-06": { type: "long" }, "2026-11-02": { type: "usual" } });
+  assert.deepEqual(week.map(kept), ["usual", "usual", "long", "intervals"]);
+  // Without a kept plan: the longest, a fifth over the others, is the longer one.
+  assert.deepEqual(week.map(kindsOfWeek(week, plan)), ["usual", "usual", "long", "intervals"]);
+  // Hardly longer than the others: usual.
+  const even = [{ day: "2026-11-02", km: 2.4, kind: "steady" }, { day: "2026-11-04", km: 2.6, kind: "steady" }];
+  assert.deepEqual(even.map(kindsOfWeek(even, plan)), ["usual", "usual"]);
+  assert.deepEqual(kmByKindByWeek(week, plan, "2026-11-04", 1)[0].parts.map((part) => [part.kind, part.done]), [["usual", 4.9], ["long", 3.5], ["intervals", 2.9]]);
+});
+
+test("before the plan began every workout is a usual one", () => {
+  const plan = { long: { fromKm: 2 }, usual: { km: 2.4 } };
+  const week = [{ day: "2026-10-13", km: 2.2, kind: "test", ftpTest: true }, { day: "2026-10-15", km: 3, kind: "intervals" }, { day: "2026-10-17", km: 3.1, kind: "steady" }];
+  assert.deepEqual(week.map(kindsOfWeek(week, plan, {}, "2026-10-16")), ["usual", "usual", "long"]);
+  assert.deepEqual(kmByKindByWeek(week, plan, "2026-10-14", 1, {}, "2026-10-20")[0].parts.map((part) => [part.kind, part.done]), [["usual", 8.3]]);
 });

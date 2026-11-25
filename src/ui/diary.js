@@ -10,7 +10,8 @@ import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.
 import { hrvDays, hrvOn } from "../hrv.js";
 import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
-import { kmByKindByWeek, weekKmByKind } from "../plan.js";
+import { kindsOfWeek, kmByKindByWeek, weekKmByKind } from "../plan.js";
+import { planLog, planStart } from "./score.js";
 import { hoverTip, infoHint } from "./info.js";
 import { sessionTip } from "./recovery.js";
 import { breathTip, routineTip } from "./routine.js";
@@ -165,9 +166,12 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
   card.replaceChildren(head, body, infoHint(`${t("planInfo")}\n${t(chosenDays ? "planDaysChosen" : "planDaysAuto")}`));
   // Drawn at the column's own width, so the text keeps its size.
   const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
-  const parts = weekKmByKind(checklist, plan);
+  // Each ridden workout by the kind its day's plan meant, as in the weeks before.
+  const log = planLog(sport);
+  const start = planStart(sport);
+  const parts = weekKmByKind(checklist, plan, kindsOfWeek(checklist.flatMap((item) => item.workouts ?? []), plan, log, start));
   // The weeks before by kind, the week shown last with what is still planned of it.
-  const weeks = kmByKindByWeek(result.workouts ?? [], plan, checklist[0]?.day ?? today);
+  const weeks = kmByKindByWeek(result.workouts ?? [], plan, checklist[0]?.day ?? today, 8, log, start);
   weeks[weeks.length - 1] = { ...weeks.at(-1), parts };
   side.append(weekBar(parts, km, width, weekTitle), longestChart(longest, plan.long.fromKm, km, width, { label: longestLabel, note: longestNote }), kindWeeksChart(weeks, km, width, longestLabel));
 }

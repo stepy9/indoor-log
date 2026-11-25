@@ -19,6 +19,14 @@ export function keepPlan(sport, days, plan, today) {
   if (JSON.stringify(next) !== JSON.stringify(all[sport] ?? {})) saveDefaults({ trainingLog: { ...all, [sport]: next } });
 }
 
+// The day the sport's training plan began: the first the Training section held from, else the first day of the
+// plan kept; null without either.
+export function planStart(sport) {
+  const records = savedDefaults().fitness?.sports?.[sport]?.history?.plan ?? [];
+  const from = records.filter((record) => !record.deleted && record.value && record.from).map((record) => record.from).sort()[0];
+  return from ?? Object.keys(planLog(sport)).sort()[0] ?? null;
+}
+
 // Whether the sport has the Training section filled in: then it gets the Training tab and its workouts a score.
 export const hasTraining = (settings, sport) => Boolean(settings.sports?.[sport]?.plan);
 export const anyTraining = (settings) => Object.keys(settings.sports ?? {}).some((sport) => hasTraining(settings, sport));
