@@ -292,6 +292,8 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .update-toast[hidden] { display: none; }
 .saved-toast { color: #43b649; animation: toast-in .2s ease-out; transition: opacity .3s; }
 .saved-toast.is-leaving { opacity: 0; }
+.saved-toast[popover] { top: auto; right: auto; margin: 0; border: 0; overflow: visible; }
+.export-button.is-danger { border-color: var(--danger); background: var(--danger); }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
 .update-toast .outline-button { margin-top: 0; color: var(--accent); }
 .chart-frame { position: relative; }
@@ -794,6 +796,10 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .fitness-suggestion-actions { display: flex; align-items: center; gap: 8px; }
 .fitness-suggestion-actions button { width: auto; height: 30px; min-height: 0; margin: 0; padding: 0 12px; font-size: 12px; }
 .settings-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
+.settings-unsaved { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; color: #e0a526; font-size: 13px; }
+.settings-unsaved::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.settings-unsaved[hidden] { display: none; }
+.confirm-dialog { width: min(420px, calc(100vw - 32px)); }
 .settings-actions button { width: auto; height: 34px; min-height: 0; margin: 0; padding: 0 16px; font-size: 13px; }
 .settings-head h2 { margin: 0; font-size: 18px; }
 .settings-close { width: 32px; height: 32px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface); font-size: 14px; cursor: pointer; }
@@ -923,12 +929,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-row.is-done .diary-plan-text { text-decoration: none; }
 .diary-plan-row.is-missed .diary-plan-text { color: var(--muted); font-style: italic; }
 .diary-plan-day { color: var(--muted); font-size: 13px; }
-.training-calendar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
-.training-calendar .outline-button { margin-top: 0; }
-.training-calendar-time { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-.training-calendar-select { height: 34px; min-width: 0; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); font-size: 16px; font-variant-numeric: tabular-nums; }
-.training-calendar-select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
-.training-calendar-note { flex-basis: 100%; margin: 0; }
 .diary-plan-toggle { margin: 0; }
 .settings-days { margin-top: 4px; }
 .settings-days-label { display: block; margin-top: 12px; }
@@ -956,6 +956,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); gap: 24px; align-items: start; }
 .diary-plan-list { display: grid; gap: 6px; }
 .diary-plan-side { display: grid; gap: 18px; }
+.training-week-head { flex-wrap: wrap; row-gap: 8px; }
+.training-week-title { display: inline-flex; align-items: center; gap: 10px; }
 .diary-plan-figure { display: grid; gap: 6px; }
 .diary-plan-figure-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .diary-plan-bar, .diary-plan-chart { display: block; width: 100%; height: auto; overflow: visible; }
@@ -964,7 +966,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-ahead { fill: none; stroke: var(--compare-1); stroke-dasharray: 3 3; }
 .diary-plan-past { fill: var(--compare-1); opacity: .45; }
 .diary-plan-aim { fill: none; stroke: var(--compare-1); stroke-width: 1.5; stroke-dasharray: 4 3; }
-.diary-plan-target { stroke: var(--ink); stroke-width: 2; }
 .diary-plan-value { fill: var(--ink); font-size: 11px; font-weight: 600; text-anchor: middle; }
 .diary-plan-week { fill: var(--muted); font-size: 10px; text-anchor: middle; }
 .diary-plan-legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 12px; }
@@ -972,7 +973,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-key i { display: inline-block; width: 14px; height: 8px; border-radius: 4px; }
 .diary-plan-key.is-done i { background: var(--compare-1); }
 .diary-plan-key.is-ahead i { border: 1px dashed var(--compare-1); }
-.diary-plan-key.is-target i { width: 2px; height: 12px; border-radius: 0; background: var(--ink); }
 @media (max-width: 1000px) { .diary-plan-body { grid-template-columns: minmax(0, 1fr); } }
 
 /* The two record tables share their column widths, so they line up one under the other. */
@@ -1414,13 +1414,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .training-chart-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .training-chart-value { fill: var(--ink); font-size: 10px; text-anchor: middle; }
 .training-chart-label { fill: var(--muted); font-size: 10px; text-anchor: middle; }
-.training-summary { border-left: 4px solid #4d8dff; }
-.training-summary > summary { list-style: none; cursor: pointer; }
-.training-summary > summary::-webkit-details-marker { display: none; }
-.training-summary-fold { display: inline-grid; place-items: center; width: 20px; color: var(--muted); transition: transform .15s; }
-.training-summary[open] .training-summary-fold { transform: rotate(90deg); }
-.training-summary-head .diary-plan-text { color: var(--muted); }
-.training-rides, .training-summary .diary-plan-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.training-rides { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .training-summary-ride { display: flex; flex-direction: column; min-width: 0; color: var(--ink); font-weight: 400; text-align: left; }
 .training-summary-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .training-summary-meta { color: var(--muted); font-size: 12px; }

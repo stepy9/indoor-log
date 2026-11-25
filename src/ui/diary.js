@@ -97,7 +97,7 @@ function plannedWords(plan, sport, type, detail) {
 // This week's plan as a checklist: each training day marked done by its workouts (with their scores when given),
 // missed, or what is planned; beside it the week's distance and the longest workouts.
 // onSwap(day), when given, offers a swap on each day planned ahead; swappedWith(day) tells a day already swapped.
-export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null, doneCell = null } = {}) {
+export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null, doneCell = null, title = null, weekTitle = undefined, longestLabel = undefined, longestNote = undefined } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
   const today = dayKey(Date.now(), zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
@@ -149,7 +149,7 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
     return row;
   });
   const head = Object.assign(document.createElement("div"), { className: "panel-title-row" });
-  head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: `${t("planTitle")} · ${sportLabel(sport)}` }));
+  head.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: title ?? `${t("planTitle")} · ${sportLabel(sport)}` }));
   const done = checklist.filter((item) => item.status === "done").reduce((sum, item) => sum + item.workouts.reduce((total, workout) => total + workout.km, 0), 0);
   // What the days ahead add, an interval workout counted as a usual one.
   const ahead = checklist.filter((item) => item.status === "planned").reduce((sum, item) => sum + (item.type === "long" ? plan.long.fromKm : ["ftpTestShort", "ftpTest", "off", "goal"].includes(item.type) ? 0 : item.type === "opener" ? plan.usual.km / 2 : plan.usual.km), 0);
@@ -167,28 +167,38 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
   card.replaceChildren(head, body, infoHint(`${t("planInfo")}\n${t(chosenDays ? "planDaysChosen" : "planDaysAuto")}`));
   // Drawn at the column's own width, so the text keeps its size.
   const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
-  side.append(weekBar(done, ahead, plan.weekKm, km, width), longestChart(longest, plan.long.fromKm, km, width));
+  side.append(weekBar(done, ahead, km, width, weekTitle), longestChart(longest, plan.long.fromKm, km, width, { label: longestLabel, note: longestNote }));
 }
 
-// The week's distance as a bar: done solid, planned dashed, the target marked.
-function weekBar(done, ahead, target, km, width) {
+// The week's distance bar alone, for a week drawn without drawPlanCard: done and still planned.
+export function weekDistance(done, ahead, width, title) {
+  return weekBar(done, ahead, (value) => displayNumber(value, value % 1 ? 1 : 0), width, title);
+}
+
+// The longest steady workouts by week alone, the last of them the week shown (without an aim: a week gone by).
+export function longestWeeks(weeks, width, label) {
+  return longestChart(weeks, 0, (value) => displayNumber(value, value % 1 ? 1 : 0), width, { label, note: null });
+}
+
+// The week's distance as a bar: done solid, the days planned ahead dashed after it; their sum is the week's plan.
+function weekBar(done, ahead, km, width, title = t("planWeekTitle")) {
+  const round = (value) => Math.round(value * 10) / 10;
   const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
-  const total = Math.max(target ?? 0, done + ahead, 0.1);
+  const total = Math.max(done + ahead, 0.1);
   const at = (value) => (value / total) * width;
-  const svg = svgNode("svg", { viewBox: `0 0 ${width} 18`, class: "diary-plan-bar", role: "img", "aria-label": t("planWeek", { done: km(done), target: km(target ?? done + ahead) }) });
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} 18`, class: "diary-plan-bar", role: "img", "aria-label": t("planWeek", { done: km(round(done)), target: km(round(done + ahead)) }) });
   svg.append(
     svgNode("rect", { x: 0, y: 3, width, height: 12, rx: 6, class: "diary-plan-track" }),
     svgNode("rect", { x: 0, y: 3, width: Math.max(0, at(done)), height: 12, rx: 6, class: "diary-plan-done" }),
     svgNode("rect", { x: at(done), y: 3, width: Math.max(0, at(ahead)), height: 12, class: "diary-plan-ahead" }),
   );
-  if (target) svg.append(svgNode("line", { x1: at(target), x2: at(target), y1: 0, y2: 18, class: "diary-plan-target" }));
   const label = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
   label.append(
-    Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planWeekTitle") }),
-    Object.assign(document.createElement("strong"), { textContent: target ? t("planWeek", { done: km(Math.round(done * 10) / 10), target: km(target) }) : `${km(Math.round(done * 10) / 10)} km` }),
+    Object.assign(document.createElement("span"), { className: "field-label", textContent: title }),
+    Object.assign(document.createElement("strong"), { textContent: ahead > 0 ? t("planWeek", { done: km(round(done)), target: km(round(done + ahead)) }) : `${km(round(done))} km` }),
   );
   const legend = Object.assign(document.createElement("div"), { className: "diary-plan-legend" });
-  legend.append(...[["is-done", t("planLegendDone")], ["is-ahead", t("planLegendAhead", { km: km(Math.round(ahead * 10) / 10) })], ...(target ? [["is-target", t("planLegendTarget")]] : [])].map(([className, text]) => {
+  legend.append(...[...(done > 0 || !(ahead > 0) ? [["is-done", t("planLegendDone")]] : []), ...(ahead > 0 ? [["is-ahead", t("planLegendAhead", { km: km(round(ahead)) })]] : [])].map(([className, text]) => {
     const item = Object.assign(document.createElement("span"), { className: `diary-plan-key ${className}` });
     item.append(Object.assign(document.createElement("i"), {}), text);
     return item;
@@ -198,7 +208,8 @@ function weekBar(done, ahead, target, km, width) {
 }
 
 // The longest steady workout of each of the last weeks as bars, this week's aim dashed after them.
-function longestChart(weeks, aim, km, width) {
+// label: the shown week's name under its bar ("now" by default); note: the line by the title, null for none.
+function longestChart(weeks, aim, km, width, { label: nowLabel = t("planThisWeek"), note = t("planLongestNote") } = {}) {
   const box = Object.assign(document.createElement("div"), { className: "diary-plan-figure" });
   const height = 130;
   const bottom = 18;
@@ -211,14 +222,14 @@ function longestChart(weeks, aim, km, width) {
     const x = index * slot + slot * 0.2;
     const barWidth = slot * 0.6;
     const isNow = index === bars.length - 1;
-    if (isNow) svg.append(svgNode("rect", { x, y: yFor(bar.aim), width: barWidth, height: yFor(0) - yFor(bar.aim), rx: 3, class: "diary-plan-aim" }));
+    if (isNow && bar.aim > 0) svg.append(svgNode("rect", { x, y: yFor(bar.aim), width: barWidth, height: yFor(0) - yFor(bar.aim), rx: 3, class: "diary-plan-aim" }));
     if (bar.km > 0) svg.append(svgNode("rect", { x, y: yFor(bar.km), width: barWidth, height: yFor(0) - yFor(bar.km), rx: 3, class: isNow ? "diary-plan-done" : "diary-plan-past" }));
     const value = isNow ? Math.max(bar.km, bar.aim) : bar.km;
     if (value > 0) svg.append(svgNode("text", { x: x + barWidth / 2, y: yFor(value) - 3, class: "diary-plan-value" }, km(Math.round(value * 10) / 10)));
-    svg.append(svgNode("text", { x: x + barWidth / 2, y: height - 4, class: "diary-plan-week" }, isNow ? t("planThisWeek") : String(weekNumber(bar.monday))));
+    svg.append(svgNode("text", { x: x + barWidth / 2, y: height - 4, class: "diary-plan-week" }, isNow ? nowLabel : String(weekNumber(bar.monday))));
   });
   const label = Object.assign(document.createElement("div"), { className: "diary-plan-figure-head" });
-  label.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planLongestTitle") }), Object.assign(document.createElement("span"), { className: "field-note", textContent: t("planLongestNote") }));
+  label.append(Object.assign(document.createElement("span"), { className: "field-label", textContent: t("planLongestTitle") }), ...(note ? [Object.assign(document.createElement("span"), { className: "field-note", textContent: note })] : []));
   box.append(label, svg);
   return box;
 }

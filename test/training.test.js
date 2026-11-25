@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, showsWeekSummary, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, timeInRange, testPart, planForName, defaultKinomapPlans, segmentsFromSteps, stepsFromSegments, stepsFromCreator, weekAdherence, zoneTwoTrend } from "../src/training.js";
+import { adherenceShare, dayStreak, defaultKinomapWorkouts, ftpFromTest, workoutFromName, fatigueByFeel, pickWorkouts, recentlyUnwell, routeSuggestions, setExcuse, workoutSuggestions, effortsInName, weekScore, lastMondays, logPlan, longestMinutesByWeek, plannedDay, scoreWorkout, timeInRange, testPart, planForName, defaultKinomapPlans, segmentsFromSteps, stepsFromSegments, stepsFromCreator, weekAdherence, zoneTwoTrend } from "../src/training.js";
 
 const plan = {
   usual: { minutes: 13 },
@@ -130,13 +130,6 @@ test("three workouts in a row felt harder than usual at a usual heart rate tell 
   // Harder, but at a higher heart rate: ridden harder, not tired.
   assert.equal(fatigueByFeel([...usual, ...hard.map((workout) => ({ ...workout, avgHeartRate: 145 }))], "2026-11-17"), null);
   assert.equal(fatigueByFeel(usual, "2026-11-17"), null);
-});
-
-test("the week's summary shows from Monday until the first workout, Wednesday at the latest", () => {
-  assert.equal(showsWeekSummary(["2026-11-22"], "2026-11-23"), true);
-  assert.equal(showsWeekSummary(["2026-11-22"], "2026-11-24"), true);
-  assert.equal(showsWeekSummary(["2026-11-23"], "2026-11-24"), false);
-  assert.equal(showsWeekSummary([], "2026-11-26"), false);
 });
 
 test("a week's score weighs the plan kept and the workouts' average", () => {

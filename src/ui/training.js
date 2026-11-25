@@ -4,19 +4,19 @@ import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { listEntries } from "../library.js";
 import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
-import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, showsWeekSummary, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
-import { drawPlanCard, plannedText, scoreBadge } from "./diary.js";
+import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
+import { drawPlanCard, longestWeeks, plannedText, scoreBadge, weekDistance } from "./diary.js";
 import { lastFtpTyped, planNotes, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, scoreFor, zoneTwoWatts } from "./score.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { hoverTip, infoHint } from "./info.js";
-import { excuses, excuseText, openExcuse, swappedWith } from "./excuse.js";
+import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
+import { longestByWeek, nextWeekPlan } from "../plan.js";
 import { openSwap } from "./swap.js";
 import { kindLabel } from "./library.js";
 import { workoutProfile } from "./workouts.js";
-import { planCalendar, plannedMinutes } from "../calendar.js";
 
 // The Training tab: this week's plan with the workouts' scores, the next step, how the plan was kept week by week,
 // and the last workouts each with its score and why. For the sports with the Training section filled in.
@@ -24,6 +24,8 @@ import { planCalendar, plannedMinutes } from "../calendar.js";
 const view = {
   entries: [],
   sport: savedDefaults().training?.sport ?? null,
+  // The week the plan card shows: "last", "this" or "next"; this week on opening the page.
+  week: "this",
 };
 
 let openActivity = () => {};
@@ -164,15 +166,13 @@ function daysWorkouts(entries, day, sport) {
 }
 
 // Last week day by day, as the week's plan shows this one: each day ridden ticked with its score and workouts,
-// a planned day not ridden with what was planned, a free day left out; under it the week's numbers. Open from
-// Monday until the week's first workout, folded to one line for the rest of the week.
-function summaryCard(scored, workouts, log, sport) {
+// a planned day not ridden with what was planned, a free day left out; over it the week's score and distance.
+// { list, summary }, or null for a week with nothing ridden or planned.
+function lastWeek(scored, workouts, log, sport) {
   const now = today();
   const excused = excuses();
   const monday = lastMondays(now, 2)[0];
   const sunday = addDays(monday, 6);
-  const card = node("details", { class: "card training-summary" });
-  card.open = showsWeekSummary(workouts.map((workout) => workout.day), now);
   const list = node("div", { class: "diary-plan-list" });
   // The week's distance, for the line that folds.
   const weekMeters = scored.filter((item) => item.day >= monday && item.day <= sunday).reduce((sum, item) => sum + (item.entry.summary?.distance ?? 0), 0);
@@ -202,9 +202,15 @@ function summaryCard(scored, workouts, log, sport) {
     row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell, whyCell);
     list.append(row);
   }
-  // The week as a whole in the line that folds, in the rows' columns: a fold mark for the tick, the week for the day,
-  // its score (the plan kept and the workouts' average) under theirs; what makes it up in the score's title.
-  const week = weekAdherence(log, workouts, monday, sunday, excused);
+  if (!list.children.length) return null;
+  // The week as a whole: its score (the plan kept and the workouts' average), what makes it up in the score's title.
+  return { list, badge: weekBadge(log, workouts, monday, sunday), km: weekMeters / 1000 };
+}
+
+// The week's score as a badge (the plan kept and the workouts' average), what makes it up in its title; until: the
+// week's last day counted, today for this week. Null without a score.
+function weekBadge(log, workouts, monday, until) {
+  const week = weekAdherence(log, workouts, monday, until, excuses());
   const overall = weekScore(week);
   const numbers = [
     ...(week.planned ? [t("summaryDays", { ridden: week.ridden, planned: week.planned })] : []),
@@ -213,17 +219,24 @@ function summaryCard(scored, workouts, log, sport) {
     ...(week.intervals[1] ? [t("summaryIntervals", { done: week.intervals[0], planned: week.intervals[1] })] : []),
     ...(week.score != null ? [t("summaryScore", { score: week.score })] : []),
   ];
-  const head = node("summary", { class: "diary-plan-row has-score training-summary-head" });
-  const score = node("span", { class: "diary-plan-score" });
-  if (overall != null) score.append(scoreBadge(overall, [t("weekScoreTitle", { score: overall }), numbers.join(" · ")].join("\n")));
-  head.append(
-    node("span", { class: "training-summary-fold", "aria-hidden": "true" }, "▸"),
-    node("span", { class: "field-label" }, t("summaryWeek", { week: weekNumber(monday) })),
-    score,
-    node("span", { class: "diary-plan-text" }, `${t("summaryLast")} · ${displayNumber(Math.round(weekMeters / 100) / 10, 1)} km`),
-  );
-  card.append(head, list);
-  return card;
+  return overall == null ? null : scoreBadge(overall, [t("weekScoreTitle", { score: overall }), numbers.join(" · ")].join("\n"));
+}
+
+// The week's card head: its title and the switch between last week, this one and the next (each when there is one).
+function weekHead(title, shown, weeks, onPick, badge = null) {
+  const head = node("div", { class: "panel-title-row training-week-head" });
+  const switcher = node("div", { class: "segmented" });
+  switcher.setAttribute("role", "group");
+  switcher.append(...weeks.map((week) => {
+    const button = node("button", { type: "button" }, t(`weekTab_${week}`));
+    button.setAttribute("aria-pressed", String(week === shown));
+    button.addEventListener("click", () => onPick(week));
+    return button;
+  }));
+  const name = node("span", { class: "training-week-title" });
+  name.append(node("span", { class: "field-label" }, title), ...(badge ? [badge] : []));
+  head.append(name, switcher);
+  return head;
 }
 
 // What to ride for a planned day: Kinomap routes of the length for a steady one, the creator's workouts for intervals
@@ -423,45 +436,6 @@ function todayCard(result, scored, fatigue, entries, settings) {
   return card;
 }
 
-// The planned days to the calendar: the training time, remembered, and a button downloading them as an .ics file.
-function calendarRow(result) {
-  const row = node("div", { class: "training-calendar" });
-  const label = node("label", { class: "training-calendar-time" });
-  // A select of quarter hours from 5:00 to 22:45, written as the app's language writes a time (18:00 in Czech).
-  const input = node("select", { class: "training-calendar-select" });
-  const saved = /^dd:dd$/.test(savedDefaults().calendarTime ?? "") ? savedDefaults().calendarTime : "18:00";
-  const times = new Set([saved]);
-  for (let minutes = 5 * 60; minutes < 23 * 60; minutes += 15) times.add(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
-  const timeText = (value) => new Intl.DateTimeFormat(locale(), { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`2000-01-01T${value}:00Z`));
-  input.append(...[...times].sort().map((value) => new Option(timeText(value), value)));
-  input.value = saved;
-  input.addEventListener("change", () => {
-    if (/^dd:dd$/.test(input.value)) saveDefaults({ calendarTime: input.value });
-  });
-  label.append(node("span", {}, t("calendarTime")), input);
-  const button = node("button", { type: "button", class: "outline-button" }, t("calendarDownload"));
-  button.addEventListener("click", () => {
-    const { plan, sport } = result;
-    const text = planCalendar({
-      days: result.days,
-      sport,
-      time: /^dd:dd$/.test(input.value) ? input.value : "18:00",
-      title: (type) => `${sportLabel(sport)} · ${t(`scorePlanned_${type}`)}`,
-      description: (type) => plannedText(plan, sport, type, { detail: true }),
-      minutes: (type) => plannedMinutes(plan, type),
-    });
-    const url = URL.createObjectURL(new Blob([text], { type: "text/calendar;charset=utf-8" }));
-    const link = node("a", { href: url, download: `plan-${sport}-${today()}.ics` });
-    document.body.append(link);
-    link.click();
-    window.setTimeout(() => {
-      link.remove();
-      URL.revokeObjectURL(url);
-    }, 1000);
-  });
-  row.append(label, button, node("span", { class: "field-note training-calendar-note" }, t("calendarNote")));
-  return row;
-}
 
 // The weeks ahead as the plan would go: the longer workouts' time, the intervals, the lighter weeks and FTP tests.
 function outlookCard(plan) {
@@ -600,8 +574,7 @@ function render() {
   const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
   const ftpCard = ftpTestCard(sport, view.entries.filter((entry) => entry.sport === sport), settings, openActivity);
   if (ftpCard) cards.push(ftpCard);
-  const summary = summaryCard(scored, workouts, log, sport);
-  if (summary) cards.push(summary);
+  const last = lastWeek(scored, workouts, log, sport);
   if (result?.checklist.length) cards.push(todayCard(result, scored, fatigue, view.entries.filter((entry) => entry.sport === sport), settings));
   const week = result?.checklist.length ? node("section", { class: "card diary-plan" }) : null;
   if (week) cards.push(week);
@@ -614,10 +587,46 @@ function render() {
   cards.push(settingsLink);
   content.replaceChildren(...cards);
   // Drawn once in the page, as the week's figures measure their column.
-  if (week) {
+  if (week) drawWeek(week, { result, scored, sport, last, log, workouts });
+}
+
+// The week's plan card on the week picked: last week as ridden, this one as now, next week as it would be laid out.
+function drawWeek(week, { result, scored, sport, last, log, workouts }) {
+  const { plan } = result;
+  const next = nextWeekPlan(plan, result.workouts, today(), result.weekdays, excuses(), swaps(sport));
+  const nextResult = { ...result, plan: next.plan, days: next.days, checklist: next.checklist, longest: longestByWeek(result.workouts, addDays(today(), 7)) };
+  const weeks = [...(last ? ["last"] : []), "this", ...(next.checklist.length ? ["next"] : [])];
+  if (!weeks.includes(view.week)) view.week = "this";
+  const pick = (shown) => {
+    view.week = shown;
+    drawWeek(week, { result, scored, sport, last, log, workouts });
+  };
+  const title = `${t("planTitleShort")} · ${sportLabel(sport)}`;
+  const badge = view.week === "last" ? last.badge : view.week === "this" ? weekBadge(log, workouts, lastMondays(today(), 1)[0], today()) : null;
+  const head = () => weekHead(title, view.week, weeks, pick, badge);
+  if (view.week === "last") {
+    const side = node("div", { class: "diary-plan-side" });
+    const body = node("div", { class: "diary-plan-body" });
+    const list = node("div", {});
+    list.append(last.list);
+    body.append(list, side);
+    week.replaceChildren(head(), body);
+    const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
+    const lastWeekDay = addDays(today(), -7);
+    side.append(weekDistance(last.km, 0, width, t("summaryLast")), longestWeeks(longestByWeek(result.workouts, lastWeekDay), width, String(weekNumber(lastWeekDay))));
+    return;
+  }
+  if (view.week === "next") {
+    drawPlanCard(week, nextResult, { scores: {}, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(nextResult, day, today(), render), swappedWith: (day) => swappedWith(sport, day), title, weekTitle: t("summaryNextWeek"), longestLabel: t("weekTab_next").toLowerCase(), longestNote: t("planLongestNoteNext") });
+    week.querySelector(".panel-title-row").replaceWith(head());
+    week.querySelector(".diary-plan-list").prepend(node("p", { class: "field-note" }, t("weekNextNote")));
+    return;
+  }
+  {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day), doneCell: (day) => daysWorkouts(scored.filter((item) => item.day === day).sort((a, b) => a.entry.startMs - b.entry.startMs).map((item) => item.entry), day, sport) });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day), doneCell: (day) => daysWorkouts(scored.filter((item) => item.day === day).sort((a, b) => a.entry.startMs - b.entry.startMs).map((item) => item.entry), day, sport), title });
+    week.querySelector(".panel-title-row").replaceWith(head());
     // Why the plan holds back this week, under the days.
     const notes = planNotes(plan);
     if (notes.length) {
@@ -625,7 +634,6 @@ function render() {
       box.append(...notes);
       week.append(box);
     }
-    if (result.days.length) week.append(calendarRow(result));
   }
 }
 

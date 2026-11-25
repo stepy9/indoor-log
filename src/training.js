@@ -204,12 +204,6 @@ export function weekAdherence(log, workouts, monday, today, excuses = {}) {
   };
 }
 
-// Whether the week's summary shows: from Monday until the week's first workout, Wednesday at the latest.
-export function showsWeekSummary(rideDays, today) {
-  const monday = mondayOf(today);
-  return today < addDays(monday, 3) && !rideDays.some((day) => day >= monday && day <= today);
-}
-
 // The share of the planned training days ridden over the weeks given, 0–100, or null without any planned.
 export function adherenceShare(weeks) {
   const planned = weeks.reduce((sum, week) => sum + week.planned, 0);

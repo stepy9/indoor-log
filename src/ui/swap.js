@@ -1,7 +1,7 @@
 // Swapping two days of the week's plan by hand: a dialog listing the other days planned, each with its workout and
 // a warning where the swap would break a rule the plan keeps (a hard day after the longer one, the 20-minute test
 // too soon after the short one); a swap is allowed anyway.
-import { planRuleBreaks } from "../plan.js";
+import { longTires, planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
 import { plannedText } from "./diary.js";
 import { state, t } from "./context.js";
@@ -31,7 +31,7 @@ export function openSwap(result, day, today, onDone) {
   for (const other of others) {
     // The week as it would be after the swap, and what of the plan's rules it breaks.
     const after = result.days.map((item) => ({ day: item.day, type: item.day === day ? other.type : item.day === other.day ? typeOf.get(day) : item.type }));
-    const breaks = planRuleBreaks(after, shortDone).filter((item) => item.day === day || item.day === other.day);
+    const breaks = planRuleBreaks(after, shortDone, longTires(plan)).filter((item) => item.day === day || item.day === other.day);
     const button = node("button", { type: "button", class: "swap-option" });
     button.append(node("strong", {}, format(other.day)), node("span", {}, plannedText(plan, sport, other.type)));
     // The day it is swapped with already: choosing it swaps back.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
+import { longTires, nextWeekPlan, planRuleBreaks, longestByWeek, mondayOf, nextStep, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../src/plan.js";
 
 // Four 2 km steady rows a week of about 11 minutes, from 6 October 2026, and an interval workout each week.
 function weeks(count, { km = 2, decoupling = 2, hardShare = 0.1 } = {}) {
@@ -191,7 +191,7 @@ test("a weekly volume set caps the week's distance, which grows towards it", () 
 
 test("weekPlan lays two longer workouts on the days set, or apart with a weekend day, intervals away from them", () => {
   const every = [0, 1, 2, 3, 4, 5, 6];
-  const set = nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { longPerWeek: 2, longDays: [3, 6], intervalsPerWeek: 1 } });
+  const set = nextStep({ workouts: weeks(4), today: "2026-11-02", prefs: { longPerWeek: 2, longDays: [3, 6], intervalsPerWeek: 1, restAfterLongMinutes: 0 } });
   const days = weekPlan(set, [], "2026-11-02", every);
   assert.deepEqual(days.filter((item) => item.type === "long").map((item) => item.day), ["2026-11-05", "2026-11-08"]);
   const intervals = days.filter((item) => item.type === "intervals").map((item) => item.day);
@@ -348,4 +348,42 @@ test("weekPlan keeps this week's intervals in it, the day before a longer workou
   const intervals = days.filter((item) => item.type === "intervals").map((item) => item.day);
   assert.equal(intervals.length, 1);
   assert.ok(intervals[0] < "2026-11-30" && ["2026-11-25", "2026-11-28"].includes(intervals[0]), intervals[0]);
+});
+
+test("nextWeekPlan lays out next week afresh: its longer workouts and intervals, all of it ahead", () => {
+  const plan = { long: { count: 1 }, intervals: { due: false, done: 1, max: 1, set: true }, longDone: 1, doneLong: true, ftpTest: { due: true } };
+  const next = nextWeekPlan(plan, [{ day: "2026-11-23" }], "2026-11-25", [0, 2, 4, 6]);
+  assert.deepEqual(next.checklist.map((item) => item.day), ["2026-11-30", "2026-12-02", "2026-12-04", "2026-12-06"]);
+  assert.ok(next.checklist.every((item) => item.status === "planned"));
+  const types = next.checklist.map((item) => item.type);
+  assert.equal(types.filter((type) => type === "long").length, 1);
+  assert.equal(types.filter((type) => type === "intervals").length, 1);
+  assert.ok(!types.some((type) => type?.startsWith("ftpTest")));
+  assert.deepEqual(nextWeekPlan(plan, [], "2026-11-25", []).checklist, []);
+});
+
+test("a longer workout shorter than the length set lets intervals go next to it; a swap there breaks nothing then", () => {
+  const plan = { long: { count: 1, minutes: 30 }, intervals: { due: true, done: 0, max: 1, set: true }, longDone: 0, restAfterLongMinutes: 60 };
+  // Training on Wednesday to Friday from Wednesday: the longer workout on Friday, Thursday next to it.
+  const days = weekPlan(plan, [], "2026-11-25", [2, 3, 4]);
+  assert.ok(days.some((item) => item.type === "intervals"));
+  assert.equal(longTires(plan), false);
+  assert.equal(longTires({ ...plan, long: { minutes: 60 } }), true);
+  assert.equal(longTires({ ...plan, restAfterLongMinutes: 0 }), true);
+  const swapped = [{ day: "2026-11-26", type: "long" }, { day: "2026-11-27", type: "intervals" }];
+  assert.deepEqual(planRuleBreaks(swapped, null, false), []);
+  assert.equal(planRuleBreaks(swapped, null, true)[0].rule, "afterLong");
+  assert.equal(planRuleBreaks([{ day: "2026-11-26", type: "long" }, { day: "2026-11-27", type: "ftpTestShort" }], null, false)[0].rule, "afterLong");
+});
+
+test("intervals go on the weekdays set for them, not the day after a longer workout that tires", () => {
+  const plan = { long: { count: 1, minutes: 70 }, longDays: [6], intervals: { due: true, done: 0, max: 1, set: true }, longDone: 0, restAfterLongMinutes: 60 };
+  const every = [0, 1, 2, 3, 4, 5, 6];
+  // From Monday 23 November: the longer workout on Sunday 29th.
+  const on = (intervalDays) => weekPlan({ ...plan, intervalDays }, [], "2026-11-23", every).filter((item) => item.type === "intervals").map((item) => item.day);
+  assert.deepEqual(on([4]), ["2026-11-27"]);
+  // Saturday is the day before the longer workout: allowed when set.
+  assert.deepEqual(on([5]), ["2026-11-28"]);
+  // Monday 30th is the day after it, and next week: the plan picks another day.
+  assert.notDeepEqual(on([0]), ["2026-11-30"]);
 });

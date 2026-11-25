@@ -24,11 +24,18 @@ const tenthUp = (km) => Math.ceil(km * 10 - 1e-9) / 10;
 // leans, "intense" (too little low aerobic load, or too much high aerobic or anaerobic), "easy" (too little
 // intensity) or null when balanced; intense allows one interval workout a week, easy asks for two.
 // prefs: the sport's training settings, each null or missing for the plan to work it out itself:
-// { longPerWeek: 1–3, longDays: [weekday], longTargetMinutes, longStepMinutes, usualMinutes, intervalsPerWeek: 0–3,
+// { longPerWeek: 1–3, longDays: [weekday], intervalDays: [weekday], longTargetMinutes, longStepMinutes, usualMinutes, intervalsPerWeek: 0–3,
 // intervalType: "short" | "medium" | "tempo", lighterEvery: 3–5 or 0 for never, lighterPercent: 10–40,
-// minimalMinutes: 0 for none, ftpTestWeeks: 4–12, weeklyHours, weeklyKm }. A step makes the longer workouts grow
+// minimalMinutes: 0 for none, ftpTestWeeks: 4–12, weeklyHours, weeklyKm, restAfterLongMinutes: the length from which
+// a longer workout keeps intervals off the days next to it (0: always; 60 when not set) }. A step makes the longer workouts grow
 // by minutes, not by 10 %; the target caps them.
-export const planPrefLimits = { longPerWeek: [1, 3], longTargetMinutes: [10, 240], longStepMinutes: [1, 30], usualMinutes: [5, 120], intervalsPerWeek: [0, 3], minimalMinutes: [0, 30] };
+export const planPrefLimits = { longPerWeek: [1, 3], longTargetMinutes: [10, 240], longStepMinutes: [1, 30], usualMinutes: [5, 120], intervalsPerWeek: [0, 3], minimalMinutes: [0, 30], restAfterLongMinutes: [0, 240] };
+
+// The length of a longer workout from which intervals stay off the days next to it, when not set.
+export const restAfterLongDefault = 60;
+
+// Whether the plan's longer workout is long enough to keep intervals off the days next to it.
+export const longTires = (plan) => (plan?.long?.minutes ?? Infinity) >= (plan?.restAfterLongMinutes ?? restAfterLongDefault);
 
 // The interval workouts by kind: the work and rest in minutes, the repeats from the first to the most (one more
 // every two done in the last eight weeks), and the power as shares of the FTP.
@@ -203,6 +210,8 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
     longDone,
     doneLong,
     longDays: prefs.longDays?.length ? [...prefs.longDays] : null,
+    intervalDays: prefs.intervalDays?.length ? [...prefs.intervalDays] : null,
+    restAfterLongMinutes: Number.isFinite(prefs.restAfterLongMinutes) ? prefs.restAfterLongMinutes : restAfterLongDefault,
     weekKm,
     lastWeekKm: Math.round(lastWeekKm * 10) / 10,
     thisWeekKm: Math.round(kmOf(thisWeek) * 10) / 10,
@@ -279,6 +288,8 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
   }
   for (const day of longPicks) types.set(day, "long");
   const nearLong = (day) => longPicks.some((taken) => day === addDays(taken, 1) || day === addDays(taken, -1));
+  // Intervals keep off the days next to a longer workout only once it is long enough to tire (an FTP test always).
+  const tires = longTires(plan);
   // The FTP test when due: the short one on the first usual day not after a longer workout, the 20 minutes
   // ftpTestGap days or more after it (or after the short one done), rested, so not the day after a longer one either.
   if (plan.ftpTest?.due) {
@@ -301,13 +312,14 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
   // This week's are the ones still owed: on its days if any is away from the longer workouts, else on one the day
   // before a longer workout (never the day after), rather than slipping into next week.
   const usualDays = open.filter((day) => types.get(day) === "usual" && !nearGoal(day));
-  const away = usualDays.filter((day) => !nearLong(day));
+  const away = usualDays.filter((day) => !tires || !nearLong(day));
   const thisWeekAway = away.filter((day) => day < nextMonday);
   const notAfter = usualDays.filter((day) => day < nextMonday && !longPicks.includes(addDays(day, -1)));
   const free = thisWeekAway.length ? thisWeekAway : notAfter.length ? notAfter : away;
-  const picks = [];
-  // Spread out: the middle open day first, then the one farthest from those taken.
-  for (let count = 0; count < Math.min(wanted, free.length, room); count += 1) {
+  // The weekdays set for them first, a usual day each, even the day before a longer workout (not the day after one
+  // that tires); then spread out: the middle open day first, then the one farthest from those taken.
+  const picks = usualDays.filter((day) => plan.intervalDays?.includes(weekday(day)) && (!tires || !longPicks.includes(addDays(day, -1)))).slice(0, Math.min(wanted, room));
+  for (let count = picks.length; count < Math.min(wanted, room); count += 1) {
     const rest = free.filter((day) => !picks.includes(day));
     const pick = picks.length ? rest.sort((a, b) => Math.min(...picks.map((day) => Math.abs(noon(day) - noon(b)))) - Math.min(...picks.map((day) => Math.abs(noon(day) - noon(a)))))[0] : rest[Math.floor((rest.length - 1) / 2)];
     if (!pick) break;
@@ -324,6 +336,21 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
     types.set(other, pair[0]);
   }
   return open.map((day) => ({ day, type: types.get(day) }));
+}
+
+// Next week, Monday to Sunday, laid out as this week's plan would lay it out then, for a look ahead: nothing of it
+// done yet, the intervals owed again (unless the week has none), no FTP test (when it falls is known only then).
+// Tentative: the plan works the week out anew from how this one goes. { plan, days, checklist } as weekPlan's and
+// weekChecklist's, plan the one they were laid out by.
+export function nextWeekPlan(plan, workouts, today, days, excused = {}, swaps = {}) {
+  if (!plan || !days.length) return { plan, days: [], checklist: [] };
+  const monday = addDays(mondayOf(today), 7);
+  const ahead = { ...plan, longDone: 0, doneLong: false, ftpTest: null, intervals: { ...plan.intervals, done: 0, due: (plan.intervals.max ?? 1) > 0 } };
+  return {
+    plan: ahead,
+    days: weekPlan(ahead, workouts, monday, days, excused, swaps),
+    checklist: weekChecklist(ahead, workouts, monday, days, excused, swaps),
+  };
 }
 
 // This week, Monday to Sunday, as a checklist: each training day, and any other day trained on.
@@ -346,13 +373,14 @@ export function weekChecklist(plan, workouts, today, days, excused = {}, swaps =
 
 // What a week laid out breaks of weekPlan's rules, for a swap made by hand: a hard day (intervals, an FTP test) the
 // day after a longer workout, or the 20-minute test sooner than ftpTestGap days after the short one (planned or done).
-// days: [{ day, type }] in order; shortDone: the day the short test was ridden this week, or null.
+// days: [{ day, type }] in order; shortDone: the day the short test was ridden this week, or null; tires: whether
+// the longer workout is long enough to keep intervals off the day after (an FTP test keeps off it always).
 // [{ day, rule: "afterLong" | "testGap" }]
-export function planRuleBreaks(days, shortDone = null) {
+export function planRuleBreaks(days, shortDone = null, tires = true) {
   const typeOn = new Map(days.map((item) => [item.day, item.type]));
   const breaks = [];
   for (const { day, type } of days) {
-    const hard = type === "intervals" || type?.startsWith("ftpTest");
+    const hard = (tires && type === "intervals") || type?.startsWith("ftpTest");
     if (hard && typeOn.get(addDays(day, -1)) === "long") breaks.push({ day, rule: "afterLong" });
     if (type === "ftpTest") {
       const short = days.find((item) => item.type === "ftpTestShort")?.day ?? shortDone;
