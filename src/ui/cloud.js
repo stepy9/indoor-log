@@ -352,6 +352,7 @@ export function backupFit(bytes, filename) {
 let running = null;
 export function syncNow() {
   if (!cloudConnected()) return Promise.resolve(false);
+  if (holding()) return Promise.resolve(false);
   running ??= (async () => {
     setStatus("syncing");
     try {
@@ -384,10 +385,28 @@ export function syncNow() {
   return running;
 }
 
+// What holds syncing back meanwhile (the settings with unsaved edits): those must not go up, nor what comes in
+// land under them. A sync held back runs once released.
+let holdSync = () => false;
+let held = false;
+export function setSyncHold(hold) {
+  holdSync = hold;
+}
+export function releaseSync() {
+  if (!held) return;
+  held = false;
+  syncSoon();
+}
+const holding = () => {
+  if (holdSync()) held = true;
+  return held;
+};
+
 // A change here syncs a moment later, so a run of edits goes up once.
 let pending = null;
 function syncSoon() {
   if (!cloudConnected()) return;
+  if (holding()) return;
   clearTimeout(pending);
   pending = setTimeout(syncNow, 3000);
 }

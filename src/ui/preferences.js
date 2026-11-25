@@ -75,6 +75,21 @@ function changedTimes() {
   }
 }
 
+// The times the synced keys given last changed here, to put back with their values.
+export function changedTimesOf(keys) {
+  const times = changedTimes();
+  return Object.fromEntries(keys.map((key) => [key, times[key] ?? 0]));
+}
+
+// Values put back as they were, with the times they had: undoing edits is no change of its own, so it does not
+// sync, nor win over what another device changed meanwhile.
+export function restoreDefaults(values, times = {}) {
+  try {
+    localStorage.setItem(defaultsKey, JSON.stringify({ ...savedDefaults(), ...values }));
+    localStorage.setItem(syncedChangedKey, JSON.stringify({ ...changedTimes(), ...times }));
+  } catch {}
+}
+
 export function syncedSettings() {
   const defaults = savedDefaults();
   const times = changedTimes();

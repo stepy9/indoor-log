@@ -9,6 +9,7 @@ import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
 import { byId, formatDuration, state, t } from "./context.js";
+import { showToast } from "./toast.js";
 
 
 
@@ -423,6 +424,7 @@ export function stretchBlock(entry, settings) {
       entry.stretchedExercises = plan.exercises;
       await saveEntries([entry]).catch(() => {});
       window.dispatchEvent(new Event("settings-change"));
+      showToast(t("savedSession"));
     },
   }));
   head.append(button, element("span", "field-note warmup-note", note));
@@ -455,6 +457,7 @@ export function warmupBlock(type, day = null, today = null) {
       // The day keeps the exercises done (true in logs from before), for the activity's detail.
       saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: plan.exercises } });
       window.dispatchEvent(new Event("settings-change"));
+      showToast(t("savedSession"));
     },
     intro: { title: t("warmupStart", { minutes: plan.minutes }), note: after, exercises: plan.exercises.map((id) => ({ id, seconds: plan.seconds[id] })) },
   }));
@@ -551,6 +554,7 @@ export function strengthBlock(today, { type = null, taper = null } = {}) {
     onDone: () => {
       saveDefaults({ strengthLog: { ...strengthLog(), [today]: session.doses.map((dose) => dose.id) } });
       window.dispatchEvent(new Event("settings-change"));
+      showToast(t("savedSession"));
     },
   }));
   head.append(button, element("span", "field-note warmup-note", note));

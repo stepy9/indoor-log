@@ -2,6 +2,7 @@ import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
 import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, listEntries, parseBackup, saveEntries, backupDue, sameWorkout } from "../library.js";
+import { showToast } from "./toast.js";
 import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -69,6 +70,7 @@ export function kindSelect(entry, onChange, className = "kind-select") {
     else delete entry.kind;
     await saveEntries([entry]).catch(() => {});
     onChange();
+    showToast(t("savedKind"));
   });
   return select;
 }
@@ -155,6 +157,7 @@ function renderRows() {
       if (!window.confirm(t("libraryDeleteConfirm", { name: entry.name }))) return;
       await deleteEntry(entry.id);
       renderList();
+      showToast(t("savedDeleted"));
     });
     // Editing opens the activity in the converter, where saving its FIT also puts it back here.
     const edit = iconButton(t("libraryEditTitle"), '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>');

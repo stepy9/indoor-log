@@ -9,6 +9,7 @@ import { hasTraining, planLog, scoreFor, steadyTargets } from "./score.js";
 import { scoreBadge } from "./diary.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
 import { partsText } from "./training.js";
+import { showToast } from "./toast.js";
 import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { perKgText, settingsFor } from "./settings.js";
@@ -340,6 +341,7 @@ function noteCard(entry) {
       else delete entry.note;
       await saveEntries([entry]).catch(() => {});
       card.replaceWith(noteCard(entry));
+      showToast(t(note ? "savedNote" : "savedNoteRemoved"));
     });
   });
   return card;
@@ -539,6 +541,7 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
     if (!window.confirm(t("libraryDeleteConfirm", { name: view.entry.name }))) return;
     await deleteEntry(view.entry.id);
     close();
+    showToast(t("savedDeleted"));
   });
   byId("activityNewer").addEventListener("click", () => step(-1));
   byId("activityOlder").addEventListener("click", () => step(1));

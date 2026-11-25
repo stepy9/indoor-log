@@ -9,6 +9,11 @@ export function showToast(text, seconds = 3.5) {
   toast.setAttribute("role", "status");
   toast.textContent = `✓ ${text}`;
   document.body.append(toast);
+  // In the top layer, so it shows over an open dialog (the activity detail, the exercises) too.
+  if (toast.showPopover) {
+    toast.popover = "manual";
+    toast.showPopover();
+  }
   current = toast;
   setTimeout(() => {
     toast.classList.add("is-leaving");

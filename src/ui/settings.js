@@ -1,6 +1,8 @@
 import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
-import { saveDefaults, savedDefaults } from "./preferences.js";
+import { changedTimesOf, restoreDefaults, saveDefaults, savedDefaults } from "./preferences.js";
+import { confirmDialog } from "./confirm.js";
+import { showToast } from "./toast.js";
 import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.js";
 
 // Trainers whose percentage conversion is unfolded in the settings, kept across re-renders.
@@ -11,11 +13,11 @@ import { goalFor, withGoal } from "../year-goal.js";
 import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
-import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, setFitBackup, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
+import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, releaseSync, setFitBackup, setSyncHold, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay } from "../dates.js";
 import { parseKinomapPlan, setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
-import { planPrefLimits } from "../plan.js";
+import { planPrefLimits, restAfterLongDefault } from "../plan.js";
 import { defaultKinomapNotes, defaultKinomapPlans, defaultKinomapWorkouts, planForName, stepsFromSegments } from "../training.js";
 import { editWorkoutOnShow, workoutList } from "./workouts.js";
 import { withTip } from "./info.js";
@@ -221,16 +223,19 @@ const changed = () => {
 };
 
 const snapshot = () => {
-  // Empty rather than missing, so putting it back clears what was typed into a fresh setup too.
+  // Empty rather than missing, so putting it back clears what was typed into a fresh setup too; with the times
+  // they last changed, put back with them.
   const { fitness, trainers: list } = savedDefaults();
-  return { fitness: fitness ?? {}, trainers: list ?? [] };
+  return { fitness: fitness ?? {}, trainers: list ?? [], changedAt: changedTimesOf(["fitness", "trainers"]) };
 };
+const putBack = ({ changedAt, ...values }) => restoreDefaults(values, changedAt);
 
 // Saving needs a change and no field still marked wrong; the button says which field holds it back.
 function updateSaveButton() {
   const button = byId("settingsSave");
   const wrong = byId("settingsDialog").querySelector('input[aria-invalid="true"]');
   button.disabled = !state.dirty || Boolean(wrong);
+  byId("settingsUnsaved").hidden = !state.dirty;
   button.title = wrong ? t("fieldsInvalid") : "";
 }
 
@@ -239,6 +244,7 @@ function save() {
   state.saved = true;
   byId("settingsDialog").close();
   if (!state.dirty) return;
+  showToast(t("savedSettings"));
   window.dispatchEvent(new Event("settings-change"));
   state.onTrainers();
 }
@@ -564,6 +570,9 @@ function cloudBlock() {
     let extra = [];
     if (connected) {
       const now = node("button", { type: "button", class: "outline-button" }, t("cloudSyncNow"));
+      // With unsaved edits it waits: they must not go up, nor what comes in land under them.
+      now.disabled = state.dirty;
+      if (state.dirty) now.title = t("cloudSyncAfterSave");
       now.addEventListener("click", () => syncNow());
       const off = node("button", { type: "button", class: "link-button" }, t("cloudDisconnect"));
       off.addEventListener("click", () => {
@@ -898,9 +907,11 @@ function trainingBlock(sport) {
   row(
     choice(t("settingsPlanIntervals"), t("settingsPlanIntervalsNote"), choiceRow(`plan-intervals-${sport}`, t("settingsPlanIntervals"), [0, 1, 2, 3], prefs.intervalsPerWeek, (value) => writePlan({ intervalsPerWeek: value }))),
     choice(t("settingsPlanIntervalType"), t("settingsPlanIntervalTypeNote"), choiceRow(`plan-interval-type-${sport}`, t("settingsPlanIntervalType"), ["short", "medium", "tempo"].map((value) => ({ value, label: t(`settingsPlanIntervalType_${value}`) })), prefs.intervalType, (value) => writePlan({ intervalType: value }))),
+    choice(t("settingsPlanIntervalDays"), t("settingsPlanIntervalDaysNote"), daysRow(`plan-interval-day-${sport}`, t("settingsPlanIntervalDays"), prefs.intervalDays, (list) => writePlan({ intervalDays: list }))),
   );
   row(
     choice(t("settingsPlanFtpTest"), t("settingsPlanFtpTestNote"), choiceRow(`plan-ftp-test-${sport}`, t("settingsPlanFtpTest"), [6, 8, 10].map((value) => ({ value, label: t("settingsPlanWeeks", { weeks: value }) })), prefs.ftpTestWeeks, (value) => writePlan({ ftpTestWeeks: value }), t("settingsPlanOff"))),
+    field(minutes("restAfterLongMinutes", "settingsPlanRestAfterLong", planPrefLimits.restAfterLongMinutes, String(restAfterLongDefault)), t("settingsPlanRestAfterLongNote")),
   );
   block.append(node("h5", { class: "settings-subhead" }, t("settingsSectionLighter")));
   row(
@@ -1164,7 +1175,7 @@ function keepUndo(before) {
 function restoreUnsaved() {
   try {
     const before = JSON.parse(localStorage.getItem(undoKey));
-    if (before) saveDefaults(before);
+    if (before) putBack(before);
     localStorage.removeItem(undoKey);
   } catch {}
 }
@@ -1193,12 +1204,31 @@ export function setupSettings({ onTrainers, currentSport }) {
     if (!more.contains(event.target) && !moreButton.contains(event.target)) setMoreMenu(false);
   });
   const dialog = byId("settingsDialog");
-  byId("settingsClose").addEventListener("click", () => dialog.close());
-  byId("settingsCancel").addEventListener("click", () => dialog.close());
+  // Closing without saving asks first when something changed: the changes would go.
+  const leave = async () => {
+    if (state.dirty && !(await confirmDialog({ title: t("settingsDiscardTitle"), text: t("settingsDiscardText"), ok: t("settingsDiscard"), cancel: t("settingsKeepEditing"), danger: true }))) return;
+    dialog.close();
+  };
+  byId("settingsClose").addEventListener("click", leave);
+  byId("settingsCancel").addEventListener("click", leave);
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    leave();
+  });
   byId("settingsSave").addEventListener("click", save);
+  // Syncing waits while the settings hold unsaved edits, and runs once they are saved or dropped.
+  setSyncHold(() => dialog.open && state.dirty);
+  // What a sync brought while the dialog is open without edits becomes what Cancel goes back to.
+  window.addEventListener("library-synced", () => {
+    if (!dialog.open || state.dirty) return;
+    state.before = snapshot();
+    keepUndo(state.before);
+    render();
+  });
   dialog.addEventListener("field-check", updateSaveButton);
   dialog.addEventListener("close", () => {
-    if (!state.saved && state.dirty) saveDefaults(state.before);
+    if (!state.saved && state.dirty) putBack(state.before);
     keepUndo(null);
+    releaseSync();
   });
 }
