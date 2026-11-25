@@ -56,8 +56,8 @@ const blank = (value) => value == null || (typeof value === "object" && Object.k
 
 // Each key from the side that changed it last; a blank value never wins over a filled one, whatever its time,
 // so a device that has not set anything up cannot wipe what another has. The excuses are the exception: removing
-// the last one empties them on purpose, so there the later change wins, blank or not.
-const clearable = new Set(["trainingExcuses", "routinePlan", "routineSaved"]);
+// the last one empties them on purpose (as undoing the last swap does), so there the later change wins, blank or not.
+const clearable = new Set(["trainingExcuses", "trainingSwaps", "routinePlan", "routineSaved"]);
 const dayLogs = new Set(["strengthLog", "warmupLog", "routineLog"]);
 
 // The histories of two sides joined (see history.js), each value now in force set as the one of the joined history.
