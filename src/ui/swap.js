@@ -33,9 +33,12 @@ export function openSwap(result, day, today, onDone) {
     const breaks = planRuleBreaks(after, shortDone).filter((item) => item.day === day || item.day === other.day);
     const button = node("button", { type: "button", class: "swap-option" });
     button.append(node("strong", {}, format(other.day)), node("span", {}, plannedText(plan, sport, other.type)));
-    for (const item of breaks) button.append(node("span", { class: "swap-warning" }, `⚠ ${t(`swapRule_${item.rule}`, { day: format(item.day) })}`));
+    // The day it is swapped with already: choosing it swaps back.
+    const back = other.day === current;
+    if (back) button.append(node("span", { class: "field-note" }, t("swapBack")));
+    for (const item of back ? [] : breaks) button.append(node("span", { class: "swap-warning" }, `⚠ ${t(`swapRule_${item.rule}`, { day: format(item.day) })}`));
     button.addEventListener("click", () => {
-      setSwap(sport, day, other.day, today);
+      setSwap(sport, day, back ? null : other.day, today);
       dialog.close();
       onDone?.();
     });
