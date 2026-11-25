@@ -5,6 +5,7 @@ import { planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
 import { plannedText } from "./diary.js";
 import { state, t } from "./context.js";
+import { showToast } from "./toast.js";
 
 const node = (tag, attributes = {}, text) => {
   const element = document.createElement(tag);
@@ -40,6 +41,7 @@ export function openSwap(result, day, today, onDone) {
     button.addEventListener("click", () => {
       setSwap(sport, day, back ? null : other.day, today);
       dialog.close();
+      showToast(back ? t("savedSwapUndone") : t("savedSwap", { one: format(day), other: format(other.day) }));
       onDone?.();
     });
     list.append(button);
@@ -51,6 +53,7 @@ export function openSwap(result, day, today, onDone) {
   undo.addEventListener("click", () => {
     setSwap(sport, day, null, today);
     dialog.close();
+    showToast(t("savedSwapUndone"));
     onDone?.();
   });
   const cancel = node("button", { type: "button", class: "outline-button" }, t("cancel"));

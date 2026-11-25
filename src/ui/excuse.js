@@ -1,6 +1,7 @@
 import { excuseReasons, setExcuse } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { t } from "./context.js";
+import { showToast } from "./toast.js";
 
 // Why a day went without its workout, kept with the synced settings for every sport alike:
 // { "YYYY-MM-DD": { reason, note } }.
@@ -71,6 +72,7 @@ export function openExcuse(day, onDone) {
     const last = to.value && to.value >= first ? to.value : first;
     saveDefaults({ trainingExcuses: setExcuse(excuses(), first, last, excuse) });
     dialog.close();
+    showToast(t(excuse ? "savedExcuse" : "savedExcuseRemoved"));
     onDone?.();
   };
   save.addEventListener("click", () => {

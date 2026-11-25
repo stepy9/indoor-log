@@ -290,6 +290,9 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .chart-hint { margin-left: 10px; color: var(--subtle); font-size: 12px; font-weight: 500; }
 .update-toast { position: fixed; bottom: 20px; left: 50%; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 16px; border-radius: 12px; color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 30px rgba(0, 0, 0, .25); font-size: 13px; font-weight: 600; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); }
 .update-toast[hidden] { display: none; }
+.saved-toast { color: #43b649; animation: toast-in .2s ease-out; transition: opacity .3s; }
+.saved-toast.is-leaving { opacity: 0; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
 .update-toast .outline-button { margin-top: 0; color: var(--accent); }
 .chart-frame { position: relative; }
 .chart-tip { position: absolute; top: 6px; z-index: 2; min-width: 150px; padding: 8px 10px; border-radius: 9px; background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong), 0 6px 18px rgba(0, 0, 0, .18); font-size: 12px; pointer-events: none; }
