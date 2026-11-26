@@ -338,6 +338,13 @@ let openActivity = () => {};
 
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 // Each reason for a day off by an icon, in the calendar.
+// A line in a calendar day for work done off the machine (strength, the mat, breathing): its text cut short with an
+// ellipsis inside, so the line itself does not clip the tooltip hanging from it.
+const dayMark = (text) => {
+  const mark = Object.assign(document.createElement("span"), { className: "diary-strength" });
+  mark.append(Object.assign(document.createElement("span"), { className: "diary-strength-text", textContent: text }));
+  return mark;
+};
 const excuseIcons = { illness: "🤒", injury: "🩹", fatigue: "😴", work: "💼", travel: "✈️", family: "👪", time: "⏰", rest: "🛋️", other: "💬" };
 
 // Several sports at once: their distances do not add up, so the chart counts time and is split by sport.
@@ -795,12 +802,12 @@ function renderCalendar(range, entries) {
     const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
     // Strength work done that day, from the Training tab.
-    if (savedDefaults().strengthLog?.[day]) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `💪 ${t("strengthDay")}` }), sessionTip("strength", day)));
+    if (savedDefaults().strengthLog?.[day]) cell.append(hoverTip(dayMark(`💪 ${t("strengthDay")}`), sessionTip("strength", day)));
     // The sets on the mat done that day.
     const mat = routineTip(day);
-    if (mat) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `🧎 ${t("routineDay")}` }), mat));
+    if (mat) cell.append(hoverTip(dayMark(`🧎 ${t("routineDay")}`), mat));
     const breathed = breathTip(day);
-    if (breathed) cell.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-strength", textContent: `🌬️ ${t("breathDay")}` }), breathed));
+    if (breathed) cell.append(hoverTip(dayMark(`🌬️ ${t("breathDay")}`), breathed));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {
