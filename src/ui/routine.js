@@ -98,9 +98,20 @@ function card(id, doseText, more = []) {
   const text = element("div", "recovery-text");
   text.append(nameLine(id), element("span", "recovery-dose", doseText), element("p", "", t(`recoveryHow_${id}`)));
   if (exercises[id].book) text.append(videoButton(exercises[id].book) ?? element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
-  text.append(...more);
+  text.append(button("link-button routine-try", `▶ ${t("routineTry")}`, () => tryExercise(id)), ...more);
   item.append(pictures, text);
   return item;
+}
+
+// One exercise tried in the player, to see and hear it before a set: a short pause with its spoken cue, then a
+// short go of it, one side only; two breaths of a breathing exercise. Nothing is logged.
+const trySeconds = 30;
+const tryReps = 5;
+function tryExercise(id) {
+  const exercise = exercises[id];
+  const length = exercise.pattern ? 2 * exercise.pattern.reduce((sum, [, seconds]) => sum + seconds, 0) : Math.min(exercise.seconds ?? trySeconds, trySeconds);
+  const work = { type: "work", id, side: exercise.sides > 1 ? 1 : null, ...(exercise.reps && !exercise.pattern ? { reps: Math.min(exercise.reps, tryReps) } : { seconds: length }) };
+  playSteps([{ type: "rest", seconds: 5, next: id }, work], { doneKey: "routineTryDone" });
 }
 
 // Every exercise of a group to add to the hand-made set, the group picked by its buttons; one added says how often.
