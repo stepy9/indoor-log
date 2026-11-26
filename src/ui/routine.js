@@ -10,6 +10,7 @@ import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLe
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
+import { hoverTip } from "./info.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { saveEntries } from "../library.js";
 import { byId, locale, t, zone } from "./context.js";
@@ -97,13 +98,17 @@ function card(id, doseText, more = []) {
   pictures.append(...figures(id));
   const text = element("div", "recovery-text");
   text.append(nameLine(id), element("span", "recovery-dose", doseText), element("p", "", t(`recoveryHow_${id}`)));
+  // Short labels, so all three fit in a card's row; the video's number in its tooltip.
   const video = exercises[id].book ? videoButton(exercises[id].book) : null;
+  if (video) {
+    video.textContent = `▶ ${t("videoShort")}`;
+    hoverTip(video, t("videoPlay", { video: exercises[id].book }));
+  }
   if (exercises[id].book && !video) text.append(element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
   // The buttons in one row at the card's foot, so cards side by side line them up.
   const actions = element("div", "recovery-actions");
   actions.append(...(video ? [video] : []), button("outline-button routine-try", `▶ ${t("routineTry")}`, () => tryExercise(id)), ...more);
-  text.append(actions);
-  item.append(pictures, text);
+  item.append(pictures, text, actions);
   return item;
 }
 
