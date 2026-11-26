@@ -189,7 +189,68 @@ function chart(entry, targets = null) {
     add("text", { x: x(second), y: height - 6, class: "activity-chart-label", "text-anchor": "middle" }, formatDuration(second));
   }
   add("path", { d: points.map((point, index) => `${index ? "L" : "M"}${x(point.x).toFixed(1)},${y(point.y).toFixed(1)}`).join(""), class: "activity-chart-line" });
-  card.append(head, svg);
+  // On hover a guide at the moment, a dot on the line and the app's tooltip with the time and every metric then,
+  // the one shown first; by touch a tap or a sideways drag, kept after the finger lifts until a tap elsewhere.
+  const guide = add("line", { y1: pad.top, y2: height - pad.bottom, class: "activity-chart-guide", visibility: "hidden" });
+  const dot = add("circle", { r: 4, class: "activity-chart-dot", visibility: "hidden" });
+  const others = metrics.filter((metric) => metric !== view.metric).map((metric) => [metric,
+    downsample(series(entry, metric, { axis: "time", smoothSeconds: 10 }).filter((point) => Number.isFinite(point.y)), 600)]);
+  const nearest = (list, second) => {
+    let lo = 0;
+    let hi = list.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid].x < second) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo > 0 && second - list[lo - 1].x < list[lo].x - second ? list[lo - 1] : list[lo];
+  };
+  const figure = el("div", "activity-chart-figure");
+  const tooltip = el("div", "diary-tooltip");
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.hidden = true;
+  const hide = () => {
+    tooltip.hidden = true;
+    guide.setAttribute("visibility", "hidden");
+    dot.setAttribute("visibility", "hidden");
+  };
+  const show = (event) => {
+    const box = svg.getBoundingClientRect();
+    const second = Math.min(end, Math.max(0, ((event.clientX - box.left) / box.width * width - pad.left) / (width - pad.left - pad.right) * end));
+    const point = nearest(points, second);
+    const at = x(point.x);
+    guide.setAttribute("x1", at);
+    guide.setAttribute("x2", at);
+    guide.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", at);
+    dot.setAttribute("cy", y(point.y));
+    dot.setAttribute("visibility", "visible");
+    const row = (metric, value) => {
+      const line = el("div", "diary-tooltip-row");
+      line.append(el("span", "", metricName(metric, entry.sport)), el("strong", "", metricText(value, metric, entry.sport) ?? "—"));
+      return line;
+    };
+    tooltip.replaceChildren(el("div", "diary-tooltip-when", formatDuration(point.x)), row(view.metric, point.y),
+      ...others.filter(([, list]) => list.length).map(([metric, list]) => row(metric, nearest(list, point.x).y)));
+    tooltip.hidden = false;
+    const left = (at / width) * box.width;
+    tooltip.style.left = `${Math.max(8, left + 14 + tooltip.offsetWidth > box.width - 8 ? left - tooltip.offsetWidth - 14 : left + 14)}px`;
+    tooltip.style.top = "12px";
+  };
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse") show(event);
+  });
+  svg.addEventListener("pointermove", show);
+  svg.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "mouse") hide();
+  });
+  const away = (event) => {
+    if (!card.isConnected) return document.removeEventListener("pointerdown", away);
+    if (event.pointerType !== "mouse" && !svg.contains(event.target)) hide();
+  };
+  document.addEventListener("pointerdown", away);
+  figure.append(svg, tooltip);
+  card.append(head, figure);
   if (target) card.append(el("p", "activity-chart-note", targetText(target, view.metric, entry.sport)));
   return card;
 }
