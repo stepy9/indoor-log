@@ -2096,7 +2096,13 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .routine-add-button { --control-h: var(--control-sm); }
 /* A card with buttons: the figure and the text, then the buttons across its whole width at its foot. */
 .recovery-item:has(> .recovery-actions) { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr auto; column-gap: 12px; row-gap: 8px; }
-.recovery-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+/* Three fixed places, so each button is always in the same spot: the video left, trying it in the middle, adding
+   it right; a place stays empty when its button is missing. */
+.recovery-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.recovery-actions .outline-button { width: 100%; justify-content: center; }
+.recovery-actions .video-button { grid-column: 1; }
+.recovery-actions .routine-try { grid-column: 2; }
+.recovery-actions .routine-add-button { grid-column: 3; }
 .recovery-actions .outline-button { --control-h: var(--control-sm); margin: 0; }
 @media (min-width: 901px) {
   .routine-layout { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
