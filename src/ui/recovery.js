@@ -497,6 +497,7 @@ export function openExercises() {
     document.body.classList.add("is-exercises-page");
     dialog.show();
     window.scrollTo({ top: 0 });
+    if (location.hash !== "#exercises") history.pushState({ tab: "exercises" }, "", "#exercises");
   }
 }
 
@@ -509,12 +510,34 @@ export function setupExercises(beforeOpen = () => {}) {
     beforeOpen();
     openExercises();
   });
-  byId("exercisesClose").addEventListener("click", () => dialog.close());
-  // Leaving the page for another tab closes it; the page's marks go with it.
+  // Its close button goes a step back, as the browser's would; without one to go back to, the tab under it is named.
+  let byButton = false;
+  byId("exercisesClose").addEventListener("click", () => {
+    byButton = true;
+    dialog.close();
+    if (location.hash !== "#exercises") return;
+    if (history.state?.tab === "exercises") history.back();
+    else history.replaceState(null, "", `#${savedDefaults().appView ?? "diary"}`);
+  });
+  // Leaving the page for another tab closes it; the page's marks go with it. The tab under it, clicked, becomes the
+  // address's step (another tab puts its own).
   for (const button of document.querySelectorAll("[data-app-view], #addButton")) {
-    button.addEventListener("click", () => { if (dialog.open && !dialog.matches(":modal")) dialog.close(); });
+    button.addEventListener("click", () => {
+      if (!dialog.open || dialog.matches(":modal")) return;
+      dialog.close();
+      const name = button.dataset.appView;
+      if (name && location.hash === "#exercises" && name === savedDefaults().appView) history.pushState({ tab: name }, "", `#${name}`);
+    });
   }
+  // Back and forward open and close it as its address comes and goes.
+  window.addEventListener("popstate", () => {
+    if (location.hash === "#exercises" && !dialog.open) openExercises();
+    else if (location.hash !== "#exercises" && dialog.open && !dialog.matches(":modal")) dialog.close();
+  });
   dialog.addEventListener("close", () => {
+    // Closed another way (a set started from it): the address names the tab under it again, in the same step.
+    if (!byButton && location.hash === "#exercises") history.replaceState({ tab: savedDefaults().appView ?? "diary" }, "", `#${savedDefaults().appView ?? "diary"}`);
+    byButton = false;
     if (!document.body.classList.contains("is-exercises-page")) return;
     document.body.classList.remove("is-exercises-page");
     byId("navExercisesButton")?.setAttribute("aria-pressed", "false");

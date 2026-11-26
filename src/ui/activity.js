@@ -543,6 +543,7 @@ function show(entry) {
 
 function compare(other = null) {
   const entry = view.entry;
+  leaving = true;
   close();
   onCompare(entry, other);
 }
@@ -555,6 +556,8 @@ function step(by) {
   history.replaceState(history.state, "", `#a=${encodeURIComponent(next.id)}`);
 }
 
+// Set while the detail closes to go on elsewhere (comparison, editing) rather than back.
+let leaving = false;
 function close() {
   if (dialog.open) dialog.close();
 }
@@ -580,6 +583,7 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
   byId("activityCompare").addEventListener("click", () => compare());
   byId("edit").addEventListener("click", () => {
     const entry = view.entry;
+    leaving = true;
     close();
     onEdit(entry);
   });
@@ -597,6 +601,12 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
     if (event.key === "ArrowRight") step(-1);
   });
   dialog.addEventListener("close", () => {
+    // Left for the comparison or the editing: the detail's step is taken over by where it went, not gone back from.
+    if (leaving) {
+      leaving = false;
+      if (location.hash.startsWith("#a=")) history.replaceState(null, "", location.pathname + location.search);
+      return;
+    }
     if (location.hash.startsWith("#a=")) {
       if (history.state?.activity) history.back();
       else history.replaceState(null, "", location.pathname + location.search);

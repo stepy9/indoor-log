@@ -972,7 +972,11 @@ let currentView = "converter";
 // Where saving or leaving an activity goes back to: the tab open before it.
 let returnView = "diary";
 
-function showView(name) {
+// The tabs that have an address of their own (#diary…), each a step back and forward in the browser's history.
+const addressTabs = ["diary", "training", "trend", "fitness", "compare"];
+
+// record: put the tab in the address as a new step of the history (false when the history itself moved there).
+function showView(name, { record = true } = {}) {
   const converterViews = ["setupView", "workspaceView"];
   if (currentView === "converter" && name !== "converter") {
     previousView = converterViews.find((id) => !byId(id).hidden) ?? previousView;
@@ -982,6 +986,11 @@ function showView(name) {
   if (name === "converter" && currentView !== "converter") returnView = currentView;
   currentView = name;
   if (name !== "converter") saveDefaults({ appView: name });
+  // An address with no tab yet, or the activity's detail just left for this tab, is taken over rather than added to.
+  if (name !== "converter" && record && location.hash !== `#${name}`) {
+    const replace = !location.hash || location.hash.startsWith("#a=");
+    history[replace ? "replaceState" : "pushState"]({ tab: name }, "", `#${name}`);
+  }
   byId("addButton").setAttribute("aria-pressed", String(name === "converter"));
   byId("compareView").hidden = name !== "compare" && name !== "trend";
   if (name === "compare" || name === "trend") {
@@ -1059,10 +1068,23 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
   showTrainingTab();
   window.addEventListener("settings-change", showTrainingTab);
   window.addEventListener("synced-settings-change", showTrainingTab);
-  // A reload opens the comparison, the diary or the trend again when one was open; the converter is where the page starts anyway.
+  // The page opens on the tab its address names, else on the one open last, the diary at first; adding an activity
+  // is a step of its own, not a place to open on. #exercises opens that page over the tab open last.
   const remembered = savedDefaults().appView;
-  // The page opens on the tab open last, the diary at first; adding an activity is a step of its own, not a place to open on.
-  queueMicrotask(() => showView(["compare", "diary", "trend", "fitness", "training"].includes(remembered) ? remembered : "diary"));
+  const named = location.hash.slice(1);
+  const first = addressTabs.includes(named) ? named : addressTabs.includes(remembered) ? remembered : "diary";
+  queueMicrotask(() => {
+    showView(first, { record: false });
+    if (!location.hash) history.replaceState({ tab: first }, "", `#${first}`);
+    if (named === "exercises") byId("exercisesButton").click();
+  });
+  // Back and forward between tabs; an activity not saved yet asks first.
+  window.addEventListener("popstate", async () => {
+    const name = location.hash.slice(1);
+    if (!addressTabs.includes(name) || name === currentView) return;
+    if (currentView === "converter" && !(await canLeave())) return;
+    showView(name, { record: false });
+  });
   byId("trendMetric").addEventListener("change", (event) => {
     view.trendMetric = event.target.value;
     view.hoverX = null;
