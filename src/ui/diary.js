@@ -860,7 +860,7 @@ function renderCalendar(range, entries) {
     });
     return button;
   };
-  // Each row closes with its week's sum over the days shown: the distance and time ridden, then how many times
+  // Under each week's number its sum over the days shown: the distance and time ridden, then how many times
   // strength, the mat and breathing were done. Empty for a week with nothing.
   const sumCell = (week) => {
     const shown = week.filter((day) => day >= range[0] && day < range[1]);
@@ -882,10 +882,13 @@ function renderCalendar(range, entries) {
     return cell;
   };
   const rows = [];
-  for (let index = 0; index < cells.length; index += 7) rows.push(weekCell(days[index]), ...cells.slice(index, index + 7), sumCell(days.slice(index, index + 7)));
+  for (let index = 0; index < cells.length; index += 7) {
+    const week = Object.assign(document.createElement("div"), { className: "diary-week" });
+    week.append(weekCell(days[index]), sumCell(days.slice(index, index + 7)));
+    rows.push(week, ...cells.slice(index, index + 7));
+  }
   const corner = Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: t("diaryWeekShort") });
-  const sumHead = Object.assign(document.createElement("div"), { className: "diary-weekday diary-week-sum-head", textContent: t("diaryWeekSum") });
-  byId("diaryCalendar").replaceChildren(corner, ...head, sumHead, ...rows);
+  byId("diaryCalendar").replaceChildren(corner, ...head, ...rows);
   byId("diaryCalendar").classList.toggle("is-week", view.period === "week");
 }
 
