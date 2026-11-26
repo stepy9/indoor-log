@@ -1218,7 +1218,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .diary-head .diary-filters > .segmented { grid-column: 1 / -1; grid-row: 1; display: flex; }
   .diary-head .diary-filters > .segmented button { flex: 1; }
   .diary-head .diary-filters select { width: 100%; height: 40px; }
-  .diary-head .diary-filters > select:last-child, .diary-head .diary-filters > select:only-of-type:not(:has(+ label)) { grid-column: 1 / -1; }
+  .diary-head .diary-filters > select:last-child, .diary-head .diary-filters > select:only-of-type:not(:has(+ label)), .diary-head .diary-filters > select:has(+ label[hidden]) { grid-column: 1 / -1; }
 }
 
 /* The comparison's picker: on a desktop its title is plain text; on a phone it folds to one line with the count picked. */
