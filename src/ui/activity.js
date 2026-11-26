@@ -602,18 +602,25 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
       else history.replaceState(null, "", location.pathname + location.search);
     }
   });
+  // Back closes the detail; forward (or an address typed with #a=) opens the activity it names.
   window.addEventListener("popstate", () => {
     if (!location.hash.startsWith("#a=")) close();
+    else openFromAddress();
   });
   window.addEventListener("settings-change", () => dialog.open && render());
   // A link straight to an activity opens it once the library is there.
+  openFromAddress();
+}
+
+// The activity the address names (#a=<id>), opened unless it already shows; an unknown one is taken off the address.
+function openFromAddress() {
   const match = location.hash.match(/^#a=(.+)$/);
-  if (match) {
-    const id = decodeURIComponent(match[1]);
-    listEntries().then((entries) => {
-      const entry = entries.find((other) => String(other.id) === id);
-      if (entry) openActivity(entry);
-      else history.replaceState(null, "", location.pathname + location.search);
-    }).catch(() => {});
-  }
+  if (!match) return;
+  const id = decodeURIComponent(match[1]);
+  if (dialog.open && String(view.entry?.id) === id) return;
+  listEntries().then((entries) => {
+    const entry = entries.find((other) => String(other.id) === id);
+    if (entry) openActivity(entry);
+    else history.replaceState(null, "", location.pathname + location.search);
+  }).catch(() => {});
 }
