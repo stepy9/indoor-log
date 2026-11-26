@@ -174,10 +174,16 @@ function chart(entry, targets = null) {
       if (index) add("line", { x1: x(from), x2: x(from), y1: 8, y2: height - pad.bottom, class: `activity-chart-split is-${type}` });
     });
   }
-  for (const value of [low + (high - low) * 0.1, (low + high) / 2, high - (high - low) * 0.1]) {
+  // Round values on the axis (1, 2 or 5 times a power of ten apart), so a label sits where its number is.
+  const rough = (high - low) / 4;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const tick = [1, 2, 5, 10].map((factor) => factor * power).find((candidate) => candidate >= rough);
+  const ticks = [];
+  for (let value = Math.ceil(low / tick) * tick; value <= high; value += tick) ticks.push(value);
+  for (const value of ticks) {
     add("line", { x1: pad.left, x2: width - pad.right, y1: y(value), y2: y(value), class: "activity-chart-grid" });
     add("text", { x: pad.left - 6, y: y(value) + 4, class: "activity-chart-label", "text-anchor": "end" },
-      view.metric === "pace" && entry.sport !== "cycling" ? formatDuration(value) : displayNumber(value, view.metric === "pace" ? 1 : 0));
+      view.metric === "pace" && entry.sport !== "cycling" ? formatDuration(value) : displayNumber(value, tick < 1 ? 1 : 0));
   }
   if (target?.range) {
     add("rect", { x: pad.left, width: width - pad.left - pad.right, y: Math.min(y(target.range[0]), y(target.range[1])), height: Math.abs(y(target.range[0]) - y(target.range[1])), class: "activity-chart-target" });
@@ -227,7 +233,9 @@ function chart(entry, targets = null) {
     dot.setAttribute("visibility", "visible");
     const row = (metric, value) => {
       const line = el("div", "diary-tooltip-row");
-      line.append(el("span", "", metricName(metric, entry.sport)), el("strong", "", metricText(value, metric, entry.sport) ?? "—"));
+      // Cadence to a tenth: the line is smoothed, and a rounded 20 could sit just under a band from 20.
+      const text = metric === "cadence" ? unit(value, cadenceUnit(entry.sport), 1) : metricText(value, metric, entry.sport);
+      line.append(el("span", "", metricName(metric, entry.sport)), el("strong", "", text ?? "—"));
       return line;
     };
     tooltip.replaceChildren(el("div", "diary-tooltip-when", formatDuration(point.x)), row(view.metric, point.y),
