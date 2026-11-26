@@ -123,13 +123,11 @@ export function figureMarkup(view, { hold = false, frame = null, className = "re
   }
   // The breath with a move there and back: breathing[i] is taken on the way into pose i, so the first half of the
   // cycle shows breathing[1], the second breathing[0]. words: { in, out }, in the app's language.
-  if (breathing && words && frame == null && !hold && view.poses.length === 2) {
-    const label = (phase, first) => {
-      const arrow = phase === "in" ? "↑" : "↓";
-      const values = first ? "1;0;0" : "0;1;1";
-      return `<text class="breath-cue is-${phase}" x="214" y="16" text-anchor="end">${arrow} ${words[phase]}<animate attributeName="opacity" dur="${how.dur}" repeatCount="indefinite" calcMode="discrete" keyTimes="0;.5;1" values="${values}"/></text>`;
-    };
-    body.push(label(breathing[1], true), label(breathing[0], false));
+  // A hold is paced instead: calmly in for 4 s and out for 6 s, whatever the figure does.
+  const label = (phase, values, dur, keyTimes) => `<text class="breath-cue is-${phase}" x="214" y="16" text-anchor="end">${phase === "in" ? "↑" : "↓"} ${words[phase]}<animate attributeName="opacity" dur="${dur}" repeatCount="indefinite" calcMode="discrete" keyTimes="${keyTimes}" values="${values}"/></text>`;
+  if (words && frame == null) {
+    if (breathing && !hold && view.poses.length === 2) body.push(label(breathing[1], "1;0;0", how.dur, "0;.5;1"), label(breathing[0], "0;1;1", how.dur, "0;.5;1"));
+    else if (hold) body.push(label("in", "1;0;0", "10s", "0;.4;1"), label("out", "0;1;1", "10s", "0;.4;1"));
   }
   const defs = view.arrows?.length ? `<defs><marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="move-arrow-head"/></marker></defs>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170" class="${className}" aria-hidden="true">${defs}${body.join("")}</svg>`;

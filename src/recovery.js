@@ -5,6 +5,7 @@
 
 import { dayMs, mondayOf, noon } from "./dates.js";
 import { routineExercises } from "./routine-exercises.js";
+import { breathPhases } from "./breathing.js";
 
 // A pose of the side-view figure in a 220 × 170 box, the mat's top at y 150: the trunk from the hip through a
 // control point to the shoulder, the neck's end and the head's centre, arms and legs as joint lists from the
@@ -289,6 +290,8 @@ export const exercises = {
   // The sets put together on demand: mobility, flexibility and yin yoga (routine-exercises.js).
   ...routineExercises,
 };
+// The breath with each move (breathing.js): its phases for the figure, and a spoken cue of its own.
+for (const [id, phases] of Object.entries(breathPhases)) exercises[id] = { ...exercises[id], breathing: phases, breath: true };
 
 // The views an exercise is drawn in, for figure-svg.js: its side view first (on the mat, by its wall and props,
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,

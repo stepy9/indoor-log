@@ -7,6 +7,7 @@ import { element } from "./dom.js";
 import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
+import { breathKind } from "../breathing.js";
 import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
@@ -147,8 +148,9 @@ function announce(coming) {
   // The first exercise of the last of several rounds says so first.
   const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
   const lastRound = rounds > 1 && coming.round === rounds && !player.list.slice(0, player.list.indexOf(coming)).some((item) => item.type === "work" && item.round === rounds);
-  // A pilates move says how to breathe with it.
-  const breath = exercises[coming.id].breath ? ` ${t(`recoveryBreath_${coming.id}`)}` : "";
+  // How to breathe with it: its own cue, else one for its kind (none for the breathing exercises).
+  const kind = breathKind(coming.id, exercises[coming.id]);
+  const breath = exercises[coming.id].breath ? ` ${t(`recoveryBreath_${coming.id}`)}` : kind ? ` ${t(`breathKind_${kind}`)}` : "";
   speak(`${lastRound ? `${t("speakLastRound")} ` : ""}${t("speakNext", { name })}${side}. ${amount}.${breath}`);
 }
 
