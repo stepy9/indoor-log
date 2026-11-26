@@ -2124,7 +2124,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
   .routine-layout .routine-side > *, .routine-main { flex: 1 1 100%; min-width: 0; }
   .routine-panel .routine-main { margin-top: 12px; }
   .routine-actions .routine-name { flex: 1 1 0; margin-top: 8px; }
-  .routine-actions #routineSave { flex: none; margin-top: 8px; }
+  .routine-actions > .outline-button { flex: none; margin-top: 8px; }
   .routine-actions .routine-start { --control-h: var(--control-lg); border-color: var(--accent-fill); color: #fff; background: var(--accent-fill); font-size: var(--fs-lg); box-shadow: var(--shadow-pop); order: 99; position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 3; margin-top: 12px; }
 }
 /* The Set tab on a wide screen: the choices in a column at the left, staying in view, the cards beside them. */
