@@ -1,3 +1,4 @@
+import { mean } from "./stats.js";
 import { calorieProfileOn, heartRateCalories } from "./core.js";
 import { cleanTitle } from "./files.js";
 import { isExportedFit, levelFromFit } from "./fit.js";
@@ -45,7 +46,7 @@ export function entryFromWorkout(workout, { name = workout.activityName, savedAt
 
 const fitSports = { rowing: "rowing", cycling: "cycling", running: "running" };
 const finite = (list) => list.filter(Number.isFinite);
-const average = (list) => (list.length ? Math.round(list.reduce((sum, value) => sum + value, 0) / list.length) : null);
+const average = (list) => (list.length ? Math.round(mean(list)) : null);
 const highest = (list) => (list.length ? Math.max(...list) : null);
 
 // An export's name, tidied like a new conversion's: "Kinomap - _ Easy" becomes "Kinomap - Easy".

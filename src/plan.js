@@ -4,15 +4,11 @@
 // workouts a week that grow slowly. Holds back when the heart drifts, the form is low or the fitness climbs fast.
 // No DOM here, so all of it is tested on its own.
 
+import { mean, median } from "./stats.js";
 import { addDays, dayMs, mondayOf, noon, weekdayOf } from "./dates.js";
 
 export { mondayOf };
 
-const median = (values) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-};
 // Up to the next tenth of a kilometre, so a target is a distance a video can have.
 const tenthUp = (km) => Math.ceil(km * 10 - 1e-9) / 10;
 
@@ -111,9 +107,9 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   if (shortSleep) holds.push("shortSleep");
   if (form < -20) holds.push("tired");
   if (ramp > 5) holds.push("ramp");
-  if (drifts.length && drifts.reduce((sum, value) => sum + value, 0) / drifts.length > 5) holds.push("drift");
+  if (drifts.length && mean(drifts) > 5) holds.push("drift");
   const hardShares = recentSteady.map((workout) => workout.hardShare).filter(Number.isFinite);
-  const tooHard = hardShares.length > 0 && hardShares.reduce((sum, value) => sum + value, 0) / hardShares.length > 0.3;
+  const tooHard = hardShares.length > 0 && mean(hardShares) > 0.3;
 
   // The usual workout: the time set, else the median of late.
   const kmFor = (minutes) => minutes * 60 * speed;
@@ -490,7 +486,7 @@ export function suggestedLevels(workouts, heartRange, today) {
     let best = null;
     for (const [level, rates] of byLevel) {
       if (rates.length < 2) continue;
-      const off = Math.abs(rates.reduce((sum, value) => sum + value, 0) / rates.length - middle);
+      const off = Math.abs(mean(rates) - middle);
       if (!best || off < best.off) best = { level, off };
     }
     steady = best?.level ?? null;

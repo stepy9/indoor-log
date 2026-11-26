@@ -2,6 +2,7 @@
 // each week's plan against what was ridden, and the run of days ridden. The plan of each day is kept as it
 // stood before the day (logPlan), as the plan itself moves on with every workout. No DOM here.
 
+import { mean } from "./stats.js";
 import { addDays, dayMs, mondayOf, noon } from "./dates.js";
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const round = (value) => Math.round(value);
@@ -196,7 +197,7 @@ export function weekAdherence(log, workouts, monday, today, excuses = {}) {
     excused: days.filter((day) => log[day] && excuses[day] && !riddenOn(day)).length,
     long: [Math.min(longDone, Math.max(longPlanned, longDone)), longPlanned],
     intervals: [intervalsDone, count("intervals")],
-    score: scores.length ? round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null,
+    score: scores.length ? round(mean(scores)) : null,
   };
 }
 
@@ -245,7 +246,7 @@ export function zoneTwoTrend(points) {
   if (sorted.length < 4) return { points: sorted, perFourWeeks: null };
   const xs = sorted.map((point) => noon(point.day) / dayMs);
   if (xs.at(-1) - xs[0] < 14) return { points: sorted, perFourWeeks: null };
-  const meanX = xs.reduce((sum, value) => sum + value, 0) / xs.length;
+  const meanX = mean(xs);
   const meanY = sorted.reduce((sum, point) => sum + point.watts, 0) / sorted.length;
   const slope = xs.reduce((sum, x, index) => sum + (x - meanX) * (sorted[index].watts - meanY), 0) / xs.reduce((sum, x) => sum + (x - meanX) ** 2, 0);
   return { points: sorted, perFourWeeks: Math.round(slope * 28 * 10) / 10 };

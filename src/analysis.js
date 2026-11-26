@@ -1,3 +1,4 @@
+import { mean } from "./stats.js";
 import { noon } from "./dates.js";
 import { detectIntervals } from "./core.js";
 import { dayKey, periodRange } from "./diary.js";
@@ -148,7 +149,7 @@ function clearRests(entry) {
 }
 
 const finiteValues = (list) => list.filter(Number.isFinite);
-const average = (list) => (list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : null);
+const average = mean;
 
 // Kinds a workout can have; the data tells intervals from steady and the name a test, the rest are picked by hand.
 export const workoutKinds = ["steady", "intervals", "tempo", "test", "race", "recovery"];
@@ -332,7 +333,7 @@ export function groupTrend(points, period, metric, sport, timeZone) {
 export function movingAverage(values, size) {
   return values.map((_, index) => {
     const window = values.slice(Math.max(0, index + 1 - size), index + 1);
-    return window.reduce((sum, value) => sum + value, 0) / window.length;
+    return mean(window);
   });
 }
 

@@ -1,4 +1,5 @@
 // Flags data problems in a built workout before export; nothing here changes the exported data.
+import { median } from "./stats.js";
 import { pauseGapSeconds } from "./fit.js";
 
 const heartRateGapSeconds = 15;
@@ -13,10 +14,6 @@ const activePowerShare = 0.5;
 // Missed effort at this share of the typical power or more is the workout itself, not an easy warm-up or cool-down.
 const workPowerShare = 0.9;
 
-const median = (values) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[sorted.length >> 1];
-};
 
 // Distance trained outside the exported window: all active effort, and the part at full workout intensity.
 function missedDistance(sourceRecords, window) {

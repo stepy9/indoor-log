@@ -1,3 +1,4 @@
+import { mean } from "./stats.js";
 import { addDays } from "./diary.js";
 import { start } from "./history.js";
 
@@ -16,7 +17,6 @@ export const hrvDays = (history) => (history ?? [])
   .map((record) => ({ day: record.from, value: record.value }))
   .sort((a, b) => a.day.localeCompare(b.day));
 
-const mean = (list) => list.reduce((sum, value) => sum + value, 0) / list.length;
 
 // How the HRV stands on the day: { average, low, high, status } with status "low", "balanced" or "high";
 // the average alone (status null) without enough days for the range, null without enough for the week.

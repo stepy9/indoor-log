@@ -1,3 +1,4 @@
+import { mean } from "../stats.js";
 import { cadenceUnit } from "./units.js";
 import { detectIntervals, kinomapPlanText, parseKinomapPlan } from "../core.js";
 import { checkNumber, markField } from "./validate.js";
@@ -34,7 +35,7 @@ function parseOffset(text) {
 
 function average(records, field, fromMs, toMs) {
   const numbers = records.filter((record) => record.timeMs >= fromMs && record.timeMs < toMs).map((record) => record[field]).filter(Number.isFinite);
-  return numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null;
+  return mean(numbers);
 }
 
 // The pasted plan as a table of its steps before it is loaded; the box grows with the plan, up to 16 lines.

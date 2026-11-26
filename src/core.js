@@ -1,3 +1,4 @@
+import { mean } from "./stats.js";
 import { XMLParser } from "fast-xml-parser";
 import { decodeGarminFit, encodeFit, pauseGapSeconds } from "./fit.js";
 
@@ -193,8 +194,8 @@ function interpolate(records, timeMs, field, maxGapSeconds = pauseGapSeconds) {
 }
 
 function correlation(left, right) {
-  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length;
-  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length;
+  const leftMean = mean(left);
+  const rightMean = mean(right);
   let numerator = 0;
   let leftVariance = 0;
   let rightVariance = 0;
@@ -270,7 +271,6 @@ export function heartRateCalories(avgHeartRate, seconds, { sex, age, weight } = 
   return Math.max(0, perMinute) * seconds / 60;
 }
 
-const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 const values = (records, field) => records.map((record) => record[field]).filter(Number.isFinite);
 
 export const defaultLapDistances = { rowing: 500, running: 1000, cycling: 5000 };

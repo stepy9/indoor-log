@@ -1,3 +1,4 @@
+import { median } from "./stats.js";
 import { addDays } from "./diary.js";
 import { start } from "./history.js";
 
@@ -13,11 +14,6 @@ const restMin = 7;
 
 const dated = (history) => (history ?? []).filter((record) => !record.deleted && record.from && record.from !== start && Number.isFinite(record.value));
 
-const median = (list) => {
-  const sorted = [...list].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-};
 
 // The signs on the day: { temperature, restRise } (restRise null without a usual to tell it by), or null without them.
 export function illnessSigns(history, day) {

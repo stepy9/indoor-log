@@ -1,3 +1,4 @@
+import { mean } from "../stats.js";
 import { node, svgNode } from "./dom.js";
 import { noon, todayKey } from "../dates.js";
 import { breathTip, routineBlock, routineTip } from "./routine.js";
@@ -67,7 +68,7 @@ function adherenceCard(sport, workouts, log) {
   const recent = weeks.slice(-4);
   const share = adherenceShare(recent);
   const scores = workouts.filter((workout) => workout.day > addDays(now, -28) && Number.isFinite(workout.score)).map((workout) => workout.score);
-  const average = scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null;
+  const average = scores.length ? Math.round(mean(scores)) : null;
   const streak = dayStreak(workouts.map((workout) => workout.day), now, excused);
   const tiles = node("div", { class: "diary-tiles training-tiles" });
   const tile = (label, value, note) => {
