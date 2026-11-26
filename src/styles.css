@@ -358,7 +358,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .batch-header .estimate-note { margin-right: auto; }
 #batchApplyButton { font-size: 13px; }
 #batchApplyButton:disabled { opacity: .45; cursor: default; }
-.batch-to-folder { align-self: center; min-height: 38px; margin-top: 0; padding-inline: 16px; border-radius: 11px; color: var(--ink); font-weight: 700; }
+.batch-to-folder { align-self: center; margin-top: 0; }
 .batch-to-folder:disabled { opacity: .5; pointer-events: none; }
 .batch-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
 .batch-tab { position: relative; flex: 0 0 196px; scroll-snap-align: start; }
@@ -397,7 +397,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 700; letter-spac
 .start-stamp span { color: var(--muted); font-size: 12px; }
 .start-stamp strong { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .export-button { border-color: var(--accent); color: #fff; background: var(--accent); }
-.setup-actions .export-button { --control-h: var(--control-lg); padding: 0 22px; font-size: 15px; }
+:is(.setup-actions, .export-actions) > button { --control-h: var(--control-lg); padding: 0 22px; font-size: 15px; }
 .export-button span[aria-hidden="true"]:last-child { font-size: 1.3em; }
 .export-button:not(:disabled):hover { border-color: var(--accent-hover); background: var(--accent-hover); }
 
@@ -1131,11 +1131,10 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .library-table td:nth-child(5) { grid-column: 5 / 7; grid-row: 2; color: var(--muted); font-size: 12px; text-align: right; }
   .library-table td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; color: var(--muted); font-size: 12px; }
   .library-dialog .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-  .library-dialog .dialog-actions > * { width: 100%; min-height: 42px; margin: 0; justify-content: center; text-align: center; }
+  .library-dialog .dialog-actions > * { width: 100%; margin: 0; justify-content: center; text-align: center; }
   .library-dialog .dialog-spacer { display: none; }
   #libraryAddButton { grid-column: 1 / -1; order: -1; }
-  #libraryClearButton { grid-column: 1 / -1; order: 1; border: 1px solid color-mix(in srgb, var(--danger-ink) 55%, transparent); border-radius: 10px; color: var(--danger-ink); background: color-mix(in srgb, var(--danger-ink) 8%, transparent); text-decoration: none; }
-  #libraryClearButton:disabled { opacity: .45; }
+  #libraryClearButton { grid-column: 1 / -1; order: 1; border: 1px solid color-mix(in srgb, var(--danger-ink) 55%, transparent); border-radius: var(--control-radius); color: var(--danger-ink); background: color-mix(in srgb, var(--danger-ink) 8%, transparent); text-decoration: none; }
   #libraryCancel, #librarySave { order: 2; }
 }
 
@@ -1152,7 +1151,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   #lapResistanceDialog .laps-table th, #lapResistanceDialog .laps-table td { padding: 6px 6px; }
   #lapResistanceDialog .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #lapResistanceDialog .dialog-spacer { display: none; }
-  #lapResistanceDialog .dialog-actions > * { width: 100%; min-height: 42px; justify-content: center; }
+  #lapResistanceDialog .dialog-actions > * { width: 100%; justify-content: center; }
 }
 
 /* The calendar: on a phone each activity is a coloured tag with its kilometres, the rest stays on the desktop. */
@@ -1389,7 +1388,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .add-button span { display: none; }
 }
 /* Save matches Save and download in size, outlined beside the filled one; on a phone they share the row equally. */
-.export-actions #saveLibraryButton { min-height: 46px; margin: 0; padding: 0 22px; border-radius: 11px; font-size: 15px; font-weight: 700; }
+.export-actions > button { margin: 0; }
 @media (max-width: 640px) {
   .export-actions { flex-wrap: nowrap; }
   .export-actions > * { flex: 1 1 0; justify-content: center; padding-inline: 12px; }
@@ -1648,7 +1647,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   #intervalsDialog .intervals-table .link-button { padding: 6px 10px; font-size: 22px; }
   #intervalsDialog .dialog-actions { flex-wrap: wrap; gap: 8px; }
   #intervalsDialog .dialog-actions .dialog-spacer { flex: 1 0 100%; height: 0; }
-  #intervalsDialog .dialog-actions #intervalsCancel, #intervalsDialog .dialog-actions #intervalsSave { flex: 1; justify-content: center; min-height: 42px; }
+  #intervalsDialog .dialog-actions #intervalsCancel, #intervalsDialog .dialog-actions #intervalsSave { flex: 1; justify-content: center; }
 }
 /* Phones: a card table whose head row sits straight in the table (the converter's laps) leaves it out too. */
 @media (max-width: 640px) { .card-table tr:has(> th) { display: none; } }
@@ -1838,7 +1837,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .recovery-intro-list { display: grid; gap: 8px; margin: 12px 0 16px; padding: 0; list-style: none; counter-reset: step; }
 .recovery-intro-item { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
 .recovery-intro-item .recovery-figure { flex: none; width: 76px; height: auto; }
-.recovery-intro-start { width: 100%; min-height: 48px; }
+.recovery-intro-start { width: 100%; --control-h: var(--control-lg); }
 @media (max-width: 640px) {
   .recovery-player-intro { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .recovery-player-intro[hidden] { display: none; }
@@ -1846,7 +1845,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 }
 
 /* A set finished closes by its own button under the tick, not by the corner's cross. */
-.recovery-finish { display: none; width: 100%; min-height: 48px; }
+.recovery-finish { display: none; width: 100%; --control-h: var(--control-lg); }
 .recovery-player.is-done .recovery-finish { display: block; }
 .recovery-player.is-done .recovery-player-head .settings-close { visibility: hidden; }
 
