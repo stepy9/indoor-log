@@ -9,7 +9,7 @@ import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLe
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
-import { saveDefaults, savedDefaults } from "./preferences.js";
+import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { listEntries, saveEntries } from "../library.js";
 import { byId, locale, t, zone } from "./context.js";
 import { showToast } from "./toast.js";
@@ -21,7 +21,6 @@ const button = (className, text, onClick, label = null) => {
   item.addEventListener("click", onClick);
   return item;
 };
-const changed = () => window.dispatchEvent(new Event("settings-change"));
 // The day's last rowing workout not yet stretched after, which a stretching done here ticks as the Today card's does.
 const unstretched = async (day) => (await listEntries().catch(() => [])).filter((entry) => entry.sport === "rowing" && !entry.stretched && dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
 
@@ -143,7 +142,7 @@ function renderSaved() {
       const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
       if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("libraryDelete"), danger: true }))) return;
       saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
-      changed();
+      settingsChanged();
       render();
       showToast(t("savedSetRemoved"));
     }, t("routineRemove"));
@@ -159,7 +158,7 @@ function renderSaved() {
     days.append(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
       const day = button("", weekdayName(weekday), () => {
         saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, { style: "saved", saved: entry.id }) });
-        changed();
+        settingsChanged();
         render();
         showToast(t("savedRoutinePlan"));
       });
@@ -231,7 +230,7 @@ function render() {
   byId("routinePlanDays").replaceChildren(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
     const day = button("", weekdayName(weekday), () => {
       saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, (({ day, strengthSteps, ...kept }) => kept)(current(choice()))) });
-      changed();
+      settingsChanged();
       render();
       showToast(t("savedRoutinePlan"));
     });
@@ -281,7 +280,7 @@ function askFeel(set, day) {
         saveDefaults({ stabilityLog: log, routine: { ...choice(), levels: { ...choice().levels, [chain]: next.level } } });
         for (const item of buttons.children) item.setAttribute("aria-pressed", String(item.dataset.feel === feel));
         result.textContent = next.change > 0 ? t("feelUp", { level: next.level }) : next.change < 0 ? t("feelDown", { level: next.level }) : t(`feelSame_${feel}`, { level: base });
-        changed();
+        settingsChanged();
       };
       buttons.append(...stabilityFeels.map((feel) => {
         const item = button("", t(`feel_${feel}`), () => answer(feel));
@@ -310,7 +309,7 @@ function playSet(set, day, { intro = true } = {}) {
         rowed.stretched = Date.now();
         rowed.stretchedExercises = set.exercises;
         await saveEntries([rowed]).catch(() => {});
-        changed();
+        settingsChanged();
         showToast(t("savedSession"));
         return;
       }
@@ -319,12 +318,12 @@ function playSet(set, day, { intro = true } = {}) {
         const since = new Date(Date.now() - 28 * dayMs).toISOString().slice(0, 10);
         if (set.style === "warmup") saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [day]: set.exercises } });
         else saveDefaults({ strengthLog: { ...strengthLog(), [day]: set.exercises } });
-        changed();
+        settingsChanged();
         showToast(t("savedSession"));
         return;
       }
       saveDefaults({ routineLog: logRoutine(routineLog(), day, { style: set.style, minutes: set.minutes, exercises: set.exercises, ...(set.name ? { name: set.name } : {}) }) });
-      changed();
+      settingsChanged();
       showToast(t("savedSession"));
     },
   });
@@ -361,7 +360,7 @@ export function setupRoutine() {
     const { style, minutes, exercises: ids, seconds, reps, steps } = set;
     saveDefaults({ routineSaved: [...routineSaved(), { id: Date.now().toString(36), name, set: { style, minutes, exercises: ids, seconds, reps: reps ?? {}, steps } }] });
     byId("routineName").value = "";
-    changed();
+    settingsChanged();
     renderSaved();
     byId("routineNote").textContent = t("routineSavedNote", { name });
   });

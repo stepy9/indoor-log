@@ -24,6 +24,9 @@ export function savedTheme() {
 }
 
 // Last-used lap distance per sport and feel/effort, offered as defaults for the next activity.
+// Tells every view that saved settings changed, so each draws itself again from them.
+export const settingsChanged = () => window.dispatchEvent(new Event("settings-change"));
+
 const defaultsKey = "kinomap-fit-defaults";
 
 export function savedDefaults() {

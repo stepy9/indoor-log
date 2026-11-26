@@ -1,7 +1,7 @@
 import { node } from "./dom.js";
 import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
-import { changedTimesOf, restoreDefaults, saveDefaults, savedDefaults } from "./preferences.js";
+import { changedTimesOf, restoreDefaults, saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { confirmDialog } from "./confirm.js";
 import { showToast } from "./toast.js";
 import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.js";
@@ -240,7 +240,7 @@ function save() {
   byId("settingsDialog").close();
   if (!state.dirty) return;
   showToast(t("savedSettings"));
-  window.dispatchEvent(new Event("settings-change"));
+  settingsChanged();
   state.onTrainers();
 }
 

@@ -19,7 +19,7 @@ import { goalFor, yearProgress } from "../year-goal.js";
 import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
 import { hoverTip, infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
-import { saveDefaults, savedDefaults } from "./preferences.js";
+import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { byId, displayNumber, formatDuration, locale, sportLabel, state, t, zone } from "./context.js";
 
 // The Analysis tab: training load with fitness, fatigue and form, time in zones, the power curve and aerobic decoupling.
@@ -130,7 +130,7 @@ function renderSuggestions(settings) {
     const apply = node("button", { type: "button", class: "export-button" }, t("suggestApply"));
     apply.addEventListener("click", () => {
       item.apply();
-      window.dispatchEvent(new Event("settings-change"));
+      settingsChanged();
     });
     actions.append(ignore, apply);
     row.append(text, actions);

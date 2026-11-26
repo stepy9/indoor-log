@@ -5,7 +5,7 @@
 import { dayMs } from "../dates.js";
 import { element } from "./dom.js";
 import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
-import { saveDefaults, savedDefaults } from "./preferences.js";
+import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
 import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
@@ -424,7 +424,7 @@ export function stretchBlock(entry, settings) {
       // The exercises done, so the activity's detail lists the very set.
       entry.stretchedExercises = plan.exercises;
       await saveEntries([entry]).catch(() => {});
-      window.dispatchEvent(new Event("settings-change"));
+      settingsChanged();
       showToast(t("savedSession"));
     },
   }));
@@ -457,7 +457,7 @@ export function warmupBlock(type, day = null, today = null) {
       const since = new Date(Date.now() - 28 * dayMs).toISOString().slice(0, 10);
       // The day keeps the exercises done (true in logs from before), for the activity's detail.
       saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: plan.exercises } });
-      window.dispatchEvent(new Event("settings-change"));
+      settingsChanged();
       showToast(t("savedSession"));
     },
     intro: { title: t("warmupStart", { minutes: plan.minutes }), note: after, exercises: plan.exercises.map((id) => ({ id, seconds: plan.seconds[id] })) },
@@ -554,7 +554,7 @@ export function strengthBlock(today, { type = null, taper = null } = {}) {
     intro: { title: t("strengthStart", { minutes: session.minutes }), note: t("strengthIntro", { rounds: session.rounds }), exercises: session.doses },
     onDone: () => {
       saveDefaults({ strengthLog: { ...strengthLog(), [today]: session.doses.map((dose) => dose.id) } });
-      window.dispatchEvent(new Event("settings-change"));
+      settingsChanged();
       showToast(t("savedSession"));
     },
   }));
