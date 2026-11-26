@@ -82,7 +82,15 @@ function iconButton(label, paths) {
   return button;
 }
 
-
+// The pencil that opens an activity in its editing, the same in the library and the comparison list.
+export function editButton(entry) {
+  const button = iconButton(t("libraryEditTitle"), '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>');
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    onEditEntry(entry);
+  });
+  return button;
+}
 
 // The library shows one sport at a time; the tab opened last is kept for the next visit.
 const sports = ["rowing", "cycling", "running"];
@@ -154,11 +162,8 @@ function renderRows() {
       showToast(t("savedDeleted"));
     });
     // Editing opens the activity in the converter, where saving its FIT also puts it back here.
-    const edit = iconButton(t("libraryEditTitle"), '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>');
-    edit.addEventListener("click", () => {
-      dialog.close();
-      onEditEntry(entry);
-    });
+    const edit = editButton(entry);
+    edit.addEventListener("click", () => dialog.close(), { capture: true });
     const actions = document.createElement("td");
     actions.className = "library-actions";
     actions.append(edit, remove);

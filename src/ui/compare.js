@@ -8,7 +8,7 @@ import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengt
 import { weekNumber } from "../diary.js";
 import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
 import { byId, displayNumber, formatDuration, locale, shortDateTime, shortDay, sportLabel, t, zone } from "./context.js";
-import { kindBadge, kindLabel, openLibrary } from "./library.js";
+import { editButton, kindBadge, kindLabel, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -172,7 +172,8 @@ function renderList() {
       kindBadge(entry),
     );
     text.append(meta);
-    row.append(checkbox, swatch, text);
+    // The pencil edits the activity; preventDefault keeps the label from ticking the checkbox.
+    row.append(checkbox, swatch, text, editButton(entry));
     return row;
   }), `compare:${view.sport}`);
   byId("compareLimit").hidden = view.slots.size < limit();

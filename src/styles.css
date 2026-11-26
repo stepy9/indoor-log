@@ -506,6 +506,7 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .compare-item-meta > span:not(.kind-tag) { flex: 1; min-width: 0; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .compare-swatch { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; background: var(--line); vertical-align: -1px; }
 .compare-item .compare-swatch { margin-right: 0; }
+.compare-item > .row-icon-button { flex: none; margin: -2px -4px 0 -6px; }
 .compare-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .compare-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
 /* One segmented switch for every choice of one among few; the picked one stands out as a raised tab. */
