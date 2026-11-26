@@ -2,8 +2,8 @@ import { cleanEntries } from "./entries.js";
 import { mean } from "../stats.js";
 import { node, svgNode } from "./dom.js";
 import { dayMs, noon, todayKey } from "../dates.js";
-import { breathTip, routineBlock, routineTip } from "./routine.js";
-import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
+import { dayRich, routineBlock } from "./routine.js";
+import { sessionRich, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
 import { ftpOn, ftpSourceOn } from "../fitness.js";
@@ -14,7 +14,7 @@ import { anyTraining, hasTraining, planLog, planStart, scoreFor, zoneTwoWatts } 
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { byId, dayFormat, displayNumber, locale, sportLabel, t, zone } from "./context.js";
-import { hoverTip, infoHint } from "./info.js";
+import { infoHint, richTip } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
 import { kmByKindByWeek, longestByWeek, nextWeekPlan } from "../plan.js";
 import { openSwap } from "./swap.js";
@@ -153,9 +153,20 @@ function daysWorkouts(entries, day, sport) {
     cell.append(open);
   }
   const stretched = entries.filter((entry) => entry.stretched);
-  const stretchTip = stretched.length ? [t("recoveryStretched"), ...stretched.flatMap((entry) => (entry.stretchedExercises ?? []).map((id) => `· ${t(`recovery_${id}`)}`))].join("\n") : "";
-  const extras = [...(warmupLog()[day] ? [["🤸", sessionTip("warmup", day)]] : []), ...(stretchTip ? [["🧘", stretchTip]] : []), ...(strengthLog()[day] ? [["💪", sessionTip("strength", day)]] : []), ...(routineTip(day) ? [["🧎", routineTip(day)]] : []), ...(breathTip(day) ? [["🌬️", breathTip(day)]] : [])];
-  for (const [icon, title] of extras) cell.append(hoverTip(node("span", { class: "training-summary-extra" }, icon), title));
+  // Each done off the machine an icon with the diary card's tooltip; warming up and stretching, which have no card
+  // there, take the mat's colour.
+  const mat = "var(--session-mat)";
+  const stretch = stretched.length ? { total: t("recoveryStretched"), parts: stretched.flatMap((entry) => (entry.stretchedExercises ?? []).map((id) => ({ label: t(`recovery_${id}`), color: mat }))) } : null;
+  const sets = dayRich(day, false);
+  const breaths = dayRich(day, true);
+  const extras = [
+    ["🤸", warmupLog()[day], () => sessionRich("warmup", day, mat)],
+    ["🧘", stretch, () => stretch],
+    ["💪", strengthLog()[day], () => sessionRich("strength", day, "var(--session-strength)")],
+    ["🧎", sets.length, () => sets],
+    ["🌬️", breaths.length, () => breaths],
+  ];
+  for (const [icon, done, tip] of extras) if (done) cell.append(richTip(node("span", { class: "training-summary-extra" }, icon), tip()));
   return cell;
 }
 

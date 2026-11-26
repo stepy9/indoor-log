@@ -569,12 +569,17 @@ export function sessionParts(kind, day) {
   return { rounds: detail.rounds, parts };
 }
 
-// The same for a tooltip: its title (with the rounds when more than one), then the exercises one a line.
-export function sessionTip(kind, day) {
-  const session = sessionLines(kind, day);
-  if (!session) return "";
-  const title = t(kind === "strength" ? "strengthDoneDay" : "warmupDone");
-  return [session.rounds > 1 ? `${title} · ${t("sessionRounds", { rounds: session.rounds })}` : title, ...session.lines.map((line) => `· ${line}`)].join("\n");
+// The same for richTip, as the diary's card shows it: what and the rounds when more than one, its name, the
+// exercises with a dot of color. null when nothing was logged that day.
+export function sessionRich(kind, day, color) {
+  const session = sessionParts(kind, day);
+  if (!session) return null;
+  const title = t(kind === "strength" ? "exercisesStrength" : "warmupDone");
+  return {
+    when: [title, session.rounds > 1 ? t("sessionRounds", { rounds: session.rounds }) : ""].filter(Boolean).join(" · "),
+    total: title,
+    parts: session.parts.map((part) => ({ ...part, color })),
+  };
 }
 
 // The strength session for the Training tab's day, when today asks for one (twice a week, an easy day, not the

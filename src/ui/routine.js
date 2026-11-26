@@ -10,7 +10,7 @@ import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLe
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
-import { hoverTip } from "./info.js";
+import { hoverTip, richTip } from "./info.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { saveEntries } from "../library.js";
 import { byId, locale, t, zone } from "./context.js";
@@ -411,7 +411,7 @@ export function routineBlock(day = todayKey(zone)) {
   if (done.length) {
     const line = element("p", "training-today-done strength-done", t("routineDoneToday", { what: "" }).trim());
     done.forEach((item, index) => {
-      line.append(hoverTip(element("span", "routine-done-item", setText(item)), setTip(item)), button("link-button icon-x routine-done-remove", "", async () => {
+      line.append(richTip(element("span", "routine-done-item", setText(item)), setRich(item)), button("link-button icon-x routine-done-remove", "", async () => {
         if (!(await confirmDialog({ title: t("routineDoneRemoveConfirm", { what: setText(item) }), ok: t("delete"), danger: true }))) return;
         // The day kept, empty at the last: syncing joins the days of both devices, so one dropped would come back.
         const log = routineLog();
@@ -447,18 +447,17 @@ function setParts(item) {
     return { label: t(`recovery_${id}`), value: amount && amount + side };
   });
 }
-const setLines = (item) => setParts(item).map(({ label, value }) => `· ${[label, value].filter(Boolean).join(" · ")}`);
-const setTip = (item) => [setText(item), ...setLines(item)].join("\n");
-// The day's sets under a title: each its name and its exercises, a blank line between sets.
-const dayTip = (title, done) => [title, done.map(setTip).join("\n\n")].join("\n");
-export function routineTip(day) {
-  const done = (routineLog()[day] ?? []).filter((item) => !isBreath(item));
-  return done.length ? dayTip(t("routineTitle"), done) : "";
+// A set for richTip, as the diary's card shows it: what and how long, its name, its exercises in its kind's colour.
+export function setRich(item) {
+  const breath = isBreath(item);
+  return {
+    when: `${t(breath ? "routineStyle_breath" : "routineTitle")} · ${item.minutes} min`,
+    total: item.name ?? t(`routineStyle_${item.style}`),
+    parts: setParts(item).map((part) => ({ ...part, color: `var(--session-${breath ? "breath" : "mat"})` })),
+  };
 }
-export function breathTip(day) {
-  const done = (routineLog()[day] ?? []).filter(isBreath);
-  return done.length ? dayTip(t("routineStyle_breath"), done) : "";
-}
+// The day's sets on the mat, or of breathing, for richTip: a block each.
+export const dayRich = (day, breath) => (routineLog()[day] ?? []).filter((item) => isBreath(item) === breath).map(setRich);
 
 // A day's sets done for the diary's cards: each { breath, title, minutes, parts }, the title its name or its style,
 // the parts its exercises as setParts gives them.

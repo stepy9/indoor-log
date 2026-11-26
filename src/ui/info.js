@@ -38,6 +38,35 @@ export function hoverTip(element, text) {
   return element;
 }
 
+// The same tooltip laid out as the diary calendar's: for each of blocks ({ when, total, detail, parts }, or an array of
+// them) a dimmed line, the name in bold, a muted note, then each part ({ label, value, color }) a row with a dot of its
+// colour and its value on the right. Used where the diary's own tooltip box is not at hand.
+export function richTip(element, blocks) {
+  const list = [blocks].flat().filter(Boolean);
+  if (!list.length) return element;
+  element.classList.add("has-tip");
+  if (element.tabIndex < 0 && element.tagName !== "BUTTON") element.tabIndex = 0;
+  const line = (className, text) => Object.assign(document.createElement("div"), { className, textContent: text });
+  const box = Object.assign(document.createElement("span"), { className: "tile-info-text hover-tip-text rich-tip" });
+  box.setAttribute("role", "tooltip");
+  for (const { when, total, detail, parts = [] } of list) {
+    const block = Object.assign(document.createElement("div"), { className: "rich-tip-block" });
+    block.append(...(when ? [line("diary-tooltip-when", when)] : []), line("diary-tooltip-total", total), ...(detail ? [line("diary-tooltip-detail", detail)] : []));
+    for (const { label, value, color } of parts) {
+      const row = Object.assign(document.createElement("div"), { className: "diary-tooltip-row" });
+      const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
+      if (color) swatch.style.background = color;
+      row.append(swatch, Object.assign(document.createElement("span"), { textContent: label }), Object.assign(document.createElement("strong"), { textContent: value ?? "" }));
+      block.append(row);
+    }
+    box.append(block);
+  }
+  // A screen reader hears it as plain lines.
+  element.setAttribute("aria-label", list.map(({ when, total, parts = [] }) => [when, total, ...parts.map(({ label, value }) => [label, value].filter(Boolean).join(" "))].filter(Boolean).join(", ")).join("; "));
+  element.append(box);
+  return element;
+}
+
 // Marks element for the shared tooltip below, as hoverTip does with a box of its own; returns it for chaining.
 export function tipOn(element, text) {
   if (text) element.dataset.tip = text;
