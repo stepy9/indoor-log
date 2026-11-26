@@ -350,7 +350,7 @@ function playSet(set, day, { intro = true } = {}) {
         showToast(t("savedSession"));
         return;
       }
-      saveDefaults({ routineLog: logRoutine(routineLog(), day, { style: set.style, minutes: set.minutes, exercises: set.exercises, ...(set.name ? { name: set.name } : {}) }) });
+      saveDefaults({ routineLog: logRoutine(routineLog(), day, { style: set.style, minutes: set.minutes, exercises: set.exercises, seconds: set.seconds ?? {}, reps: set.reps ?? {}, ...(set.name ? { name: set.name } : {}) }) });
       settingsChanged();
       showToast(t("savedSession"));
     },
@@ -411,7 +411,7 @@ export function routineBlock(day = todayKey(zone)) {
   if (done.length) {
     const line = element("p", "training-today-done strength-done", t("routineDoneToday", { what: "" }).trim());
     done.forEach((item, index) => {
-      line.append(element("span", "routine-done-item", setText(item)), button("link-button icon-x routine-done-remove", "", async () => {
+      line.append(hoverTip(element("span", "routine-done-item", setText(item)), setTip(item)), button("link-button icon-x routine-done-remove", "", async () => {
         if (!(await confirmDialog({ title: t("routineDoneRemoveConfirm", { what: setText(item) }), ok: t("delete"), danger: true }))) return;
         // The day kept, empty at the last: syncing joins the days of both devices, so one dropped would come back.
         const log = routineLog();
@@ -436,11 +436,24 @@ export function routineBlock(day = todayKey(zone)) {
 // The breathing apart, under its own mark (🌬️), so a day breathed shows at a glance; the other sets under 🧎.
 // A set is breathing when it is the breathing style, or a hand-made or saved set of breathing exercises only.
 const isBreath = (item) => item.style === "breath" || (item.exercises?.length > 0 && item.exercises.every((id) => exercises[id]?.pattern));
+// A logged set's exercises, one a line as the warm-up's tooltip has them: "· Kočka–kráva · 45 s", per side where it
+// has two. A set logged before the doses were kept shows the names only.
+function setLines(item) {
+  return [...new Set(item.exercises ?? [])].filter((id) => exercises[id]).map((id) => {
+    const seconds = item.seconds?.[id];
+    const amount = item.reps?.[id] ? `${item.reps[id]}×` : seconds ? (seconds >= 120 ? `${minutesText(seconds)} min` : `${seconds} s`) : "";
+    const side = amount && exercises[id].sides > 1 ? ` ${t("sessionPerSide")}` : "";
+    return `· ${[t(`recovery_${id}`), amount && amount + side].filter(Boolean).join(" · ")}`;
+  });
+}
+const setTip = (item) => [setText(item), ...setLines(item)].join("\n");
+// The day's sets under a title: each its name and its exercises, a blank line between sets.
+const dayTip = (title, done) => [title, done.map(setTip).join("\n\n")].join("\n");
 export function routineTip(day) {
   const done = (routineLog()[day] ?? []).filter((item) => !isBreath(item));
-  return done.length ? [t("routineTitle"), ...done.map((item) => `· ${setText(item)}`)].join("\n") : "";
+  return done.length ? dayTip(t("routineTitle"), done) : "";
 }
 export function breathTip(day) {
   const done = (routineLog()[day] ?? []).filter(isBreath);
-  return done.length ? [t("routineStyle_breath"), ...done.map((item) => `· ${setText(item)}`)].join("\n") : "";
+  return done.length ? dayTip(t("routineStyle_breath"), done) : "";
 }
