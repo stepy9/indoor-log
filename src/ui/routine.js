@@ -278,6 +278,10 @@ function render() {
 function summarize(custom) {
   const pressed = (holder) => [...holder.querySelectorAll('[aria-pressed="true"]')].map((item) => item.textContent.replace(/^✓s*/, ""));
   const groups = custom ? [] : [...byId("routineAuto").querySelectorAll(".segmented")].filter((group) => !group.hidden && !group.closest("[hidden]"));
+  // A custom set has only the switch under the fold, so on a phone it shows open, without the fold's head.
+  const setup = byId("routineSetup");
+  setup.classList.toggle("is-custom", custom);
+  if (custom) setup.open = true;
   byId("routineSummary").textContent = [...(custom ? [t("routineMode_custom")] : []), ...groups.flatMap(pressed)].filter(Boolean).join(" · ");
 }
 
@@ -369,7 +373,7 @@ export function setupRoutine() {
   wired = true;
   // Folded on a phone, so the cards come first; open on a wider screen, where the fold's head is not shown.
   const narrow = window.matchMedia("(max-width: 640px)");
-  const fold = () => { byId("routineSetup").open = !narrow.matches; };
+  const fold = () => { const setup = byId("routineSetup"); setup.open = !narrow.matches || setup.classList.contains("is-custom"); };
   fold();
   narrow.addEventListener("change", fold);
   // The dialog opened from the menu shows the set as now chosen. A set started here runs over it, so the page is

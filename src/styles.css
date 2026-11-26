@@ -2125,6 +2125,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
   .routine-panel .routine-main { margin-top: 12px; }
   .routine-actions .routine-name { flex: 1 1 0; margin-top: 8px; }
   .routine-actions > .outline-button { flex: none; margin-top: 8px; }
+  .routine-setup.is-custom > .routine-summary { display: none; }
   .routine-mode { display: flex; }
   .routine-mode button { flex: 1; }
   .routine-actions .routine-start { --control-h: var(--control-lg); border-color: var(--accent-fill); color: #fff; background: var(--accent-fill); font-size: var(--fs-lg); box-shadow: var(--shadow-pop); order: 99; position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 3; margin-top: 12px; }
