@@ -281,6 +281,9 @@ function breathe(step) {
   const circle = byId("recoveryPlayerFigure").querySelector(".breath-circle");
   const size = { in: pattern.some(([name]) => name === "top") ? 0.82 : 1, top: 1, out: 0.4 }[phase];
   if (circle && size != null) {
+    // A circle just put in has no size worked out yet, so the browser would jump it straight to the end; reading
+    // its style first makes the first breath in grow from small as the others do.
+    void getComputedStyle(circle).transform;
     circle.style.transitionDuration = `${Math.max(0.2, seconds - at)}s`;
     circle.style.transform = `scale(${size})`;
   }
