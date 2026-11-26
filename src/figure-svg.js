@@ -95,7 +95,7 @@ const attributes = (attrs) => Object.entries(attrs).map(([key, value]) => ` ${ke
 
 // The view's whole SVG. frame: a pose's index to draw it still (for a preview); otherwise animated. A move also
 // shows its first pose as a faint ghost and its arrows, so the way it goes reads at a glance.
-export function figureMarkup(view, { hold = false, frame = null, className = "recovery-figure", breathing = null, words = null } = {}) {
+export function figureMarkup(view, { hold = false, frame = null, className = "recovery-figure" } = {}) {
   const how = timing(hold, view.poses.length);
   const drawn = view.poses.map((pose) => figureParts(pose, view));
   const body = [];
@@ -121,14 +121,16 @@ export function figureMarkup(view, { hold = false, frame = null, className = "re
     const { d, both = false } = typeof arrow === "string" ? { d: arrow } : arrow;
     body.push(`<path class="move-arrow" d="${d}"${both ? ' marker-start="url(#arrowHead)"' : ""} marker-end="url(#arrowHead)"/>`);
   }
-  // The breath with a move there and back: breathing[i] is taken on the way into pose i, so the first half of the
-  // cycle shows breathing[1], the second breathing[0]. words: { in, out }, in the app's language.
-  // A hold is paced instead: calmly in for 4 s and out for 6 s, whatever the figure does.
-  const label = (phase, values, dur, keyTimes) => `<text class="breath-cue is-${phase}" x="214" y="16" text-anchor="end">${phase === "in" ? "↑" : "↓"} ${words[phase]}<animate attributeName="opacity" dur="${dur}" repeatCount="indefinite" calcMode="discrete" keyTimes="${keyTimes}" values="${values}"/></text>`;
-  if (words && frame == null) {
-    if (breathing && !hold && view.poses.length === 2) body.push(label(breathing[1], "1;0;0", how.dur, "0;.5;1"), label(breathing[0], "0;1;1", how.dur, "0;.5;1"));
-    else if (hold) body.push(label("in", "1;0;0", "10s", "0;.4;1"), label("out", "0;1;1", "10s", "0;.4;1"));
-  }
   const defs = view.arrows?.length ? `<defs><marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="move-arrow-head"/></marker></defs>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170" class="${className}" aria-hidden="true">${defs}${body.join("")}</svg>`;
+}
+
+// The breath shown under a figure, in time with it: { first, second, dur, split }, the phase shown over the first
+// part of the cycle and the one over the rest. A move there and back takes breathing[i] on the way into pose i, so
+// its first half is breathing[1] and its second breathing[0]; a hold is paced calmly, in for 4 s and out for 6 s.
+// null for a move without phases (one that alternates, circles or flutters).
+export function breathCue(view, { hold = false, breathing = null } = {}) {
+  if (hold) return { first: "in", second: "out", dur: "10s", split: "hold" };
+  if (breathing && view.poses.length === 2) return { first: breathing[1], second: breathing[0], dur: timing(false, 2).dur, split: "half" };
+  return null;
 }

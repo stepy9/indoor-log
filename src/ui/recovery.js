@@ -6,7 +6,7 @@ import { dayMs } from "../dates.js";
 import { element } from "./dom.js";
 import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
-import { figureMarkup } from "../figure-svg.js";
+import { breathCue, figureMarkup } from "../figure-svg.js";
 import { breathKind } from "../breathing.js";
 import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
@@ -16,12 +16,22 @@ import { showToast } from "./toast.js";
 
 
 
-// One view drawn: the markup of figure-svg.js, made an element.
-function drawView(id, view) {
+// One view drawn: the markup of figure-svg.js, made an element; cue: with the breath under it (the first view only).
+function drawView(id, view, cue = true) {
   const holder = document.createElement("div");
   const { hold, breathing } = exercises[id];
-  holder.innerHTML = figureMarkup(view, { hold: Boolean(hold), className: `recovery-figure is-${view.key}`, breathing, words: { in: t("breathIn"), out: t("breathOut") } });
-  return holder.firstElementChild;
+  holder.innerHTML = figureMarkup(view, { hold: Boolean(hold), className: `recovery-figure is-${view.key}` });
+  const svg = holder.firstElementChild;
+  const breath = cue ? breathCue(view, { hold, breathing }) : null;
+  if (!breath) return svg;
+  // The figure with its breath under it as text, which keeps a readable size however small the figure is drawn;
+  // two words taking turns by a CSS animation of the figure's own length, started with it.
+  const box = element("div", "recovery-figure-box");
+  const line = element("div", `breath-line is-${breath.split}`);
+  line.style.setProperty("--breath-dur", breath.dur);
+  for (const [phase, part] of [[breath.first, "first"], [breath.second, "second"]]) line.append(element("span", `breath-cue is-${phase} is-${part}`, `${phase === "in" ? "↑" : "↓"} ${t(phase === "in" ? "breathIn" : "breathOut")}`));
+  box.append(svg, line);
+  return box;
 }
 
 const views = exerciseViews;
@@ -36,9 +46,9 @@ export function figure(id) {
 export function figures(id) {
   const all = views(id);
   if (all.length < 2) return all.map((view) => drawView(id, view));
-  return all.map((view) => {
+  return all.map((view, index) => {
     const box = Object.assign(document.createElement("figure"), { className: "recovery-view" });
-    box.append(drawView(id, view), Object.assign(document.createElement("figcaption"), { textContent: t(`recoveryView_${view.key}`) }));
+    box.append(drawView(id, view, index === 0), Object.assign(document.createElement("figcaption"), { textContent: t(`recoveryView_${view.key}`) }));
     return box;
   });
 }
