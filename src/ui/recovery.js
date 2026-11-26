@@ -18,7 +18,8 @@ import { showToast } from "./toast.js";
 // One view drawn: the markup of figure-svg.js, made an element.
 function drawView(id, view) {
   const holder = document.createElement("div");
-  holder.innerHTML = figureMarkup(view, { hold: Boolean(exercises[id].hold), className: `recovery-figure is-${view.key}` });
+  const { hold, breathing } = exercises[id];
+  holder.innerHTML = figureMarkup(view, { hold: Boolean(hold), className: `recovery-figure is-${view.key}`, breathing, words: { in: t("breathIn"), out: t("breathOut") } });
   return holder.firstElementChild;
 }
 

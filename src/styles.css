@@ -1874,6 +1874,9 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .strength-block { margin-top: 6px; }
 .strength-done { margin-top: 6px; }
 .routine-week { margin: 6px 0 0; }
+.breath-cue { font: 600 11px system-ui, sans-serif; }
+.breath-cue.is-in { fill: var(--accent); }
+.breath-cue.is-out { fill: var(--muted); }
 .routine-week.is-reached { color: var(--success); font-weight: 600; }
 .recovery-player.is-reps #recoveryPlayerPause { display: none; }
 .recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent-fill); background: var(--accent-fill); }

@@ -815,16 +815,18 @@ const build = (make, extra) => ({ ...make(), ...extra });
 // Styles: "mobility" moved, "flexibility" and "yin" held. areas: "hips", "back", "shoulders", "legs".
 // book: the video's number in the book, so its own video can be looked up.
 export const routineExercises = {
-  lungeReach: build(lungeReach, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "legs"], book: "9.17" }),
-  hipSwitch: build(hipSwitch, { style: "mobility", seconds: 45, sides: 2, areas: ["hips"], book: "9.18" }),
-  reverseTable: build(reverseTable, { style: "mobility", seconds: 45, sides: 1, areas: ["shoulders", "back", "hips"], book: "9.19" }),
-  forearmOpen: build(forearmOpen, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "back"], book: "9.20" }),
-  archToHeels: build(archToHeels, { style: "mobility", seconds: 45, sides: 1, areas: ["back", "shoulders"], book: "9.21" }),
+  // breathing: the breath taken on the way into each pose (opening and reaching in, folding and turning deep out);
+  // breath: its spoken cue, recoveryBreath_<id>.
+  lungeReach: build(lungeReach, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "legs"], book: "9.17", breathing: ["in", "out"], breath: true }),
+  hipSwitch: build(hipSwitch, { style: "mobility", seconds: 45, sides: 2, areas: ["hips"], book: "9.18", breathing: ["in", "out"], breath: true }),
+  reverseTable: build(reverseTable, { style: "mobility", seconds: 45, sides: 1, areas: ["shoulders", "back", "hips"], book: "9.19", breathing: ["out", "in"], breath: true }),
+  forearmOpen: build(forearmOpen, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "back"], book: "9.20", breathing: ["out", "in"], breath: true }),
+  archToHeels: build(archToHeels, { style: "mobility", seconds: 45, sides: 1, areas: ["back", "shoulders"], book: "9.21", breathing: ["in", "out"], breath: true }),
   triangle: build(triangle, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["legs", "back"], book: "9.22" }),
   kneelingQuad: build(kneelingQuad, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["hips", "legs"], book: "9.23" }),
   lungeSideBend: build(lungeSideBend, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["hips", "back", "shoulders"], book: "9.24" }),
-  downDog: build(downDog, { style: "flexibility", hold: true, seconds: 20, sides: 1, areas: ["legs", "shoulders", "back"], book: "9.25" }),
-  lungeTwist: build(lungeTwist, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["hips", "back"], book: "9.26" }),
+  downDog: build(downDog, { style: "flexibility", hold: true, seconds: 20, sides: 1, areas: ["legs", "shoulders", "back"], book: "9.25", breath: true }),
+  lungeTwist: build(lungeTwist, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["hips", "back"], book: "9.26", breath: true }),
   allFoursSide: build(allFoursSide, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["back", "shoulders"], book: "9.27" }),
   butterfly: build(butterfly, { style: "yin", hold: true, seconds: 180, sides: 1, areas: ["hips", "back"] }),
   caterpillar: build(caterpillar, { style: "yin", hold: true, seconds: 180, sides: 1, areas: ["legs", "back"] }),

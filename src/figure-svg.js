@@ -95,7 +95,7 @@ const attributes = (attrs) => Object.entries(attrs).map(([key, value]) => ` ${ke
 
 // The view's whole SVG. frame: a pose's index to draw it still (for a preview); otherwise animated. A move also
 // shows its first pose as a faint ghost and its arrows, so the way it goes reads at a glance.
-export function figureMarkup(view, { hold = false, frame = null, className = "recovery-figure" } = {}) {
+export function figureMarkup(view, { hold = false, frame = null, className = "recovery-figure", breathing = null, words = null } = {}) {
   const how = timing(hold, view.poses.length);
   const drawn = view.poses.map((pose) => figureParts(pose, view));
   const body = [];
@@ -120,6 +120,16 @@ export function figureMarkup(view, { hold = false, frame = null, className = "re
   for (const arrow of view.arrows ?? []) {
     const { d, both = false } = typeof arrow === "string" ? { d: arrow } : arrow;
     body.push(`<path class="move-arrow" d="${d}"${both ? ' marker-start="url(#arrowHead)"' : ""} marker-end="url(#arrowHead)"/>`);
+  }
+  // The breath with a move there and back: breathing[i] is taken on the way into pose i, so the first half of the
+  // cycle shows breathing[1], the second breathing[0]. words: { in, out }, in the app's language.
+  if (breathing && words && frame == null && !hold && view.poses.length === 2) {
+    const label = (phase, first) => {
+      const arrow = phase === "in" ? "↑" : "↓";
+      const values = first ? "1;0;0" : "0;1;1";
+      return `<text class="breath-cue is-${phase}" x="214" y="16" text-anchor="end">${arrow} ${words[phase]}<animate attributeName="opacity" dur="${how.dur}" repeatCount="indefinite" calcMode="discrete" keyTimes="0;.5;1" values="${values}"/></text>`;
+    };
+    body.push(label(breathing[1], true), label(breathing[0], false));
   }
   const defs = view.arrows?.length ? `<defs><marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="move-arrow-head"/></marker></defs>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170" class="${className}" aria-hidden="true">${defs}${body.join("")}</svg>`;
