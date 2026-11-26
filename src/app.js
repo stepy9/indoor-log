@@ -69,7 +69,7 @@ function renderTrimStatus() {
     .filter(([seconds]) => Number(seconds) > 0)
     .map(([seconds, key]) => t(key, { time: formatDuration(Number(seconds)) }));
   byId("trimStatus").textContent = cut.length ? cut.join(" · ") : t("trimNone");
-  byId("trimToggle").textContent = t(isTrimMode() ? "trimDone" : "trimEdit");
+  byId("trimToggle").textContent = t(isTrimMode() ? "trimDone" : "edit");
 }
 
 // Each activity starts untrimmed, or with the trim its tab already had.

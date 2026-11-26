@@ -273,7 +273,7 @@ function suggestionsButton(result, entries, type) {
         row.append(...parts);
         return row;
       }
-      const open = node("button", { type: "button", class: "suggest-open", "data-tip": t("workoutEditButton") });
+      const open = node("button", { type: "button", class: "suggest-open", "data-tip": t("edit") });
       open.append(...parts);
       open.addEventListener("click", () => {
         dialog.close();

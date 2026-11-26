@@ -319,7 +319,7 @@
 
             <div class="export-row">
               <div class="start-stamp"><span data-i18n="outputStart">Čas aktivity</span><strong id="startStamp">—</strong></div>
-              <span class="export-actions"><button class="outline-button" id="saveLibraryButton" type="button" disabled data-i18n="saveToLibrary">Uložit</button><button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Uložit a stáhnout FIT</span><span aria-hidden="true">↓</span></button></span>
+              <span class="export-actions"><button class="outline-button" id="saveLibraryButton" type="button" disabled data-i18n="save">Uložit</button><button class="export-button" id="exportButton" type="button" disabled><span data-i18n="downloadFit">Uložit a stáhnout FIT</span><span aria-hidden="true">↓</span></button></span>
             </div>
             <div class="notice-slot" id="workspaceNoticeSlot"><div class="notice" id="notice" role="status" hidden></div></div>
           </section>
@@ -698,7 +698,7 @@
       <dialog class="intervals-dialog exercises-dialog" id="exercisesDialog" aria-labelledby="exercisesTitle">
         <div class="dialog-head">
           <h2 id="exercisesTitle" data-i18n="exercisesTitle">Cvičení</h2>
-          <button class="settings-close library-close" id="exercisesClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" data-tip="Zavřít" data-i18n-tip="libraryCloseLabel"></button>
+          <button class="settings-close library-close" id="exercisesClose" type="button" aria-label="Zavřít" data-i18n-aria="close" data-tip="Zavřít" data-i18n-tip="close"></button>
         </div>
         <p class="field-note" data-i18n="exercisesIntro">Všechny cviky rozcvičky před veslováním a protažení po něm. Sestavu podle tréninku nabízí karta Dnes v Tréninku a detail aktivity.</p>
         <div class="exercises-panel routine-panel" id="exercisesRoutine">
@@ -781,7 +781,7 @@
               <div class="routine-actions">
                 <button class="accent-button routine-start" id="routineStart" type="button"></button>
                 <input class="routine-name" id="routineName" type="text" maxlength="60" aria-label="Název sestavy" data-i18n-aria="routineNameLabel" />
-                <button class="outline-button" id="routineSave" type="button" data-i18n="routineSave">Uložit</button>
+                <button class="outline-button" id="save" type="button" data-i18n="save">Uložit</button>
               </div>
             </div>
             <div class="routine-main">
@@ -798,7 +798,7 @@
       <dialog class="intervals-dialog video-dialog" id="videoDialog" aria-labelledby="videoTitle">
         <div class="dialog-head">
           <h2 id="videoTitle"></h2>
-          <button class="settings-close library-close" id="videoClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" data-tip="Zavřít" data-i18n-tip="libraryCloseLabel"></button>
+          <button class="settings-close library-close" id="videoClose" type="button" aria-label="Zavřít" data-i18n-aria="close" data-tip="Zavřít" data-i18n-tip="close"></button>
         </div>
         <div class="video-frame"><iframe id="videoFrame" src="about:blank" data-tip="Video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
       </dialog>
@@ -806,7 +806,7 @@
         <div class="recovery-player-head">
           <span id="recoveryPlayerProgress"></span>
           <button class="settings-close recovery-sound" id="recoveryPlayerSound" type="button" aria-pressed="true">🔔</button>
-          <button class="settings-close" id="recoveryPlayerClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel"></button>
+          <button class="settings-close" id="recoveryPlayerClose" type="button" aria-label="Zavřít" data-i18n-aria="close"></button>
         </div>
         <div class="recovery-player-intro" id="recoveryPlayerIntro" hidden>
           <h2 id="recoveryPlayerIntroTitle"></h2>
@@ -840,14 +840,14 @@
           <div class="activity-sessions" id="activitySessions" hidden></div>
           <div class="activity-actions">
             <button class="outline-button" id="activityCompare" type="button" data-i18n="activityCompare">Porovnat</button>
-            <button class="export-button" id="activityEdit" type="button" data-i18n="activityEdit">Upravit</button>
-            <button class="settings-close" id="activityClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" data-tip="Zavřít" data-i18n-tip="libraryCloseLabel"></button>
+            <button class="export-button" id="edit" type="button" data-i18n="edit">Upravit</button>
+            <button class="settings-close" id="activityClose" type="button" aria-label="Zavřít" data-i18n-aria="close" data-tip="Zavřít" data-i18n-tip="close"></button>
           </div>
         </div>
         <div class="activity-body" id="activityBody"></div>
         <div class="dialog-actions">
           <span class="dialog-spacer"></span>
-          <button class="link-button danger-link" id="activityDelete" type="button" data-i18n="libraryDelete">Smazat</button>
+          <button class="link-button danger-link" id="activityDelete" type="button" data-i18n="delete">Smazat</button>
         </div>
       </dialog>
       <dialog class="intervals-dialog library-dialog" id="libraryDialog" aria-labelledby="libraryTitle">
@@ -855,7 +855,7 @@
         <div class="dialog-head">
           <h2 id="libraryTitle" data-i18n="library">Knihovna</h2>
           <span class="estimate-note" id="libraryCount"></span>
-          <button class="settings-close library-close" id="libraryClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" data-tip="Zavřít" data-i18n-tip="libraryCloseLabel"></button>
+          <button class="settings-close library-close" id="libraryClose" type="button" aria-label="Zavřít" data-i18n-aria="close" data-tip="Zavřít" data-i18n-tip="close"></button>
         </div>
         <p class="field-note info-note" data-i18n="libraryHint">Aktivity uložené jen v tomto prohlížeči, pro pozdější porovnání. Nikam se neodesílají.</p>
         <div class="segmented library-sports" id="librarySports" role="group" aria-label="Sport" data-i18n-aria="librarySport"></div>
@@ -877,7 +877,7 @@
       <dialog class="intervals-dialog settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
         <div class="settings-head">
           <h2 id="settingsTitle" data-i18n="settingsTitle">Nastavení</h2>
-          <button class="settings-close" id="settingsClose" type="button" aria-label="Zavřít" data-i18n-aria="libraryCloseLabel" data-tip="Zavřít" data-i18n-tip="libraryCloseLabel"></button>
+          <button class="settings-close" id="settingsClose" type="button" aria-label="Zavřít" data-i18n-aria="close" data-tip="Zavřít" data-i18n-tip="close"></button>
         </div>
         <div class="settings-body">
           <nav class="settings-nav" id="settingsNav" aria-label="Sekce nastavení" data-i18n-aria="settingsTitle"></nav>

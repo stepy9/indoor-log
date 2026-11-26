@@ -124,8 +124,8 @@ function sheet() {
   const head = Object.assign(document.createElement("div"), { className: "dialog-head" });
   const title = Object.assign(document.createElement("h2"), { id: "infoDialogTitle" });
   const close = Object.assign(document.createElement("button"), { type: "button", className: "settings-close" });
-  close.dataset.i18nAria = "libraryCloseLabel";
-  close.setAttribute("aria-label", t("libraryCloseLabel"));
+  close.dataset.i18nAria = "close";
+  close.setAttribute("aria-label", t("close"));
   close.addEventListener("click", () => dialog.close());
   head.append(title, close);
   dialog.setAttribute("aria-labelledby", title.id);

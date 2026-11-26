@@ -240,7 +240,7 @@ export function workoutList(names, plans, notes, write) {
       const text = node("div", { class: "workout-row-text" });
       text.append(node("strong", {}, name), node("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
       if (steps.length) text.append(workoutProfile(steps));
-      const edit = node("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
+      const edit = node("button", { type: "button", class: "outline-button" }, t(steps.length ? "edit" : "workoutAddSteps"));
       edit.addEventListener("click", () => open({ name, steps, note: notes[name], taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
         const nextPlans = { ...plans };
         delete nextPlans[name];

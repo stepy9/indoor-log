@@ -140,7 +140,7 @@ function renderSaved() {
     const remove = button("link-button icon-x", "", async () => {
       // A set in the plan asks first, naming its days: they stay empty, what was there before does not come back.
       const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
-      if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("libraryDelete"), danger: true }))) return;
+      if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("delete"), danger: true }))) return;
       saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
       settingsChanged();
       render();
@@ -221,7 +221,7 @@ function render() {
     ...(picked.style === "balance" ? [t("routineNeedsDumbbell")] : []),
   ].join(" ");
   byId("routineStart").textContent = t("routineStart", { minutes: set.minutes });
-  byId("routineStart").disabled = byId("routineSave").disabled = !set.steps.length;
+  byId("routineStart").disabled = byId("save").disabled = !set.steps.length;
   byId("routineName").placeholder = t("routineNamePlaceholder", { name: defaultName(picked, set) });
   // The plan: the days this style (or the hand-made set) is planned on pressed; a press puts the day in with the
   // choice now made.
@@ -352,7 +352,7 @@ export function setupRoutine() {
     playSet(set, todayKey(zone), { intro: false });
   });
   // Saved as it is now, so it runs the same however the automatic sets change later.
-  byId("routineSave").addEventListener("click", () => {
+  byId("save").addEventListener("click", () => {
     const picked = choice();
     const set = buildRoutine(current(picked));
     if (!set.steps.length) return;

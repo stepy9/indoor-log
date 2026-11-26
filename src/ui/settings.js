@@ -382,9 +382,9 @@ function trainersBlock(sport) {
     };
     const levels = level(trainer.levels, t("trainerLevels"), (value) => update({ levels: value, defaultLevel: Math.min(trainer.defaultLevel, value) }), 100);
     const usual = level(trainer.defaultLevel, t("trainerDefault"), (value) => update({ defaultLevel: value }), trainer.levels);
-    const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
+    const remove = node("button", { type: "button", class: "link-button" }, t("delete"));
     remove.addEventListener("click", async () => {
-      if (!(await confirmDialog({ title: t("trainerDeleteConfirm", { name: trainer.name }), ok: t("libraryDelete"), danger: true }))) return;
+      if (!(await confirmDialog({ title: t("trainerDeleteConfirm", { name: trainer.name }), ok: t("delete"), danger: true }))) return;
       saveTrainers(trainers().filter((item) => item.id !== trainer.id));
       state.dirty = true;
       render();
@@ -986,7 +986,7 @@ function weightBlock() {
       const value = checkNumber(kg, { ...weightRange, decimals: 1, required: true });
       if (value !== undefined) update({ kg: value });
     });
-    const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
+    const remove = node("button", { type: "button", class: "link-button" }, t("delete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
     const row = node("tr");
     const fromCell = node("td");
@@ -1044,7 +1044,7 @@ function ftpBlock(sport, settings, estimate) {
       const value = checkNumber(watts, { min: 30, max: 600, required: true });
       if (value !== undefined) update({ ftp: value });
     });
-    const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
+    const remove = node("button", { type: "button", class: "link-button" }, t("delete"));
     remove.addEventListener("click", () => write(history.filter((_, at) => at !== index)));
     const row = node("tr");
     const fromCell = node("td");

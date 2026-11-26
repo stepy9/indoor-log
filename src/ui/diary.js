@@ -1000,7 +1000,7 @@ function renderReminders() {
     const inputs = key === "sleep"
       ? [numberInput(t("sleepHours"), parts?.hours, sleepRanges.hours, "1"), numberInput(t("sleepMinutes"), parts?.minutes, sleepRanges.minutes, "5")]
       : [numberInput(t(`body_${key}`), value, bodyRanges[key], bodySteps[key])];
-    const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("reminderSave") });
+    const save = Object.assign(document.createElement("button"), { type: "button", className: "outline-button", textContent: t("save") });
     const answer = (next) => {
       enterBodyValue(key, next, firstDay);
       const change = next !== null && value !== null && next !== value ? next - value : null;

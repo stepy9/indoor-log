@@ -151,10 +151,10 @@ function renderRows() {
     row.children[0].dataset.tip = t(`librarySource_${entry.exported ? "export" : entry.source}`);
     // The type reads only: the pencil opens the activity to change it, its trainer and resistance among the rest.
     row.children[1].after(Object.assign(document.createElement("td"), { textContent: kindLabel(workoutKind(entry), entry.sport) }));
-    const remove = iconButton(t("libraryDelete"), '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>');
+    const remove = iconButton(t("delete"), '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>');
     remove.classList.add("is-danger");
     remove.addEventListener("click", async () => {
-      if (!(await confirmDialog({ title: t("libraryDeleteConfirm", { name: entry.name }), ok: t("libraryDelete"), danger: true }))) return;
+      if (!(await confirmDialog({ title: t("libraryDeleteConfirm", { name: entry.name }), ok: t("delete"), danger: true }))) return;
       await deleteEntry(entry.id);
       renderList();
       showToast(t("savedDeleted"));
@@ -301,7 +301,7 @@ export function setupLibrary({ onRestore, onEdit, onOpen } = {}) {
   });
   // Emptying the open sport cannot be undone, so it asks first and names the sport and how many activities go.
   byId("libraryClearButton").addEventListener("click", async () => {
-    if (!(await confirmDialog({ title: t("libraryClearConfirm", { count: shown.length, sport: sportLabel(librarySport) }), ok: t("libraryDelete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("libraryClearConfirm", { count: shown.length, sport: sportLabel(librarySport) }), ok: t("delete"), danger: true }))) return;
     await deleteEntries(shown.map((entry) => entry.id));
     showToast(t("libraryCleared", { sport: sportLabel(librarySport) }));
     renderList();

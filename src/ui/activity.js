@@ -361,7 +361,7 @@ function loadText(entry, settings) {
 function noteCard(entry) {
   const card = element("section", "card activity-note");
   const head = element("div", "panel-title-row");
-  const edit = element("button", "link-button", t(entry.note ? "activityNoteEdit" : "activityNoteAdd"));
+  const edit = element("button", "link-button", t(entry.note ? "edit" : "activityNoteAdd"));
   edit.type = "button";
   head.append(element("span", "field-label", t("activityNote")), edit);
   const text = element("p", "activity-note-text", entry.note ?? "");
@@ -577,13 +577,13 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
   onEdit = edit;
   byId("activityClose").addEventListener("click", close);
   byId("activityCompare").addEventListener("click", () => compare());
-  byId("activityEdit").addEventListener("click", () => {
+  byId("edit").addEventListener("click", () => {
     const entry = view.entry;
     close();
     onEdit(entry);
   });
   byId("activityDelete").addEventListener("click", async () => {
-    if (!(await confirmDialog({ title: t("libraryDeleteConfirm", { name: view.entry.name }), ok: t("libraryDelete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("libraryDeleteConfirm", { name: view.entry.name }), ok: t("delete"), danger: true }))) return;
     await deleteEntry(view.entry.id);
     close();
     showToast(t("savedDeleted"));
