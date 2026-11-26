@@ -1408,7 +1408,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 }
 
 /* The Training tab: the workouts' scores against the plan. */
-.score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; background: var(--score); }
+.score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid color-mix(in srgb, var(--score) 45%, transparent); color: var(--score); background: color-mix(in srgb, var(--score) 14%, transparent); }
 .score-badge.is-good { --score: var(--success); }
 .score-badge.is-fair { --score: var(--warning); }
 .score-badge.is-poor { --score: var(--danger-ink); }
