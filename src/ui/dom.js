@@ -16,3 +16,15 @@ export const node = (tag, attributes = {}, text) =>
   make(svgTags.has(tag) ? document.createElementNS(svgNs, tag) : document.createElement(tag), attributes, text);
 
 export const element = (tag, className = "", textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
+
+// Hands a file to the browser to save, as the FIT export and the backup do.
+export function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
+  document.body.append(link);
+  link.click();
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
+}

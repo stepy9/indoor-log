@@ -1,4 +1,6 @@
 import { tipOn } from "./info.js";
+import { downloadFile } from "./dom.js";
+import { todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
@@ -238,14 +240,7 @@ export async function updateBackupReminder() {
 export async function downloadBackup() {
   const entries = await listEntries();
   const blob = new Blob([backupText(entries, settingsSnapshot())], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = Object.assign(document.createElement("a"), { href: url, download: `indoor-log-backup-${new Date().toISOString().slice(0, 10)}.json` });
-  document.body.append(link);
-  link.click();
-  window.setTimeout(() => {
-    link.remove();
-    URL.revokeObjectURL(url);
-  }, 1000);
+  downloadFile(blob, `indoor-log-backup-${todayKey(zone)}.json`);
   markBackup(entries.length);
   updateBackupReminder();
 }
