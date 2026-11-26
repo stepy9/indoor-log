@@ -1,3 +1,4 @@
+import { cleanEntries } from "./entries.js";
 import { mean } from "../stats.js";
 import { node, svgNode } from "./dom.js";
 import { dayMs, noon, todayKey } from "../dates.js";
@@ -5,15 +6,14 @@ import { breathTip, routineBlock, routineTip } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
 import { addDays, dayKey, weekNumber } from "../diary.js";
-import { listEntries } from "../library.js";
-import { ftpOn, ftpSourceOn, withCleanHeartRate } from "../fitness.js";
+import { ftpOn, ftpSourceOn } from "../fitness.js";
 import { adherenceShare, dayStreak, fatigueByFeel, ftpFromTest, workoutFromName, routeSuggestions, workoutSuggestions, weekScore, lastMondays, longestMinutesByWeek, weekAdherence, zoneTwoTrend } from "../training.js";
 import { drawPlanCard, kindWeeks, longestWeeks, plannedText, scoreBadge, weekDistance } from "./diary.js";
 import { lastFtpTyped, planNotes, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, planStart, scoreFor, zoneTwoWatts } from "./score.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
-import { byId, displayNumber, locale, sportLabel, t, zone } from "./context.js";
+import { byId, dayFormat, displayNumber, locale, sportLabel, t, zone } from "./context.js";
 import { hoverTip, infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
 import { kmByKindByWeek, longestByWeek, nextWeekPlan } from "../plan.js";
@@ -34,7 +34,6 @@ const view = {
 let openActivity = () => {};
 
 
-const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 // The sports with the Training section, the one picked first.
 function sportsWithTraining(settings) {
@@ -96,7 +95,7 @@ function adherenceCard(sport, workouts, log) {
     const row = node("tr");
     const pair = ([done, planned]) => (planned || done ? `${done}/${planned}` : "—");
     row.append(
-      node("td", {}, `${weekNumber(week.monday)} · ${format(week.monday, { day: "numeric", month: "numeric" })}`),
+      node("td", {}, `${weekNumber(week.monday)} · ${dayFormat(week.monday, { day: "numeric", month: "numeric" })}`),
       node("td", {}, `${week.ridden}/${week.planned}${week.extra ? ` +${week.extra}` : ""}${week.excused ? ` (${t("weeksExcused", { days: week.excused })})` : ""}`),
       node("td", {}, pair(week.long)),
       node("td", {}, pair(week.intervals)),
@@ -127,7 +126,7 @@ function workoutsCard(sport, scored) {
     row.addEventListener("click", () => openActivity(entry));
     const top = node("span", { class: "training-workout-head" });
     top.append(
-      node("span", { class: "training-workout-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })),
+      node("span", { class: "training-workout-day" }, dayFormat(day, { weekday: "short", day: "numeric", month: "numeric" })),
       node("span", { class: "training-workout-name" }, `${entry.name.replace(/^Kinomap - /, "")} · ${t(`scoreAs_${result?.as ?? "none"}`)}`),
     );
     if (result) top.append(scoreBadge(result.score));
@@ -194,7 +193,7 @@ function lastWeek(scored, workouts, log, sport) {
       whyCell.append(why);
     }
     row.classList.add("has-why");
-    row.append(mark, node("span", { class: "diary-plan-day" }, format(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell, whyCell);
+    row.append(mark, node("span", { class: "diary-plan-day" }, dayFormat(day, { weekday: "short", day: "numeric", month: "numeric" })), score, textCell, whyCell);
     list.append(row);
   }
   if (!list.children.length) return null;
@@ -243,7 +242,7 @@ function suggestionsButton(result, entries, type) {
   // The creator's workouts are no routes, even the steady ones.
   const made = new Set([...(plan.kinomap?.extras ?? []), plan.kinomap?.minimal].filter(Boolean));
   for (const ride of rides) if (made.has(ride.name)) ride.workout = true;
-  const when = (day) => format(day, { day: "numeric", month: "numeric", year: "numeric" });
+  const when = (day) => dayFormat(day, { day: "numeric", month: "numeric", year: "numeric" });
   const steady = type === "usual" || type === "long";
   const range = type === "long" ? [plan.long.fromKm, plan.long.toKm] : [plan.usual.km * 0.9, plan.usual.km * 1.1];
   const items = steady
@@ -321,7 +320,7 @@ function ftpTestCard(sport, entries, settings, onOpen) {
   const card = node("section", { class: "card training-ftp-test" });
   const current = currentFtp(settings, sport);
   card.append(
-    node("span", { class: "field-label" }, t("ftpTestTitle", { date: format(result.day, { day: "numeric", month: "numeric" }) })),
+    node("span", { class: "field-label" }, t("ftpTestTitle", { date: dayFormat(result.day, { day: "numeric", month: "numeric" }) })),
     node("p", { class: "training-ftp-result" }, t("ftpTestResult", { best: result.best20, ftp: result.ftp })),
     node("p", { class: "field-note" }, current ? t("ftpTestBefore", { ftp: current, change: `${result.ftp >= current ? "+" : ""}${result.ftp - current}` }) : t("ftpTestFirst")),
   );
@@ -366,7 +365,7 @@ function todayCard(result, scored, fatigue, entries, settings) {
   const next = result.checklist.find((entry) => entry.status === "planned" && entry.day > now && !excused[entry.day]) ?? result.days.find((entry) => entry.day > now && !excused[entry.day]);
   const showing = item?.status === "planned" ? item : next;
   const head = node("div", { class: "panel-title-row" });
-  const dayLabel = (day) => format(day, { weekday: "long", day: "numeric", month: "numeric" });
+  const dayLabel = (day) => dayFormat(day, { weekday: "long", day: "numeric", month: "numeric" });
   // With today ridden the card stays on today; the next workout is only named under it.
   const onToday = item?.status === "planned" || done;
   head.append(node("span", { class: "field-label" }, t(onToday ? "trainingToday" : "trainingNext", { day: onToday ? dayLabel(now) : showing ? dayLabel(showing.day) : "" })));
@@ -444,13 +443,13 @@ function outlookCard(plan) {
   plan.outlook.forEach((week, index) => {
     const row = node("tr", { class: index === 0 ? "is-current" : "" });
     const notes = [
-      ...(week.goal ? [t("trainingOutlookGoal", { day: format(week.goal, { weekday: "short", day: "numeric", month: "numeric" }) })] : []),
+      ...(week.goal ? [t("trainingOutlookGoal", { day: dayFormat(week.goal, { weekday: "short", day: "numeric", month: "numeric" }) })] : []),
       ...(week.taper ? [t(`trainingOutlookTaper_${week.taper}`)] : []),
       ...(week.ftpTest ? [t("trainingOutlookTest")] : []),
       ...(week.lighter ? [t("trainingOutlookLighter")] : []),
     ];
     row.append(
-      node("td", {}, `${index === 0 ? t("planThisWeek") : weekNumber(week.monday)} · ${format(week.monday, { day: "numeric", month: "numeric" })}`),
+      node("td", {}, `${index === 0 ? t("planThisWeek") : weekNumber(week.monday)} · ${dayFormat(week.monday, { day: "numeric", month: "numeric" })}`),
       node("td", {}, `${week.longCount > 1 ? `${week.longCount} × ` : ""}${week.longMinutes} min`),
       node("td", {}, String(week.intervals)),
       node("td", {}, notes.join(" · ")),
@@ -513,7 +512,7 @@ function progressCard(sport, entries, plan, settings) {
     line = [mean + slope * (dayNumber(shown[0].day) - middle), mean + slope * (dayNumber(shown.at(-1).day) - middle)];
   }
   const trendNote = trend.perFourWeeks == null ? "" : t("trainingZoneTwoTrend", { watts: `${trend.perFourWeeks > 0 ? "+" : ""}${displayNumber(trend.perFourWeeks, 1)}` });
-  const label = (point, index) => (index === 0 || index === shown.length - 1 ? format(point.day, { day: "numeric", month: "numeric" }) : "");
+  const label = (point, index) => (index === 0 || index === shown.length - 1 ? dayFormat(point.day, { day: "numeric", month: "numeric" }) : "");
   grid.append(figure(t("trainingZoneTwo"), trendNote, shown.length >= 2 ? smallChart(shown.map((point, index) => ({ label: label(point, index), value: point.watts, kind: "point" })), { line }) : null));
   // The longest workout of each week, the target dashed.
   const workouts = entries.map((entry) => ({ day: dayKey(entry.startMs, zone), minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry) }));
@@ -627,7 +626,7 @@ function drawWeek(week, { result, scored, sport, last, log, workouts }) {
 }
 
 export async function showTraining() {
-  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
+  view.entries = await cleanEntries();
   render();
 }
 

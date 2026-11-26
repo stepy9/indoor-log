@@ -1,6 +1,6 @@
 // The activity detail: everything known about one activity, read only, opened from the calendar, the library and
 // wherever else an activity is clicked. Comparing it and editing it are a button away.
-import { cadenceUnit, metricLabel, metricText, paceText, valueText } from "./units.js";
+import { cadenceUnit, metricLabel, metricText, paceText, signedText, valueText } from "./units.js";
 import { element, svgNode } from "./dom.js";
 import { confirmDialog } from "./confirm.js";
 import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
@@ -397,9 +397,8 @@ function sameWorkout(entry) {
   const history = sameWorkoutHistory(entry, view.entries);
   if (!history?.earlier.length) return null;
   const last = history.earlier[0];
-  const signed = (value, digits, suffix) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${suffix}`);
   const text = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", {
-    day: shortDay(last.entry.startMs), power: signed(last.change.power, 0, " W"), heart: signed(last.change.heartRate, 0, " bpm"), efficiency: signed(last.change.efficiency, 1, " %"),
+    day: shortDay(last.entry.startMs), power: signedText(last.change.power, 0, " W"), heart: signedText(last.change.heartRate, 0, " bpm"), efficiency: signedText(last.change.efficiency, 1, " %"),
   });
   const card = element("section", "card");
   const link = element("button", "link-button", t("activityCompareSame"));

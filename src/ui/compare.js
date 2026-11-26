@@ -1,4 +1,5 @@
-import { cadenceUnit, metricLabel, metricText, valueText } from "./units.js";
+import { allEntries, cleanEntries } from "./entries.js";
+import { cadenceUnit, metricLabel, metricText, signedText, valueText } from "./units.js";
 import { svgNode } from "./dom.js";
 import { dayMs, noon } from "../dates.js";
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
@@ -6,7 +7,6 @@ import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
 import { weekNumber } from "../diary.js";
 import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
-import { listEntries } from "../library.js";
 import { byId, displayNumber, formatDuration, locale, shortDateTime, shortDay, sportLabel, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
@@ -15,7 +15,7 @@ import { renderLimited } from "./more.js";
 import { infoHint, tipOn } from "./info.js";
 import { benefitText, openActivity } from "./activity.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
-import { aerobicEffect, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
+import { aerobicEffect, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
 
 // Up to six activities at once, each keeping its colour slot while it stays selected.
 const slotCount = 6;
@@ -86,7 +86,7 @@ function xTicks(low, high) {
 }
 
 async function refresh() {
-  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
+  view.entries = await cleanEntries();
   const ids = new Set(view.entries.map((entry) => entry.id));
   for (const id of view.slots.keys()) if (!ids.has(id)) view.slots.delete(id);
   const sports = [...new Set(view.entries.map((entry) => entry.sport))];
@@ -607,8 +607,6 @@ function renderSame(all) {
   card.hidden = !history?.earlier.length;
   if (card.hidden) return;
   const { current, earlier } = history;
-  const day = (ms) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(ms));
-  const signed = (value, digits, unit) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${unit}`);
   const cell = (text, className = "") => Object.assign(document.createElement("td"), { textContent: text, className });
   // Better now: more power, a lower heart rate, more power per beat.
   const tone = (value, higherBetter) => (value == null || Math.abs(value) < 0.5 ? "" : (value > 0) === higherBetter ? "is-better" : "is-worse");
@@ -617,11 +615,11 @@ function renderSame(all) {
   const summary = byId("compareSameSummary");
   summary.replaceChildren();
   const part = (text, className) => Object.assign(document.createElement("span"), { textContent: text, className });
-  const powerText = part(signed(last.change.power, 0, " W"), tone(last.change.power, true));
-  const heartText = part(signed(last.change.heartRate, 0, " bpm"), tone(last.change.heartRate, false));
-  const efficiencyText = part(signed(last.change.efficiency, 1, " %"), tone(last.change.efficiency, true));
+  const powerText = part(signedText(last.change.power, 0, " W"), tone(last.change.power, true));
+  const heartText = part(signedText(last.change.heartRate, 0, " bpm"), tone(last.change.heartRate, false));
+  const efficiencyText = part(signedText(last.change.efficiency, 1, " %"), tone(last.change.efficiency, true));
   // The sentence with its numbers coloured: built from the translation, each placeholder taking its span.
-  const template = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", { day: day(last.entry.startMs), power: "{power}", heart: "{heart}", efficiency: "{efficiency}" });
+  const template = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", { day: shortDay(last.entry.startMs), power: "{power}", heart: "{heart}", efficiency: "{efficiency}" });
   const parts = { power: powerText, heart: heartText, efficiency: efficiencyText };
   for (const piece of template.split(/({power}|{heart}|{efficiency})/)) summary.append(parts[piece.slice(1, -1)] ?? piece);
   const table = byId("compareSameTable");
@@ -633,15 +631,15 @@ function renderSame(all) {
     const line = document.createElement("tr");
     if (isCurrent) line.className = "is-current";
     const when = document.createElement("td");
-    if (isCurrent) when.textContent = `${day(item.entry.startMs)} (${t("sameThis")})`;
+    if (isCurrent) when.textContent = `${shortDay(item.entry.startMs)} (${t("sameThis")})`;
     else {
-      const link = tipOn(Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: day(item.entry.startMs) }), t("sameAdd"));
+      const link = tipOn(Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: shortDay(item.entry.startMs) }), t("sameAdd"));
       link.addEventListener("click", () => toggle(item.entry, true));
       when.append(link);
     }
-    const change = isCurrent ? "" : [signed(item.change.power, 0, " W"), signed(item.change.heartRate, 0, " bpm")].join(" · ");
+    const change = isCurrent ? "" : [signedText(item.change.power, 0, " W"), signedText(item.change.heartRate, 0, " bpm")].join(" · ");
     line.append(when, cell(value(item.power, "W")), cell(value(item.heartRate, "bpm")), cell(value(item.efficiency, "W/bpm", 2)),
-      isCurrent ? cell("") : cell(`${change} · ${signed(item.change.efficiency, 1, " %")}`, tone(item.change.efficiency, true)));
+      isCurrent ? cell("") : cell(`${change} · ${signedText(item.change.efficiency, 1, " %")}`, tone(item.change.efficiency, true)));
     [...line.cells].forEach((td, index) => { td.dataset.label = isCurrent && index === 4 ? "" : labels[index]; });
     return line;
   };
@@ -1054,7 +1052,7 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
   // The Training tab shows once a sport has the Training section filled in; on a phone it takes a sixth of the bar.
   const trainingTab = document.querySelector('[data-app-view="training"]');
   const showTrainingTab = async () => {
-    trainingTab.hidden = !trainingShown(await listEntries().catch(() => []));
+    trainingTab.hidden = !trainingShown(await allEntries());
     if (trainingTab.hidden && currentView === "training") showView("diary");
   };
   showTrainingTab();

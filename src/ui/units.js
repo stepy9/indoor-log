@@ -28,6 +28,12 @@ export function metricText(value, metric, sport) {
   return valueText(value, { power: "W", heartRate: "bpm", cadence: cadenceUnit(sport) }[metric]);
 }
 
+// A change with its sign, +3 W, −2 bpm or ±0; a dash without one.
+export const signedText = (value, digits, suffix) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${suffix}`);
+
+// The planned resistance after a workout's text, " · level 5" or " · level 5–6"; nothing without one.
+export const planLevelText = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
+
 export function metricLabel(metric, sport) {
   if (metric === "pace") return t(sport === "cycling" ? "lapSpeed" : "lapPace");
   return t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence", stroke: "compareStroke" }[metric]);

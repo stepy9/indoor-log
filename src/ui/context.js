@@ -1,3 +1,4 @@
+import { noon } from "../dates.js";
 import { translations } from "../i18n.js";
 
 export const byId = (id) => document.getElementById(id);
@@ -62,6 +63,9 @@ export function shortDateTime(epochMs) {
 
 // A day as tables and tooltips show it, 13. 3. 26.
 export const shortDay = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
+
+// A day key written in a chosen format, as a calendar names it (the day itself, never shifted by a time zone).
+export const dayFormat = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 // Wall-clock time of day in the output time zone, e.g. 19:43:51.
 export function clockTime(epochMs) {

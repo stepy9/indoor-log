@@ -1,3 +1,4 @@
+import { allEntries as readEntries } from "./entries.js";
 import { readJson, writeJson } from "./storage.js";
 import { tipOn } from "./info.js";
 import { downloadFile } from "./dom.js";
@@ -216,7 +217,7 @@ const markBackup = (count) => writeJson(backupKey, { at: Date.now(), count });
 
 // Whether a backup is due. With Dropbox connected the library is kept there too, so never.
 export async function backupIsDue() {
-  const count = (await listEntries().catch(() => [])).length;
+  const count = (await readEntries()).length;
   return !cloudConnected() && backupDue(count, lastBackup());
 }
 

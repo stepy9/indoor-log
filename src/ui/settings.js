@@ -1,7 +1,8 @@
+import { allEntries } from "./entries.js";
+import { sameValue } from "../values.js";
 import { readJson, writeJson } from "./storage.js";
 import { node } from "./dom.js";
 import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
-import { listEntries } from "../library.js";
 import { changedTimesOf, restoreDefaults, saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
 import { confirmDialog } from "./confirm.js";
 import { showToast } from "./toast.js";
@@ -33,7 +34,6 @@ const sports = ["rowing", "cycling", "running"];
 const defaultRestHeartRate = 60;
 
 const remembered = () => savedDefaults().fitness ?? {};
-const sameValue = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 
 // Each change of a setting with a history is kept from the day it holds from, the days before keeping theirs.
 function withHistory(own, patch, keys) {
@@ -726,7 +726,7 @@ function backupBlock() {
     if (!file) return;
     const { text, type } = await restoreBackup(file);
     if (type === "success") {
-      state.entries = await listEntries().catch(() => []);
+      state.entries = await allEntries();
       state.before = snapshot();
       keepUndo(state.before);
       render();
@@ -1148,7 +1148,7 @@ export async function openSettings(pane, tab, workout) {
   if (sportTabs.includes(tab)) state.tab = tab;
   const sport = typeof pane === "string" ? pane : state.sport();
   if (sports.includes(sport) || sport === "general") state.pane = sport;
-  state.entries = await listEntries().catch(() => []);
+  state.entries = await allEntries();
   state.before = snapshot();
   keepUndo(state.before);
   state.dirty = false;

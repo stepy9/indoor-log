@@ -1,11 +1,12 @@
+import { cleanEntries } from "./entries.js";
+import { planLevelText } from "./units.js";
 import { svgNode } from "./dom.js";
 import { dayMs, noon, todayKey } from "../dates.js";
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
-import { listEntries } from "../library.js";
-import { aerobicEffect, benefitGroup, benefitGroups, benefits, focusAdvice, focusTargets, primaryBenefit, trainingFocus, withCleanHeartRate } from "../fitness.js";
+import { aerobicEffect, benefitGroup, benefitGroups, benefits, focusAdvice, focusTargets, primaryBenefit, trainingFocus } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { byId, displayNumber, formatDuration, locale, sportLabel, t, zone } from "./context.js";
+import { byId, dayFormat, displayNumber, formatDuration, sportLabel, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.js";
@@ -88,12 +89,11 @@ function plannedWords(plan, sport, type, detail) {
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
   // The trainer's resistance, a level or a range of them.
-  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
   const steady = steadyGuide(plan, sport);
   return type === "ftpTestShort" ? t("planFtpTestShort")
     : type === "ftpTest" ? t("planFtpTest")
     : type === "long" ? t("planLong", { from: km(plan.long.fromKm), to: km(plan.long.toKm), minutes: plan.long.minutes }) + steady
-    : type === "intervals" ? t(`planIntervalsKind_${plan.intervals.kind}`) + t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals)
+    : type === "intervals" ? t(`planIntervalsKind_${plan.intervals.kind}`) + t("planIntervals", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + planLevelText(plan.levels?.intervals)
     : t("planUsual", { km: km(plan.usual.km), minutes: plan.usual.minutes }) + steady;
 }
 
@@ -110,7 +110,7 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
     // A mark, not a checkbox: the app marks a day by the workouts in the library.
     const mark = Object.assign(document.createElement("span"), { className: "diary-plan-mark", textContent: { done: "✓", missed: "–", planned: "" }[item.status] });
     mark.setAttribute("aria-label", t(`planStatus_${item.status}`));
-    const when = Object.assign(document.createElement("span"), { className: "diary-plan-day", textContent: format(item.day, { weekday: "short", day: "numeric", month: "numeric" }) });
+    const when = Object.assign(document.createElement("span"), { className: "diary-plan-day", textContent: dayFormat(item.day, { weekday: "short", day: "numeric", month: "numeric" }) });
     const excuse = item.status !== "done" ? excused?.[item.day] : null;
     if (excuse) {
       row.classList.add("is-excused");
@@ -130,7 +130,7 @@ export function drawPlanCard(card, result, { scores = null, withNextStep = false
     const swapped = item.status === "planned" && !excuse ? swappedWith?.(item.day) : null;
     // A day ridden drawn by the caller when it can (its workouts opening their detail), else as text.
     if (item.status === "done" && doneCell) row.append(doneCell(item.day));
-    else row.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text }), swapped ? t("swappedWith", { day: format(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : ""));
+    else row.append(hoverTip(Object.assign(document.createElement("span"), { className: "diary-plan-text", textContent: swapped ? `⇄ ${text}` : text }), swapped ? t("swappedWith", { day: dayFormat(swapped, { weekday: "short", day: "numeric", month: "numeric" }) }) : ""));
     // Why a day went unridden: to say on a day gone by or today, or ahead for a break known (a trip, an illness),
     // in a column of its own at the row's end, empty on the days ridden, so the links line up.
     if (onExcuse) {
@@ -336,7 +336,6 @@ function pickedStart(range) {
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
 let openActivity = () => {};
 
-const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 // Each kind keeps its place in the categorical palette.
 const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
@@ -363,8 +362,8 @@ const hours = (seconds) => (seconds >= 3600 ? `${displayNumber(seconds / 3600, 1
 
 function periodTitle([from, to]) {
   if (view.period === "year") return from.slice(0, 4);
-  if (view.period === "month") return format(from, { month: "long", year: "numeric" });
-  return `${t("diaryWeekNumber", { week: weekNumber(from) })} · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
+  if (view.period === "month") return dayFormat(from, { month: "long", year: "numeric" });
+  return `${t("diaryWeekNumber", { week: weekNumber(from) })} · ${dayFormat(from, { day: "numeric", month: "numeric" })} – ${dayFormat(addDays(to, -1), { day: "numeric", month: "numeric", year: "numeric" })}`;
 }
 
 // The period's name without its dates, for a note that gives them anyway.
@@ -388,14 +387,14 @@ function fillPeriodPicker(yearSelect, partSelect, start) {
   if (view.period === "month") {
     partSelect.replaceChildren(...Array.from({ length: 12 }, (_, index) => {
       const key = `${year}-${String(index + 1).padStart(2, "0")}-01`;
-      return new Option(format(key, { month: "long" }), key);
+      return new Option(dayFormat(key, { month: "long" }), key);
     }));
   }
   if (view.period === "week") {
     // Every week numbered in the year: from the one holding 4 January to the last before the next year's first.
     const options = [];
     for (let from = periodRange("week", `${year}-01-04`)[0]; from < periodRange("week", `${year + 1}-01-04`)[0]; from = addDays(from, 7)) {
-      options.push(new Option(`${weekNumber(from)}. · ${format(from, { day: "numeric", month: "numeric" })} – ${format(addDays(from, 6), { day: "numeric", month: "numeric" })}`, from));
+      options.push(new Option(`${weekNumber(from)}. · ${dayFormat(from, { day: "numeric", month: "numeric" })} – ${dayFormat(addDays(from, 6), { day: "numeric", month: "numeric" })}`, from));
     }
     partSelect.replaceChildren(...options);
   }
@@ -483,9 +482,9 @@ function renderTiles(current, previous, entries) {
     [t("lapHeartRate"), current.avgHeartRate == null ? "—" : `${displayNumber(current.avgHeartRate)} bpm`, change(current.avgHeartRate, previous.avgHeartRate, (value) => `${displayNumber(value)} bpm`)],
   ];
   byId("diaryPrevious").textContent = previous.partial && basisFor(view.period) !== "previous"
-    ? t("diaryVersusPartOf", { name: shortTitle(previous.range[0]), from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
+    ? t("diaryVersusPartOf", { name: shortTitle(previous.range[0]), from: dayFormat(previous.range[0], { day: "numeric", month: "numeric" }), to: dayFormat(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
     : previous.partial
-    ? t("diaryVersusPart", { from: format(previous.range[0], { day: "numeric", month: "numeric" }), to: format(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
+    ? t("diaryVersusPart", { from: dayFormat(previous.range[0], { day: "numeric", month: "numeric" }), to: dayFormat(addDays(previous.range[1], -1), { day: "numeric", month: "numeric" }) })
     : basisFor(view.period) === "pick"
       ? t("diaryVersusPick", { name: periodTitle(previous.range) })
       : t(basisFor(view.period) === "lastYear" ? `diaryVersusLastYear_${view.period}` : `diaryVersus_${view.period}`);
@@ -589,8 +588,8 @@ function drawBars(buckets, groups, metric, height) {
   buckets.forEach((bucket, index) => {
     const x = left + slot * index + (slot - barWidth) / 2;
     const total = barValue(drawn(bucket.entries), metric);
-    const label = view.period === "year" ? format(`${bucket.key}-01`, { month: "short" })
-      : view.period === "week" ? format(bucket.key, shortWeek ? { weekday: "short" } : { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
+    const label = view.period === "year" ? dayFormat(`${bucket.key}-01`, { month: "short" })
+      : view.period === "week" ? dayFormat(bucket.key, shortWeek ? { weekday: "short" } : { weekday: "short", day: "numeric" }) : String(Number(bucket.key.slice(8)));
     // A narrow chart labels every few bars only, as many as fit side by side.
     if (index % labelStep === 0) children.push(svgNode("text", { x: x + barWidth / 2, y: height - 8, class: "diary-tick" }, label));
     if (!total || !max) return;
@@ -604,7 +603,7 @@ function drawBars(buckets, groups, metric, height) {
       y -= segment;
       group.append(svgNode("rect", { x, y, width: barWidth, height: Math.max(1, segment - 2), rx: 3, fill: color }));
     }
-    const when = view.period === "year" ? format(`${bucket.key}-01`, { month: "long", year: "numeric" }) : format(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
+    const when = view.period === "year" ? dayFormat(`${bucket.key}-01`, { month: "long", year: "numeric" }) : dayFormat(bucket.key, { weekday: "long", day: "numeric", month: "numeric" });
     const parts = groups.map(({ has, label, color }) => ({ label, color, value: barValue(bucket.entries.filter(has), metric) })).filter(({ value }) => value);
     group.addEventListener("pointerenter", () => showTooltip(group, { when, total: barText(total, metric), parts: parts.map((part) => ({ ...part, value: barText(part.value, metric) })), hint: view.period === "year" ? t("diaryOpenMonth") : "" }));
     // A finger lifting is not leaving: its tooltip stays until a tap elsewhere.
@@ -706,7 +705,7 @@ function yearGoalChart(sport, goal, year, entries) {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const day = (noon(key) - noon(`${year}-01-01`)) / dayMs;
     const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - noon(`${year}-01-01`)) / dayMs;
-    children.push(svgNode("text", { x: xFor((day + nextDay) / 2), y: height - 8, class: "diary-tick" }, format(key, { month: "short" })));
+    children.push(svgNode("text", { x: xFor((day + nextDay) / 2), y: height - 8, class: "diary-tick" }, dayFormat(key, { month: "short" })));
   }
   // The even pace to the goal, and the running total over it.
   children.push(svgNode("path", { class: "diary-year-pace", d: `M${xFor(0)},${yFor(0)}L${xFor(line.days)},${yFor(goal)}` }));
@@ -783,7 +782,7 @@ function renderCalendar(range, entries) {
   const today = todayKey(zone);
   const settings = settingsFor(view.entries);
   const excused = excuses();
-  const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: format(day, { weekday: "short" }) }));
+  const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: dayFormat(day, { weekday: "short" }) }));
   const cells = days.map((day) => {
     const cell = Object.assign(document.createElement("div"), { className: "diary-day" });
     // Days of the months around only keep the weekdays in line, so they stay empty.
@@ -792,9 +791,9 @@ function renderCalendar(range, entries) {
       return cell;
     }
     cell.classList.toggle("is-today", day === today);
-    cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: format(day, { day: "numeric" }) }));
+    cell.append(Object.assign(document.createElement("span"), { className: "diary-date", textContent: dayFormat(day, { day: "numeric" }) }));
     // A phone lists a week's days one under another, each named by its weekday and date.
-    cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: format(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
+    cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: dayFormat(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
     const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
     // Strength work done that day, from the Training tab.
@@ -810,7 +809,7 @@ function renderCalendar(range, entries) {
       // Unlike an activity: a dashed outline without a stripe and one line, the reason by its icon and its words,
       // so the kinds' colours stay the activities' own.
       const off = Object.assign(document.createElement("div"), { className: "diary-day-off" });
-      calendarTip(off, { when: format(day, { weekday: "long", day: "numeric", month: "numeric" }), total: t("diaryDayOff", { reason: excuseText(excuse) }), parts: [], hint: day >= today ? t("diaryOffChange") : "" });
+      calendarTip(off, { when: dayFormat(day, { weekday: "long", day: "numeric", month: "numeric" }), total: t("diaryDayOff", { reason: excuseText(excuse) }), parts: [], hint: day >= today ? t("diaryOffChange") : "" });
       off.append(Object.assign(document.createElement("span"), { className: "diary-day-off-name", textContent: `${excuseIcons[excuse.reason] ?? excuseIcons.other} ${excuseText(excuse)}` }));
       cell.append(off);
     }
@@ -820,7 +819,7 @@ function renderCalendar(range, entries) {
         const text = plannedText(item.plan, item.sport, item.type);
         const planned = Object.assign(document.createElement("button"), { type: "button", className: "diary-day-planned" });
         const [name, ...rest] = text.split(" · ");
-        calendarTip(planned, { when: format(day, { weekday: "long", day: "numeric", month: "numeric" }), total: name, detail: rest.join(" · "), parts: [], hint: t("diaryPlannedSkip") });
+        calendarTip(planned, { when: dayFormat(day, { weekday: "long", day: "numeric", month: "numeric" }), total: name, detail: rest.join(" · "), parts: [], hint: t("diaryPlannedSkip") });
         planned.append(Object.assign(document.createElement("span"), { className: "diary-day-planned-name", textContent: name }));
         planned.addEventListener("click", () => {
           hideTooltip();
@@ -1074,7 +1073,7 @@ function render() {
 }
 
 export async function showDiary() {
-  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
+  view.entries = await cleanEntries();
   render();
 }
 

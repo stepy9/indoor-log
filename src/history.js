@@ -1,3 +1,4 @@
+import { sameValue } from "./values.js";
 import { mondayOf } from "./dates.js";
 
 export { mondayOf };
@@ -24,7 +25,6 @@ export function valueOn(history, day, fallback = null) {
   return held ? held.value ?? null : fallback;
 }
 
-const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 
 // The history with the value set from the day given; the first change keeps the one before it for the past.
 // Setting the value that held before the day removes the day's record instead.
@@ -32,7 +32,7 @@ export function setValue(history, previous, value, from, at = Date.now()) {
   let list = Array.isArray(history) && history.length ? history.filter((record) => record.from !== from) : [{ from: start, value: previous ?? null, at }];
   if (from === start) list = list.filter((record) => record.from !== start);
   const before = valueOn(list.filter((record) => record.from < from), from, undefined);
-  if (from !== start && list.some((record) => record.from < from) && same(before, value) && !list.some((record) => record.from > from)) {
+  if (from !== start && list.some((record) => record.from < from) && sameValue(before, value) && !list.some((record) => record.from > from)) {
     return list.sort((a, b) => a.from.localeCompare(b.from));
   }
   return [...list, { from, value: value ?? null, at }].sort((a, b) => a.from.localeCompare(b.from));
@@ -65,7 +65,7 @@ export function withRecords(history, list, field, at = Date.now()) {
   const kept = (history ?? []).filter((record) => !next.has(day(record))).map((record) => (record.deleted ? record : { from: day(record), deleted: true, at }));
   const written = [...next.values()].map((record) => {
     const old = (history ?? []).find((item) => !item.deleted && day(item) === record.from);
-    return old && same(old.value, record.value) ? old : record;
+    return old && sameValue(old.value, record.value) ? old : record;
   });
   return [...kept, ...written].sort((a, b) => a.from.localeCompare(b.from));
 }

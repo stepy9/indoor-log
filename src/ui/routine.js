@@ -2,6 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
+import { allEntries } from "./entries.js";
 import { element } from "./dom.js";
 import { dayKey, dayMs, todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
@@ -10,7 +11,7 @@ import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults, settingsChanged } from "./preferences.js";
-import { listEntries, saveEntries } from "../library.js";
+import { saveEntries } from "../library.js";
 import { byId, locale, t, zone } from "./context.js";
 import { showToast } from "./toast.js";
 
@@ -22,7 +23,7 @@ const button = (className, text, onClick, label = null) => {
   return item;
 };
 // The day's last rowing workout not yet stretched after, which a stretching done here ticks as the Today card's does.
-const unstretched = async (day) => (await listEntries().catch(() => [])).filter((entry) => entry.sport === "rowing" && !entry.stretched && dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
+const unstretched = async (day) => (await allEntries()).filter((entry) => entry.sport === "rowing" && !entry.stretched && dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
 
 export const routineLog = () => savedDefaults().routineLog ?? {};
 export const routinePlan = () => savedDefaults().routinePlan ?? {};

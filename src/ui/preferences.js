@@ -1,3 +1,4 @@
+import { isBlank } from "../values.js";
 import { drawChart } from "./chart.js";
 import { elements } from "./context.js";
 import { readJson, readText, writeJson, writeText } from "./storage.js";
@@ -110,11 +111,10 @@ export const settingsSnapshot = () => ({ defaults: savedDefaults(), exports: [..
 
 // A backup only fills in: what is set here stays, and the backup adds what is missing, down into nested
 // values (a sport's thresholds, the weight history); its trainers join those here that are not already set up.
-const blankValue = (value) => value == null || (typeof value === "object" && Object.keys(value).length === 0);
 const isPlain = (value) => value && typeof value === "object" && !Array.isArray(value);
 
 export function fillMissing(current, backup) {
-  if (blankValue(current)) return backup;
+  if (isBlank(current)) return backup;
   if (!isPlain(current) || !isPlain(backup)) return current;
   const filled = { ...current };
   for (const [key, value] of Object.entries(backup)) filled[key] = key in current ? fillMissing(current[key], value) : value;

@@ -1,5 +1,7 @@
+import { cleanEntries } from "./entries.js";
+import { planLevelText } from "./units.js";
 import { node } from "./dom.js";
-import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
+import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, isFtpTest, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
 import { axisTicks, dayMs, mondayOf, noon, todayKey } from "../dates.js";
@@ -13,7 +15,6 @@ import { addDays, dayKey, weekNumber } from "../diary.js";
 import { anyTraining, hasTraining, keepPlan } from "./score.js";
 import { excuses, swaps } from "./excuse.js";
 import { defaultKinomapWorkouts, pickWorkouts, recentlyUnwell } from "../training.js";
-import { listEntries } from "../library.js";
 import { regularity } from "../regularity.js";
 import { goalFor, yearProgress } from "../year-goal.js";
 import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
@@ -252,7 +253,6 @@ export function renderNextStep(card, entries, sport = "all") {
   sport = result.sport;
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const watts = (range) => (range ? ` · ${range[0]}–${range[1]} W` : "");
-  const level = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
   const line = (title, text, className = "") => {
     const row = node("div", { class: `fitness-next-row ${className}` });
     row.append(node("strong", {}, title), node("span", {}, text));
@@ -270,7 +270,7 @@ export function renderNextStep(card, entries, sport = "all") {
   if (plan.ftpTest?.due) rows.push(line(t("nextFtpTest"), t(plan.ftpTest.done ? "nextFtpTestLong" : "nextFtpTestText")));
   if (plan.minimal) rows.push(line(t("nextMinimal"), t("nextMinimalText", { minutes: plan.minimal.minutes })));
   if (!plan.ftpTest?.due) rows.push(plan.intervals.due
-    ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + level(plan.levels?.intervals))
+    ? line(t("nextIntervals"), t(`nextIntervalsKind_${plan.intervals.kind}`) + t("nextIntervalsText", { repeats: plan.intervals.repeats, minutes: plan.intervals.minutes, rest: plan.intervals.rest }) + watts(plan.intervals.watts) + planLevelText(plan.levels?.intervals))
     : line(t("nextIntervals"), t(["tired", "hrvLow", "shortSleep", "illnessSigns"].some((hold) => plan.holds.includes(hold)) ? "nextIntervalsRest" : "nextIntervalsDone", { done: plan.intervals.done }), "is-done"));
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, `${t("nextTitle")} · ${sportLabel(sport)}`));
@@ -1431,7 +1431,7 @@ function render() {
 }
 
 export async function showFitness() {
-  view.entries = (await listEntries().catch(() => [])).map(withCleanHeartRate);
+  view.entries = await cleanEntries();
   render();
 }
 

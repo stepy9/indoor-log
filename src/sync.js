@@ -1,3 +1,4 @@
+import { isBlank } from "./values.js";
 import { dayMs } from "./dates.js";
 import { mergeDuplicates } from "./library.js";
 import { mergeHistory, toRecords, trackedGeneral, trackedSport, valueOn } from "./history.js";
@@ -53,7 +54,6 @@ export function normalizeSettings(settings) {
 }
 
 // A value that says nothing: missing, null, or an empty object or list.
-const blank = (value) => value == null || (typeof value === "object" && Object.keys(value).length === 0);
 
 // Each key from the side that changed it last; a blank value never wins over a filled one, whatever its time,
 // so a device that has not set anything up cannot wipe what another has. The excuses are the exception: removing
@@ -69,7 +69,7 @@ function withHistories(older, newer, tracked) {
   const history = { ...older?.history, ...newer?.history };
   for (const key of Object.keys(history)) history[key] = mergeHistory(older?.history?.[key], newer?.history?.[key]);
   const now = Object.fromEntries(Object.entries(history).filter(([key]) => tracked.includes(key)).map(([key, list]) => [key, valueOn(list, "9999-12-31")]));
-  const kept = Object.fromEntries(Object.entries(older ?? {}).filter(([key, value]) => key !== "history" && key !== "sports" && !blank(value) && blank(newer?.[key])));
+  const kept = Object.fromEntries(Object.entries(older ?? {}).filter(([key, value]) => key !== "history" && key !== "sports" && !isBlank(value) && isBlank(newer?.[key])));
   return { ...newer, ...kept, ...(Object.keys(history).length ? { ...now, history } : {}) };
 }
 
@@ -92,11 +92,11 @@ export function mergeSettings(local, remote) {
   for (const key of new Set([...Object.keys(a.defaults), ...Object.keys(b.defaults)])) {
     const here = { value: a.defaults[key], at: a.changedAt[key] ?? 0 };
     const there = { value: b.defaults[key], at: b.changedAt[key] ?? 0 };
-    const byTime = clearable.has(key) || blank(here.value) === blank(there.value);
-    const pick = byTime ? (there.at > here.at ? there : here) : blank(here.value) ? there : here;
+    const byTime = clearable.has(key) || isBlank(here.value) === isBlank(there.value);
+    const pick = byTime ? (there.at > here.at ? there : here) : isBlank(here.value) ? there : here;
     // The fitness settings from the side changed last, but the histories of both: a change made on either holds.
     // The day logs (strength, warm-ups) from both: a session done on either device counts.
-    const both = !blank(here.value) && !blank(there.value);
+    const both = !isBlank(here.value) && !isBlank(there.value);
     const value = key === "fitness" && both
       ? mergeFitness(pick === here ? there.value : here.value, pick.value)
       : dayLogs.has(key) && both ? { ...(pick === here ? there.value : here.value), ...pick.value } : pick.value;
@@ -172,7 +172,7 @@ export function syncSummary(state) {
   const fitness = defaults.fitness ?? {};
   const weight = (fitness.history?.weight ? toRecords(fitness.history.weight, "kg") : fitness.weightHistory ?? []).some((record) => record?.kg > 0) || fitness.weight > 0;
   const heartRate = fitness.restHeartRate > 0 || fitness.maxHeartRate > 0;
-  const thresholds = Object.values(fitness.sports ?? {}).some((sport) => sport && Object.values(sport).some((value) => !blank(value)));
+  const thresholds = Object.values(fitness.sports ?? {}).some((sport) => sport && Object.values(sport).some((value) => !isBlank(value)));
   return {
     activities: state?.entries?.length ?? 0,
     trainers: Array.isArray(defaults.trainers) ? defaults.trainers.length : 0,
