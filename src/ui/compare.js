@@ -8,7 +8,7 @@ import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengt
 import { weekNumber } from "../diary.js";
 import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
 import { byId, displayNumber, formatDuration, locale, shortDateTime, shortDay, sportLabel, t, zone } from "./context.js";
-import { editButton, kindBadge, kindLabel, openLibrary } from "./library.js";
+import { editButton, kindBadge, kindLabel } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -1121,16 +1121,13 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     view.smoothSeconds = Number(event.target.value);
     render();
   });
-  byId("compareLibraryButton").addEventListener("click", openLibrary);
-  // Activities added, renamed or removed in the library show at once in the view open behind it.
+  // Activities added or removed in Settings, or brought by a sync, show at once in the view open behind it.
   const refreshShown = () => {
     if (!byId("compareView").hidden) refresh();
     if (!byId("diaryView").hidden) showDiary();
     if (!byId("fitnessView").hidden) showFitness();
     if (!byId("trainingView").hidden) showTraining();
   };
-  byId("libraryDialog").addEventListener("close", refreshShown);
-  // What a sync brought from another device shows at once too.
   window.addEventListener("library-synced", refreshShown);
   const chart = byId("compareChart");
   // Pointer position in chart pixels, kept inside the plot.

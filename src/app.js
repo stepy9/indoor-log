@@ -1145,7 +1145,7 @@ for (const button of document.querySelectorAll(".mode-button")) {
 
 setupChartTrim(render);
 setupChartLegend();
-setupLibrary({ onEdit: openLibraryEntry, onOpen: openActivity, onRestore: () => {
+setupLibrary({ onEdit: openLibraryEntry, onRestore: () => {
   const sport = state.kinomap?.sport;
   renderTrainerOptions(sport, lastTrainerId(sport));
   if (elements.resistance.dataset.fromDefault) useDefaultResistance();

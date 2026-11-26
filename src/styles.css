@@ -154,11 +154,7 @@ button { cursor: pointer; }
 .library-button { padding: 6px 12px; border: 1px solid var(--topbar-line); border-radius: 999px; color: var(--topbar-muted); background: transparent; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
 .library-button:hover { color: #fff; border-color: var(--topbar-muted); }
 /* The library keeps one size whatever the sport holds, so switching tabs does not resize it. */
-.intervals-dialog.library-dialog { width: min(var(--dialog-lg), calc(100vw - 48px)); height: calc(100vh - 32px); max-height: calc(100vh - 32px); }
-.intervals-dialog.library-dialog[open] { display: flex; flex-direction: column; }
-.intervals-dialog.library-dialog .laps-scroll { flex: 1; min-height: 0; max-height: none; }
 #libraryEmpty { margin: 48px 0; text-align: center; }
-.library-dialog .check-field { margin: 4px 0 12px; }
 .library-table td:nth-child(2) { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #libraryNote.is-error { color: var(--danger); }
 #libraryNote.is-success { color: var(--success); }
@@ -1110,8 +1106,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 @media (max-width: 640px) {
   .brand { flex: none; }
   .topbar-title { display: block; align-self: center; flex: 1; min-width: 0; overflow: hidden; color: var(--topbar-ink); font-size: var(--fs-lg); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-  #libraryButton { position: relative; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border-radius: 50%; }
-  #libraryButton > span { display: none; }
   .topbar-icon { display: block; }
 }
 /* Tablets too (an iPad held upright): the settings, the language and the appearance go under the gear,
@@ -1136,10 +1130,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 /* Phones: the library fills the screen, each activity is a card (name, then date, time and distance, then kind,
    trainer and resistance), and the actions sit in even rows under it. */
 @media (max-width: 640px) {
-  .intervals-dialog.library-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: calc(14px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)); border-radius: 0; }
-  .library-dialog .library-sports { display: flex; width: 100%; }
-  .library-dialog .library-sports button { flex: 1; min-width: 0; padding-inline: 4px; }
-  .library-dialog .laps-scroll { overflow-x: hidden; border-radius: 0; box-shadow: none; }
   .library-table, .library-table tbody { display: block; }
   .library-table thead { display: none; }
   .library-table tr { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 8px; align-items: center; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-2); }
@@ -1150,11 +1140,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .library-table td:nth-child(4) { grid-column: 4 / 5; grid-row: 2; color: var(--muted); font-size: var(--fs-sm); }
   .library-table td:nth-child(5) { grid-column: 5 / 7; grid-row: 2; color: var(--muted); font-size: var(--fs-sm); text-align: right; }
   .library-table td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; color: var(--muted); font-size: var(--fs-sm); }
-  .library-dialog .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-  .library-dialog .dialog-actions > * { width: 100%; margin: 0; justify-content: center; text-align: center; }
-  .library-dialog .dialog-spacer { display: none; }
-  #libraryAddButton { grid-column: 1 / -1; order: -1; }
-  #libraryClearButton { grid-column: 1 / -1; order: 1; border: 1px solid color-mix(in srgb, var(--danger-ink) 55%, transparent); border-radius: var(--control-radius); color: var(--danger-ink); background: color-mix(in srgb, var(--danger-ink) 8%, transparent); text-decoration: none; }
 }
 
 /* Phones: the lap resistance fills the screen; its table drops the start column (the laps run in order) so it fits the width. */

@@ -15,7 +15,7 @@ import { addDays, dayKey } from "../diary.js";
 import { goalFor, withGoal } from "../year-goal.js";
 import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
 import { openDatePicker } from "./datepicker.js";
-import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
+import { backupIsDue, downloadBackup, libraryBlock, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, releaseSync, setFitBackup, setSyncHold, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
 import { formatDay, parseDay, todayKey } from "../dates.js";
 import { parseKinomapPlan, setCalorieProfile } from "../core.js";
@@ -333,7 +333,7 @@ function generalPane() {
   remindBox.checked = !remembered().reminders?.off;
   remindBox.addEventListener("change", () => saveFitness({ reminders: { ...remembered().reminders, off: !remindBox.checked } }));
   remind.append(remindBox, " ", node("span", {}, t("settingsReminders")));
-  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), remind, node("p", { class: "field-note" }, t("settingsRemindersNote")), garminBlock(), cloudBlock(), backupBlock());
+  pane.append(grid, node("p", { class: "field-note" }, t("settingsCaloriesNote")), weightBlock(), remind, node("p", { class: "field-note" }, t("settingsRemindersNote")), garminBlock(), cloudBlock(), backupBlock(), libraryBlock(state.entries));
   return pane;
 }
 
@@ -1210,10 +1210,14 @@ export function setupSettings({ onTrainers, currentSport }) {
   // Syncing waits while the settings hold unsaved edits, and runs once they are saved or dropped.
   setSyncHold(() => dialog.open && state.dirty);
   // What a sync brought while the dialog is open without edits becomes what Cancel goes back to.
-  window.addEventListener("library-synced", () => {
-    if (!dialog.open || state.dirty) return;
-    state.before = snapshot();
-    keepUndo(state.before);
+  // Activities added or removed here count at once too.
+  window.addEventListener("library-synced", async () => {
+    if (!dialog.open) return;
+    state.entries = await allEntries();
+    if (!state.dirty) {
+      state.before = snapshot();
+      keepUndo(state.before);
+    }
     render();
   });
   dialog.addEventListener("field-check", updateSaveButton);
