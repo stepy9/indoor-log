@@ -15,10 +15,12 @@
   --surface-2: #f6f8fb;
   --ink: #0f172a;
   --muted: #5b6b82;
-  --subtle: #8794a8;
+  --subtle: #616f86;
   --line: #e3e8f0;
   --line-strong: #cfd7e3;
   --accent: #2563eb;
+  /* A fill under white text: the dark theme's accent is too light for it. */
+  --accent-fill: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-soft: #e8efff;
   --accent-ink: #1e40af;
@@ -95,10 +97,11 @@
   --surface-2: #0d1422;
   --ink: #e6ebf5;
   --muted: #9aa7bd;
-  --subtle: #6f7d95;
+  --subtle: #8290a8;
   --line: #1f2a3d;
   --line-strong: #2c3a52;
   --accent: #4d8dff;
+  --accent-fill: #2f6fdf;
   --accent-hover: #6ea2ff;
   --accent-soft: #15254a;
   --accent-ink: #a9c6ff;
@@ -255,7 +258,7 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .feel-faces { display: flex; gap: 6px; }
 .feel-face { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; color: var(--muted); background: var(--surface-2); box-shadow: 0 0 0 1px var(--line) inset; transition: background .15s, color .15s, transform .15s; }
 .feel-face:hover { color: var(--accent); transform: translateY(-1px); }
-.feel-face[aria-checked="true"] { color: #fff; background: var(--accent); box-shadow: none; }
+.feel-face[aria-checked="true"] { color: #fff; background: var(--accent-fill); box-shadow: none; }
 .feel-face svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .feel-face svg .eye { fill: currentColor; stroke: none; }
 .feel-label { color: var(--ink); font-size: var(--fs-base); font-weight: 600; }
@@ -283,7 +286,7 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .field input[type="number"] { font-variant-numeric: tabular-nums; }
 .align-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .accent-button { border-color: var(--accent); color: var(--accent); font-weight: 600; white-space: nowrap; }
-.accent-button:not(:disabled):hover { color: #fff; background: var(--accent); }
+.accent-button:not(:disabled):hover { color: #fff; background: var(--accent-fill); }
 .manual-date { margin-bottom: 16px; padding: 14px; border: 1px solid var(--warning); border-radius: var(--radius-md); background: var(--warning-soft); }
 .manual-date p { margin: 8px 0 0; color: var(--warning); font-size: var(--fs-sm); }
 .field-note { margin: 8px 0 0; color: var(--subtle); font-size: var(--fs-sm); }
@@ -420,10 +423,10 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .start-stamp { display: grid; gap: 4px; min-width: 0; }
 .start-stamp span { color: var(--muted); font-size: var(--fs-sm); }
 .start-stamp strong { font-size: var(--fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
-.export-button { border-color: var(--accent); color: #fff; background: var(--accent); }
+.export-button { border-color: var(--accent-fill); color: #fff; background: var(--accent-fill); }
 :is(.setup-actions, .export-actions) > button { --control-h: var(--control-lg); padding: 0 22px; font-size: var(--fs-lg); }
 .export-button span[aria-hidden="true"]:last-child { font-size: 1.3em; }
-.export-button:not(:disabled):hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+.export-button:not(:disabled):hover { --fill-hover: color-mix(in srgb, var(--accent-fill) 85%, #000); border-color: var(--fill-hover); background: var(--fill-hover); }
 
 .notice { margin-top: 14px; padding: 11px 14px; border-radius: var(--radius-md); color: var(--warning); background: var(--warning-soft); font-size: var(--fs-base); }
 .notice.is-error { color: var(--danger-ink); background: var(--danger-soft); }
@@ -832,7 +835,7 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-right: 1px solid var(--line); }
 .settings-nav button { padding: 8px 10px; border: 0; border-radius: var(--radius-sm); color: var(--ink); background: transparent; font: inherit; font-size: var(--fs-md); text-align: left; cursor: pointer; }
 .settings-nav button:hover { background: var(--surface-2); }
-.settings-nav button[aria-pressed="true"] { color: #fff; background: var(--accent); font-weight: 600; }
+.settings-nav button[aria-pressed="true"] { color: #fff; background: var(--accent-fill); font-weight: 600; }
 .settings-panes { min-width: 0; padding: 16px 20px 20px; }
 .settings-section[hidden] { display: none; }
 .settings-section h3 { margin: 0 0 6px; font-size: var(--fs-lg); }
@@ -1393,7 +1396,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .export-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Add opens a new activity: the topbar's one filled button, marked while the activity is open. */
-.add-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 999px; color: #fff; background: #3b7bf0; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
+.add-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 999px; color: #fff; background: var(--accent-fill); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
 .add-button:hover, .add-button[aria-pressed="true"] { background: #4d8dff; }
 .add-button .topbar-icon { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 @media (max-width: 640px) {
@@ -1408,7 +1411,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 }
 
 /* The Training tab: the workouts' scores against the plan. */
-.score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid color-mix(in srgb, var(--score) 45%, transparent); color: var(--score); background: color-mix(in srgb, var(--score) 14%, transparent); }
+.score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid color-mix(in srgb, var(--score) 45%, transparent); color: color-mix(in srgb, var(--score) 80%, var(--ink)); background: color-mix(in srgb, var(--score) 14%, transparent); }
 .score-badge.is-good { --score: var(--success); }
 .score-badge.is-fair { --score: var(--warning); }
 .score-badge.is-poor { --score: var(--danger-ink); }
@@ -1466,7 +1469,7 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .excuse-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .excuse-reasons button { height: var(--control-sm); padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--control-radius); color: var(--ink); background: var(--surface); font-size: var(--control-font); }
 .excuse-reasons button:hover { border-color: var(--accent); }
-.excuse-reasons button[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: var(--accent); }
+.excuse-reasons button[aria-pressed="true"] { border-color: var(--accent-fill); color: #fff; background: var(--accent-fill); }
 .excuse-other { width: 100%; margin-top: 10px; }
 .excuse-other[hidden] { display: none; }
 .excuse-range { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
@@ -1885,7 +1888,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .strength-block { margin-top: 6px; }
 .strength-done { margin-top: 6px; }
 .recovery-player.is-reps #recoveryPlayerPause { display: none; }
-.recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent); background: var(--accent); }
+.recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent-fill); background: var(--accent-fill); }
 .diary-strength { display: block; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* The day's card: the workout on the left, what goes with it in a column on the right on a wide screen, each part
@@ -2090,7 +2093,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
   .routine-panel .routine-main { margin-top: 12px; }
   .routine-actions .routine-name { flex: 1 1 0; margin-top: 8px; }
   .routine-actions #routineSave { flex: none; margin-top: 8px; }
-  .routine-actions .routine-start { --control-h: var(--control-lg); border-color: var(--accent); color: #fff; background: var(--accent); font-size: var(--fs-lg); box-shadow: var(--shadow-pop); order: 99; position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 3; margin-top: 12px; }
+  .routine-actions .routine-start { --control-h: var(--control-lg); border-color: var(--accent-fill); color: #fff; background: var(--accent-fill); font-size: var(--fs-lg); box-shadow: var(--shadow-pop); order: 99; position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 3; margin-top: 12px; }
 }
 /* The Set tab on a wide screen: the choices in a column at the left, staying in view, the cards beside them. */
 .routine-layout { display: grid; gap: 16px; }
