@@ -24,7 +24,7 @@ import {
   locale,
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
 } from "./ui/context.js";
-import { exportFit, saveFit, saveToLibrary } from "./ui/export.js";
+import { exportFit, saveFit, saveToLibrary, workoutFingerprint } from "./ui/export.js";
 import { exportedKeys, rememberExport, saveDefaults, savedDefaults, savedLanguage, savedTheme, setLanguageMenu, setTheme } from "./ui/preferences.js";
 import { checkNumber, checkText, markField } from "./ui/validate.js";
 import { allZones, defaultZoneFor, offsetLabel, systemZone, zoneOffsetMinutes } from "./zones.js";
@@ -904,18 +904,22 @@ async function openLibraryEntry(entry) {
   // The converter's tab first, then its workspace over the file picking it may have shown.
   openConverter();
   showView("workspace");
+  // As opened, so leaving it unchanged does not ask.
+  state.openedAs = workoutFingerprint();
 }
 
-// An activity worked on and not saved yet asks before it is left.
+// An activity worked on and not saved yet asks before it is left; one opened from the library only once it was changed.
 async function confirmLeave() {
-  return !state.result || state.saved || state.batch || confirmDialog({ title: t("leaveUnsaved"), ok: t("settingsDiscard"), danger: true });
+  if (!state.result || state.saved || state.batch) return true;
+  if (state.editingEntry && state.openedAs && workoutFingerprint() === state.openedAs) return true;
+  return confirmDialog({ title: t("leaveUnsaved"), ok: t("settingsDiscard"), danger: true });
 }
 
 // Add starts over: no files, nothing opened from the library.
 function resetConverter() {
   Object.assign(state, {
     batch: null, fit: null, fitFile: null, kinomap: null, kinomapFile: null, kinomapText: null, kinomapFileHandle: null,
-    outputDirectoryHandle: null, editingEntry: null, estimate: null, mode: "convert", zoneChoice: null, error: null, saved: false,
+    outputDirectoryHandle: null, editingEntry: null, openedAs: null, estimate: null, mode: "convert", zoneChoice: null, error: null, saved: false,
   });
   renderBatch();
   render();

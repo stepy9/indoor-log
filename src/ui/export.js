@@ -1,11 +1,22 @@
 import { fitFileName, kinomapExportKey } from "../files.js";
 import { elements, setNotice, state, t } from "./context.js";
 import { downloadFile } from "./dom.js";
+import { entryFromWorkout } from "../library.js";
 import { rememberWorkout } from "./library.js";
 import { trainerFor } from "./trainers.js";
 
 // The trainer and resistance picked in the converter, saved with the activity.
 const trainerSettings = () => ({ trainer: trainerFor(elements.trainer.value)?.name, resistance: Number(elements.resistance.value) || null });
+
+// What saving the open activity would keep, as one text: two equal ones mean nothing was changed in between.
+export function workoutFingerprint() {
+  if (!state.result) return null;
+  return JSON.stringify({
+    entry: entryFromWorkout(state.result, { name: elements.activityName.value, savedAt: 0 }),
+    kind: elements.workoutKind.value,
+    ...trainerSettings(),
+  });
+}
 import { rememberExport } from "./preferences.js";
 import { backupFit } from "./cloud.js";
 
