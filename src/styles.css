@@ -1873,6 +1873,8 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
    the clock and its "done" button leads, the pause hidden; in the diary a day's strength work is a small line. */
 .strength-block { margin-top: 6px; }
 .strength-done { margin-top: 6px; }
+.routine-week { margin: 6px 0 0; }
+.routine-week.is-reached { color: var(--success); font-weight: 600; }
 .recovery-player.is-reps #recoveryPlayerPause { display: none; }
 .recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent-fill); background: var(--accent-fill); }
 .diary-strength { display: block; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

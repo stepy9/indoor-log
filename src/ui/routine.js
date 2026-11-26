@@ -6,7 +6,7 @@ import { allEntries } from "./entries.js";
 import { element } from "./dom.js";
 import { dayKey, dayMs, todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
-import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
+import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, morningSet, morningSetId, weekCount, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
 import { videoButton } from "./video.js";
@@ -132,8 +132,16 @@ function plannedSet(item, day = null) {
 // The saved sets, each to start, put on weekdays in the plan or take out (its days in the plan with it).
 function renderSaved() {
   const saved = routineSaved();
-  byId("routineSavedBox").hidden = !saved.length;
-  byId("routineSaved").replaceChildren(...saved.map((entry) => {
+  // The morning mobility offered until it is saved (and again once taken out).
+  const offer = saved.some((entry) => entry.id === morningSetId) ? [] : [button("link-button", t("routineMorningAdd"), () => {
+    const { style, minutes, exercises: ids, seconds, reps, steps } = morningSet();
+    saveDefaults({ routineSaved: [...routineSaved(), { id: morningSetId, name: t("routineMorningName"), set: { style, minutes, exercises: ids, seconds, reps, steps } }] });
+    settingsChanged();
+    renderSaved();
+    showToast(t("routineSavedNote", { name: t("routineMorningName") }));
+  })];
+  byId("routineSavedBox").hidden = false;
+  byId("routineSaved").replaceChildren(...offer.map((item) => { const row = element("li", "routine-saved-offer"); row.append(item); return row; }), ...saved.map((entry) => {
     const row = element("li", "routine-saved-item");
     // The name with its style and length under it, then its buttons on the same line.
     const text = element("span", "routine-saved-name", entry.name);
@@ -381,6 +389,12 @@ export function routineBlock(day = todayKey(zone)) {
     block.append(head);
   }
   if (done.length) block.append(element("p", "training-today-done strength-done", t("routineDoneToday", { what: done.map((item) => setText(item)).join(", ") })));
+  // Each saved set in the plan, counted for the week: green once its planned days are reached, never a streak lost.
+  for (const entry of routineSaved()) {
+    const { done: count, target } = weekCount(routineLog(), routinePlan(), entry, day);
+    if (!target) continue;
+    block.append(element("p", `field-note routine-week${count >= target ? " is-reached" : ""}`, t("routineWeek", { name: entry.name, done: count, target })));
+  }
   block.append(button("link-button", t("routineOpen"), openRoutine));
   return block;
 }

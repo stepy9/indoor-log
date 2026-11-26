@@ -5,7 +5,7 @@
 // Stabilization takes each chain (front, back, side) at its own level for a minute, then the four ball moves for
 // the pelvis; balance does its five dumbbell moves one side at a time, more repeats on the weaker side.
 // No DOM here, so it is tested on its own.
-import { dayMs, noon, weekdayOf } from "./dates.js";
+import { addDays, dayMs, noon, weekdayOf } from "./dates.js";
 import { afterWorkout, exerciseCatalog, exercises, restSeconds, steps as timedSteps, strengthPlan, strengthSession, switchSeconds, warmupBefore, warmupRest } from "./recovery.js";
 
 export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "breath", "stability", "balance", "gear"];
@@ -364,6 +364,17 @@ export function togglePlanDay(plan = {}, weekday, choice) {
 // The sets done, kept by day for the calendar and the plan: { "YYYY-MM-DD": [{ style, area, minutes, exercises }] },
 // trimmed to the last weeks so the synced settings do not grow.
 export const routineKeepDays = 90;
+// The morning mobility from the book's chapter 9, offered ready to save: its dynamic moves, then two stretches.
+export const morningSetId = "morning";
+export const morningSet = () => customSet([{ id: "archToHeels" }, { id: "forearmOpen" }, { id: "hipSwitch" }, { id: "reverseTable" }, { id: "lungeReach" }, { id: "downDog", seconds: 30 }, { id: "lungeTwist", seconds: 30 }]);
+// A saved set's week: the days of day's week (Monday on) it was done, by its name, out of the weekdays it is planned.
+// Nothing is lost for a day missed: the count only grows.
+export function weekCount(log = {}, plan = {}, entry, day) {
+  const monday = addDays(day, -weekdayOf(day));
+  const done = [0, 1, 2, 3, 4, 5, 6].map((offset) => addDays(monday, offset)).filter((key) => (log[key] ?? []).some((item) => item.name === entry.name)).length;
+  const target = Object.values(plan).filter((item) => item.style === "saved" && item.saved === entry.id).length;
+  return { done, target };
+}
 export function logRoutine(log = {}, day, done) {
   const since = new Date(noon(day) - routineKeepDays * dayMs).toISOString().slice(0, 10);
   const kept = Object.fromEntries(Object.entries(log).filter(([key]) => key >= since));
