@@ -2182,3 +2182,5 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 @keyframes breathFirstHold { 0% { opacity: 1; } 40% { opacity: 0; } }
 @keyframes breathSecondHold { 0% { opacity: 0; } 40% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .breath-line .breath-cue { animation: none; } .breath-line .is-second { opacity: 0; } }
+.routine-done-item { margin-left: 4px; }
+.routine-done-item + .routine-done-remove { margin-left: 2px; font-weight: 400; }

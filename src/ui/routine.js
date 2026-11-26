@@ -407,7 +407,21 @@ export function routineBlock(day = todayKey(zone)) {
     head.append(button("outline-button warmup-button", t("routinePlanned", { what: setText(set) }), () => playSet(set, day)));
     block.append(head);
   }
-  if (done.length) block.append(element("p", "training-today-done strength-done", t("routineDoneToday", { what: done.map((item) => setText(item)).join(", ") })));
+  // What was done, each set with a cross taking it out of the log (one tried by mistake, say), after asking.
+  if (done.length) {
+    const line = element("p", "training-today-done strength-done", t("routineDoneToday", { what: "" }).trim());
+    done.forEach((item, index) => {
+      line.append(element("span", "routine-done-item", setText(item)), button("link-button icon-x routine-done-remove", "", async () => {
+        if (!(await confirmDialog({ title: t("routineDoneRemoveConfirm", { what: setText(item) }), ok: t("delete"), danger: true }))) return;
+        // The day kept, empty at the last: syncing joins the days of both devices, so one dropped would come back.
+        const log = routineLog();
+        saveDefaults({ routineLog: { ...log, [day]: (log[day] ?? []).filter((_, at) => at !== index) } });
+        settingsChanged();
+        showToast(t("routineDoneRemoved"));
+      }, t("routineRemove")));
+    });
+    block.append(line);
+  }
   // Each saved set in the plan, counted for the week: green once its planned days are reached, never a streak lost.
   for (const entry of routineSaved()) {
     const { done: count, target } = weekCount(routineLog(), routinePlan(), entry, day);
