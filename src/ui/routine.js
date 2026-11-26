@@ -176,7 +176,6 @@ function renderSaved() {
       showToast(t("savedSetRemoved"));
     }, t("routineRemove"));
     row.append(text, button("outline-button", t("routineSavedStart"), () => {
-      byId("exercisesDialog").close();
       playSet({ ...entry.set, name: entry.name }, todayKey(zone));
     }), remove);
     // Its weekdays in the plan; a day held by another set changes over to this one.
@@ -373,11 +372,11 @@ export function setupRoutine() {
   const fold = () => { byId("routineSetup").open = !narrow.matches; };
   fold();
   narrow.addEventListener("change", fold);
-  // The dialog opened from the menu shows the set as now chosen.
+  // The dialog opened from the menu shows the set as now chosen. A set started here runs over it, so the page is
+  // still there when it ends.
   byId("exercisesButton").addEventListener("click", render);
   byId("routineStart").addEventListener("click", () => {
     const set = render();
-    byId("exercisesDialog").close();
     playSet(set, todayKey(zone), { intro: false });
   });
   // Saved as it is now, so it runs the same however the automatic sets change later.
