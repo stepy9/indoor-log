@@ -2093,7 +2093,10 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .routine-side .routine-mode { margin-top: 0; }
 .routine-main .recovery-list { margin-top: 0; }
 .routine-groups { flex-wrap: wrap; margin-bottom: 12px; }
-.routine-add-button { --control-h: var(--control-sm); margin-top: 8px; }
+.routine-add-button { --control-h: var(--control-sm); }
+.recovery-item .recovery-text { align-self: stretch; flex: 1; }
+.recovery-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+.recovery-actions .outline-button { --control-h: var(--control-sm); margin: 0; }
 @media (min-width: 901px) {
   .routine-layout { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
   .routine-side { position: sticky; top: 0; max-height: calc(100vh - 220px); overflow-y: auto; padding-right: 4px; }

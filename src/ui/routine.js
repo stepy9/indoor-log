@@ -97,8 +97,12 @@ function card(id, doseText, more = []) {
   pictures.append(...figures(id));
   const text = element("div", "recovery-text");
   text.append(nameLine(id), element("span", "recovery-dose", doseText), element("p", "", t(`recoveryHow_${id}`)));
-  if (exercises[id].book) text.append(videoButton(exercises[id].book) ?? element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
-  text.append(button("link-button routine-try", `▶ ${t("routineTry")}`, () => tryExercise(id)), ...more);
+  const video = exercises[id].book ? videoButton(exercises[id].book) : null;
+  if (exercises[id].book && !video) text.append(element("span", "field-note exercises-sets", t("routineBook", { video: exercises[id].book })));
+  // The buttons in one row at the card's foot, so cards side by side line them up.
+  const actions = element("div", "recovery-actions");
+  actions.append(...(video ? [video] : []), button("outline-button routine-try", `▶ ${t("routineTry")}`, () => tryExercise(id)), ...more);
+  text.append(actions);
   item.append(pictures, text);
   return item;
 }
