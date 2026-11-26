@@ -16,8 +16,8 @@ import { checkNumber, markField } from "./validate.js";
 import { kindsOfWeek, kmByKindByWeek, weekKmByKind } from "../plan.js";
 import { planLog, planStart } from "./score.js";
 import { hoverTip, infoHint, tipOn } from "./info.js";
-import { sessionTip } from "./recovery.js";
-import { breathTip, routineTip } from "./routine.js";
+import { sessionLines, sessionTip } from "./recovery.js";
+import { doneCards } from "./routine.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
 import { goalFor, yearLine, yearProgress } from "../year-goal.js";
@@ -338,13 +338,16 @@ let openActivity = () => {};
 
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 // Each reason for a day off by an icon, in the calendar.
-// A line in a calendar day for work done off the machine (strength, the mat, breathing): its text cut short with an
-// ellipsis inside, so the line itself does not clip the tooltip hanging from it.
-const dayMark = (text) => {
-  const mark = Object.assign(document.createElement("span"), { className: "diary-strength" });
-  mark.append(Object.assign(document.createElement("span"), { className: "diary-strength-text", textContent: text }));
-  return mark;
-};
+// A card in a calendar day for work done off the machine (strength, a set on the mat, breathing), smaller than an
+// activity's and its stripe grey: the icon and the name, the length under it, the exercises in its tooltip. kind:
+// "strength", "mat" or "breath". On a phone's month only the icon shows.
+function sessionCard(kind, icon, title, meta, tip) {
+  const card = Object.assign(document.createElement("div"), { className: `diary-session is-${kind}` });
+  const name = Object.assign(document.createElement("span"), { className: "diary-session-name" });
+  name.append(Object.assign(document.createElement("span"), { className: "diary-session-icon", textContent: icon, ariaHidden: "true" }), Object.assign(document.createElement("span"), { className: "diary-session-title", textContent: ` ${title}` }));
+  card.append(name, ...(meta ? [Object.assign(document.createElement("span"), { className: "diary-session-meta", textContent: meta })] : []));
+  return hoverTip(card, tip);
+}
 const excuseIcons = { illness: "🤒", injury: "🩹", fatigue: "😴", work: "💼", travel: "✈️", family: "👪", time: "⏰", rest: "🛋️", other: "💬" };
 
 // Several sports at once: their distances do not add up, so the chart counts time and is split by sport.
@@ -801,13 +804,12 @@ function renderCalendar(range, entries) {
     cell.append(Object.assign(document.createElement("span"), { className: "diary-day-label", textContent: dayFormat(day, { weekday: "short", day: "numeric", month: "numeric" }) }));
     const ridden = entries.filter((entry) => dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs);
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
-    // Strength work done that day, from the Training tab.
-    if (savedDefaults().strengthLog?.[day]) cell.append(hoverTip(dayMark(`💪 ${t("strengthDay")}`), sessionTip("strength", day)));
-    // The sets on the mat done that day.
-    const mat = routineTip(day);
-    if (mat) cell.append(hoverTip(dayMark(`🧎 ${t("routineDay")}`), mat));
-    const breathed = breathTip(day);
-    if (breathed) cell.append(hoverTip(dayMark(`🌬️ ${t("breathDay")}`), breathed));
+    // Strength work done that day, from the Training tab, and each set on the mat or of breathing: a card of its own.
+    if (savedDefaults().strengthLog?.[day]) {
+      const session = sessionLines("strength", day);
+      cell.append(sessionCard("strength", "💪", t("exercisesStrength"), session?.rounds > 1 ? t("sessionRounds", { rounds: session.rounds }) : "", sessionTip("strength", day)));
+    }
+    for (const set of doneCards(day)) cell.append(sessionCard(set.breath ? "breath" : "mat", set.breath ? "🌬️" : "🧎", set.title, `${set.minutes} min`, set.tip));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {

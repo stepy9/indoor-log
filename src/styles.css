@@ -1883,8 +1883,15 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .routine-week.is-reached { color: var(--success); font-weight: 600; }
 .recovery-player.is-reps #recoveryPlayerPause { display: none; }
 .recovery-player.is-reps #recoveryPlayerSkip { color: #fff; border-color: var(--accent-fill); background: var(--accent-fill); }
-.diary-strength { display: block; color: var(--muted); font-size: var(--fs-xs); }
-.diary-strength-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diary-session { display: flex; flex-direction: column; gap: 1px; padding: 3px 6px; border-left: 4px solid var(--subtle); border-radius: var(--radius-xs); background: var(--surface-2); }
+.diary-session-name { overflow: hidden; font-size: var(--fs-xs); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.diary-session-meta { color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .diary-session { align-items: center; padding: 2px 0; border-left: 0; }
+  .diary-session-title, .diary-session-meta { display: none; }
+  .diary-calendar.is-week .diary-session { grid-column: 2; align-items: stretch; padding: 4px 8px; border-left: 4px solid var(--subtle); }
+  .diary-calendar.is-week :is(.diary-session-title, .diary-session-meta) { display: inline; }
+}
 
 /* The day's card: the workout on the left, what goes with it in a column on the right on a wide screen, each part
    under a small heading with a line between; on a narrower one the parts follow under the workout. */

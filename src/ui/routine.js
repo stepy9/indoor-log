@@ -457,3 +457,13 @@ export function breathTip(day) {
   const done = (routineLog()[day] ?? []).filter(isBreath);
   return done.length ? dayTip(t("routineStyle_breath"), done) : "";
 }
+
+// A day's sets done for the diary's cards: each { breath, title, minutes, tip }, the title its name or its style.
+export function doneCards(day) {
+  return (routineLog()[day] ?? []).map((item) => ({
+    breath: isBreath(item),
+    title: item.name ?? t(`routineStyle_${item.style}`),
+    minutes: item.minutes,
+    tip: setTip(item),
+  }));
+}
