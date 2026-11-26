@@ -223,5 +223,9 @@ export function setupLibrary({ onRestore, onEdit } = {}) {
     updateBackupReminder();
   });
   if (onRestore) onSettingsRestored = onRestore;
-  if (typeof indexedDB !== "undefined") updateBackupReminder();
+  if (typeof indexedDB !== "undefined") {
+    // Duplicates saved before the library looked for them go away once, at start.
+    addEntries([]).catch(() => {});
+    updateBackupReminder();
+  }
 }

@@ -522,7 +522,9 @@ function render() {
   const settings = settingsFor(view.entries);
   byId("activityDetailName").textContent = entry.name.replace(/^Kinomap - /, "");
   const meta = [longDate(entry.startMs), sportLabel(entry.sport), kindLabel(workoutKind(entry), entry.sport),
-    entry.resistance ? `${t("resistance")} ${entry.resistance}` : null].filter(Boolean);
+    entry.resistance ? `${t("resistance")} ${entry.resistance}` : null,
+    // Where it came from; a conversion saved as a FIT is the same file an import of that FIT would give.
+    t(`activitySource_${entry.exported ? "export" : entry.source}`)].filter((part) => part && !part.startsWith("activitySource_"));
   byId("activityMeta").textContent = meta.join(" · ");
   const index = view.entries.findIndex((other) => other.id === entry.id);
   byId("activityNewer").disabled = index <= 0;
