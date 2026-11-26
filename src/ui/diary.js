@@ -338,8 +338,8 @@ let openActivity = () => {};
 
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 // Each reason for a day off by an icon, in the calendar.
-// A card in a calendar day for work done off the machine (strength, a set on the mat, breathing), smaller than an
-// activity's and its stripe grey: the icon and the name, the length under it, the exercises in its tooltip. kind:
+// A card in a calendar day for work done off the machine (strength, a set on the mat, breathing), shaped as an
+// activity's, its stripe its kind's colour: the icon and the name, the length under it, the exercises in its tooltip. kind:
 // "strength", "mat" or "breath". On a phone's month only the icon shows.
 function sessionCard(kind, icon, title, meta, tip) {
   const card = Object.assign(document.createElement("div"), { className: `diary-session is-${kind}` });
