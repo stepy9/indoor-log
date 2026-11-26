@@ -31,6 +31,15 @@ export const breathPhases = {
   sideKick: ["in", "out"],
   shoulderBridge: ["in", "out"],
   teaser: ["in", "out"],
+  // Stabilization, levels 2–4: out as the arm or leg reaches long, in on the way back, so the breath is not held.
+  // The running on the side (9.10, 9.12) is too quick for it.
+  stabFront2: ["in", "out"],
+  stabFront3: ["in", "out"],
+  stabFront4: ["in", "out"],
+  stabBack2: ["in", "out"],
+  stabBack3: ["in", "out"],
+  stabBack4: ["in", "out"],
+  stabSide3: ["in", "out"],
   // Stabilization with the ball, muscle balance and the band and BOSU: out with the effort.
   ballLower: ["in", "out"],
   ballUpper: ["in", "out"],
@@ -48,11 +57,12 @@ export const breathPhases = {
   bosuLunge: ["out", "in"],
 };
 
-// The spoken cue for an exercise without its own (breathKind_<kind> in i18n): a hold that braces the trunk, a
-// stretch held, or a move. null for the breathing exercises, which lead the breath themselves.
+// The spoken cue for an exercise without its own (breathKind_<kind> in i18n): rolling on the foam roller, a hold
+// that braces the trunk, a stretch held, or a move. null for the breathing exercises, which lead the breath themselves.
 const braced = new Set(["plank", "sidePlank"]);
 export function breathKind(id, exercise) {
   if (exercise.style === "breath") return null;
+  if (id.startsWith("roll") && exercise.gear === "roller") return "roll";
   if (exercise.hold) return braced.has(id) || ["stability", "gear"].includes(exercise.style) ? "brace" : "relax";
   return "flow";
 }

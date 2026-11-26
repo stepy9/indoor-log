@@ -23,5 +23,6 @@ test("an exercise without its own cue gets one for its kind, the breathing exerc
   assert.equal(breathKind("butterfly", exercises.butterfly), "relax");
   assert.equal(breathKind("armSwings", exercises.armSwings), "flow");
   assert.equal(breathKind("resonant", exercises.resonant), null);
-  for (const language of Object.keys(translations)) for (const kind of ["flow", "relax", "brace"]) assert.ok(translations[language][`breathKind_${kind}`]);
+  assert.equal(breathKind("rollQuads", exercises.rollQuads), "roll");
+  for (const language of Object.keys(translations)) for (const kind of ["flow", "relax", "brace", "roll"]) assert.ok(translations[language][`breathKind_${kind}`]);
 });
