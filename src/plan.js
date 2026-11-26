@@ -142,7 +142,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
 
   // Intervals: one or two a week, of the kind set (two minutes by default); a repeat more every two done in the last
   // eight weeks, or for the tempo ones a minute more to each of the two. None in a week of the FTP test.
-  const intervalsDone = workouts.filter((workout) => workout.kind === "intervals" && workout.day > since(56)).length;
+  const intervalsDone = workouts.filter((workout) => isIntervalSession(workout) && workout.day > since(56)).length;
   const intervalsThisWeek = thisWeek.filter(isIntervalSession).length;
   const kind = intervalKinds[prefs.intervalType] ? prefs.intervalType : "medium";
   const shape = intervalKinds[kind];

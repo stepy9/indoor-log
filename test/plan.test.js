@@ -57,6 +57,9 @@ test("nextStep adds an interval repeat every two done, and knows when they are d
   const plan = nextStep({ workouts: weeks(4), today: "2026-11-04" });
   // Four interval workouts in the last eight weeks: two repeats more than four.
   assert.equal(plan.intervals.repeats, 6);
+  // An FTP test counted as intervals by its kind adds no repeat: the same four and two tests still make six.
+  const tests = [{ day: "2026-10-20", km: 5, seconds: 1800, kind: "intervals", ftpTest: true }, { day: "2026-10-22", km: 5, seconds: 1800, kind: "intervals", ftpTest: true }];
+  assert.equal(nextStep({ workouts: weeks(4).concat(tests), today: "2026-11-04" }).intervals.repeats, 6);
   // This week's Thursday interval is still to come on Wednesday the 4th.
   assert.equal(plan.intervals.done, 0);
   assert.equal(plan.intervals.due, true);
