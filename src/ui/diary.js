@@ -16,7 +16,7 @@ import { checkNumber, markField } from "./validate.js";
 import { kindsOfWeek, kmByKindByWeek, weekKmByKind } from "../plan.js";
 import { planLog, planStart } from "./score.js";
 import { hoverTip, infoHint, tipOn } from "./info.js";
-import { sessionLines, sessionTip } from "./recovery.js";
+import { sessionParts } from "./recovery.js";
 import { doneCards } from "./routine.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
 import { excuses, excuseText, openExcuse } from "./excuse.js";
@@ -339,14 +339,18 @@ let openActivity = () => {};
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 // Each reason for a day off by an icon, in the calendar.
 // A card in a calendar day for work done off the machine (strength, a set on the mat, breathing), shaped as an
-// activity's, its stripe its kind's colour: the icon and the name, the length under it, the exercises in its tooltip. kind:
-// "strength", "mat" or "breath". On a phone's month only the icon shows.
-function sessionCard(kind, icon, title, meta, tip) {
+// activity's, its stripe its kind's colour: the icon and the name, the length under it, the exercises in its tooltip
+// as an activity's, a row each with a dot in the kind's colour. kind: "strength", "mat" or "breath"; parts: the
+// exercises as { label, value }. On a phone's month only the icon shows.
+function sessionCard(kind, icon, title, meta, parts) {
   const card = Object.assign(document.createElement("div"), { className: `diary-session is-${kind}` });
   const name = Object.assign(document.createElement("span"), { className: "diary-session-name" });
   name.append(Object.assign(document.createElement("span"), { className: "diary-session-icon", textContent: icon, ariaHidden: "true" }), Object.assign(document.createElement("span"), { className: "diary-session-title", textContent: ` ${title}` }));
   card.append(name, ...(meta ? [Object.assign(document.createElement("span"), { className: "diary-session-meta", textContent: meta })] : []));
-  return hoverTip(card, tip);
+  const color = `var(--session-${kind})`;
+  const what = t(kind === "strength" ? "exercisesStrength" : kind === "breath" ? "routineStyle_breath" : "routineTitle");
+  calendarTip(card, { when: [what, meta].filter(Boolean).join(" · "), total: title, parts: parts.map((part) => ({ ...part, color })), list: true });
+  return card;
 }
 const excuseIcons = { illness: "🤒", injury: "🩹", fatigue: "😴", work: "💼", travel: "✈️", family: "👪", time: "⏰", rest: "🛋️", other: "💬" };
 
@@ -526,9 +530,10 @@ const axisText = (value, metric) => (metric === "calories" ? kcal(value) : metri
   : value >= 3600 ? `${displayNumber(value / 3600, value % 3600 ? 1 : 0)} h` : `${Math.round(value / 60)} min`);
 
 // The bar's day or month, its total and what it is made of (the sessions are in the calendar), beside the bar under the pointer.
-function showTooltip(bar, { when, total, parts, hint, detail }, tooltip = byId("diaryTooltip")) {
+// list: rows even for a single part, as a session's exercises; the chart's one part is its total, so it shows none.
+function showTooltip(bar, { when, total, parts, hint, detail, list = false }, tooltip = byId("diaryTooltip")) {
   const line = (className, text) => Object.assign(document.createElement("div"), { className, textContent: text });
-  const rows = parts.length > 1 ? parts.map(({ label, color, value }) => {
+  const rows = parts.length > (list ? 0 : 1) ? parts.map(({ label, color, value }) => {
     const row = Object.assign(document.createElement("div"), { className: "diary-tooltip-row" });
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
     swatch.style.background = color;
@@ -559,7 +564,7 @@ function hideTooltip() {
 }
 
 document.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "mouse" && !event.target.closest?.(".diary-bar, .diary-day-planned, .diary-activity, .diary-day-off")) hideTooltip();
+  if (event.pointerType !== "mouse" && !event.target.closest?.(".diary-bar, .diary-day-planned, .diary-activity, .diary-day-off, .diary-session")) hideTooltip();
 });
 
 // One chart of bars, a day of a week or month or a month of a year each, stacked by the groups given.
@@ -806,10 +811,10 @@ function renderCalendar(range, entries) {
     cell.append(...ridden.map((entry) => activityButton(entry, settings)));
     // Strength work done that day, from the Training tab, and each set on the mat or of breathing: a card of its own.
     if (savedDefaults().strengthLog?.[day]) {
-      const session = sessionLines("strength", day);
-      cell.append(sessionCard("strength", "💪", t("exercisesStrength"), session?.rounds > 1 ? t("sessionRounds", { rounds: session.rounds }) : "", sessionTip("strength", day)));
+      const session = sessionParts("strength", day);
+      cell.append(sessionCard("strength", "💪", t("exercisesStrength"), session?.rounds > 1 ? t("sessionRounds", { rounds: session.rounds }) : "", session?.parts ?? []));
     }
-    for (const set of doneCards(day)) cell.append(sessionCard(set.breath ? "breath" : "mat", set.breath ? "🌬️" : "🧎", set.title, `${set.minutes} min`, set.tip));
+    for (const set of doneCards(day)) cell.append(sessionCard(set.breath ? "breath" : "mat", set.breath ? "🌬️" : "🧎", set.title, `${set.minutes} min`, set.parts));
     // A day off with its reason, as said in the Training tab, so the calendar tells why it is empty.
     const excuse = !ridden.length ? excused[day] : null;
     if (excuse) {

@@ -555,11 +555,18 @@ export const strengthLog = () => savedDefaults().strengthLog ?? {};
 // A day's strength session or warm-up as lines: each exercise with its repeats or time (per side where it has two).
 // { rounds, lines } or null when not done that day.
 export function sessionLines(kind, day) {
+  const session = sessionParts(kind, day);
+  if (!session) return null;
+  return { rounds: session.rounds, lines: session.parts.map(({ label, value }) => [label, value].filter(Boolean).join(" · ")) };
+}
+
+// The same as rows for a rich tooltip: { rounds, parts: [{ label, value }] }, the value the dose ("8× na stranu").
+export function sessionParts(kind, day) {
   const detail = sessionDetail(kind, (kind === "strength" ? strengthLog() : warmupLog())[day], day, strengthLog());
   if (!detail) return null;
   const dose = (item) => item.reps ? `${item.reps}×` : item.seconds ? `${item.seconds} s` : "";
-  const lines = detail.items.map((item) => [t(`recovery_${item.id}`), [dose(item), item.sides > 1 && dose(item) ? t("sessionPerSide") : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · "));
-  return { rounds: detail.rounds, lines };
+  const parts = detail.items.map((item) => ({ label: t(`recovery_${item.id}`), value: [dose(item), item.sides > 1 && dose(item) ? t("sessionPerSide") : ""].filter(Boolean).join(" ") }));
+  return { rounds: detail.rounds, parts };
 }
 
 // The same for a tooltip: its title (with the rounds when more than one), then the exercises one a line.

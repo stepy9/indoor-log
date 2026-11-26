@@ -438,14 +438,16 @@ export function routineBlock(day = todayKey(zone)) {
 const isBreath = (item) => item.style === "breath" || (item.exercises?.length > 0 && item.exercises.every((id) => exercises[id]?.pattern));
 // A logged set's exercises, one a line as the warm-up's tooltip has them: "· Kočka–kráva · 45 s", per side where it
 // has two. A set logged before the doses were kept shows the names only.
-function setLines(item) {
+// A set's exercises as { label, value }, the value its dose; empty for older records, which kept only the names.
+function setParts(item) {
   return [...new Set(item.exercises ?? [])].filter((id) => exercises[id]).map((id) => {
     const seconds = item.seconds?.[id];
     const amount = item.reps?.[id] ? `${item.reps[id]}×` : seconds ? (seconds >= 120 ? `${minutesText(seconds)} min` : `${seconds} s`) : "";
     const side = amount && exercises[id].sides > 1 ? ` ${t("sessionPerSide")}` : "";
-    return `· ${[t(`recovery_${id}`), amount && amount + side].filter(Boolean).join(" · ")}`;
+    return { label: t(`recovery_${id}`), value: amount && amount + side };
   });
 }
+const setLines = (item) => setParts(item).map(({ label, value }) => `· ${[label, value].filter(Boolean).join(" · ")}`);
 const setTip = (item) => [setText(item), ...setLines(item)].join("\n");
 // The day's sets under a title: each its name and its exercises, a blank line between sets.
 const dayTip = (title, done) => [title, done.map(setTip).join("\n\n")].join("\n");
@@ -458,12 +460,13 @@ export function breathTip(day) {
   return done.length ? dayTip(t("routineStyle_breath"), done) : "";
 }
 
-// A day's sets done for the diary's cards: each { breath, title, minutes, tip }, the title its name or its style.
+// A day's sets done for the diary's cards: each { breath, title, minutes, parts }, the title its name or its style,
+// the parts its exercises as setParts gives them.
 export function doneCards(day) {
   return (routineLog()[day] ?? []).map((item) => ({
     breath: isBreath(item),
     title: item.name ?? t(`routineStyle_${item.style}`),
     minutes: item.minutes,
-    tip: setTip(item),
+    parts: setParts(item),
   }));
 }
