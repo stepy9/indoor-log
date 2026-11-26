@@ -2,6 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
+import { confirmDialog } from "./confirm.js";
 import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
 import { exercises, strengthLevel } from "../recovery.js";
 import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengthLog, warmupLog } from "./recovery.js";
@@ -88,7 +89,7 @@ function renderCustom(picked) {
     up.disabled = index === 0;
     const down = button("link-button", "↓", () => move(1), t("routineDown"));
     down.disabled = index === list.length - 1;
-    row.append(name, amount, unit, up, down, button("link-button", "✕", () => update(list.filter((_, at) => at !== index)), t("routineRemove")));
+    row.append(name, amount, unit, up, down, button("link-button icon-x", "", () => update(list.filter((_, at) => at !== index)), t("routineRemove")));
     return row;
   }) : [element("li", "field-note", t("routineCustomEmpty"))]));
 }
@@ -141,10 +142,10 @@ function renderSaved() {
     // The name with its style and length under it, then its buttons on the same line.
     const text = element("span", "routine-saved-name", entry.name);
     text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min`));
-    const remove = button("link-button", "✕", () => {
+    const remove = button("link-button icon-x", "", async () => {
       // A set in the plan asks first, naming its days: they stay empty, what was there before does not come back.
       const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
-      if (days.length && !window.confirm(t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }))) return;
+      if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("libraryDelete"), danger: true }))) return;
       saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
       changed();
       render();

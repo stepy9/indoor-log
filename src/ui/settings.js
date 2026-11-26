@@ -269,7 +269,7 @@ function dateField(key, value, onChange) {
   const box = node("span", { class: "date-field" });
   const text = node("input", { type: "text", inputmode: "numeric", "data-key": key, "aria-label": t("settingsFtpFrom") });
   const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), "data-tip": t("settingsPickDate") });
-  button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
+  button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
   const shown = (key) => formatDay(key, appState.language);
   text.value = shown(value);
   text.placeholder = appState.language === "en" ? "dd/mm/yyyy" : "d. m. rrrr";
@@ -387,8 +387,8 @@ function trainersBlock(sport) {
     const levels = level(trainer.levels, t("trainerLevels"), (value) => update({ levels: value, defaultLevel: Math.min(trainer.defaultLevel, value) }), 100);
     const usual = level(trainer.defaultLevel, t("trainerDefault"), (value) => update({ defaultLevel: value }), trainer.levels);
     const remove = node("button", { type: "button", class: "link-button" }, t("libraryDelete"));
-    remove.addEventListener("click", () => {
-      if (!window.confirm(t("trainerDeleteConfirm", { name: trainer.name }))) return;
+    remove.addEventListener("click", async () => {
+      if (!(await confirmDialog({ title: t("trainerDeleteConfirm", { name: trainer.name }), ok: t("libraryDelete"), danger: true }))) return;
       saveTrainers(trainers().filter((item) => item.id !== trainer.id));
       state.dirty = true;
       render();
@@ -575,8 +575,8 @@ function cloudBlock() {
       if (state.dirty) now.dataset.tip = t("cloudSyncAfterSave");
       now.addEventListener("click", () => syncNow());
       const off = node("button", { type: "button", class: "link-button" }, t("cloudDisconnect"));
-      off.addEventListener("click", () => {
-        if (window.confirm(t("cloudDisconnectConfirm"))) disconnectCloud();
+      off.addEventListener("click", async () => {
+        if (await confirmDialog({ title: t("cloudDisconnectConfirm"), ok: t("cloudDisconnect") })) disconnectCloud();
       });
       actions.append(now, off);
       const fit = Object.assign(document.createElement("input"), { type: "checkbox", checked: fitBackupOn() });

@@ -1054,10 +1054,10 @@ export function openInCompare(entry, other = null) {
 // canLeave asks before a tab leaves an activity not saved yet.
 export function setupCompare({ onConverter, canLeave = () => true }) {
   for (const button of document.querySelectorAll("[data-app-view]")) {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const name = button.dataset.appView;
       if (name === currentView) return;
-      if (currentView === "converter" && !canLeave()) return;
+      if (currentView === "converter" && !(await canLeave())) return;
       // The comparison opened from its tab shows the picker when nothing is picked yet.
       if (name === "compare") view.pickerOpen = view.slots.size === 0;
       showView(name);

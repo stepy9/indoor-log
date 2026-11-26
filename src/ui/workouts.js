@@ -5,6 +5,7 @@ import { parseKinomapPlan } from "../core.js";
 import { noteFromCreator, stepsFromCreator, stepsFromSegments } from "../training.js";
 import { formatDuration, t } from "./context.js";
 import { intensitySelectElement } from "./intervals.js";
+import { confirmDialog } from "./confirm.js";
 import { withTip } from "./info.js";
 import { checkNumber, markField } from "./validate.js";
 
@@ -156,7 +157,7 @@ function open({ name, steps, note, taken }, onSave) {
         item.intensity = value;
         row.className = `is-${value}`;
       });
-      const remove = el("button", { type: "button", class: "link-button", "data-tip": t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` }, "×");
+      const remove = el("button", { type: "button", class: "link-button icon-x", "data-tip": t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` });
       remove.addEventListener("click", () => {
         draft.splice(index, 1);
         render();
@@ -254,9 +255,9 @@ export function workoutList(names, plans, notes, write) {
         if (result.note) nextNotes[result.name] = result.note;
         save(names.map((other) => (other === name ? result.name : other)), nextPlans, nextNotes);
       }));
-      const remove = el("button", { type: "button", class: "row-icon-button", "data-tip": t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` }, "×");
-      remove.addEventListener("click", () => {
-        if (!confirm(t("workoutRemoveConfirm", { name }))) return;
+      const remove = el("button", { type: "button", class: "row-icon-button icon-x", "data-tip": t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` });
+      remove.addEventListener("click", async () => {
+        if (!(await confirmDialog({ title: t("workoutRemoveConfirm", { name }), ok: t("workoutRemove"), danger: true }))) return;
         const nextPlans = { ...plans };
         delete nextPlans[name];
         const nextNotes = { ...notes };

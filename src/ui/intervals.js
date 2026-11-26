@@ -155,8 +155,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
 
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "link-button";
-      remove.textContent = "×";
+      remove.className = "link-button icon-x";
       remove.dataset.tip = t("removeSegment");
       remove.setAttribute("aria-label", `${t("removeSegment")} ${index + 1}`);
       remove.disabled = draft.length === 1;

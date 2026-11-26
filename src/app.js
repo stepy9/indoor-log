@@ -1,4 +1,5 @@
 import "./styles.css";
+import { confirmDialog } from "./ui/confirm.js";
 import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap } from "./core.js";
 import { segmentsFromSteps } from "./training.js";
 import { buildBatchWorkout, planBatch } from "./batch.js";
@@ -864,8 +865,8 @@ function render() {
 
 // An activity from the library opens in the converter as a conversion of the records the library kept,
 // with its name, type, trainer, feel and laps as saved; saving it replaces the library's activity.
-function openLibraryEntry(entry) {
-  if (!confirmLeave()) return;
+async function openLibraryEntry(entry) {
+  if (!(await confirmLeave())) return;
   const workout = workoutFromEntry(entry);
   if (workout.records.length < 2) return;
   Object.assign(state, {
@@ -911,8 +912,8 @@ function openLibraryEntry(entry) {
 }
 
 // An activity worked on and not saved yet asks before it is left.
-function confirmLeave() {
-  return !state.result || state.saved || state.batch || window.confirm(t("leaveUnsaved"));
+async function confirmLeave() {
+  return !state.result || state.saved || state.batch || confirmDialog({ title: t("leaveUnsaved"), ok: t("settingsDiscard"), danger: true });
 }
 
 // Add starts over: no files, nothing opened from the library.
@@ -1070,8 +1071,8 @@ const afterSave = (saved) => {
 };
 elements.export.addEventListener("click", async () => afterSave(await exportFit()));
 byId("saveLibraryButton").addEventListener("click", async () => afterSave(await saveToLibrary()));
-byId("addButton").addEventListener("click", () => {
-  if (!confirmLeave()) return;
+byId("addButton").addEventListener("click", async () => {
+  if (!(await confirmLeave())) return;
   resetConverter();
   openConverter();
   showView("setup");

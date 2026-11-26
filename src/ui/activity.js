@@ -1,5 +1,6 @@
 // The activity detail: everything known about one activity, read only, opened from the calendar, the library and
 // wherever else an activity is clicked. Comparing it and editing it are a button away.
+import { confirmDialog } from "./confirm.js";
 import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
 import { deleteEntry, listEntries, saveEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
@@ -607,7 +608,7 @@ export function setupActivity({ onCompare: compareWith, onEdit: edit }) {
     onEdit(entry);
   });
   byId("activityDelete").addEventListener("click", async () => {
-    if (!window.confirm(t("libraryDeleteConfirm", { name: view.entry.name }))) return;
+    if (!(await confirmDialog({ title: t("libraryDeleteConfirm", { name: view.entry.name }), ok: t("libraryDelete"), danger: true }))) return;
     await deleteEntry(view.entry.id);
     close();
     showToast(t("savedDeleted"));
