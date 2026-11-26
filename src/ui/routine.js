@@ -420,7 +420,8 @@ export function routineBlock(day = todayKey(zone)) {
 
 // A day's sets for a tooltip: the title, then each set one a line. "" when none.
 // The breathing apart, under its own mark (🌬️), so a day breathed shows at a glance; the other sets under 🧎.
-const isBreath = (item) => item.style === "breath";
+// A set is breathing when it is the breathing style, or a hand-made or saved set of breathing exercises only.
+const isBreath = (item) => item.style === "breath" || (item.exercises?.length > 0 && item.exercises.every((id) => exercises[id]?.pattern));
 export function routineTip(day) {
   const done = (routineLog()[day] ?? []).filter((item) => !isBreath(item));
   return done.length ? [t("routineTitle"), ...done.map((item) => `· ${setText(item)}`)].join("\n") : "";
