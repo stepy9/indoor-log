@@ -1,3 +1,4 @@
+import { readJson, writeJson } from "./storage.js";
 import { tipOn } from "./info.js";
 import { downloadFile } from "./dom.js";
 import { todayKey } from "../dates.js";
@@ -208,18 +209,8 @@ async function addFiles(files) {
 
 // When the last backup was made and of how many activities, kept apart from the settings a backup carries.
 const backupKey = "kinomap-backup-last";
-const lastBackup = () => {
-  try {
-    return JSON.parse(localStorage.getItem(backupKey));
-  } catch {
-    return null;
-  }
-};
-const markBackup = (count) => {
-  try {
-    localStorage.setItem(backupKey, JSON.stringify({ at: Date.now(), count }));
-  } catch {}
-};
+const lastBackup = () => readJson(backupKey);
+const markBackup = (count) => writeJson(backupKey, { at: Date.now(), count });
 
 // Whether a backup is due. With Dropbox connected the library is kept there too, so never.
 export async function backupIsDue() {

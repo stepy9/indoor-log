@@ -1,3 +1,4 @@
+import { readJson, writeJson } from "./storage.js";
 import { node } from "./dom.js";
 import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
@@ -1160,19 +1161,14 @@ export async function openSettings(pane, tab, workout) {
 // so a reload or a closed tab with the dialog open would otherwise keep them unsaved. The next start puts it back.
 const undoKey = "kinomap-settings-undo";
 
-function keepUndo(before) {
-  try {
-    if (before) localStorage.setItem(undoKey, JSON.stringify(before));
-    else localStorage.removeItem(undoKey);
-  } catch {}
-}
+const keepUndo = (before) => writeJson(undoKey, before || null);
 
 function restoreUnsaved() {
+  const before = readJson(undoKey);
   try {
-    const before = JSON.parse(localStorage.getItem(undoKey));
     if (before) putBack(before);
-    localStorage.removeItem(undoKey);
   } catch {}
+  writeJson(undoKey, null);
 }
 
 // At load, before anything reads the settings.

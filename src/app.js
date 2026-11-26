@@ -1,3 +1,4 @@
+import { writeText } from "./ui/storage.js";
 import { cadenceUnit, speedText } from "./ui/units.js";
 import "./styles.css";
 import { confirmDialog } from "./ui/confirm.js";
@@ -170,11 +171,7 @@ function setLanguage(language, persist = true) {
   }
   if (state.estimate) updateEstimateNote();
   renderZone();
-  if (persist) {
-    try {
-      localStorage.setItem("kinomap-fit-language", state.language);
-    } catch {}
-  }
+  if (persist) writeText("kinomap-fit-language", state.language);
   renderBatch();
   render();
   rerenderCompare();

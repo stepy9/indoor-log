@@ -1,3 +1,4 @@
+import { readJson, writeJson } from "./storage.js";
 import { applySynced, backupFitName, deletedIds, entryFromFit, findWorkout, fitCoverage, listEntries, saveEntries, workoutFromEntry } from "../library.js";
 import { decodeGarminFit, encodeFit } from "../fit.js";
 import { fitFileName } from "../files.js";
@@ -26,27 +27,14 @@ const settingsPath = "/settings.json";
 const legacyPath = "/indoor-log.json";
 const redirectUri = () => `${location.origin}${location.pathname}`;
 
-const read = (key) => {
-  try {
-    return JSON.parse(localStorage.getItem(key));
-  } catch {
-    return null;
-  }
-};
-const write = (key, value) => {
-  try {
-    if (value == null) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-};
 
 export const cloudAvailable = () => Boolean(dropboxAppKey);
-export const cloudConnected = () => Boolean(read(tokenKey)?.refresh);
-export const lastSynced = () => read(syncedKey);
+export const cloudConnected = () => Boolean(readJson(tokenKey)?.refresh);
+export const lastSynced = () => readJson(syncedKey);
 
 const status = { state: "idle", error: null };
 const listeners = new Set();
-export const cloudStatus = () => ({ ...status, connected: cloudConnected(), at: lastSynced(), summary: read(summaryKey) });
+export const cloudStatus = () => ({ ...status, connected: cloudConnected(), at: lastSynced(), summary: readJson(summaryKey) });
 export function onCloudStatus(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -62,7 +50,7 @@ const base64Url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
 export async function connectCloud() {
   const verifier = base64Url(crypto.getRandomValues(new Uint8Array(48)));
   const challenge = base64Url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
-  write(verifierKey, verifier);
+  writeJson(verifierKey, verifier);
   const params = new URLSearchParams({
     client_id: dropboxAppKey,
     response_type: "code",
@@ -77,10 +65,10 @@ export async function connectCloud() {
 }
 
 export function disconnectCloud() {
-  const token = read(tokenKey);
-  write(tokenKey, null);
-  write(syncedKey, null);
-  write(summaryKey, null);
+  const token = readJson(tokenKey);
+  writeJson(tokenKey, null);
+  writeJson(syncedKey, null);
+  writeJson(summaryKey, null);
   setStatus("idle");
   // Revoking is a courtesy; signing out here holds either way.
   if (token?.access) fetch("https://api.dropboxapi.com/2/auth/token/revoke", { method: "POST", headers: { Authorization: `Bearer ${token.access}` } }).catch(() => {});
@@ -107,21 +95,21 @@ async function tokenRequest(body) {
 async function finishSignIn() {
   const params = new URLSearchParams(location.search);
   const code = params.get("code");
-  const verifier = read(verifierKey);
+  const verifier = readJson(verifierKey);
   if (!code || !verifier) return false;
-  write(verifierKey, null);
+  writeJson(verifierKey, null);
   history.replaceState(null, "", redirectUri() + location.hash);
   const data = await tokenRequest({ code, grant_type: "authorization_code", code_verifier: verifier, redirect_uri: redirectUri() });
-  write(tokenKey, { refresh: data.refresh_token, access: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 });
+  writeJson(tokenKey, { refresh: data.refresh_token, access: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 });
   return true;
 }
 
 async function accessToken() {
-  const token = read(tokenKey);
+  const token = readJson(tokenKey);
   if (!token?.refresh) throw new Error("not connected");
   if (token.access && token.expires > Date.now()) return token.access;
   const data = await tokenRequest({ grant_type: "refresh_token", refresh_token: token.refresh });
-  write(tokenKey, { ...token, access: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 });
+  writeJson(tokenKey, { ...token, access: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 });
   return data.access_token;
 }
 
@@ -166,8 +154,8 @@ async function upload(path, body) {
 
 // Exported FIT files copied into /FIT in the app's Dropbox folder, beside the local download. Set per device,
 // as connecting is. One that fails to go up waits here (in memory) and goes with the next sync.
-export const fitBackupOn = () => read(fitBackupKey) === true;
-export const setFitBackup = (on) => write(fitBackupKey, on ? true : null);
+export const fitBackupOn = () => readJson(fitBackupKey) === true;
+export const setFitBackup = (on) => writeJson(fitBackupKey, on ? true : null);
 const fitWaiting = new Map();
 
 const asciiJson = (value) => [...JSON.stringify(value)]
@@ -226,9 +214,9 @@ async function backupFitBytes(bytes, filename, kind = "export") {
 }
 
 function rememberChecked(name) {
-  const checked = new Set(read(checkedKey) ?? []);
+  const checked = new Set(readJson(checkedKey) ?? []);
   checked.add(name);
-  write(checkedKey, [...checked]);
+  writeJson(checkedKey, [...checked]);
 }
 
 async function sendWaitingFits() {
@@ -281,7 +269,7 @@ let checking = null;
 export function checkDropboxFits() {
   if (!cloudConnected()) return Promise.resolve(0);
   checking ??= (async () => {
-    const checked = new Set(read(checkedKey) ?? []);
+    const checked = new Set(readJson(checkedKey) ?? []);
     let found = 0;
     for (const file of await listFits()) {
       if (checked.has(file.name)) continue;
@@ -299,7 +287,7 @@ export function checkDropboxFits() {
         }
       } catch {}
       checked.add(name);
-      write(checkedKey, [...checked]);
+      writeJson(checkedKey, [...checked]);
     }
     return found;
   })().finally(() => (checking = null));
@@ -369,8 +357,8 @@ export function syncNow() {
       // Each file goes up only when its own part changed (or it is not there yet).
       if (!has.library || there.write.length || there.remove.length || deletedChanged) await upload(libraryPath, syncText(merged));
       if (merged.settings && (!has.settings || there.settings)) await upload(settingsPath, settingsText(merged.settings));
-      write(syncedKey, Date.now());
-      write(summaryKey, syncSummary(merged));
+      writeJson(syncedKey, Date.now());
+      writeJson(summaryKey, syncSummary(merged));
       setStatus("idle");
       // The pages showing the library or the settings draw again with what came in.
       if (changedHere) window.dispatchEvent(new Event("library-synced"));
