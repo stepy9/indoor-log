@@ -1,3 +1,4 @@
+import { noon } from "./dates.js";
 import { start, toRecords } from "./history.js";
 
 // The weight and the resting heart rate, entered by hand as often as wished; each is asked for again once
@@ -6,7 +7,7 @@ import { start, toRecords } from "./history.js";
 export const reminderDays = { weight: 14, restHeartRate: 30 };
 export const bodyKeys = ["weight", "restHeartRate", "hrv", "sleep"];
 
-const daysBetween = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000);
+const daysBetween = (from, to) => Math.round((noon(to) - noon(from)) / 86400000);
 
 // The latest day a history was written from, the start not counting as a day.
 function lastDay(history) {

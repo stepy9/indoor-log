@@ -1,3 +1,4 @@
+import { noon } from "../dates.js";
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
 import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./training.js";
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
@@ -688,7 +689,7 @@ const averageSize = 5;
 // The week or month a grouped point stands for.
 function groupTitle(from) {
   if (view.trendGroup === "week") return `${t("diaryWeekNumber", { week: weekNumber(from) })} ${from.slice(0, 4)}`;
-  return new Intl.DateTimeFormat(locale(), { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${from}T12:00:00Z`));
+  return new Intl.DateTimeFormat(locale(), { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(noon(from)));
 }
 
 // The trend's points: one per activity, or per week or month put together; the best of the range is marked.

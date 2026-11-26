@@ -5,7 +5,7 @@ import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, dow
 import { deleteEntry, listEntries, saveEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
 import { activityLoad, aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
-import { dayKey } from "../diary.js";
+import { addDays, dayKey, mondayOf } from "../dates.js";
 import { hasTraining, planLog, scoreFor, steadyTargets } from "./score.js";
 import { scoreBadge } from "./diary.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
@@ -370,9 +370,8 @@ function loadText(entry, settings) {
   const own = activityLoad(entry, settings);
   if (!own) return null;
   const day = dayKey(entry.startMs, zone);
-  const noon = Date.parse(`${day}T12:00:00Z`);
-  const monday = new Date(noon - ((new Date(noon).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
-  const sunday = new Date(Date.parse(`${monday}T12:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
+  const monday = mondayOf(day);
+  const sunday = addDays(monday, 6);
   const week = view.entries.filter((other) => {
     const key = dayKey(other.startMs, zone);
     return key >= monday && key <= sunday;

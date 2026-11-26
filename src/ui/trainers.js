@@ -1,4 +1,3 @@
-import { byId, sportLabel, t } from "./context.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 
 // Trainers the user rows, cycles or runs on, each with its number of resistance levels and the level usually set.

@@ -2,11 +2,7 @@
 // each week's plan against what was ridden, and the run of days ridden. The plan of each day is kept as it
 // stood before the day (logPlan), as the plan itself moves on with every workout. No DOM here.
 
-const dayMs = 86_400_000;
-const noon = (key) => Date.parse(`${key}T12:00:00Z`);
-const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
-const addDays = (key, days) => keyOf(noon(key) + days * dayMs);
-const mondayOf = (key) => addDays(key, -((new Date(noon(key)).getUTCDay() + 6) % 7));
+import { addDays, dayMs, mondayOf, noon } from "./dates.js";
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const round = (value) => Math.round(value);
 

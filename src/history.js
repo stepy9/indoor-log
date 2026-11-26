@@ -1,4 +1,6 @@
-import { addDays } from "./diary.js";
+import { mondayOf } from "./dates.js";
+
+export { mondayOf };
 
 // Settings that change what is worked out hold from the day they change on; the days before keep what they had.
 // A history is [{ from: "YYYY-MM-DD", value, at }], sorted by from; at is when it was written, for merging.
@@ -13,10 +15,6 @@ export const trackedSport = ["maxHeartRate", "heartRateZones", "powerZones", "he
 export const weeklyKeys = new Set(["weeklyHours", "weeklyKm", "plan", "trainingDays"]);
 
 // The Monday of the day's week.
-export function mondayOf(day) {
-  const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
-  return addDays(day, -((weekday + 6) % 7));
-}
 
 // The value in force on the day: the latest record from it or before; the fallback without a history.
 export function valueOn(history, day, fallback = null) {

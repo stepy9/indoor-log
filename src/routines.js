@@ -5,6 +5,7 @@
 // Stabilization takes each chain (front, back, side) at its own level for a minute, then the four ball moves for
 // the pelvis; balance does its five dumbbell moves one side at a time, more repeats on the weaker side.
 // No DOM here, so it is tested on its own.
+import { noon, weekdayOf } from "./dates.js";
 import { afterWorkout, exerciseCatalog, exercises, restSeconds, steps as timedSteps, strengthPlan, strengthSession, switchSeconds, warmupBefore, warmupRest } from "./recovery.js";
 
 export const routineStyles = ["mobility", "flexibility", "yin", "pilates", "breath", "stability", "balance", "gear"];
@@ -259,7 +260,7 @@ function lengthSet({ style = "mobility", area = "all", minutes = 10, aim = "keep
   // The flow: the style's own first, the fillers after.
   const order = [...own, ...extrasOf(style)];
   // Each day starts the area's list further on, so the exercises taken change from day to day.
-  const shift = day ? Math.round(Date.parse(`${day}T12:00:00Z`) / 86_400_000) * 3 : 0;
+  const shift = day ? Math.round(noon(day) / 86_400_000) * 3 : 0;
   const turn = (list) => list.map((_, index) => list[(index + shift) % list.length]);
   const inArea = turn(own.filter((id) => area === "all" || areasOf(id).includes(area)));
   const extraInArea = turn(extrasOf(style).filter((id) => area === "all" || areasOf(id).includes(area)));
@@ -346,7 +347,7 @@ export function nextLevel(entries = [], level = 1) {
 
 // The plan: weekdays (0 Monday … 6 Sunday) each with the choice of a set, { "2": { style: "yin", … } }. The set
 // planned for a day, or null.
-export const weekdayOf = (day) => (new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7;
+export { weekdayOf };
 export const plannedRoutine = (plan = {}, day) => plan[weekdayOf(day)] ?? null;
 // A plan without the days of a saved set taken out.
 export const withoutSaved = (plan = {}, id) => Object.fromEntries(Object.entries(plan).filter(([, item]) => !(item.style === "saved" && item.saved === id)));
@@ -364,7 +365,7 @@ export function togglePlanDay(plan = {}, weekday, choice) {
 // trimmed to the last weeks so the synced settings do not grow.
 export const routineKeepDays = 90;
 export function logRoutine(log = {}, day, done) {
-  const since = new Date(Date.parse(`${day}T12:00:00Z`) - routineKeepDays * 86_400_000).toISOString().slice(0, 10);
+  const since = new Date(noon(day) - routineKeepDays * 86_400_000).toISOString().slice(0, 10);
   const kept = Object.fromEntries(Object.entries(log).filter(([key]) => key >= since));
   return { ...kept, [day]: [...(kept[day] ?? []), done] };
 }

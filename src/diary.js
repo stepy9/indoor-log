@@ -1,22 +1,17 @@
 // Days, weeks, months and years of the training diary, and what was done in them.
 // A day is its "YYYY-MM-DD" in the chosen time zone; arithmetic on days goes through UTC noon, so no clock change shifts it.
 
-export const dayKey = (epochMs, timeZone) => new Intl.DateTimeFormat("en-CA", {
-  timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-}).format(new Date(epochMs));
+import { addDays, dayKey, mondayOf, noon } from "./dates.js";
 
-const toDate = (key) => new Date(`${key}T12:00:00Z`);
+export { addDays, dayKey };
+
+const toDate = (key) => new Date(noon(key));
 const toKey = (date) => date.toISOString().slice(0, 10);
 const monthKey = (year, monthIndex) => toKey(new Date(Date.UTC(year, monthIndex, 1, 12)));
 
-export function addDays(key, days) {
-  const date = toDate(key);
-  date.setUTCDate(date.getUTCDate() + days);
-  return toKey(date);
-}
 
 // Weeks start on Monday.
-export const weekStart = (key) => addDays(key, -((toDate(key).getUTCDay() + 6) % 7));
+export const weekStart = mondayOf;
 
 // The period ("week", "month" or "year") holding the day, as its first day and the first day after it.
 export function periodRange(period, key) {

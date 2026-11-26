@@ -1,6 +1,7 @@
 // Swapping two days of the week's plan by hand: a dialog listing the other days planned, each with its workout and
 // a warning where the swap would break a rule the plan keeps (a hard day after the longer one, the 20-minute test
 // too soon after the short one); a swap is allowed anyway.
+import { noon } from "../dates.js";
 import { longTires, planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
 import { plannedText } from "./diary.js";
@@ -14,7 +15,7 @@ const node = (tag, attributes = {}, text) => {
   return element;
 };
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const format = (key) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(`${key}T12:00:00Z`));
+const format = (key) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(noon(key)));
 
 // result: the sport's trainingPlan; day: the day whose workout to swap; today: "YYYY-MM-DD". onDone after a change.
 export function openSwap(result, day, today, onDone) {

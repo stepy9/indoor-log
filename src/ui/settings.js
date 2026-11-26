@@ -14,7 +14,7 @@ import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, tracked
 import { openDatePicker } from "./datepicker.js";
 import { backupIsDue, downloadBackup, restoreBackup } from "./library.js";
 import { cloudAvailable, cloudStatus, connectCloud, disconnectCloud, fitBackupOn, onCloudStatus, releaseSync, setFitBackup, setSyncHold, syncNow, uploadFitFiles, fitBackupCoverage, rebuildMissingFits, checkDropboxFits } from "./cloud.js";
-import { formatDay, parseDay } from "../dates.js";
+import { formatDay, parseDay, todayKey } from "../dates.js";
 import { parseKinomapPlan, setCalorieProfile } from "../core.js";
 import { checkNumber, checkText, markField } from "./validate.js";
 import { planPrefLimits, restAfterLongDefault } from "../plan.js";
@@ -35,7 +35,7 @@ const sameValue = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? nu
 
 // Each change of a setting with a history is kept from the day it holds from, the days before keeping theirs.
 function withHistory(own, patch, keys) {
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const history = { ...own.history, ...patch.history };
   for (const key of keys) {
     if (!(key in patch) || sameValue(own[key], patch[key])) continue;
@@ -103,7 +103,7 @@ export function perKgText(watts, ms) {
 }
 
 // The weight and resting heart rate as they stand today, for the quick entry in the diary.
-export const bodyToday = () => bodyStatus(remembered(), savedHistory(), dayKey(Date.now(), zone));
+export const bodyToday = () => bodyStatus(remembered(), savedHistory(), todayKey(zone));
 
 // The general histories, for the charts of the weight and the resting heart rate.
 export const bodyHistory = () => savedHistory();
@@ -112,7 +112,7 @@ export const bodyHistory = () => savedHistory();
 // today. The first weight ever holds from the first workout (firstDay), so the whole library gets its W/kg.
 export function enterBodyValue(key, value, firstDay = null) {
   const saved = remembered();
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const reminders = { ...saved.reminders, [key]: today };
   // The HRV and the sleep: a value of each night, written for the day woken up on.
   if (key === "hrv" || key === "sleep") {
@@ -201,7 +201,7 @@ export const currentFtp = (settings, sport) => ftpOn(settings, sport, Date.now()
 
 // Whether the sport's value was typed rather than estimated; the FTP by a record in force today.
 export const setByHand = (sport, field) => (field === "ftp"
-  ? ftpRecords(savedSport(sport)).some((record) => record.ftp > 0 && (!record.from || record.from <= dayKey(Date.now(), zone)))
+  ? ftpRecords(savedSport(sport)).some((record) => record.ftp > 0 && (!record.from || record.from <= todayKey(zone)))
   : Boolean(savedSport(sport)[field]));
 
 // tab: the open part of a sport's pane, the same for every sport.
@@ -683,7 +683,7 @@ function garminBlock() {
   message.hidden = !garminMessage;
   load.addEventListener("click", () => pick.click());
   pick.addEventListener("change", async () => {
-    const today = dayKey(Date.now(), zone);
+    const today = todayKey(zone);
     const found = { hrv: {}, sleep: {}, restHeartRate: {}, skinTemp: {} };
     for (const file of pick.files) {
       const read = parseGarminCsv(await file.text(), today);
@@ -848,7 +848,7 @@ function trainingBlock(sport) {
   });
   distance.append(node("span", {}, t("settingsWeeklyKm")), kmInput);
   // The distance for this year, for the Analysis tab and the diary's year to measure it by; each year keeps its own.
-  const thisYear = dayKey(Date.now(), zone).slice(0, 4);
+  const thisYear = todayKey(zone).slice(0, 4);
   const yearly = node("label", { class: "settings-field settings-weekly" });
   const yearInput = node("input", { type: "number", min: "0", step: "10", inputmode: "numeric", "data-key": `yearly-km-${sport}`, placeholder: "—" });
   const goalNow = goalFor(savedSport(sport), thisYear);
@@ -964,7 +964,7 @@ function weightBlock() {
   };
   // The first weight holds from the first workout, so the whole library gets its W/kg; later ones from today.
   const firstWorkout = state.entries.length ? dayKey(Math.min(...state.entries.map((entry) => entry.startMs)), zone) : null;
-  const from = !history.length && firstWorkout ? firstWorkout : dayKey(Date.now(), zone);
+  const from = !history.length && firstWorkout ? firstWorkout : todayKey(zone);
   add.addEventListener("click", () => write([...history.filter((item) => item.from !== from), { from, kg: weightOn({ weightHistory: history, timeZone: zone }, Date.now()) || 75 }]));
   title.append(node("span", { class: "settings-label" }, t("settingsWeightHistory")), add);
   block.append(title, node("p", { class: "field-note" }, t("settingsWeightNote")));
@@ -976,7 +976,7 @@ function weightBlock() {
   table.tHead.append(head);
   const order = history.map((record, index) => ({ record, index })).sort((a, b) => (b.record.from ?? "").localeCompare(a.record.from ?? ""));
   // Entered day by day the list grows long: the last week's records show (at least the latest), the rest on demand.
-  const weekAgo = addDays(dayKey(Date.now(), zone), -6);
+  const weekAgo = addDays(todayKey(zone), -6);
   const recent = order.filter(({ record }, at) => !at || (record.from && record.from >= weekAgo));
   const shown = showAllWeights ? order : recent;
   for (const { record, index } of shown) {
@@ -1027,7 +1027,7 @@ function ftpBlock(sport, settings, estimate) {
     writeFtp(sport, list);
     changed();
   };
-  add.addEventListener("click", () => write([...history, { from: dayKey(Date.now(), zone), ftp: currentFtp(settings, sport) || 200 }]));
+  add.addEventListener("click", () => write([...history, { from: todayKey(zone), ftp: currentFtp(settings, sport) || 200 }]));
   const heading = withTip(node("span", { class: "settings-label" }, t("settingsFtpHistory")), t("settingsFtpNote", { estimate: estimate ? `${estimate} W` : "—" }));
   title.append(heading, add);
   block.append(title);

@@ -1,3 +1,4 @@
+import { noon } from "./dates.js";
 import { detectIntervals } from "./core.js";
 import { dayKey, periodRange } from "./diary.js";
 
@@ -323,7 +324,7 @@ export function groupTrend(points, period, metric, sport, timeZone) {
       const total = weights.reduce((sum, weight) => sum + weight, 0);
       y = list.reduce((sum, point, index) => sum + point.y * weights[index], 0) / total;
     }
-    return { x: Date.parse(`${from}T12:00:00Z`), y, from, entries };
+    return { x: noon(from), y, from, entries };
   }).filter((group) => Number.isFinite(group.y));
 }
 

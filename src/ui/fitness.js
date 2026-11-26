@@ -1,7 +1,7 @@
 import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, isFtpTest, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
-import { axisTicks } from "../dates.js";
+import { axisTicks, mondayOf, noon, todayKey } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
 import { hrvDays, hrvOn, hrvSeries } from "../hrv.js";
 import { shortSleepHours, sleepOn } from "../sleep.js";
@@ -54,15 +54,14 @@ function node(tag, attributes = {}, text = "") {
 }
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const dayText = (key, options = { day: "numeric", month: "numeric", year: "numeric" }) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(`${key}T12:00:00Z`));
-const today = () => dayKey(Date.now(), zone);
+const dayText = (key, options = { day: "numeric", month: "numeric", year: "numeric" }) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 const ofSport = (entries) => (view.sport === "all" ? entries : entries.filter((entry) => entry.sport === view.sport));
 
 function inRange(entries, offset = 0) {
   const days = ranges[view.range];
   if (!Number.isFinite(days)) return offset ? [] : entries;
-  const to = addDays(today(), 1 - offset * days);
+  const to = addDays(todayKey(zone), 1 - offset * days);
   const from = addDays(to, -days);
   return entries.filter((entry) => {
     const day = dayKey(entry.startMs, zone);
@@ -171,7 +170,7 @@ export function trainingPlan(entries, chosen = "all") {
   const sport = chosen !== "all" ? chosen : [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (!sport) return null;
   const settings = settingsFor(entries);
-  const history = loadHistory(entries.filter((entry) => chosen === "all" || entry.sport === chosen), settings, zone, today());
+  const history = loadHistory(entries.filter((entry) => chosen === "all" || entry.sport === chosen), settings, zone, todayKey(zone));
   const last = history.at(-1);
   const workouts = entries.filter((entry) => entry.sport === sport).map((entry) => {
     const zones = timeInZones([entry], "heartRate", settings);
@@ -198,7 +197,7 @@ export function trainingPlan(entries, chosen = "all") {
   // The training focus of the sport's last four weeks: which way it leans out of the optimal ranges.
   const advice = focusAdvice(trainingFocus(entries.filter((entry) => entry.sport === sport && entry.startMs >= since), settings));
   const focus = !advice ? null : (advice.group === "lowAerobic") === (advice.side === "low") ? "intense" : "easy";
-  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: today(), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), today()), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), today())?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, today()) ?? Infinity) < shortSleepHours, illnessSigns: Boolean(illnessSigns(bodyHistory(), today())), goal: settings.sports[sport]?.goal?.day ?? null }) : null;
+  const plan = last ? nextStep({ workouts, form: last.fitness - last.fatigue, ramp: last.fitness - (history.at(-8)?.fitness ?? last.fitness), ftp: currentFtp(settings, sport), today: todayKey(zone), focus, prefs: planPrefs(settings, sport), lastFtpTest: lastFtpTyped(settings, sport), unwell: recentlyUnwell(excuses(), todayKey(zone)), hrvLow: hrvOn(hrvDays(bodyHistory().hrv), todayKey(zone))?.status === "low", shortSleep: (sleepOn(bodyHistory().sleep, todayKey(zone)) ?? Infinity) < shortSleepHours, illnessSigns: Boolean(illnessSigns(bodyHistory(), todayKey(zone))), goal: settings.sports[sport]?.goal?.day ?? null }) : null;
   if (!plan) return null;
   // The goal's name, for the day it is planned on.
   plan.goalName = plan.goal ? settings.sports[sport]?.goal?.name || null : null;
@@ -207,22 +206,22 @@ export function trainingPlan(entries, chosen = "all") {
   const bounds = [own.heartRateZones[1], own.heartRateZones[2]].map((fraction) => heartRateAt(fraction, own));
   plan.steadyHeartRate = bounds.every(Number.isFinite) ? bounds.map(Math.round) : null;
   // The trainer's resistance for them, from the levels used before.
-  plan.levels = suggestedLevels(workouts, plan.steadyHeartRate, today());
+  plan.levels = suggestedLevels(workouts, plan.steadyHeartRate, todayKey(zone));
   // The power to start at, from the laps whose heart rate settled near zone 2's middle, else the middle of the
   // FTP's range; the heart rate leads once it has caught up. And the cadence to hold meanwhile.
-  plan.startWatts = steadyStartWatts(workouts, plan.steadyHeartRate, today())
+  plan.startWatts = steadyStartWatts(workouts, plan.steadyHeartRate, todayKey(zone))
     ?? (plan.steadyWatts ? Math.round((plan.steadyWatts[0] + plan.steadyWatts[1]) / 10) * 5 : null);
   plan.cadence = steadyCadence[sport] ?? null;
   // The Kinomap creator's workouts to ride: the sport's list as set, the ones made for the plan until then.
   plan.kinomap = pickWorkouts(kinomapWorkouts(settings, sport), plan.intervals);
-  const weekdays = trainingDays(workouts, today(), settings.sports[sport]?.trainingDays);
+  const weekdays = trainingDays(workouts, todayKey(zone), settings.sports[sport]?.trainingDays);
   const excused = excuses();
   // Workouts swapped by hand between two days trade places.
   const swapped = swaps(sport);
-  const days = weekPlan(plan, workouts, today(), weekdays, excused, swapped);
+  const days = weekPlan(plan, workouts, todayKey(zone), weekdays, excused, swapped);
   // With the Training section filled in, each day's plan is kept as it stands before the day, to score it by.
-  if (hasTraining(settings, sport)) keepPlan(sport, days, plan, today());
-  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, today(), weekdays, excused, swapped), workouts, longest: longestByWeek(workouts, today()) };
+  if (hasTraining(settings, sport)) keepPlan(sport, days, plan, todayKey(zone));
+  return { sport, plan, weekdays, chosenDays: Boolean(settings.sports[sport]?.trainingDays?.length), days, checklist: weekChecklist(plan, workouts, todayKey(zone), weekdays, excused, swapped), workouts, longest: longestByWeek(workouts, todayKey(zone)) };
 }
 
 // The names of the sport's workouts in the Kinomap creator: as typed in the Training section, else the ones made.
@@ -327,13 +326,13 @@ function renderTiles(history, settings) {
   // Each shown sport's yearly distance goal: the km done this year, ahead or behind the year's share, and per day left.
   const goalSports = view.sport === "all" ? sports.filter((sport) => view.entries.some((entry) => entry.sport === sport)) : [view.sport];
   for (const sport of goalSports) {
-    const goal = goalFor(settings.sports[sport], today().slice(0, 4));
-    const progress = yearProgress({ workouts: view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 })), goal, today: today() });
+    const goal = goalFor(settings.sports[sport], todayKey(zone).slice(0, 4));
+    const progress = yearProgress({ workouts: view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 })), goal, today: todayKey(zone) });
     if (!progress) continue;
     const km = (value) => displayNumber(value, value < 100 ? 1 : 0);
     const ahead = Math.abs(progress.ahead) < 0.05 ? "±0 km" : t(progress.ahead > 0 ? "yearGoalAhead" : "yearGoalBehind", { km: km(Math.abs(progress.ahead)) });
     const note = [t("yearGoalOf", { goal: displayNumber(goal) }), ...(progress.left > 0 ? [ahead, t("yearGoalPerDay", { km: displayNumber(progress.perDay, 1) })] : [t("yearGoalDone")])].join(" · ");
-    const title = [t("yearGoal", { year: today().slice(0, 4) }), ...(goalSports.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
+    const title = [t("yearGoal", { year: todayKey(zone).slice(0, 4) }), ...(goalSports.length > 1 ? [sportLabel(sport)] : [])].join(" · ");
     tiles.push(tile(title, t("yearGoalValue", { done: km(progress.done), goal: displayNumber(goal) }), note, progress.ahead >= 0 ? "is-ahead" : "is-behind"));
   }
   if (last && freshIn) tiles.push(tile(t("fitnessFreshOn"), dayText(addDays(last.day, freshIn), { weekday: "short", day: "numeric", month: "numeric" }), t(freshIn === 1 ? "fitnessFreshTomorrow" : "fitnessFreshIn", { days: freshIn, level: level ? "+15" : "0" })));
@@ -635,7 +634,7 @@ function renderFtpChart(settings) {
   const start = Number.isFinite(days) ? Math.max(firstMs, end - days * 86_400_000) : firstMs;
   const step = Math.max(86_400_000, Math.ceil((end - start) / 400 / 86_400_000) * 86_400_000);
   // Whole days on the axis: half a day before the first one and after today, each day centred on its noon.
-  const noonOf = (ms) => Date.parse(`${dayKey(ms, zone)}T12:00:00Z`);
+  const noonOf = (ms) => noon(dayKey(ms, zone));
   const todayNoon = noonOf(end);
   const axisStart = noonOf(start) - 43_200_000;
   const axisEnd = todayNoon + 43_200_000;
@@ -680,7 +679,7 @@ function renderFtpChart(settings) {
     children.push(node("line", { x1: margin.left, x2: width - margin.right, y1: yFor(value), y2: yFor(value), class: value === minY ? "diary-axis" : "diary-grid" }));
     children.push(node("text", { x: margin.left - 8, y: yFor(value) + 4, class: "diary-axis-label" }, displayNumber(value)));
   }
-  children.push(...dateTicks(dayKey(start, zone), dayKey(end, zone), (key) => xFor(Date.parse(`${key}T12:00:00Z`)), { margin, width, height }));
+  children.push(...dateTicks(dayKey(start, zone), dayKey(end, zone), (key) => xFor(noon(key)), { margin, width, height }));
   for (const line of lines) {
     // A step line: the FTP holds until the next change.
     let d = "";
@@ -868,7 +867,7 @@ function renderBodyChips() {
 function renderBodyChart(load) {
   renderBodyChips();
   const chart = byId("fitnessBodyChart");
-  const end = today();
+  const end = todayKey(zone);
   const days = ranges[view.range];
   const history = bodyHistory();
   const picked = pickedSeries().map((key) => bodySeries.find((item) => item.key === key));
@@ -889,7 +888,7 @@ function renderBodyChart(load) {
   const margin = { left: 44, right: data.length > 1 ? 44 : 14, top: 14, bottom: 26 };
   const axisStart = Date.parse(`${from}T00:00:00Z`);
   const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
-  const xForKey = (key) => margin.left + ((Date.parse(`${key}T12:00:00Z`) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
+  const xForKey = (key) => margin.left + ((noon(key) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
   const dayWidth = (width - margin.left - margin.right) / ((axisEnd - axisStart) / 86_400_000);
   const children = [];
   const layers = [];
@@ -1072,7 +1071,6 @@ function renderWeeks(history, entries, settings) {
   const km = (meters) => `${displayNumber(meters / 1000, 1)} km`;
   const table = byId("fitnessWeeks");
   const days = Number.isFinite(ranges[view.range]) ? history.slice(-ranges[view.range]) : history;
-  const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
   const weeks = new Map();
   const weekOf = (monday) => weeks.get(monday) ?? weeks.set(monday, { monday, workouts: 0, seconds: 0, meters: 0, calories: 0, load: 0, fitness: null }).get(monday);
   for (const day of days) {
@@ -1097,7 +1095,7 @@ function renderWeeks(history, entries, settings) {
   const highest = Math.max(1, ...list.map((week) => week.load));
   const head = node("tr");
   head.append(...[t("fitnessWeek"), t("fitnessWorkouts"), t("lapTime"), ...(target ? [t("fitnessOfTarget", { target: formatDuration(target) })] : []), t("fitnessDistance"), ...(targetKm ? [t("fitnessOfTarget", { target: km(targetKm * 1000) })] : []), t("calories"), t("fitnessLoad"), t("fitnessRamp")].map((label) => node("th", {}, label)));
-  const thisMonday = mondayOf(today());
+  const thisMonday = mondayOf(todayKey(zone));
   const rows = list.map((week) => {
     const row = node("tr");
     const sunday = addDays(week.monday, 6);
@@ -1141,15 +1139,15 @@ function renderRegularity(entries) {
     strengthDays: Object.keys(savedDefaults().strengthLog ?? {}).filter((day) => savedDefaults().strengthLog[day]),
     // The sets from Exercises, each day's one by one.
     mat: Object.entries(savedDefaults().routineLog ?? {}).flatMap(([day, sets]) => sets.map((set) => ({ day, style: set.style, minutes: set.minutes }))),
-    today: today(),
+    today: todayKey(zone),
   });
   const { totals, weeks, strengthGoal } = result;
   const plural = (count) => t(`regWeeks_${count === 1 ? "one" : count >= 2 && count <= 4 ? "few" : "many"}`, { count });
   const share = (done, total) => (total ? `${displayNumber((done / total) * 100)} %` : "");
   byId("fitnessRegularityTiles").replaceChildren(
     tile(t("regWorkouts"), String(totals.workouts), t("regPerWeek", { count: displayNumber(totals.workouts / weeks.length, 1) })),
-    tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.stretchable }), [share(totals.stretched, totals.stretchable), ...(weeks[0].stretchTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.stretchTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].filter(Boolean).join(" · ")),
-    tile(t("regStrength"), t("regOf", { done: totals.strength, total: totals.strengthGoal }), [t("regStrengthGoal", { goal: strengthGoal }), ...(weeks[0].strengthTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.strengthTracked)?.monday ?? today(), { day: "numeric", month: "numeric" }) })])].join(" · ")),
+    tile(t("regStretched"), t("regOf", { done: totals.stretched, total: totals.stretchable }), [share(totals.stretched, totals.stretchable), ...(weeks[0].stretchTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.stretchTracked)?.monday ?? todayKey(zone), { day: "numeric", month: "numeric" }) })])].filter(Boolean).join(" · ")),
+    tile(t("regStrength"), t("regOf", { done: totals.strength, total: totals.strengthGoal }), [t("regStrengthGoal", { goal: strengthGoal }), ...(weeks[0].strengthTracked ? [] : [t("regSince", { day: dayText(weeks.find((week) => week.strengthTracked)?.monday ?? todayKey(zone), { day: "numeric", month: "numeric" }) })])].join(" · ")),
     tile(t("regStreak"), plural(result.streak), t("regKept", { kept: totals.kept, weeks: weeks.length })),
     // The sets from Exercises: how many and how long, and the styles most done.
     tile(t("regMat"), t("regMatCount", { count: totals.mat, minutes: totals.matMinutes }), totals.mat ? Object.entries(totals.matStyles).slice(0, 3).map(([style, count]) => `${t(`routineStyle_${style}`)} ${count}×`).join(" · ") : t("regMatNone")),
@@ -1210,9 +1208,9 @@ function trendChart(chart, points, label) {
   const height = 200;
   const margin = { left: 48, right: 14, top: 14, bottom: 26 };
   const days = ranges[view.range];
-  const lastKey = today();
+  const lastKey = todayKey(zone);
   const firstKey = Number.isFinite(days) ? addDays(lastKey, 1 - days) : dayKey(points[0].ms, zone);
-  const noonOf = (key) => Date.parse(`${key}T12:00:00Z`);
+  const noonOf = (key) => noon(key);
   const axisStart = noonOf(firstKey) - 43_200_000;
   const axisEnd = noonOf(lastKey) + 43_200_000;
   const xFor = (ms) => margin.left + ((ms - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
@@ -1416,7 +1414,7 @@ function render() {
   if (!view.entries.length) return;
   const settings = settingsFor(view.entries);
   const shown = ofSport(view.entries);
-  const history = loadHistory(shown, settings, zone, today());
+  const history = loadHistory(shown, settings, zone, todayKey(zone));
   renderSuggestions(settings);
   renderTiles(history, settings);
   // The next step lives in the Training tab once a sport has the Training section filled in; here until then.
@@ -1435,7 +1433,7 @@ function render() {
   renderTechnique(current);
   renderDecoupling(current, settings);
   renderFtpChart(settings);
-  renderBodyChart(loadHistory(ofSport(view.entries), settings, zone, today()));
+  renderBodyChart(loadHistory(ofSport(view.entries), settings, zone, todayKey(zone)));
   renderSummary(history);
   byId("fitnessLoadNote").textContent = t("fitnessLoadNote", { fitness: fitnessDays, fatigue: fatigueDays });
 }

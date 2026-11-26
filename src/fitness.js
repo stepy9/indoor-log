@@ -1,3 +1,4 @@
+import { noon } from "./dates.js";
 import { bestAverage, workoutKind } from "./analysis.js";
 import { addDays, dayKey } from "./diary.js";
 import { toRecords, valueOn } from "./history.js";
@@ -289,7 +290,7 @@ export function goalForecast(history, goalKey, restFrom) {
 export function goalPlan(history, goalKey, level = 15) {
   const last = history.at(-1);
   if (!last || !goalKey || goalKey <= last.day) return null;
-  const days = Math.round((Date.parse(`${goalKey}T12:00:00Z`) - Date.parse(`${last.day}T12:00:00Z`)) / 86_400_000);
+  const days = Math.round((noon(goalKey) - noon(last.day)) / 86_400_000);
   const average = recentAverage(history);
   // The days after the last one up to the one before the goal: its morning form comes from them.
   const formWith = (trainingDays) => {

@@ -2,6 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
+import { dayKey, todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
 import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
 import { exercises, strengthLevel } from "../recovery.js";
@@ -9,7 +10,7 @@ import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengt
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { listEntries, saveEntries } from "../library.js";
-import { byId, state, t } from "./context.js";
+import { byId, state, t, zone } from "./context.js";
 import { showToast } from "./toast.js";
 
 const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
@@ -20,14 +21,9 @@ const button = (className, text, onClick, label = null) => {
   item.addEventListener("click", onClick);
   return item;
 };
-const today = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-};
 const changed = () => window.dispatchEvent(new Event("settings-change"));
-const localDay = (ms) => { const at = new Date(ms); return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`; };
 // The day's last rowing workout not yet stretched after, which a stretching done here ticks as the Today card's does.
-const unstretched = async (day) => (await listEntries().catch(() => [])).filter((entry) => entry.sport === "rowing" && !entry.stretched && localDay(entry.startMs) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
+const unstretched = async (day) => (await listEntries().catch(() => [])).filter((entry) => entry.sport === "rowing" && !entry.stretched && dayKey(entry.startMs, zone) === day).sort((a, b) => a.startMs - b.startMs).at(-1) ?? null;
 
 export const routineLog = () => savedDefaults().routineLog ?? {};
 export const routinePlan = () => savedDefaults().routinePlan ?? {};
@@ -51,7 +47,7 @@ const current = (picked = choice()) => {
   if (picked.mode === "custom") return { style: "custom", custom: picked.custom ?? [] };
   const tools = ownTools();
   // The sets around rowing: the short warm-up's and the stretching's turn by today, strength at the level reached.
-  const around = { day: today(), strengthSteps: strengthLevel(strengthLog(), today()).steps };
+  const around = { day: todayKey(zone), strengthSteps: strengthLevel(strengthLog(), todayKey(zone)).steps };
   return { ...picked, ...around, ball: picked.ball !== false, tool: tools.includes(picked.tool) ? picked.tool : tools[0] ?? null };
 };
 
@@ -153,7 +149,7 @@ function renderSaved() {
     }, t("routineRemove"));
     row.append(text, button("outline-button", t("routineSavedStart"), () => {
       byId("exercisesDialog").close();
-      playSet({ ...entry.set, name: entry.name }, today());
+      playSet({ ...entry.set, name: entry.name }, todayKey(zone));
     }), remove);
     // Its weekdays in the plan; a day held by another set changes over to this one.
     const plan = routinePlan();
@@ -354,7 +350,7 @@ export function setupRoutine() {
   byId("routineStart").addEventListener("click", () => {
     const set = render();
     byId("exercisesDialog").close();
-    playSet(set, today(), { intro: false });
+    playSet(set, todayKey(zone), { intro: false });
   });
   // Saved as it is now, so it runs the same however the automatic sets change later.
   byId("routineSave").addEventListener("click", () => {
@@ -373,7 +369,7 @@ export function setupRoutine() {
 
 // For the Training tab's day: the set planned for it with a button running it (until one of its style is done),
 // what was done, and a button choosing any set.
-export function routineBlock(day = today()) {
+export function routineBlock(day = todayKey(zone)) {
   const block = element("div", "warmup-block");
   const done = routineLog()[day] ?? [];
   const planned = plannedRoutine(routinePlan(), day);

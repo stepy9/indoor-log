@@ -1,3 +1,4 @@
+import { noon, todayKey } from "../dates.js";
 import { breathTip, routineBlock, routineTip } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
@@ -13,7 +14,7 @@ import { saveDefaults, savedDefaults } from "./preferences.js";
 import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
 import { hoverTip, infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
-import { kmByKindByWeek, longestByWeek, nextWeekPlan, weekKmByKind } from "../plan.js";
+import { kmByKindByWeek, longestByWeek, nextWeekPlan } from "../plan.js";
 import { openSwap } from "./swap.js";
 import { kindLabel } from "./library.js";
 import { workoutProfile } from "./workouts.js";
@@ -38,8 +39,7 @@ const node = (tag, attributes = {}, text) => {
 };
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(`${key}T12:00:00Z`));
-const today = () => dayKey(Date.now(), zone);
+const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 // The sports with the Training section, the one picked first.
 function sportsWithTraining(settings) {
@@ -67,7 +67,7 @@ function adherenceCard(sport, workouts, log) {
   const head = node("div", { class: "panel-title-row" });
   head.append(node("span", { class: "field-label" }, t("trainingAdherence")));
   card.append(head);
-  const now = today();
+  const now = todayKey(zone);
   const excused = excuses();
   const weeks = lastMondays(now, 8).map((monday) => weekAdherence(log, workouts, monday, now, excused));
   const recent = weeks.slice(-4);
@@ -120,7 +120,7 @@ function adherenceCard(sport, workouts, log) {
 function workoutsCard(sport, scored) {
   const card = node("section", { class: "card training-workouts" });
   card.append(node("span", { class: "field-label" }, t("trainingWorkouts")));
-  const since = addDays(today(), -14);
+  const since = addDays(todayKey(zone), -14);
   const recent = scored.filter((item) => item.day > since).sort((a, b) => b.entry.startMs - a.entry.startMs);
   if (!recent.length) {
     card.append(node("p", { class: "field-note" }, t("trainingNoWorkouts")));
@@ -169,7 +169,7 @@ function daysWorkouts(entries, day, sport) {
 // a planned day not ridden with what was planned, a free day left out; over it the week's score and distance.
 // { list, summary }, or null for a week with nothing ridden or planned.
 function lastWeek(scored, workouts, log, sport) {
-  const now = today();
+  const now = todayKey(zone);
   const excused = excuses();
   const monday = lastMondays(now, 2)[0];
   const sunday = addDays(monday, 6);
@@ -363,7 +363,7 @@ function extraFor(kinomap, item) {
 // under it, and a warning when the last workouts felt harder than usual.
 function todayCard(result, scored, fatigue, entries, settings) {
   const card = node("section", { class: "card training-today" });
-  const now = today();
+  const now = todayKey(zone);
   const excused = excuses();
   // Today excused: the reason, and the next day not excused instead of today's workout.
   const item = excused[now] ? null : result.checklist.find((entry) => entry.day === now);
@@ -514,7 +514,7 @@ function progressCard(sport, entries, plan, settings) {
     .map((entry) => ({ day: dayKey(entry.startMs, zone), watts: zoneTwoWatts(entry, heart) })).filter((point) => point.watts);
   const trend = zoneTwoTrend(points);
   const shown = trend.points.slice(-12);
-  const dayNumber = (key) => Date.parse(`${key}T12:00:00Z`) / 86_400_000;
+  const dayNumber = (key) => noon(key) / 86_400_000;
   let line = null;
   if (trend.perFourWeeks != null && shown.length > 1) {
     // Through the shown points' mean, at the trend's slope, from the first shown to the last.
@@ -528,7 +528,7 @@ function progressCard(sport, entries, plan, settings) {
   grid.append(figure(t("trainingZoneTwo"), trendNote, shown.length >= 2 ? smallChart(shown.map((point, index) => ({ label: label(point, index), value: point.watts, kind: "point" })), { line }) : null));
   // The longest workout of each week, the target dashed.
   const workouts = entries.map((entry) => ({ day: dayKey(entry.startMs, zone), minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry) }));
-  const longest = longestMinutesByWeek(workouts, today(), 8);
+  const longest = longestMinutesByWeek(workouts, todayKey(zone), 8);
   const target = settings.sports[sport]?.plan?.longTargetMinutes ?? null;
   grid.append(figure(t("trainingLongest"), target ? t("trainingLongestTarget", { minutes: target }) : t("trainingLongestNote"),
     smallChart(longest.map((week, index) => ({ label: index === longest.length - 1 ? t("planThisWeek") : String(weekNumber(week.monday)), value: week.minutes, kind: "bar" })), { line: target ? [target, target] : null })));
@@ -571,7 +571,7 @@ function render() {
   const scored = view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ entry, day: dayKey(entry.startMs, zone), result: scoreFor(entry, plan, settings) }));
   const workouts = scored.map(({ entry, day, result: item }) => ({ day, minutes: (entry.summary?.timerSeconds ?? 0) / 60, kind: workoutKind(entry), ftpTest: item?.as === "ftpTest", score: item?.score ?? null }));
   const cards = [];
-  const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), today());
+  const fatigue = fatigueByFeel(view.entries.filter((entry) => entry.sport === sport).map((entry) => ({ day: dayKey(entry.startMs, zone), rpe: entry.summary?.workoutRpe ?? null, feel: entry.summary?.workoutFeel ?? null, avgHeartRate: entry.summary?.avgHeartRate ?? null })), todayKey(zone));
   const ftpCard = ftpTestCard(sport, view.entries.filter((entry) => entry.sport === sport), settings, openActivity);
   if (ftpCard) cards.push(ftpCard);
   const last = lastWeek(scored, workouts, log, sport);
@@ -593,8 +593,8 @@ function render() {
 // The week's plan card on the week picked: last week as ridden, this one as now, next week as it would be laid out.
 function drawWeek(week, { result, scored, sport, last, log, workouts }) {
   const { plan } = result;
-  const next = nextWeekPlan(plan, result.workouts, today(), result.weekdays, excuses(), swaps(sport));
-  const nextResult = { ...result, plan: next.plan, days: next.days, checklist: next.checklist, longest: longestByWeek(result.workouts, addDays(today(), 7)) };
+  const next = nextWeekPlan(plan, result.workouts, todayKey(zone), result.weekdays, excuses(), swaps(sport));
+  const nextResult = { ...result, plan: next.plan, days: next.days, checklist: next.checklist, longest: longestByWeek(result.workouts, addDays(todayKey(zone), 7)) };
   const weeks = [...(last ? ["last"] : []), "this", ...(next.checklist.length ? ["next"] : [])];
   if (!weeks.includes(view.week)) view.week = "this";
   const pick = (shown) => {
@@ -602,7 +602,7 @@ function drawWeek(week, { result, scored, sport, last, log, workouts }) {
     drawWeek(week, { result, scored, sport, last, log, workouts });
   };
   const title = `${t("planTitleShort")} · ${sportLabel(sport)}`;
-  const badge = view.week === "last" ? last.badge : view.week === "this" ? weekBadge(log, workouts, lastMondays(today(), 1)[0], today()) : null;
+  const badge = view.week === "last" ? last.badge : view.week === "this" ? weekBadge(log, workouts, lastMondays(todayKey(zone), 1)[0], todayKey(zone)) : null;
   const head = () => weekHead(title, view.week, weeks, pick, badge);
   if (view.week === "last") {
     const side = node("div", { class: "diary-plan-side" });
@@ -612,12 +612,12 @@ function drawWeek(week, { result, scored, sport, last, log, workouts }) {
     body.append(list, side);
     week.replaceChildren(head(), body);
     const width = Math.max(240, Math.round(side.getBoundingClientRect().width) || 320);
-    const lastWeekDay = addDays(today(), -7);
+    const lastWeekDay = addDays(todayKey(zone), -7);
     side.append(weekDistance(kmByKindByWeek(result.workouts, plan, lastWeekDay, 1, log, planStart(sport))[0].parts, width, t("summaryLast")), longestWeeks(longestByWeek(result.workouts, lastWeekDay), width, String(weekNumber(lastWeekDay))), kindWeeks(kmByKindByWeek(result.workouts, plan, lastWeekDay, 8, log, planStart(sport)), width, String(weekNumber(lastWeekDay))));
     return;
   }
   if (view.week === "next") {
-    drawPlanCard(week, nextResult, { scores: {}, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(nextResult, day, today(), render), swappedWith: (day) => swappedWith(sport, day), title, weekTitle: t("summaryNextWeek"), longestLabel: t("weekTab_next").toLowerCase(), longestNote: t("planLongestNoteNext") });
+    drawPlanCard(week, nextResult, { scores: {}, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(nextResult, day, todayKey(zone), render), swappedWith: (day) => swappedWith(sport, day), title, weekTitle: t("summaryNextWeek"), longestLabel: t("weekTab_next").toLowerCase(), longestNote: t("planLongestNoteNext") });
     week.querySelector(".panel-title-row").replaceWith(head());
     week.querySelector(".diary-plan-list").prepend(node("p", { class: "field-note" }, t("weekNextNote")));
     return;
@@ -625,7 +625,7 @@ function drawWeek(week, { result, scored, sport, last, log, workouts }) {
   {
     const byDay = {};
     for (const item of scored) if (item.result) (byDay[item.day] ??= []).push(item.result.score);
-    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, today(), render), swappedWith: (day) => swappedWith(sport, day), doneCell: (day) => daysWorkouts(scored.filter((item) => item.day === day).sort((a, b) => a.entry.startMs - b.entry.startMs).map((item) => item.entry), day, sport), title });
+    drawPlanCard(week, result, { scores: byDay, withNextStep: true, excused: excuses(), onExcuse: (day) => openExcuse(day, render), onSwap: (day) => openSwap(result, day, todayKey(zone), render), swappedWith: (day) => swappedWith(sport, day), doneCell: (day) => daysWorkouts(scored.filter((item) => item.day === day).sort((a, b) => a.entry.startMs - b.entry.startMs).map((item) => item.entry), day, sport), title });
     week.querySelector(".panel-title-row").replaceWith(head());
     // Why the plan holds back this week, under the days.
     const notes = planNotes(plan);

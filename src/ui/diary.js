@@ -1,3 +1,4 @@
+import { noon, todayKey } from "../dates.js";
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -101,7 +102,7 @@ function plannedWords(plan, sport, type, detail) {
 // onSwap(day), when given, offers a swap on each day planned ahead; swappedWith(day) tells a day already swapped.
 export function drawPlanCard(card, result, { scores = null, withNextStep = false, excused = null, onExcuse = null, onSwap = null, swappedWith = null, doneCell = null, title = null, weekTitle = undefined, longestLabel = undefined, longestNote = undefined } = {}) {
   const { plan, checklist, sport, chosenDays, longest } = result;
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const km = (value) => displayNumber(value, value % 1 ? 1 : 0);
   const planned = (type) => plannedText(plan, sport, type);
   const rows = checklist.map((item) => {
@@ -336,7 +337,7 @@ function pickedStart(range) {
 let openActivity = () => {};
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(`${key}T12:00:00Z`));
+const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 // Each kind keeps its place in the categorical palette.
 const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
@@ -372,7 +373,7 @@ const shortTitle = (start) => (view.period === "week" ? t("diaryWeekNumber", { w
 
 // The years to jump to: from the first activity, or this year, up to this year.
 function jumpYears() {
-  const thisYear = Number(dayKey(Date.now(), zone).slice(0, 4));
+  const thisYear = Number(todayKey(zone).slice(0, 4));
   const first = Math.min(thisYear, ...view.entries.map((entry) => Number(dayKey(entry.startMs, zone).slice(0, 4))));
   return Array.from({ length: thisYear - first + 1 }, (_, index) => thisYear - index);
 }
@@ -439,7 +440,7 @@ function renderControls(range) {
     if (button.dataset.basis === "lastYear") button.hidden = view.period === "year";
   }
   // Only a running period has days still to come, and the choice of span.
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const running = today >= range[0] && today < range[1];
   byId("diarySpan").hidden = !running;
   for (const button of byId("diarySpan").querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.span === view.span));
@@ -673,7 +674,7 @@ function renderBars(range, entries) {
 // One sport's year against its goal: the km added up day by day as a solid line, the even pace from 0 to the goal
 // on 31 December dashed, and where the year stands now: ahead or behind, and the km a day left.
 function yearGoalChart(sport, goal, year, entries) {
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const workouts = entries.map((entry) => ({ day: dayKey(entry.startMs, zone), km: (entry.summary?.distance ?? 0) / 1000 }));
   const line = yearLine({ workouts, goal, year, today });
   const row = Object.assign(document.createElement("div"), { className: "diary-chart-row diary-year-goal" });
@@ -711,8 +712,8 @@ function yearGoalChart(sport, goal, year, entries) {
   const monthStep = width - left - right < 420 ? 2 : 1;
   for (let month = 0; month < 12; month += monthStep) {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const day = (Date.parse(`${key}T12:00:00Z`) - Date.parse(`${year}-01-01T12:00:00Z`)) / 86_400_000;
-    const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - Date.parse(`${year}-01-01T12:00:00Z`)) / 86_400_000;
+    const day = (noon(key) - noon(`${year}-01-01`)) / 86_400_000;
+    const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - noon(`${year}-01-01`)) / 86_400_000;
     children.push(svgNode("text", { x: xFor((day + nextDay) / 2), y: height - 8, class: "diary-tick" }, format(key, { month: "short" })));
   }
   // The even pace to the goal, and the running total over it.
@@ -787,7 +788,7 @@ function renderCalendar(range, entries) {
   card.hidden = view.period === "year";
   if (card.hidden) return;
   const days = view.period === "week" ? periodBuckets("week", range, [], zone).map((bucket) => bucket.key) : calendarDays(range[0]);
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const settings = settingsFor(view.entries);
   const excused = excuses();
   const head = days.slice(0, 7).map((day) => Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: format(day, { weekday: "short" }) }));
@@ -996,7 +997,7 @@ function renderReminders() {
     else if (due) Object.assign(note, { className: "diary-reminder-ask", textContent: days === null ? t("reminderAsk") : t("reminderAskDays", { days }) });
     else {
       // The HRV with how its week stands against the usual range; a short night entered for today puts the intervals off.
-      const standing = key === "hrv" ? hrvOn(hrvDays(bodyHistory().hrv), dayKey(Date.now(), zone))?.status : null;
+      const standing = key === "hrv" ? hrvOn(hrvDays(bodyHistory().hrv), todayKey(zone))?.status : null;
       const short = key === "sleep" && days === 0 && value < shortSleepHours;
       Object.assign(note, { className: "diary-reminder-age", textContent: [ageText(days), standing ? t(`hrvStatus_${standing}`) : "", short ? t("sleepShort") : ""].filter(Boolean).join(" · ") || " " });
     }
@@ -1048,7 +1049,7 @@ const unitNode = (text) => Object.assign(document.createElement("span"), { class
 function render() {
   if (byId("diaryView").hidden) return;
   saveDefaults({ diary: { sport: view.sport, period: view.period, barMetric: view.barMetric, basis: view.basis, span: view.span, showPlan: view.showPlan } });
-  view.day ??= dayKey(Date.now(), zone);
+  view.day ??= todayKey(zone);
   // Each sport's current plan, for its workouts' scores; drawn anew, as the settings or the library may have changed.
   const settings = settingsFor(view.entries);
   const results = Object.keys(settings.sports).filter((sport) => hasTraining(settings, sport)).map((sport) => [sport, trainingPlan(view.entries, sport)]);
@@ -1061,7 +1062,7 @@ function render() {
   const range = periodRange(view.period, view.day);
   const entries = shown();
   const current = inPeriod(entries, range, zone);
-  const today = dayKey(Date.now(), zone);
+  const today = todayKey(zone);
   const basis = basisFor(view.period);
   const picked = basis === "pick" ? pickedStart(range) : null;
   const before = previousRange(view.period, view.day, view.span === "same" ? today : "", basis, picked);
@@ -1164,7 +1165,7 @@ export function setupDiary({ onOpen }) {
     byId("diaryTitle").focus();
   });
   byId("diaryToday").addEventListener("click", () => {
-    view.day = dayKey(Date.now(), zone);
+    view.day = todayKey(zone);
     render();
   });
 }

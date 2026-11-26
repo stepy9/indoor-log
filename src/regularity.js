@@ -1,4 +1,4 @@
-import { addDays } from "./diary.js";
+import { addDays, mondayOf } from "./dates.js";
 
 // How regular the training has been over the last weeks, Monday to Sunday: the workouts, how many of them were
 // stretched after, the strength sessions against their aim, and the run of weeks kept.
@@ -8,7 +8,6 @@ import { addDays } from "./diary.js";
 // The sets from Exercises (mobility, yoga, stability…) are counted beside them, by week and by style, but have no
 // aim and do not decide whether a week is kept: they are extra, done when and as often as wanted.
 
-const mondayOf = (key) => addDays(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));
 
 // workouts: [{ day: "YYYY-MM-DD", stretched: boolean }]; strengthDays: ["YYYY-MM-DD"]; today: "YYYY-MM-DD".
 // The first stretch is the earliest workout stretched; the first strength the earliest day logged; without one, today.

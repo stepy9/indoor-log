@@ -1,9 +1,21 @@
 // Days as "YYYY-MM-DD" keys: reading and writing them as people type them, laying out a month from Monday,
 // and choosing which days a date axis labels. No DOM here, so all of it is tested on its own.
 
-const dayMs = 86_400_000;
-const noon = (key) => Date.parse(`${key}T12:00:00Z`);
-const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
+export const dayMs = 86_400_000;
+// A day's UTC noon: arithmetic on days goes through it, so no clock change shifts a day.
+export const noon = (key) => Date.parse(`${key}T12:00:00Z`);
+export const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
+// The day an instant falls on in a time zone, as "YYYY-MM-DD".
+export const dayKey = (epochMs, timeZone) => new Intl.DateTimeFormat("en-CA", {
+  timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+}).format(new Date(epochMs));
+export const addDays = (key, days) => keyOf(noon(key) + days * dayMs);
+// The Monday of a day's week.
+export const mondayOf = (key) => addDays(key, -weekdayOf(key));
+// A day's place in its week, Monday 0 to Sunday 6.
+export const weekdayOf = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
+// Today in the app's time zone, the day every plan, diary and set counts from.
+export const todayKey = (timeZone) => dayKey(Date.now(), timeZone);
 
 // A day as the app's language writes it: 13. 10. 2026, or 13/10/2026 in English; empty without a day.
 export function formatDay(key, language) {

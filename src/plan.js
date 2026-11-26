@@ -4,11 +4,9 @@
 // workouts a week that grow slowly. Holds back when the heart drifts, the form is low or the fitness climbs fast.
 // No DOM here, so all of it is tested on its own.
 
-const dayMs = 86_400_000;
-const noon = (key) => Date.parse(`${key}T12:00:00Z`);
-const keyOf = (ms) => new Date(ms).toISOString().slice(0, 10);
-const addDays = (key, days) => keyOf(noon(key) + days * dayMs);
-export const mondayOf = (key) => addDays(key, -((new Date(noon(key)).getUTCDay() + 6) % 7));
+import { addDays, dayMs, mondayOf, noon, weekdayOf } from "./dates.js";
+
+export { mondayOf };
 
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -240,11 +238,10 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
 // in the last four weeks, or else the commonest ones, as many as the usual workouts a week.
 export function trainingDays(workouts, today, chosen = null) {
   if (chosen?.length) return [...chosen].sort((a, b) => a - b);
-  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const recent = workouts.filter((workout) => workout.day > addDays(today, -28) && workout.day <= today);
   if (!recent.length) return [];
   const counts = Array(7).fill(0);
-  for (const day of new Set(recent.map((workout) => workout.day))) counts[weekday(day)] += 1;
+  for (const day of new Set(recent.map((workout) => workout.day))) counts[weekdayOf(day)] += 1;
   const often = counts.map((count, day) => ({ count, day })).filter(({ count }) => count >= 2).map(({ day }) => day);
   if (often.length) return often;
   // Per week trained in, so a fresh start does not count the weeks before it.
@@ -262,11 +259,10 @@ export function trainingDays(workouts, today, chosen = null) {
 // day no longer open (ridden, excused, gone by) or with the goal or its opener in it is left as laid out.
 export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) {
   if (!plan || !days.length) return [];
-  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const trained = new Set(workouts.map((workout) => workout.day));
   // The goal day is planned whatever the weekday; the two days before it take nothing hard.
   const goal = plan.goal ?? null;
-  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => (days.includes(weekday(day)) || day === goal) && !trained.has(day) && !excused[day]);
+  const open = Array.from({ length: 7 }, (_, index) => addDays(today, index)).filter((day) => (days.includes(weekdayOf(day)) || day === goal) && !trained.has(day) && !excused[day]);
   if (!open.length) return [];
   const nearGoal = (day) => Boolean(goal) && day >= addDays(goal, -2) && day <= goal;
   const nextMonday = addDays(mondayOf(today), 7);
@@ -279,10 +275,10 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
   const toNextWeek = plan.doneLong || !thisWeekOpen.length;
   const longDays = (toNextWeek ? open.filter((day) => day >= nextMonday) : thisWeekOpen).filter((day) => !nearGoal(day));
   const wantedLong = Math.min(toNextWeek ? count : count - (plan.longDone ?? 0), Math.max(1, longDays.length - 1));
-  const longPicks = longDays.filter((day) => plan.longDays?.includes(weekday(day))).slice(0, wantedLong);
+  const longPicks = longDays.filter((day) => plan.longDays?.includes(weekdayOf(day))).slice(0, wantedLong);
   // Days apart counted round the week too, as next week's longer workouts fall on the same weekdays.
   const gap = (day) => Math.min(...longPicks.map((taken) => {
-    const apart = Math.abs(weekday(taken) - weekday(day));
+    const apart = Math.abs(weekdayOf(taken) - weekdayOf(day));
     return Math.min(apart, 7 - apart);
   }));
   while (longPicks.length < wantedLong) {
@@ -290,7 +286,7 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
     if (!rest.length) break;
     const pick = longPicks.length
       ? rest.reduce((best, day) => (gap(day) > gap(best) || (gap(day) === gap(best) && day > best) ? day : best))
-      : [...rest].reverse().find((day) => weekday(day) >= 5) ?? rest.at(-1);
+      : [...rest].reverse().find((day) => weekdayOf(day) >= 5) ?? rest.at(-1);
     longPicks.push(pick);
   }
   for (const day of longPicks) types.set(day, "long");
@@ -325,7 +321,7 @@ export function weekPlan(plan, workouts, today, days, excused = {}, swaps = {}) 
   const free = thisWeekAway.length ? thisWeekAway : notAfter.length ? notAfter : away;
   // The weekdays set for them first, a usual day each, even the day before a longer workout (not the day after one
   // that tires); then spread out: the middle open day first, then the one farthest from those taken.
-  const picks = usualDays.filter((day) => plan.intervalDays?.includes(weekday(day)) && (!tires || !longPicks.includes(addDays(day, -1)))).slice(0, Math.min(wanted, room));
+  const picks = usualDays.filter((day) => plan.intervalDays?.includes(weekdayOf(day)) && (!tires || !longPicks.includes(addDays(day, -1)))).slice(0, Math.min(wanted, room));
   for (let count = picks.length; count < Math.min(wanted, room); count += 1) {
     const rest = free.filter((day) => !picks.includes(day));
     const pick = picks.length ? rest.sort((a, b) => Math.min(...picks.map((day) => Math.abs(noon(day) - noon(b)))) - Math.min(...picks.map((day) => Math.abs(noon(day) - noon(a)))))[0] : rest[Math.floor((rest.length - 1) / 2)];
@@ -433,14 +429,13 @@ export function kmByKindByWeek(workouts, plan, today, weeks = 8, log = {}, start
 // carry what weekPlan lays on them. [{ day, status: "done" | "missed" | "planned", type, workouts }]
 // A training day excused and not ridden shows as off ("off" planned ahead, missed gone by, the excuse telling why).
 export function weekChecklist(plan, workouts, today, days, excused = {}, swaps = {}) {
-  const weekday = (key) => (new Date(noon(key)).getUTCDay() + 6) % 7;
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
   const ahead = new Map(weekPlan(plan, workouts, today, days, excused, swaps).map((item) => [item.day, item.type]));
   return week.flatMap((day) => {
     const done = workouts.filter((workout) => workout.day === day);
     if (done.length) return [{ day, status: "done", type: done.some((workout) => workout.ftpTest) ? "ftpTest" : done.some((workout) => workout.kind === "intervals") ? "intervals" : done.some((workout) => plan && workout.km >= plan.long.fromKm - 0.05) ? "long" : "usual", workouts: done }];
-    if (!days.includes(weekday(day)) && day !== plan?.goal) return [];
+    if (!days.includes(weekdayOf(day)) && day !== plan?.goal) return [];
     if (day < today) return [{ day, status: "missed", type: null, workouts: [] }];
     return [{ day, status: "planned", type: excused[day] ? "off" : ahead.get(day) ?? "usual", workouts: [] }];
   });

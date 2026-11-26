@@ -1,5 +1,5 @@
-import { state, t } from "./context.js";
-import { monthLayout } from "../dates.js";
+import { state, t, zone } from "./context.js";
+import { monthLayout, todayKey } from "../dates.js";
 
 // A small month calendar of the app's own, as the browser's follows its language and starts weeks on Sunday:
 // weeks from Monday, names in the app's language, Today and Clear. It opens under the anchor, inside the
@@ -8,7 +8,7 @@ import { monthLayout } from "../dates.js";
 let open = null;
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const keyOf = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+const monthDayKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
 function close() {
   if (!open) return;
@@ -21,9 +21,8 @@ function close() {
 export function openDatePicker(anchor, value, onPick) {
   if (open?.anchor === anchor) return close();
   close();
-  const today = new Date();
-  const todayKey = keyOf(today.getFullYear(), today.getMonth(), today.getDate());
-  const start = value ? value.split("-").map(Number) : [today.getFullYear(), today.getMonth() + 1];
+  const today = todayKey(zone);
+  const start = (value || today).split("-").map(Number);
   let year = start[0];
   let month = start[1] - 1;
   const element = document.createElement("div");
@@ -60,13 +59,13 @@ export function openDatePicker(anchor, value, onPick) {
     const { offset, days } = monthLayout(year, month);
     for (let index = 0; index < offset; index += 1) grid.append(document.createElement("span"));
     for (let day = 1; day <= days; day += 1) {
-      const key = keyOf(year, month, day);
-      const classes = ["date-picker-day", key === value ? "is-selected" : "", key === todayKey ? "is-today" : ""].filter(Boolean).join(" ");
+      const key = monthDayKey(year, month, day);
+      const classes = ["date-picker-day", key === value ? "is-selected" : "", key === today ? "is-today" : ""].filter(Boolean).join(" ");
       grid.append(button(String(day), classes, () => pick(key)));
     }
     const foot = document.createElement("div");
     foot.className = "date-picker-foot";
-    foot.append(button(t("dateClear"), "link-button", () => pick(null)), button(t("dateToday"), "link-button", () => pick(todayKey)));
+    foot.append(button(t("dateClear"), "link-button", () => pick(null)), button(t("dateToday"), "link-button", () => pick(today)));
     element.replaceChildren(head, grid, foot);
   };
   render();

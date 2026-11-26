@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { axisTicks, formatDay, monthLayout, parseDay } from "../src/dates.js";
+import { addDays, axisTicks, dayKey, formatDay, mondayOf, monthLayout, parseDay, todayKey, weekdayOf } from "../src/dates.js";
 
 test("parseDay reads a day typed in any common way, null when empty, undefined when not a real day", () => {
   assert.equal(parseDay("13. 10. 2026"), "2026-10-13");
@@ -58,4 +58,30 @@ test("axisTicks uses months over a long range", () => {
   assert.ok(ticks.slice(0, -1).every((tick) => tick.kind === "month" && tick.key.endsWith("-01")));
   assert.equal(ticks.at(-1).kind, "last");
   assert.deepEqual(axisTicks("2026-11-04", "2026-11-04", () => 0), [{ key: "2026-11-04", kind: "last", spacing: 1 }]);
+});
+
+test("addDays steps whole days across a clock change, a month's end and a leap day", () => {
+  assert.equal(addDays("2026-03-28", 1), "2026-03-29");
+  assert.equal(addDays("2026-03-29", 1), "2026-03-30");
+  assert.equal(addDays("2026-10-25", -1), "2026-10-24");
+  assert.equal(addDays("2026-01-31", 1), "2026-02-01");
+  assert.equal(addDays("2028-02-28", 1), "2028-02-29");
+  assert.equal(addDays("2026-01-01", -1), "2025-12-31");
+});
+
+test("weekdayOf counts from Monday and mondayOf gives the week's Monday", () => {
+  assert.equal(weekdayOf("2026-11-23"), 0);
+  assert.equal(weekdayOf("2026-11-29"), 6);
+  assert.equal(mondayOf("2026-11-26"), "2026-11-23");
+  assert.equal(mondayOf("2026-11-23"), "2026-11-23");
+  assert.equal(mondayOf("2026-11-29"), "2026-11-23");
+  assert.equal(mondayOf("2027-01-01"), "2026-12-28");
+});
+
+test("dayKey and todayKey give the day in the asked time zone, not the computer's", () => {
+  const lateEvening = Date.parse("2026-11-26T23:30:00Z");
+  assert.equal(dayKey(lateEvening, "Europe/Prague"), "2026-11-27");
+  assert.equal(dayKey(lateEvening, "America/New_York"), "2026-11-26");
+  assert.match(todayKey("Europe/Prague"), /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(todayKey("Europe/Prague"), dayKey(Date.now(), "Europe/Prague"));
 });
