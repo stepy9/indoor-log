@@ -1,3 +1,4 @@
+import { showToast } from "./toast.js";
 import { fitFileName, kinomapExportKey } from "../files.js";
 import { elements, setNotice, state, t } from "./context.js";
 import { downloadFile } from "./dom.js";
@@ -64,7 +65,7 @@ async function saveFitAs(fitBytes, filename) {
 export async function saveToLibrary() {
   if (!state.result) return;
   const saved = await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry, always: true });
-  if (saved) setNotice(t("savedToLibrary"), "success");
+  if (saved) showToast(t("savedToLibrary"));
   return saved;
 }
 
@@ -83,15 +84,15 @@ export async function exportFit() {
       }
       rememberExport(kinomapExportKey(state.kinomapFile?.name));
       await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry });
-      setNotice(t("savedAs", { filename: savedName }), "success");
+      showToast(t("savedAs", { filename: savedName }));
       return true;
     }
     const { saved, fallbackMessage } = await saveFit(state.result.fitBytes, filename, state.outputDirectoryHandle);
     rememberExport(kinomapExportKey(state.kinomapFile?.name));
     await rememberWorkout(state.result, elements.workoutKind.value, { ...trainerSettings(), edited: state.editingEntry });
-    if (saved) setNotice(t("savedBesideFiles"), "success");
+    if (saved) showToast(t("savedBesideFiles"));
     else if (fallbackMessage) setNotice(t("saveFallbackStarted", { message: fallbackMessage }));
-    else setNotice(t("downloadStarted", { filename }), "success");
+    else showToast(t("downloadStarted", { filename }));
     return true;
   } catch (error) {
     setNotice(t("exportFailed", { message: error.message }), "error");

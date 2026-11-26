@@ -1,3 +1,4 @@
+import { showToast } from "./ui/toast.js";
 import { writeText } from "./ui/storage.js";
 import { cadenceUnit, speedText } from "./ui/units.js";
 import "./styles.css";
@@ -426,7 +427,7 @@ function applyToSelected() {
     if (item.settings) Object.assign(item.settings, shared);
     else item.overrides = shared;
   }
-  setNotice(t("batchApplied", { count: targets.length }), "success");
+  showToast(t("batchApplied", { count: targets.length }));
 }
 
 async function exportBatchToFolder() {
@@ -474,7 +475,8 @@ async function exportBatch(targetDirectory = null) {
   }
   batch.busy = false;
   renderBatch();
-  setNotice(t("batchDone", counts), counts.failed ? "error" : "success");
+  if (counts.failed) setNotice(t("batchDone", counts), "error");
+  else showToast(t("batchDone", counts));
 }
 
 function dateInputValue(epochMs) {

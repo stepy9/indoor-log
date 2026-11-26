@@ -203,7 +203,9 @@ async function addFiles(files) {
     }
   }
   const { skipped } = entries.length ? await addEntries(entries) : { skipped: 0 };
-  libraryNote([t("libraryAdded", { count: entries.length - skipped }), ...(skipped ? [t("libraryDuplicates", { count: skipped })] : []), ...failed].join(" · "), failed.length ? "error" : "success");
+  const added = [t("libraryAdded", { count: entries.length - skipped }), ...(skipped ? [t("libraryDuplicates", { count: skipped })] : [])].join(" · ");
+  if (failed.length) libraryNote([added, ...failed].join(" · "), "error");
+  else showToast(added);
   renderList();
 }
 
@@ -301,7 +303,7 @@ export function setupLibrary({ onRestore, onEdit, onOpen } = {}) {
   byId("libraryClearButton").addEventListener("click", async () => {
     if (!(await confirmDialog({ title: t("libraryClearConfirm", { count: shown.length, sport: sportLabel(librarySport) }), ok: t("libraryDelete"), danger: true }))) return;
     await deleteEntries(shown.map((entry) => entry.id));
-    libraryNote(t("libraryCleared", { sport: sportLabel(librarySport) }), "success");
+    showToast(t("libraryCleared", { sport: sportLabel(librarySport) }));
     renderList();
   });
   if (typeof indexedDB === "undefined") byId("libraryButton").hidden = true;
