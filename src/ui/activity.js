@@ -1,5 +1,6 @@
 // The activity detail: everything known about one activity, read only, opened from the calendar, the library and
 // wherever else an activity is clicked. Comparing it and editing it are a button away.
+import { element, svgNode } from "./dom.js";
 import { confirmDialog } from "./confirm.js";
 import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
 import { deleteEntry, listEntries, saveEntries } from "../library.js";
@@ -17,7 +18,6 @@ import { perKgText, settingsFor } from "./settings.js";
 import { sessionLines, stretchBlock } from "./recovery.js";
 import { afterWorkout } from "../recovery.js";
 
-const svgNs = "http://www.w3.org/2000/svg";
 // The day stretching after a row came into the app.
 const stretchingSince = "2026-11-18";
 const dialog = byId("activityDialog");
@@ -30,7 +30,6 @@ const longDate = (ms) => new Intl.DateTimeFormat(locale(), {
   timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
 }).format(new Date(ms));
 const dayDate = (ms) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(ms));
-const el = (tag, className = "", text = "") => Object.assign(document.createElement(tag), { className, textContent: text });
 const unit = (value, suffix, digits = 0) => (Number.isFinite(value) ? `${displayNumber(value, digits)} ${suffix}` : null);
 const cadenceUnit = (sport) => (sport === "running" ? "spm" : "rpm");
 
@@ -94,11 +93,11 @@ function tiles(entry, settings) {
       [benefit && benefitText(benefit.benefit) !== t(`benefit_${benefit.benefit}`) ? t(`benefitGroup_${benefitGroup[benefit.benefit]}`) : null,
         benefit && effect ? `TE ${displayNumber(effect.value, 1)} ${t(`teLevel_${effect.level}`)}` : null].filter(Boolean).join(" · ") || null],
   ];
-  const box = el("div", "diary-tiles activity-tiles");
+  const box = element("div", "diary-tiles activity-tiles");
   box.append(...list.filter(([, value]) => value).map(([label, value, sub]) => {
-    const tile = el("div", "diary-tile");
-    tile.append(el("span", "diary-tile-label", label), el("span", "diary-tile-value", value));
-    if (sub) tile.append(el("span", "diary-tile-change activity-tile-sub", sub));
+    const tile = element("div", "diary-tile");
+    tile.append(element("span", "diary-tile-label", label), element("span", "diary-tile-value", value));
+    if (sub) tile.append(element("span", "diary-tile-change activity-tile-sub", sub));
     return tile;
   }));
   // The day's plan and how it was kept, a wide tile at the end.
@@ -113,12 +112,12 @@ function chart(entry, targets = null) {
   const metrics = metricsOf(entry);
   if (!metrics.length || !(entry.records?.seconds?.length > 1)) return null;
   if (!metrics.includes(view.metric)) view.metric = metrics[0];
-  const card = el("section", "card activity-chart-card");
-  const head = el("div", "panel-title-row");
-  const switcher = el("div", "segmented");
+  const card = element("section", "card activity-chart-card");
+  const head = element("div", "panel-title-row");
+  const switcher = element("div", "segmented");
   switcher.setAttribute("role", "group");
   switcher.append(...metrics.map((metric) => {
-    const button = el("button", "", metricName(metric, entry.sport));
+    const button = element("button", "", metricName(metric, entry.sport));
     button.type = "button";
     button.setAttribute("aria-pressed", String(metric === view.metric));
     button.addEventListener("click", () => {
@@ -127,11 +126,11 @@ function chart(entry, targets = null) {
     });
     return button;
   }));
-  head.append(el("span", "field-label", t("activityCourse")), switcher);
+  head.append(element("span", "field-label", t("activityCourse")), switcher);
   const width = 800;
   const height = 220;
   const pad = { left: 52, right: 8, top: 16, bottom: 22 };
-  const svg = document.createElementNS(svgNs, "svg");
+  const svg = svgNode("svg");
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("class", "activity-chart");
   svg.setAttribute("role", "img");
@@ -155,13 +154,7 @@ function chart(entry, targets = null) {
     const share = (value - low) / (high - low);
     return pad.top + (inverted ? share : 1 - share) * (height - pad.top - pad.bottom);
   };
-  const add = (tag, attributes, text = "") => {
-    const node = document.createElementNS(svgNs, tag);
-    for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
-    if (text) node.textContent = text;
-    svg.append(node);
-    return node;
-  };
+  const add = (tag, attributes, text) => svg.appendChild(svgNode(tag, attributes, text));
   // Interval laps as the converter's chart shows them: a band along the top coloured by the lap's type
   // and a dashed line where each one starts. A steady row's distance laps are left out.
   const laps = entry.laps ?? [];
@@ -212,8 +205,8 @@ function chart(entry, targets = null) {
     }
     return lo > 0 && second - list[lo - 1].x < list[lo].x - second ? list[lo - 1] : list[lo];
   };
-  const figure = el("div", "activity-chart-figure");
-  const tooltip = el("div", "diary-tooltip");
+  const figure = element("div", "activity-chart-figure");
+  const tooltip = element("div", "diary-tooltip");
   tooltip.setAttribute("role", "tooltip");
   tooltip.hidden = true;
   const hide = () => {
@@ -233,13 +226,13 @@ function chart(entry, targets = null) {
     dot.setAttribute("cy", y(point.y));
     dot.setAttribute("visibility", "visible");
     const row = (metric, value) => {
-      const line = el("div", "diary-tooltip-row");
+      const line = element("div", "diary-tooltip-row");
       // Cadence to a tenth: the line is smoothed, and a rounded 20 could sit just under a band from 20.
       const text = metric === "cadence" ? unit(value, cadenceUnit(entry.sport), 1) : metricText(value, metric, entry.sport);
-      line.append(el("span", "", metricName(metric, entry.sport)), el("strong", "", text ?? "—"));
+      line.append(element("span", "", metricName(metric, entry.sport)), element("strong", "", text ?? "—"));
       return line;
     };
-    tooltip.replaceChildren(el("div", "diary-tooltip-when", formatDuration(point.x)), row(view.metric, point.y),
+    tooltip.replaceChildren(element("div", "diary-tooltip-when", formatDuration(point.x)), row(view.metric, point.y),
       ...others.filter(([, list]) => list.length).map(([metric, list]) => row(metric, nearest(list, point.x).y)));
     tooltip.hidden = false;
     const left = (at / width) * box.width;
@@ -260,7 +253,7 @@ function chart(entry, targets = null) {
   document.addEventListener("pointerdown", away);
   figure.append(svg, tooltip);
   card.append(head, figure);
-  if (target) card.append(el("p", "activity-chart-note", targetText(target, view.metric, entry.sport)));
+  if (target) card.append(element("p", "activity-chart-note", targetText(target, view.metric, entry.sport)));
   return card;
 }
 
@@ -288,24 +281,24 @@ function lapsTable(entry) {
     [metricName("cadence"), (lap) => unit(lap.avgCadence, cadenceUnit(sport))],
     [t("resistance"), (lap) => (lap.resistance ?? entry.resistance ? String(lap.resistance ?? entry.resistance) : null)],
   ].filter(([, cell]) => laps.some((lap, index) => cell(lap, index)));
-  const table = el("table", "laps-table card-table");
+  const table = element("table", "laps-table card-table");
   const head = document.createElement("tr");
-  head.append(...columns.map(([label]) => el("th", "", label)));
+  head.append(...columns.map(([label]) => element("th", "", label)));
   table.append(document.createElement("thead"), document.createElement("tbody"));
   table.tHead.append(head);
   table.tBodies[0].append(...laps.map((lap, index) => {
     const row = document.createElement("tr");
     row.append(...columns.map(([label, cell]) => {
-      const td = el("td", "", cell(lap, index) ?? "—");
+      const td = element("td", "", cell(lap, index) ?? "—");
       td.dataset.label = label;
       return td;
     }));
     return row;
   }));
-  const card = el("section", "card");
-  const scroll = el("div", "laps-scroll");
+  const card = element("section", "card");
+  const scroll = element("div", "laps-scroll");
   scroll.append(table);
-  card.append(el("span", "field-label", t("activityLaps")), scroll);
+  card.append(element("span", "field-label", t("activityLaps")), scroll);
   return card;
 }
 
@@ -348,20 +341,20 @@ function bestEfforts(entry) {
   });
   const items = [...powers, ...times].filter((item) => item.ok);
   if (!items.length) return null;
-  const card = el("section", "card");
-  const box = el("div", "diary-tiles activity-tiles is-compact");
+  const card = element("section", "card");
+  const box = element("div", "diary-tiles activity-tiles is-compact");
   box.append(...items.map((item) => {
-    const tile = el("div", `diary-tile${item.mark ? ` is-${item.mark}` : ""}`);
-    const value = el("span", "diary-tile-value", item.value);
+    const tile = element("div", `diary-tile${item.mark ? ` is-${item.mark}` : ""}`);
+    const value = element("span", "diary-tile-value", item.value);
     if (item.mark) {
-      value.append(el("span", "activity-record", item.mark === "record" ? " ★" : " ☆"));
+      value.append(element("span", "activity-record", item.mark === "record" ? " ★" : " ☆"));
       tile.dataset.tip = t(item.mark === "record" ? "activityRecord" : "activityRecent");
     }
-    tile.append(el("span", "diary-tile-label", item.label), value);
+    tile.append(element("span", "diary-tile-label", item.label), value);
     return tile;
   }));
-  card.append(el("span", "field-label", t("activityBest")), box);
-  if (items.some((item) => item.mark)) card.append(el("p", "field-note", t("activityRecordNote")));
+  card.append(element("span", "field-label", t("activityBest")), box);
+  if (items.some((item) => item.mark)) card.append(element("p", "field-note", t("activityRecordNote")));
   return card;
 }
 
@@ -383,20 +376,20 @@ function loadText(entry, settings) {
 // A note of the user's own on the activity, kept with it in the library (the FIT has no place for one): read as
 // text, and changed in place with its own Save, the one thing the detail edits besides the converter.
 function noteCard(entry) {
-  const card = el("section", "card activity-note");
-  const head = el("div", "panel-title-row");
-  const edit = el("button", "link-button", t(entry.note ? "activityNoteEdit" : "activityNoteAdd"));
+  const card = element("section", "card activity-note");
+  const head = element("div", "panel-title-row");
+  const edit = element("button", "link-button", t(entry.note ? "activityNoteEdit" : "activityNoteAdd"));
   edit.type = "button";
-  head.append(el("span", "field-label", t("activityNote")), edit);
-  const text = el("p", "activity-note-text", entry.note ?? "");
+  head.append(element("span", "field-label", t("activityNote")), edit);
+  const text = element("p", "activity-note-text", entry.note ?? "");
   text.hidden = !entry.note;
   card.append(head, text);
   edit.addEventListener("click", () => {
     const area = Object.assign(document.createElement("textarea"), { className: "activity-note-input", value: entry.note ?? "", rows: 3, maxLength: 2000 });
     area.placeholder = t("activityNotePlaceholder");
-    const actions = el("div", "activity-note-actions");
-    const save = el("button", "export-button", t("save"));
-    const cancel = el("button", "outline-button", t("cancel"));
+    const actions = element("div", "activity-note-actions");
+    const save = element("button", "export-button", t("save"));
+    const cancel = element("button", "outline-button", t("cancel"));
     save.type = cancel.type = "button";
     actions.append(cancel, save);
     edit.hidden = true;
@@ -425,13 +418,13 @@ function sameWorkout(entry) {
   const text = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", {
     day: dayDate(last.entry.startMs), power: signed(last.change.power, 0, " W"), heart: signed(last.change.heartRate, 0, " bpm"), efficiency: signed(last.change.efficiency, 1, " %"),
   });
-  const card = el("section", "card");
-  const link = el("button", "link-button", t("activityCompareSame"));
+  const card = element("section", "card");
+  const link = element("button", "link-button", t("activityCompareSame"));
   link.type = "button";
   link.addEventListener("click", () => compare(last.entry));
-  const line = el("p", "compare-same-summary", `${text} `);
+  const line = element("p", "compare-same-summary", `${text} `);
   line.append(link);
-  card.append(el("span", "field-label", t("sameTitle", { count: history.earlier.length })), line);
+  card.append(element("span", "field-label", t("sameTitle", { count: history.earlier.length })), line);
   return card;
 }
 
@@ -451,18 +444,18 @@ function planTile(entry, settings) {
   const kindOf = (type) => (type?.startsWith("ftpTest") ? "ftpTest" : type);
   const same = planned && scored && kindOf(planned.type) === kindOf(scored.as);
   const head = planned ? capital(t(`scorePlanned_${planned.type}`)) : t("activityUnplanned");
-  const tile = el("div", "diary-tile activity-plan-tile");
-  const value = el("span", "diary-tile-value", head);
-  tile.append(el("span", "diary-tile-label", t("activityPlan")), value);
+  const tile = element("div", "diary-tile activity-plan-tile");
+  const value = element("span", "diary-tile-value", head);
+  tile.append(element("span", "diary-tile-label", t("activityPlan")), value);
   // A score without the day's plan says so beside what it was scored as, rather than as a line of its own.
   const approx = scored?.approx ? t("scoreApprox") : null;
   const sub = [same ? null : scored ? t("activityScoredAs", { as: t(`scoreAs_${scored.as ?? "none"}`) }) : t("scoreNone"), approx].filter(Boolean).join(" · ");
-  if (sub) tile.append(el("span", "diary-tile-change activity-tile-sub", sub));
+  if (sub) tile.append(element("span", "diary-tile-change activity-tile-sub", sub));
   if (scored) {
-    const list = el("ul", "activity-plan-parts");
+    const list = element("ul", "activity-plan-parts");
     list.append(...partsText(scored).split(" · ").filter((part) => part && part !== approx).map((part) => {
       const mark = part[0];
-      return el("li", mark === "✓" ? "is-good" : mark === "✗" ? "is-poor" : mark === "~" ? "is-fair" : "", part);
+      return element("li", mark === "✓" ? "is-good" : mark === "✗" ? "is-poor" : mark === "~" ? "is-fair" : "", part);
     }));
     tile.append(list);
   }
@@ -473,15 +466,15 @@ function planTile(entry, settings) {
 // workout the decoupling (the heart drifting from the work in the second half) and the work per heartbeat.
 function intensityCard(entry, settings) {
   const drift = decoupling(entry);
-  const zones = el("div", "fitness-zones");
+  const zones = element("div", "fitness-zones");
   zones.append(...zoneGroups([entry], settings, entry.sport));
-  const card = el("section", "card");
-  card.append(el("span", "field-label", t("activityIntensity")), zones);
+  const card = element("section", "card");
+  card.append(element("span", "field-label", t("activityIntensity")), zones);
   if (drift) {
-    const box = el("div", "diary-tiles activity-tiles is-compact activity-drift");
+    const box = element("div", "diary-tiles activity-tiles is-compact activity-drift");
     const tile = (label, value, className = "") => {
-      const node = el("div", "diary-tile");
-      node.append(el("span", "diary-tile-label", label), el("span", `diary-tile-value ${className}`, value));
+      const node = element("div", "diary-tile");
+      node.append(element("span", "diary-tile-label", label), element("span", `diary-tile-value ${className}`, value));
       return node;
     };
     const percent = drift.percent;
@@ -490,7 +483,7 @@ function intensityCard(entry, settings) {
       tile(t("samePerBeat"), drift.by === "power" ? `${displayNumber(drift.efficiency, 2)} W/bpm` : `${displayNumber(drift.efficiency, 2)} m/bpm`),
       tile(t("activityDriftHeart"), `${displayNumber(drift.heart)} bpm`),
     );
-    card.append(box, el("p", "field-note", t(percent < 5 ? "activityDriftGood" : percent < 10 ? "activityDriftFair" : "activityDriftPoor")));
+    card.append(box, element("p", "field-note", t(percent < 5 ? "activityDriftGood" : percent < 10 ? "activityDriftFair" : "activityDriftPoor")));
   }
   return card;
 }
@@ -498,14 +491,14 @@ function intensityCard(entry, settings) {
 // A chip for a set of exercises done around the row; hovering it, or tapping it on a phone, lists the exercises:
 // their names, or lines given with the repeats or times, under the rounds when more than one.
 function sessionChip(label, ids, done, { lines = null, rounds = 1 } = {}) {
-  const chip = el("span", `activity-chip${done ? " is-done" : ""}`);
+  const chip = element("span", `activity-chip${done ? " is-done" : ""}`);
   chip.tabIndex = 0;
-  chip.append(el("span", "", `${done ? "✓ " : ""}${label}`));
+  chip.append(element("span", "", `${done ? "✓ " : ""}${label}`));
   const items = lines ?? ids.map((id) => t(`recovery_${id}`));
   if (items.length) {
-    const list = el("ul", "activity-chip-list");
-    if (rounds > 1) list.append(el("li", "activity-chip-rounds", t("sessionRounds", { rounds })));
-    list.append(...items.map((text) => el("li", "", text)));
+    const list = element("ul", "activity-chip-list");
+    if (rounds > 1) list.append(element("li", "activity-chip-rounds", t("sessionRounds", { rounds })));
+    list.append(...items.map((text) => element("li", "", text)));
     chip.append(list);
   }
   return chip;

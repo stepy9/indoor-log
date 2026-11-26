@@ -2,6 +2,7 @@
 // work, each exercise with its dose, how-to and, where it has one, a figure moving between its two poses in time with
 // the breath. A button runs the set step by step, full screen on a phone: a countdown per exercise and side, a short
 // rest between, and at the end the set is marked done.
+import { element } from "./dom.js";
 import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { figureMarkup } from "../figure-svg.js";
@@ -65,7 +66,6 @@ export const nameLine = (id) => {
 const modeKind = (id) => (exercises[id].pattern ? "breath" : exercises[id].hold ? "hold" : "move");
 const modeTag = (id) => element("span", `exercise-mode is-${modeKind(id)}`, t(`recoveryMode_${modeKind(id)}`));
 
-const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
 
 // The player: one step at a time, counted down by the clock, so a phone put aside keeps its place.
 const player = { list: [], index: 0, endsAt: 0, left: 0, paused: false, timer: null, doneKey: "recoveryDone", onDone: null, wakeLock: null };

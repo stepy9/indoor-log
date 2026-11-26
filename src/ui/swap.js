@@ -1,6 +1,7 @@
 // Swapping two days of the week's plan by hand: a dialog listing the other days planned, each with its workout and
 // a warning where the swap would break a rule the plan keeps (a hard day after the longer one, the 20-minute test
 // too soon after the short one); a swap is allowed anyway.
+import { node } from "./dom.js";
 import { noon } from "../dates.js";
 import { longTires, planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
@@ -8,12 +9,6 @@ import { plannedText } from "./diary.js";
 import { state, t } from "./context.js";
 import { showToast } from "./toast.js";
 
-const node = (tag, attributes = {}, text) => {
-  const element = document.createElement(tag);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-  if (text != null) element.textContent = text;
-  return element;
-};
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(noon(key)));
 

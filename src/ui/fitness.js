@@ -1,3 +1,4 @@
+import { node } from "./dom.js";
 import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, isFtpTest, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
@@ -23,7 +24,6 @@ import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from 
 
 // The Analysis tab: training load with fitness, fatigue and form, time in zones, the power curve and aerobic decoupling.
 
-const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
 const ranges = { six: 42, quarter: 91, year: 365, all: Infinity };
 
@@ -45,13 +45,6 @@ const view = {
 
 let openActivity = () => {};
 
-function node(tag, attributes = {}, text = "") {
-  const element = tag === "svg" || ["line", "path", "rect", "text", "g", "circle", "title"].includes(tag)
-    ? document.createElementNS(svgNs, tag) : document.createElement(tag);
-  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
-  if (text) element.textContent = text;
-  return element;
-}
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const dayText = (key, options = { day: "numeric", month: "numeric", year: "numeric" }) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));

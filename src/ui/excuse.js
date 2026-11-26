@@ -1,3 +1,4 @@
+import { node } from "./dom.js";
 import { excuseReasons, setExcuse } from "../training.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { t } from "./context.js";
@@ -15,12 +16,6 @@ export function excuseText(excuse) {
   return excuse.reason === "other" ? excuse.note || t("excuse_other") : t(`excuse_${excuse.reason}`);
 }
 
-const node = (tag, attributes = {}, text) => {
-  const element = document.createElement(tag);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-  if (text != null) element.textContent = text;
-  return element;
-};
 
 // The dialog to say why: the usual reasons as buttons, "other" with a field for one's own words, and the days it
 // covers (from the day given, to a later one for a longer break). onDone runs after a save or a removal.

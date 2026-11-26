@@ -1,3 +1,4 @@
+import { svgNode } from "./dom.js";
 import { noon } from "../dates.js";
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
 import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./training.js";
@@ -19,7 +20,6 @@ import { aerobicEffect, forSport, primaryBenefit, withCleanHeartRate, workKilojo
 const slotCount = 6;
 // A phone compares two at most: more lines, columns and colours do not fit its width.
 const limit = () => (matchMedia("(max-width: 640px)").matches ? 2 : slotCount);
-const svgNs = "http://www.w3.org/2000/svg";
 
 const view = {
   pickerOpen: true,
@@ -98,12 +98,6 @@ function xTicks(low, high) {
   const ticks = [];
   for (let tick = Math.ceil(low / step) * step; tick <= high; tick += step) ticks.push(tick);
   return ticks;
-}
-
-function svg(tag, attributes = {}) {
-  const element = document.createElementNS(svgNs, tag);
-  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
-  return element;
 }
 
 async function refresh() {
@@ -337,8 +331,8 @@ function renderChart() {
   chart.setAttribute("height", String(height));
   chart.style.height = `${height}px`;
   // Lines reaching past a zoomed stretch are cut at the edges of the plot.
-  const clip = svg("clipPath", { id: "comparePlot" });
-  clip.append(svg("rect", { x: margin.left, y: 0, width: plotWidth, height }));
+  const clip = svgNode("clipPath", { id: "comparePlot" });
+  clip.append(svgNode("rect", { x: margin.left, y: 0, width: plotWidth, height }));
   chart.append(clip);
   for (const [row, item] of (spans ?? []).entries()) {
     const y = 6 + row * stripeStep;
@@ -346,12 +340,12 @@ function renderChart() {
       const x1 = Math.max(margin.left, xFor(span.from));
       const x2 = Math.min(margin.left + plotWidth, xFor(span.to));
       if (x2 <= x1) continue;
-      if (span.intensity === "active") chart.append(svg("rect", { class: "compare-work-band", x: x1, y: margin.top, width: x2 - x1, height: plotHeight }));
-      chart.append(svg("rect", { class: `compare-lap-stripe is-${span.intensity}`, x: x1 + 0.5, y, width: Math.max(1, x2 - x1 - 1), height: 5, rx: 2 }));
+      if (span.intensity === "active") chart.append(svgNode("rect", { class: "compare-work-band", x: x1, y: margin.top, width: x2 - x1, height: plotHeight }));
+      chart.append(svgNode("rect", { class: `compare-lap-stripe is-${span.intensity}`, x: x1 + 0.5, y, width: Math.max(1, x2 - x1 - 1), height: 5, rx: 2 }));
     }
   }
   for (const tick of xTicks(minX, maxX)) {
-    const label = svg("text", { class: "compare-tick", x: xFor(tick), y: height - 10, "text-anchor": "middle" });
+    const label = svgNode("text", { class: "compare-tick", x: xFor(tick), y: height - 10, "text-anchor": "middle" });
     label.textContent = axisText(tick);
     chart.append(label);
   }
@@ -373,24 +367,24 @@ function renderChart() {
       return top + titled + (inverted ? share : 1 - share) * (panelHeight - titled);
     };
     if (stacked) {
-      const title = svg("text", { class: "compare-panel-title", x: margin.left, y: top + 10 });
+      const title = svgNode("text", { class: "compare-panel-title", x: margin.left, y: top + 10 });
       title.textContent = metricLabel(panel.metric, view.sport);
       chart.append(title);
     }
     for (const tick of yTicks) {
-      chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
-      const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
+      chart.append(svgNode("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
+      const label = svgNode("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
       label.textContent = panel.metric === "pace" && view.sport !== "cycling" ? formatDuration(tick) : displayNumber(tick, panel.metric === "pace" ? 1 : panel.metric === "stroke" ? 1 : 0);
       chart.append(label);
     }
-    chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: top + panelHeight, y2: top + panelHeight }));
+    chart.append(svgNode("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: top + panelHeight, y2: top + panelHeight }));
     for (const line of panel.lines) {
       const d = line.points.map((point, at) => `${at ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
-      chart.append(svg("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})`, "clip-path": "url(#comparePlot)" }));
+      chart.append(svgNode("path", { class: "compare-line", d, stroke: `var(--compare-${line.slot})`, "clip-path": "url(#comparePlot)" }));
     }
     return { ...panel, yFor };
   });
-  const guide = svg("g", { class: "compare-hover" });
+  const guide = svgNode("g", { class: "compare-hover" });
   chart.append(guide);
   view.layout = { panels: laid, lines: laid[0].lines, spans, margin, plotWidth, plotHeight, minX, maxX, xFor, guide };
   renderHover();
@@ -428,8 +422,8 @@ function renderHover() {
   const stacked = layout.panels.length > 1;
   const rows = layout.panels.flatMap((panel) => panel.lines.map((line) => ({ panel, line, value: valueAt(line.points, view.hoverX) })));
   layout.guide.replaceChildren(
-    svg("line", { class: "compare-crosshair", x1: x, x2: x, y1: layout.margin.top, y2: layout.margin.top + layout.plotHeight }),
-    ...rows.filter((row) => row.value != null).map((row) => svg("circle", {
+    svgNode("line", { class: "compare-crosshair", x1: x, x2: x, y1: layout.margin.top, y2: layout.margin.top + layout.plotHeight }),
+    ...rows.filter((row) => row.value != null).map((row) => svgNode("circle", {
       class: "compare-dot", cx: x, cy: row.panel.yFor(row.value), r: 4, fill: `var(--compare-${row.line.slot})`,
     })),
   );
@@ -837,8 +831,8 @@ function renderTrendChart() {
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
   chart.setAttribute("height", String(height));
   for (const tick of yTicks) {
-    chart.append(svg("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
-    const label = svg("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
+    chart.append(svgNode("line", { class: "compare-grid", x1: margin.left, x2: width - margin.right, y1: yFor(tick), y2: yFor(tick) }));
+    const label = svgNode("text", { class: "compare-tick", x: margin.left - 8, y: yFor(tick) + 4, "text-anchor": "end" });
     label.textContent = isTime ? formatDuration(tick) : displayNumber(tick, twoDecimals(metric) ? 2 : 0);
     chart.append(label);
   }
@@ -847,22 +841,22 @@ function renderTrendChart() {
     const x = xFor(tick.x);
     // A label too near an edge is pulled inside the plot.
     const anchor = x - margin.left < 24 ? "start" : margin.left + plotWidth - x < 24 ? "end" : "middle";
-    const label = svg("text", { class: "compare-tick", x, y: height - 10, "text-anchor": anchor });
+    const label = svgNode("text", { class: "compare-tick", x, y: height - 10, "text-anchor": anchor });
     label.textContent = tick.text;
     chart.append(label);
   }
-  chart.append(svg("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
+  chart.append(svgNode("line", { class: "compare-axis", x1: margin.left, x2: width - margin.right, y1: margin.top + plotHeight, y2: margin.top + plotHeight }));
   const path = (list) => list.map((point, index) => `${index ? "L" : "M"}${xFor(point.x).toFixed(1)},${yFor(point.y).toFixed(1)}`).join("");
   // Each activity is a faint line under its moving average; a week's or a month's values make the line themselves.
-  chart.append(svg("path", { class: `compare-line trend-line${average ? " is-faint" : ""}`, d: path(points), stroke: "var(--compare-1)" }));
+  chart.append(svgNode("path", { class: `compare-line trend-line${average ? " is-faint" : ""}`, d: path(points), stroke: "var(--compare-1)" }));
   if (average) {
     const means = movingAverage(points.map((point) => point.y), averageSize);
-    chart.append(svg("path", { class: "compare-line trend-average", d: path(points.map((point, index) => ({ x: point.x, y: means[index] }))), stroke: "var(--compare-1)" }));
+    chart.append(svgNode("path", { class: "compare-line trend-average", d: path(points.map((point, index) => ({ x: point.x, y: means[index] }))), stroke: "var(--compare-1)" }));
   }
   for (const point of points) {
-    chart.append(svg("circle", { class: `compare-dot${point.record ? " trend-record" : ""}`, cx: xFor(point.x), cy: yFor(point.y), r: point.record ? 6 : 4.5, fill: point.record ? "var(--trend-record)" : "var(--compare-1)" }));
+    chart.append(svgNode("circle", { class: `compare-dot${point.record ? " trend-record" : ""}`, cx: xFor(point.x), cy: yFor(point.y), r: point.record ? 6 : 4.5, fill: point.record ? "var(--trend-record)" : "var(--compare-1)" }));
   }
-  const guide = svg("g", { class: "compare-hover" });
+  const guide = svgNode("g", { class: "compare-hover" });
   chart.append(guide);
   view.layout = { trend: true, points, margin, plotWidth, plotHeight, minX, maxX, xFor, yFor, guide };
   renderHover();
@@ -879,7 +873,7 @@ function renderTrendHover() {
     return;
   }
   const x = layout.xFor(point.x);
-  layout.guide.replaceChildren(svg("circle", { class: "trend-ring", cx: x, cy: layout.yFor(point.y), r: 8 }));
+  layout.guide.replaceChildren(svgNode("circle", { class: "trend-ring", cx: x, cy: layout.yFor(point.y), r: 8 }));
   const lines = point.entries
     ? [groupTitle(point.from), t("trendSessions", { count: point.entries.length })]
     : [shortDate(point.entry.startMs), point.entry.name];
@@ -1232,7 +1226,7 @@ export function setupCompare({ onConverter, canLeave = () => true }) {
     }
     if (view.dragFrom != null) {
       const x = plotX(event);
-      layout.guide.replaceChildren(svg("rect", {
+      layout.guide.replaceChildren(svgNode("rect", {
         class: "compare-brush", x: Math.min(x, view.dragFrom), y: layout.margin.top, width: Math.abs(x - view.dragFrom), height: layout.plotHeight,
       }));
       return;

@@ -1,3 +1,4 @@
+import { svgNode } from "./dom.js";
 import { noon, todayKey } from "../dates.js";
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
@@ -27,7 +28,6 @@ export function scoreBadge(score, title = "") {
 }
 
 
-const svgNs = "http://www.w3.org/2000/svg";
 const sports = ["rowing", "cycling", "running"];
 
 // The sport, period and chart measure picked last come back with the page.
@@ -504,13 +504,6 @@ function renderTiles(current, previous, entries) {
 const barField = { distance: "distance", seconds: "timerSeconds", calories: "calories" };
 const barValue = (entries, metric) => entries.reduce((sum, entry) => sum + (entry.summary[barField[metric]] ?? 0), 0);
 const barText = (value, metric) => (metric === "distance" ? km(value) : metric === "calories" ? kcal(value) : hours(value));
-
-const svgNode = (name, attributes, text) => {
-  const element = document.createElementNS(svgNs, name);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-  if (text != null) element.textContent = text;
-  return element;
-};
 
 // A round step for the value axis, about three to a chart: 1, 2, 2.5 or 5 times a power of ten in metres,
 // whole minutes or hours in time.

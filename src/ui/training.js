@@ -1,3 +1,4 @@
+import { node, svgNode } from "./dom.js";
 import { noon, todayKey } from "../dates.js";
 import { breathTip, routineBlock, routineTip } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
@@ -31,12 +32,6 @@ const view = {
 
 let openActivity = () => {};
 
-const node = (tag, attributes = {}, text) => {
-  const element = document.createElement(tag);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-  if (text != null) element.textContent = text;
-  return element;
-};
 
 const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
@@ -256,7 +251,7 @@ function suggestionsButton(result, entries, type) {
     : workoutSuggestions(rides, type, 5, plan.intervals).map((workout) => ({ name: workout.name, note: t("suggestWorkoutNote", { last: when(workout.last) }), exact: workout.exact || type !== "intervals" }));
   if (steady && !items.length && !(plan.kinomap?.extras ?? []).length) return null;
   const button = node("button", { type: "button", class: "outline-button training-suggest-button" });
-  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const icon = svgNode("svg");
   icon.setAttribute("viewBox", "0 0 24 24");
   icon.setAttribute("aria-hidden", "true");
   icon.innerHTML = '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>';
@@ -472,12 +467,6 @@ function smallChart(items, { line = null, unit = "" } = {}) {
   const width = 320;
   const height = 120;
   const bottom = 16;
-  const svgNode = (tag, attributes = {}, text) => {
-    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-    if (text != null) element.textContent = text;
-    return element;
-  };
   const values = items.map((item) => item.value).filter((value) => value > 0).concat(line ?? []);
   const top = Math.max(...values, 1) * 1.15;
   const low = items.some((item) => item.kind === "point") ? Math.min(...values) * 0.85 : 0;

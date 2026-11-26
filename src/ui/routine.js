@@ -2,6 +2,7 @@
 // choices) or by hand (the exercises picked, ordered and dosed), shown with its figures and run in the same player
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
+import { element } from "./dom.js";
 import { dayKey, todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
 import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
@@ -13,7 +14,6 @@ import { listEntries, saveEntries } from "../library.js";
 import { byId, state, t, zone } from "./context.js";
 import { showToast } from "./toast.js";
 
-const element = (tag, className, textContent = "") => Object.assign(document.createElement(tag), { className, textContent });
 const button = (className, text, onClick, label = null) => {
   const item = element("button", className, text);
   item.type = "button";

@@ -1,6 +1,7 @@
 // The user's own Kinomap workouts in the Training settings: one list, each workout with its steps, made and changed
 // in a table like the intervals' (length, resistance, target, type), or read from Kinomap Creator's workout JSON or
 // a plan pasted as text. An import of a workout of that name splits its laps by its steps.
+import { node } from "./dom.js";
 import { parseKinomapPlan } from "../core.js";
 import { noteFromCreator, stepsFromCreator, stepsFromSegments } from "../training.js";
 import { formatDuration, t } from "./context.js";
@@ -9,12 +10,6 @@ import { confirmDialog } from "./confirm.js";
 import { withTip } from "./info.js";
 import { checkNumber, markField } from "./validate.js";
 
-const el = (tag, attributes = {}, text = "") => {
-  const node = document.createElement(tag);
-  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
-  if (text) node.textContent = text;
-  return node;
-};
 
 // "4:30" or "1:04:30" as seconds; null when it is not one.
 function seconds(text) {
@@ -27,8 +22,8 @@ const total = (steps) => steps.reduce((sum, item) => sum + (item.seconds || 0), 
 
 // A workout's course at a glance: each step a piece as long as the step, in the colour of its type.
 export function workoutProfile(steps) {
-  const profile = el("span", { class: "workout-profile", "aria-hidden": "true" });
-  profile.append(...steps.map((step) => Object.assign(el("span", { class: `is-${step.intensity ?? "active"}` }), { style: `flex-grow: ${step.seconds || 1}` })));
+  const profile = node("span", { class: "workout-profile", "aria-hidden": "true" });
+  profile.append(...steps.map((step) => Object.assign(node("span", { class: `is-${step.intensity ?? "active"}` }), { style: `flex-grow: ${step.seconds || 1}` })));
   return profile;
 }
 
@@ -53,7 +48,7 @@ function stepsFromPaste(text) {
 let dialog = null;
 function editor() {
   if (dialog) return dialog;
-  dialog = el("dialog", { class: "intervals-dialog workout-dialog", "aria-labelledby": "workoutDialogTitle", tabindex: "-1" });
+  dialog = node("dialog", { class: "intervals-dialog workout-dialog", "aria-labelledby": "workoutDialogTitle", tabindex: "-1" });
   dialog.innerHTML = `
     <div class="dialog-head"><h2 id="workoutDialogTitle"></h2><span class="estimate-note" data-role="count"></span></div>
     <label class="settings-field workout-name"><span></span><input type="text" data-role="name" /></label>
@@ -110,10 +105,10 @@ function open({ name, steps, note, taken }, onSave) {
   const render = () => {
     let at = 0;
     part("rows").replaceChildren(...draft.map((item, index) => {
-      const row = el("tr", { class: `is-${item.intensity}` });
+      const row = node("tr", { class: `is-${item.intensity}` });
       const start = at;
       at += item.seconds || 0;
-      const length = el("input", { type: "text", inputmode: "numeric", "aria-label": `${t("segmentDuration")} ${index + 1}` });
+      const length = node("input", { type: "text", inputmode: "numeric", "aria-label": `${t("segmentDuration")} ${index + 1}` });
       length.value = formatDuration(item.seconds || 0);
       length.addEventListener("change", () => {
         const value = seconds(length.value);
@@ -122,18 +117,18 @@ function open({ name, steps, note, taken }, onSave) {
           render();
         } else update();
       });
-      const resistance = el("input", { type: "number", min: "0", max: "100", class: "level-input", placeholder: "—", "aria-label": `${t("workoutResistance")} ${index + 1}` });
+      const resistance = node("input", { type: "number", min: "0", max: "100", class: "level-input", placeholder: "—", "aria-label": `${t("workoutResistance")} ${index + 1}` });
       resistance.value = item.percent ?? "";
       resistance.addEventListener("input", () => {
         item.percent = resistance.value === "" ? (markField(resistance, null), null) : checkNumber(resistance, { min: 0, max: 100 }) ?? null;
         update();
       });
       // Target: none, cadence or power, with its value.
-      const target = el("span", { class: "target-cell" });
-      const targetType = el("select", { "aria-label": `${t("segmentTarget")} ${index + 1}` });
+      const target = node("span", { class: "target-cell" });
+      const targetType = node("select", { "aria-label": `${t("segmentTarget")} ${index + 1}` });
       targetType.append(new Option(t("targetNone"), ""), new Option("rpm", "cadence"), new Option("W", "power"));
       targetType.value = item.targetType ?? "";
-      const targetValue = el("input", { type: "number", min: "1", "aria-label": `${t("segmentTarget")} ${index + 1}` });
+      const targetValue = node("input", { type: "number", min: "1", "aria-label": `${t("segmentTarget")} ${index + 1}` });
       targetValue.value = item.target ?? "";
       targetValue.hidden = !targetType.value;
       const readTarget = () => {
@@ -157,17 +152,17 @@ function open({ name, steps, note, taken }, onSave) {
         item.intensity = value;
         row.className = `is-${value}`;
       });
-      const remove = el("button", { type: "button", class: "link-button icon-x", "data-tip": t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` });
+      const remove = node("button", { type: "button", class: "link-button icon-x", "data-tip": t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` });
       remove.addEventListener("click", () => {
         draft.splice(index, 1);
         render();
       });
       // Up and down by one, so a step put in the wrong place is moved rather than typed again; at the row's start,
       // away from the cross, and as large as the library's icons for a finger.
-      const moves = el("span", { class: "step-moves" });
+      const moves = node("span", { class: "step-moves" });
       for (const [by, path, key] of [[-1, "M6 15l6-6 6 6", "workoutStepUp"], [1, "M6 9l6 6 6-6", "workoutStepDown"]]) {
         const to = index + by;
-        const button = el("button", { type: "button", class: "row-icon-button", "data-tip": t(key), "aria-label": `${t(key)} ${index + 1}` });
+        const button = node("button", { type: "button", class: "row-icon-button", "data-tip": t(key), "aria-label": `${t(key)} ${index + 1}` });
         button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
         button.disabled = to < 0 || to >= draft.length;
         button.addEventListener("click", () => {
@@ -181,7 +176,7 @@ function open({ name, steps, note, taken }, onSave) {
       // Each cell is named, so the phone's card can put the name above the field.
       const labels = ["", "", t("segmentStart"), t("segmentDuration"), t("workoutResistance"), t("segmentTarget"), t("lapType"), ""];
       row.append(...cells.map((content, column) => {
-        const cell = el("td", { "data-label": labels[column] });
+        const cell = node("td", { "data-label": labels[column] });
         if (content instanceof Node) cell.append(content);
         else cell.textContent = content;
         return cell;
@@ -230,7 +225,7 @@ function open({ name, steps, note, taken }, onSave) {
 // adds one. names: the workouts in order; plans: the steps by name; notes: the descriptions by name;
 // write({ names, plans, notes }) saves them.
 export function workoutList(names, plans, notes, write) {
-  const box = el("div", { class: "workout-list" });
+  const box = node("div", { class: "workout-list" });
   const save = (nextNames, nextPlans, nextNotes) => {
     names = nextNames;
     plans = nextPlans;
@@ -241,11 +236,11 @@ export function workoutList(names, plans, notes, write) {
   const render = () => {
     const rows = names.map((name) => {
       const steps = plans[name] ?? [];
-      const row = el("div", { class: "workout-row" });
-      const text = el("div", { class: "workout-row-text" });
-      text.append(el("strong", {}, name), el("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
+      const row = node("div", { class: "workout-row" });
+      const text = node("div", { class: "workout-row-text" });
+      text.append(node("strong", {}, name), node("span", { class: "field-note" }, steps.length ? t("workoutSummary", { count: steps.length, total: formatDuration(total(steps)) }) : t("workoutNoSteps")));
       if (steps.length) text.append(workoutProfile(steps));
-      const edit = el("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
+      const edit = node("button", { type: "button", class: "outline-button" }, t(steps.length ? "workoutEditButton" : "workoutAddSteps"));
       edit.addEventListener("click", () => open({ name, steps, note: notes[name], taken: names.filter((other) => other !== name).map((other) => other.toLowerCase()) }, (result) => {
         const nextPlans = { ...plans };
         delete nextPlans[name];
@@ -255,7 +250,7 @@ export function workoutList(names, plans, notes, write) {
         if (result.note) nextNotes[result.name] = result.note;
         save(names.map((other) => (other === name ? result.name : other)), nextPlans, nextNotes);
       }));
-      const remove = el("button", { type: "button", class: "row-icon-button icon-x", "data-tip": t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` });
+      const remove = node("button", { type: "button", class: "row-icon-button icon-x", "data-tip": t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` });
       remove.addEventListener("click", async () => {
         if (!(await confirmDialog({ title: t("workoutRemoveConfirm", { name }), ok: t("workoutRemove"), danger: true }))) return;
         const nextPlans = { ...plans };
@@ -275,7 +270,7 @@ export function workoutList(names, plans, notes, write) {
       }
       return row;
     });
-    const add = el("button", { type: "button", class: "outline-button workout-add" }, t("workoutAdd"));
+    const add = node("button", { type: "button", class: "outline-button workout-add" }, t("workoutAdd"));
     add.addEventListener("click", () => open({ name: "", steps: [], taken: names.map((other) => other.toLowerCase()) }, (result) => {
       save([...names, result.name], { ...plans, [result.name]: result.steps }, result.note ? { ...notes, [result.name]: result.note } : notes);
     }));

@@ -1,14 +1,9 @@
 // A question in the app's own dialog rather than the browser's: a title, a line under it and two buttons, the
 // one that goes ahead marked as such. Resolves true when it goes ahead, false on the other button, the cross or
 // Escape.
+import { node } from "./dom.js";
 import { t } from "./context.js";
 
-const node = (tag, attributes = {}, text) => {
-  const element = document.createElement(tag);
-  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-  if (text != null) element.textContent = text;
-  return element;
-};
 
 export function confirmDialog({ title, text = "", ok, cancel = t("cancel"), danger = false }) {
   return new Promise((resolve) => {

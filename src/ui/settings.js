@@ -1,3 +1,4 @@
+import { node } from "./dom.js";
 import { ftpRecords, weightRecords, zoneLimits, estimateMaxHeartRate, forSport, weightOn, ftpOn, ftpTimeline, heartRateAt, heartRateZones, powerZones } from "../fitness.js";
 import { listEntries } from "../library.js";
 import { changedTimesOf, restoreDefaults, saveDefaults, savedDefaults } from "./preferences.js";
@@ -208,12 +209,6 @@ export const setByHand = (sport, field) => (field === "ftp"
 const state = { pane: "general", tab: "trainers", entries: [], onTrainers: () => {}, sport: () => null };
 const sportTabs = ["trainers", "zones", "plan", "kinomap"];
 
-function node(tag, attributes = {}, text = "") {
-  const element = document.createElement(tag);
-  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
-  if (text) element.textContent = text;
-  return element;
-}
 
 // Edits are written as they are made, so the panes show them, but count only once saved:
 // cancelling, the cross or Escape put back what was there when the dialog opened.
