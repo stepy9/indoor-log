@@ -843,7 +843,7 @@ export const routineExercises = {
   ankleRock: build(ankleRock, { style: "mobility", seconds: 45, sides: 2, areas: ["legs"] }),
   cossackShift: build(cossackShift, { style: "mobility", seconds: 45, sides: 1, areas: ["legs", "hips"] }),
   scapPushUp: build(scapPushUp, { style: "mobility", seconds: 45, sides: 1, areas: ["shoulders", "back"] }),
-  hipCircles: build(hipCircles, { style: "mobility", seconds: 45, sides: 1, areas: ["hips", "back"] }),
+  hipCircles: build(hipCircles, { style: "mobility", seconds: 45, sides: 1, areas: ["hips", "back"], turn: true }),
   inchworm: build(inchworm, { style: "mobility", seconds: 45, sides: 1, areas: ["legs", "shoulders", "back"] }),
   sideLungeHold: build(sideLungeHold, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["legs", "hips"] }),
   crossArm: build(crossArm, { style: "flexibility", hold: true, seconds: 20, sides: 2, areas: ["shoulders"] }),

@@ -250,7 +250,8 @@ function tick() {
   if (step.type === "work" && exercises[step.id].pattern) breathe(step);
   // During a timed exercise of 30 s or more the voice says the half; once.
   if (player.said !== left) {
-    if (step.type === "work" && step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t("speakHalf"), 0);
+    // A circling move (turn) is told to change direction there.
+    if (step.type === "work" && step.seconds >= 30 && left === Math.ceil(step.seconds / 2)) speak(t(exercises[step.id].turn ? "speakTurn" : "speakHalf"), 0);
     if (player.roundPause && left === 10) announce(player.list[player.index + 1]);
     player.said = left;
   }

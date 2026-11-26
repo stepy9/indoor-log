@@ -242,7 +242,7 @@ export const exercises = {
   },
   // The warm-up's moves, done in rhythm rather than held: the figure shows the two ends of the move.
   armSwings: {
-    seconds: 30, sides: 1,
+    seconds: 30, sides: 1, turn: true,
     // Round through four poses, down, forward, up and back, the arrow showing the way.
     far: { legs: [1] },
     arrows: ["M66,79 A58,58 0 0 1 62,9"],
