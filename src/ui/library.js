@@ -1,13 +1,14 @@
 import { allEntries as readEntries } from "./entries.js";
 import { readJson, writeJson } from "./storage.js";
 import { tipOn } from "./info.js";
+import { kindColor } from "./units.js";
 import { downloadFile } from "./dom.js";
 import { todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
-import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
-import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, listEntries, parseBackup, saveEntries, backupDue, sameWorkout } from "../library.js";
+import { workoutKind, workoutKinds } from "../analysis.js";
+import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, listEntries, parseBackup, backupDue, sameWorkout } from "../library.js";
 import { showToast } from "./toast.js";
 import { byId, displayNumber, formatDuration, setNotice, shortDateTime, sportLabel, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
@@ -65,20 +66,12 @@ export function renderKindOptions(select, detected, value = select.value, sport 
   select.value = (compact ? value || detected : value) ?? "";
 }
 
-// The type of a saved activity, changed in place; className lets the comparison list show it as a tag.
-export function kindSelect(entry, onChange, className = "kind-select") {
-  const select = Object.assign(document.createElement("select"), { className });
-  select.setAttribute("aria-label", t("workoutKindLabel"));
-  renderKindOptions(select, detectedKind(entry), entry.kind ?? "", entry.sport, className === "kind-tag");
-  select.dataset.kind = entry.kind || detectedKind(entry);
-  select.addEventListener("change", async () => {
-    if (select.value) entry.kind = select.value;
-    else delete entry.kind;
-    await saveEntries([entry]).catch(() => {});
-    onChange();
-    showToast(t("savedKind"));
-  });
-  return select;
+// The type of a saved activity as a badge in its colour; it is changed in the activity's editing, not here.
+export function kindBadge(entry) {
+  const kind = workoutKind(entry);
+  const badge = Object.assign(document.createElement("span"), { className: "kind-tag", textContent: kindLabel(kind, entry.sport) });
+  badge.style.setProperty("--kind", kindColor(kind));
+  return badge;
 }
 
 // A row's action as an icon; its name is the tooltip and what a screen reader says.

@@ -8,7 +8,7 @@ import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengt
 import { weekNumber } from "../diary.js";
 import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
 import { byId, displayNumber, formatDuration, locale, shortDateTime, shortDay, sportLabel, t, zone } from "./context.js";
-import { kindLabel, kindSelect, openLibrary } from "./library.js";
+import { kindBadge, kindLabel, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
@@ -169,7 +169,7 @@ function renderList() {
         textContent: [shortDateTime(entry.startMs), formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`]
           .map((part) => part.replaceAll(" ", " ")).join(" · "),
       }),
-      kindSelect(entry, render, "kind-tag"),
+      kindBadge(entry),
     );
     text.append(meta);
     row.append(checkbox, swatch, text);

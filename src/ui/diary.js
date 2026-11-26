@@ -1,5 +1,5 @@
 import { cleanEntries } from "./entries.js";
-import { planLevelText } from "./units.js";
+import { kindColor, planLevelText } from "./units.js";
 import { svgNode } from "./dom.js";
 import { dayMs, noon, todayKey } from "../dates.js";
 import { workoutKind, workoutKinds } from "../analysis.js";
@@ -336,8 +336,6 @@ function pickedStart(range) {
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
 let openActivity = () => {};
 
-// Each kind keeps its place in the categorical palette.
-const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;
 const sportIcon = { rowing: "🚣", cycling: "🚴", running: "🏃" };
 // Each reason for a day off by an icon, in the calendar.
 const excuseIcons = { illness: "🤒", injury: "🩹", fatigue: "😴", work: "💼", travel: "✈️", family: "👪", time: "⏰", rest: "🛋️", other: "💬" };

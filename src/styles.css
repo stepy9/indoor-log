@@ -49,6 +49,13 @@
   --z-menu: 40;
   --z-overlay: 50;
   --z-tip: 60;
+  /* One colour per workout type, wherever a type shows: the diary, its plan, the comparison list, the training. */
+  --kind-steady: var(--compare-1);
+  --kind-intervals: var(--compare-2);
+  --kind-tempo: var(--compare-3);
+  --kind-test: var(--compare-4);
+  --kind-race: var(--compare-5);
+  --kind-recovery: var(--compare-6);
   --dialog-sm: 480px;
   --dialog-md: 760px;
   --dialog-lg: 1400px;
@@ -493,7 +500,7 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .compare-item-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--fs-base); }
 .compare-item-text strong { display: -webkit-box; overflow: hidden; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .compare-item-meta { display: flex; align-items: center; gap: 8px; }
-.compare-item-meta > span { flex: 1; min-width: 0; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.compare-item-meta > span:not(.kind-tag) { flex: 1; min-width: 0; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .compare-swatch { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; background: var(--line); vertical-align: -1px; }
 .compare-item .compare-swatch { margin-right: 0; }
 .compare-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -527,9 +534,8 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .compare-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .compare-filters input { grid-column: 1 / -1; }
 .compare-filters input, .compare-filters select { width: 100%; }
-.kind-tag { flex: 0 0 auto; max-width: 96px; height: 24px; margin-left: auto; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
-.kind-tag:not([data-kind="steady"]) { border-color: var(--accent); color: var(--accent); }
-.kind-tag:hover { border-color: var(--ink); color: var(--ink); }
+/* A workout type as a badge in its colour (kindColor), the diary's colours. */
+.kind-tag { flex: 0 0 auto; display: inline-flex; align-items: center; max-width: 110px; height: 22px; margin-left: auto; padding: 0 8px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--kind, var(--muted)) 45%, transparent); border-radius: 999px; color: var(--kind, var(--muted)); background: color-mix(in srgb, var(--kind, var(--muted)) 12%, transparent); font-size: var(--fs-xs); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 #overlayControls, #trendControls { flex: 1; margin: 0; }
 #overlayControls[hidden], #trendControls[hidden] { display: none; }
 /* The trend's filters make a bar over the full-width chart, without the activity list. */
@@ -560,7 +566,6 @@ h2 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; font-weight: 700; let
 .danger-link { color: var(--danger-ink); }
 .danger-link:hover { color: var(--danger); }
 .danger-link:disabled { opacity: .4; cursor: default; }
-.kind-select { --control-h: var(--control-sm); }
 .library-sports { display: flex; width: fit-content; margin: 4px 0 12px; }
 .compare-item > input, .compare-item > .compare-swatch { margin-top: 3px; }
 .name-input { width: 100%; min-width: 220px; --control-h: var(--control-sm); border-color: transparent; background: transparent; }
@@ -976,8 +981,8 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-figure-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .diary-plan-bar, .diary-plan-chart { display: block; width: 100%; height: auto; overflow: visible; }
 .diary-plan-track { fill: var(--surface-2); }
-.diary-plan-done { fill: var(--compare-1); }
-.diary-plan-ahead { fill: none; stroke: var(--compare-1); stroke-dasharray: 3 3; }
+.diary-plan-done { fill: var(--kind-steady); }
+.diary-plan-ahead { fill: none; stroke: var(--kind-steady); stroke-dasharray: 3 3; }
 .diary-plan-past { fill: var(--compare-1); opacity: .45; }
 .diary-plan-aim { fill: none; stroke: var(--compare-1); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .diary-plan-value { fill: var(--ink); font-size: var(--fs-xs); font-weight: 600; text-anchor: middle; }
@@ -985,13 +990,15 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
 .diary-plan-legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: var(--fs-sm); }
 .diary-plan-key { display: inline-flex; align-items: center; gap: 6px; }
 .diary-plan-key i { display: inline-block; width: 14px; height: 8px; border-radius: 4px; }
-.diary-plan-done.is-long, .diary-plan-key.is-long i { fill: var(--compare-3); background: var(--compare-3); }
-.diary-plan-done.is-intervals, .diary-plan-key.is-intervals i { fill: var(--compare-2); background: var(--compare-2); }
-.diary-plan-done.is-ftpTest, .diary-plan-key.is-ftpTest i { fill: var(--compare-6); background: var(--compare-6); }
-.diary-plan-key.is-usual i { background: var(--compare-1); }
-.diary-plan-ahead.is-long { stroke: var(--compare-3); }
-.diary-plan-ahead.is-intervals { stroke: var(--compare-2); }
-.diary-plan-ahead.is-ftpTest { stroke: var(--compare-6); }
+/* The plan's parts in their workout type's colour: the long ride and the usual one both steady, the usual lighter. */
+.diary-plan-done.is-usual, .diary-plan-key.is-usual i { fill: color-mix(in srgb, var(--kind-steady) 55%, var(--surface)); background: color-mix(in srgb, var(--kind-steady) 55%, var(--surface)); }
+.diary-plan-done.is-long, .diary-plan-key.is-long i { fill: var(--kind-steady); background: var(--kind-steady); }
+.diary-plan-done.is-intervals, .diary-plan-key.is-intervals i { fill: var(--kind-intervals); background: var(--kind-intervals); }
+.diary-plan-done.is-ftpTest, .diary-plan-key.is-ftpTest i { fill: var(--kind-test); background: var(--kind-test); }
+.diary-plan-ahead.is-usual { stroke: color-mix(in srgb, var(--kind-steady) 55%, var(--surface)); }
+.diary-plan-ahead.is-long { stroke: var(--kind-steady); }
+.diary-plan-ahead.is-intervals { stroke: var(--kind-intervals); }
+.diary-plan-ahead.is-ftpTest { stroke: var(--kind-test); }
 .diary-plan-key-note { flex-basis: 100%; }
 .diary-plan-done.is-past { opacity: .55; }
 .kind-weeks { position: relative; }
@@ -1226,7 +1233,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .compare-view:not(.is-trend) .compare-picker.is-collapsed > .panel-title-row { margin: 0; }
   .compare-view.is-trend .compare-picker-toggle { display: none; }
   /* A row: the name over the date, time and distance, the kind tag at the end. */
-  .compare-item .kind-tag { height: 26px; max-width: 110px; }
 }
 
 /* Phones: the picker's title has a row of its own over the sport, so a changing count does not move the options. */

@@ -2,6 +2,7 @@
 // cadence in strokes or revolutions (steps when running). valueText and paceText give null for a missing value,
 // so a list can leave it out; metricText always gives a text, a dash when there is nothing.
 import { displayNumber, formatDuration, t } from "./context.js";
+import { workoutKinds } from "../analysis.js";
 
 export const cadenceUnit = (sport) => (sport === "running" ? "spm" : "rpm");
 export const paceUnit = (sport) => (sport === "cycling" ? "km/h" : sport === "rowing" ? "/500 m" : "/km");
@@ -33,6 +34,9 @@ export const signedText = (value, digits, suffix) => (value == null ? "—" : `$
 
 // The planned resistance after a workout's text, " · level 5" or " · level 5–6"; nothing without one.
 export const planLevelText = (value) => (value == null ? "" : ` · ${t("planLevel", { level: Array.isArray(value) ? (value[0] === value[1] ? value[0] : `${value[0]}–${value[1]}`) : value })}`);
+
+// A workout type's colour, the same token (--kind-…) wherever a type shows; an unknown type is muted.
+export const kindColor = (kind) => (workoutKinds.includes(kind) ? `var(--kind-${kind})` : "var(--muted)");
 
 export function metricLabel(metric, sport) {
   if (metric === "pace") return t(sport === "cycling" ? "lapSpeed" : "lapPace");
