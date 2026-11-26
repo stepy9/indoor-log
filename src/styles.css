@@ -1816,7 +1816,13 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 /* The breath's pacer: a circle growing with the breath in and shrinking with it out. */
 .breath-pacer { display: grid; place-items: center; width: min(60vw, 34vh, 260px); aspect-ratio: 1; margin: 0 auto; border-radius: 50%; box-shadow: 0 0 0 2px var(--line-strong) inset; }
 .breath-circle { width: 100%; height: 100%; border-radius: 50%; background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent) inset; transform: scale(.4); transition-property: transform; transition-timing-function: ease-in-out; }
+/* Held full or held empty, the circle beats gently so the hold reads as one at a glance; by its ring and fill, as
+   its size is set by the breath. */
+.breath-circle:is([data-phase="hold"], [data-phase="empty"]) { animation: breathHoldPulse 1.2s ease-in-out infinite; }
+@keyframes breathHoldPulse { 50% { box-shadow: 0 0 0 7px var(--accent) inset, 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); opacity: .8; } }
+.is-paused .breath-circle { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .breath-circle { transition-duration: 0s !important; } }
+@media (prefers-reduced-motion: reduce) { .breath-circle { animation: none !important; } }
 
 /* The player's opening page: the set's exercises in order, a small figure, the name, whether to hold or move and
    for how long, the start button under them; the steps' parts wait hidden until it is pressed. */
