@@ -109,9 +109,6 @@ const sounds = {
   tick: () => tones([[660, 0.12]]),
   start: () => { tones([[990, 0.45]]); buzz(250); },
   stop: () => { tones([[520, 0.15], [520, 0.15]]); buzz([120, 80, 120]); },
-  breathIn: () => tones([[392, 0.35]]),
-  breathTop: () => tones([[523, 0.2]]),
-  breathOut: () => tones([[294, 0.4]]),
   done: () => { tones([[660, 0.18], [880, 0.18], [1100, 0.4]]); buzz([200, 100, 200, 100, 300]); },
 };
 // The next exercise said aloud in the app's language as a pause starts, or "Right side" before the switch; muted by
@@ -257,7 +254,7 @@ function tick() {
 }
 
 // The breath's phase now: [phase, seconds] of the pattern, by the time gone in the step. A new phase sets the circle
-// going to its size over the phase's time left (all of it, or what is left after a pause) and sounds its tone.
+// going to its size over the phase's time left (all of it, or what is left after a pause) and says it.
 function breathe(step) {
   const { pattern } = exercises[step.id];
   const cycle = pattern.reduce((sum, [, seconds]) => sum + seconds, 0);
@@ -277,7 +274,8 @@ function breathe(step) {
     circle.style.transform = `scale(${size})`;
   }
   circle?.setAttribute("data-phase", phase);
-  if (at < 0.5) ({ in: sounds.breathIn, top: sounds.breathTop, out: sounds.breathOut })[phase]?.();
+  // Each phase said as it starts, one short word, so it can be followed lying down with the eyes closed.
+  if (at < 0.5) speak(t(`breathSay_${phase}`), 0);
 }
 
 async function finish() {
