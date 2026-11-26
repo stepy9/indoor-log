@@ -1,3 +1,4 @@
+import { cadenceUnit, metricLabel, metricText, valueText } from "./units.js";
 import { svgNode } from "./dom.js";
 import { noon } from "../dates.js";
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
@@ -59,18 +60,6 @@ let previousView = "setupView";
 
 
 const selected = () => view.entries.filter((entry) => view.slots.has(entry.id));
-
-function metricLabel(metric, sport) {
-  if (metric !== "pace") return t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence", stroke: "compareStroke" }[metric]);
-  return sport === "cycling" ? t("lapSpeed") : t("lapPace");
-}
-
-function metricText(value, metric, sport) {
-  if (!Number.isFinite(value)) return "—";
-  if (metric === "stroke") return `${displayNumber(value, 2)} m`;
-  if (metric === "pace") return sport === "cycling" ? `${displayNumber(value, 1)} km/h` : `${formatDuration(value)}${sport === "rowing" ? " /500 m" : " /km"}`;
-  return `${displayNumber(value)} ${{ power: "W", heartRate: "bpm", cadence: sport === "running" ? "spm" : "rpm" }[metric]}`;
-}
 
 const axisText = (x) => (view.axis === "distance" ? (x >= 1000 ? `${displayNumber(x / 1000, 2)} km` : `${displayNumber(x)} m`) : formatDuration(x));
 const distanceText = (meters) => (meters >= 1000 ? `${displayNumber(meters / 1000)} km` : `${displayNumber(meters)} m`);
@@ -567,10 +556,10 @@ function renderTables() {
   rangeNote.hidden = !zoom;
   if (zoom) rangeNote.textContent = t("compareRange", { from: axisText(zoom[0]), to: axisText(zoom[1]) });
   renderLapTable(all);
-  const unit = (value, suffix, digits = 0) => (!Number.isFinite(value) ? "—" : `${displayNumber(value, digits)} ${suffix}`);
+  const unit = (value, suffix, digits = 0) => valueText(value, suffix, digits) ?? "—";
   // Watts with the W/kg by the weight on the workout's day.
   const watts = (value, entry) => (!Number.isFinite(value) ? "—" : [unit(value, "W"), perKgText(value, entry.startMs)].filter(Boolean).join(" · "));
-  const cadence = sport === "running" ? "spm" : "rpm";
+  const cadence = cadenceUnit(sport);
   const settings = settingsFor(view.entries);
   // Beats with their share of the sport's maximum heart rate.
   const beats = (value, entry) => {

@@ -1,3 +1,4 @@
+import { cadenceUnit } from "./units.js";
 import { byId, clockTime, elements, formatDuration, state, t } from "./context.js";
 
 // The chart spans the whole untrimmed section; the trim is shaded and adjusted by dragging its two handles.
@@ -127,7 +128,7 @@ export function drawChart() {
     sport === "running" && ![...sources.kinomap, ...sources.fit].some((record) => record.power != null)
       ? null
       : { key: "power", title: t("powerLane"), unit: "W", min: 0, max: 400, grow: true, format: whole },
-    { key: "cadence", title: t("cadenceLane"), unit: sport === "running" ? "spm" : "rpm", min: 0, max: cadenceMax, format: whole },
+    { key: "cadence", title: t("cadenceLane"), unit: cadenceUnit(sport), min: 0, max: cadenceMax, format: whole },
   ].filter(Boolean);
   for (const lane of lanes) lane.laneValue = (raw) => (lane.value ? lane.value(raw) : raw * (lane.scale ?? 1));
   const left = 56;

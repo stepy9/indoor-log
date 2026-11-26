@@ -1,3 +1,4 @@
+import { cadenceUnit } from "./units.js";
 import { detectIntervals, kinomapPlanText, parseKinomapPlan } from "../core.js";
 import { checkNumber, markField } from "./validate.js";
 import { byId, displayNumber, formatDuration, t } from "./context.js";
@@ -75,7 +76,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
   current = { trainer: options.trainer ?? null, resistance: options.resistance ?? null };
   const dialog = byId("intervalsDialog");
   const { records, startMs, endMs } = workout;
-  const cadenceUnit = workout.sport === "running" ? "spm" : "rpm";
+  const cadenceText = cadenceUnit(workout.sport);
   let draft = (segments?.length ? segments : [{ startMs, intensity: "active" }]).map((segment) => ({ ...segment }));
 
   const normalized = () => {
@@ -169,7 +170,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
       target.className = "target-cell";
       const targetType = document.createElement("select");
       targetType.setAttribute("aria-label", `${t("segmentTarget")} ${index + 1}`);
-      targetType.append(new Option(t("targetNone"), ""), new Option(cadenceUnit, "cadence"), new Option("W", "power"));
+      targetType.append(new Option(t("targetNone"), ""), new Option(cadenceText, "cadence"), new Option("W", "power"));
       targetType.value = segment.targetType ?? "";
       const targetValue = document.createElement("input");
       targetValue.type = "number";

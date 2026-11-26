@@ -1,5 +1,6 @@
 // The activity detail: everything known about one activity, read only, opened from the calendar, the library and
 // wherever else an activity is clicked. Comparing it and editing it are a button away.
+import { cadenceUnit, metricLabel, metricText, paceText, valueText } from "./units.js";
 import { element, svgNode } from "./dom.js";
 import { confirmDialog } from "./confirm.js";
 import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, downsample, workoutKind } from "../analysis.js";
@@ -28,23 +29,7 @@ let onEdit = () => {};
 const longDate = (ms) => new Intl.DateTimeFormat(locale(), {
   timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
 }).format(new Date(ms));
-const unit = (value, suffix, digits = 0) => (Number.isFinite(value) ? `${displayNumber(value, digits)} ${suffix}` : null);
-const cadenceUnit = (sport) => (sport === "running" ? "spm" : "rpm");
 
-function paceText(value, sport) {
-  if (!Number.isFinite(value)) return null;
-  if (sport === "cycling") return `${displayNumber(value, 1)} km/h`;
-  return `${formatDuration(value)} /${sport === "rowing" ? "500 m" : "km"}`;
-}
-
-function metricText(value, metric, sport) {
-  if (metric === "pace") return paceText(value, sport);
-  if (metric === "power") return unit(value, "W");
-  if (metric === "heartRate") return unit(value, "bpm");
-  return unit(value, cadenceUnit(sport));
-}
-
-const metricName = (metric, sport) => (metric === "pace" ? t(sport === "cycling" ? "lapSpeed" : "lapPace") : t({ power: "lapPower", heartRate: "lapHeartRate", cadence: "lapCadence" }[metric]));
 
 // The metrics the activity has data for, in the order the chart offers them.
 const metricsOf = (entry) => ["power", "pace", "heartRate", "cadence"].filter((metric) => {
@@ -77,14 +62,14 @@ function tiles(entry, settings) {
   const list = [
     [t("feel"), feel ?? effort, feel && effort ? `${t("rpe")}: ${effort}` : null],
     [t("lapTime"), formatDuration(summary.timerSeconds)],
-    [t("lapDistanceColumn"), summary.distance > 0 ? unit(summary.distance / 1000, "km", 2) : null],
-    [metricName("pace", sport), paceText(paceFrom(summary.timerSeconds > 0 ? summary.distance / summary.timerSeconds : null, sport), sport)],
+    [t("lapDistanceColumn"), summary.distance > 0 ? valueText(summary.distance / 1000, "km", 2) : null],
+    [metricLabel("pace", sport), paceText(paceFrom(summary.timerSeconds > 0 ? summary.distance / summary.timerSeconds : null, sport), sport)],
     [t("activityPower"), pair(summary.avgPower, summary.maxPower, "W"), kg.length ? `${kg.join(" / ")} W/kg` : null],
     [t("activityHeart"), pair(summary.avgHeartRate, summary.maxHeartRate, "bpm"),
       max > 0 ? pair(...[summary.avgHeartRate, summary.maxHeartRate].map((value) => (Number.isFinite(value) ? (value / max) * 100 : null)), "% max") : null],
-    [t("compareAvgCadence"), unit(summary.avgCadence, cadenceUnit(sport))],
-    [t("compareCalories"), unit(summary.calories, "kcal")],
-    [t("compareWork"), unit(workKilojoules(entry), "kJ")],
+    [t("compareAvgCadence"), valueText(summary.avgCadence, cadenceUnit(sport))],
+    [t("compareCalories"), valueText(summary.calories, "kcal")],
+    [t("compareWork"), valueText(workKilojoules(entry), "kJ")],
     [t("activityLoad"), loadText(entry, settings)],
     [t("compareBenefit"), benefit ? t(`benefit_${benefit.benefit}`) : effect ? `TE ${displayNumber(effect.value, 1)}` : null,
       // The group only when the name does not say it already (benefitText adds it in brackets then).
@@ -115,7 +100,7 @@ function chart(entry, targets = null) {
   const switcher = element("div", "segmented");
   switcher.setAttribute("role", "group");
   switcher.append(...metrics.map((metric) => {
-    const button = element("button", "", metricName(metric, entry.sport));
+    const button = element("button", "", metricLabel(metric, entry.sport));
     button.type = "button";
     button.setAttribute("aria-pressed", String(metric === view.metric));
     button.addEventListener("click", () => {
@@ -132,7 +117,7 @@ function chart(entry, targets = null) {
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("class", "activity-chart");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", metricName(view.metric, entry.sport));
+  svg.setAttribute("aria-label", metricLabel(view.metric, entry.sport));
   const points = downsample(series(entry, view.metric, { axis: "time", smoothSeconds: 10 }).filter((point) => Number.isFinite(point.y)), 600);
   if (points.length < 2) return null;
   const end = entry.records.seconds.at(-1) || 1;
@@ -226,8 +211,8 @@ function chart(entry, targets = null) {
     const row = (metric, value) => {
       const line = element("div", "diary-tooltip-row");
       // Cadence to a tenth: the line is smoothed, and a rounded 20 could sit just under a band from 20.
-      const text = metric === "cadence" ? unit(value, cadenceUnit(entry.sport), 1) : metricText(value, metric, entry.sport);
-      line.append(element("span", "", metricName(metric, entry.sport)), element("strong", "", text ?? "—"));
+      const text = metric === "cadence" ? valueText(value, cadenceUnit(entry.sport), 1) : metricText(value, metric, entry.sport);
+      line.append(element("span", "", metricLabel(metric, entry.sport)), element("strong", "", text ?? "—"));
       return line;
     };
     tooltip.replaceChildren(element("div", "diary-tooltip-when", formatDuration(point.x)), row(view.metric, point.y),
@@ -272,11 +257,11 @@ function lapsTable(entry) {
   const columns = [
     [t("activityLap"), (lap, index) => `${index + 1}${intensityKey[lap.intensity] ? ` · ${t(intensityKey[lap.intensity])}` : ""}`],
     [t("lapTime"), (lap) => formatDuration(lap.timerSeconds)],
-    [t("lapDistanceColumn"), (lap) => unit(lap.distance, "m")],
-    [metricName("pace", sport), (lap) => paceText(lapValue(lap, "pace", sport), sport)],
-    [metricName("power"), (lap) => unit(lap.avgPower, "W")],
-    [metricName("heartRate"), (lap) => unit(lap.avgHeartRate, "bpm")],
-    [metricName("cadence"), (lap) => unit(lap.avgCadence, cadenceUnit(sport))],
+    [t("lapDistanceColumn"), (lap) => valueText(lap.distance, "m")],
+    [metricLabel("pace", sport), (lap) => paceText(lapValue(lap, "pace", sport), sport)],
+    [metricLabel("power"), (lap) => valueText(lap.avgPower, "W")],
+    [metricLabel("heartRate"), (lap) => valueText(lap.avgHeartRate, "bpm")],
+    [metricLabel("cadence"), (lap) => valueText(lap.avgCadence, cadenceUnit(sport))],
     [t("resistance"), (lap) => (lap.resistance ?? entry.resistance ? String(lap.resistance ?? entry.resistance) : null)],
   ].filter(([, cell]) => laps.some((lap, index) => cell(lap, index)));
   const table = element("table", "laps-table card-table");
@@ -330,7 +315,7 @@ function bestEfforts(entry) {
   const powers = [10, 60, 300, 1200].filter((seconds) => end >= seconds).map((seconds) => {
     const compute = (one) => bestAverage(one, "power", seconds);
     const watts = cachedBest(entry, `p${seconds}`, () => compute(entry));
-    return { label: formatDuration(seconds), value: unit(watts, "W"), mark: recordMark(entry, watts, `p${seconds}`, compute, true), ok: Number.isFinite(watts) };
+    return { label: formatDuration(seconds), value: valueText(watts, "W"), mark: recordMark(entry, watts, `p${seconds}`, compute, true), ok: Number.isFinite(watts) };
   });
   const times = (effortDistances[entry.sport] ?? []).filter((meters) => (entry.summary.distance ?? 0) >= meters).map((meters) => {
     const compute = (one) => (one.records?.distance ? bestTime(one, meters) : null);

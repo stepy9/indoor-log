@@ -1,3 +1,4 @@
+import { cadenceUnit, speedText } from "./ui/units.js";
 import "./styles.css";
 import { confirmDialog } from "./ui/confirm.js";
 import { buildWorkout, decodeGarminFit, defaultFeel, defaultLapDistance, defaultMetricSources, estimateOffset, lapDistancePresets, parseKinomap } from "./core.js";
@@ -617,13 +618,6 @@ function updateModeButtons() {
   elements.sourcesPanel.hidden = state.mode !== "merge";
 }
 
-// Pace per 500 m for rowing, per km for running, speed for cycling.
-function speedText(speed, sport) {
-  if (!(speed > 0)) return "—";
-  if (sport === "cycling") return `${displayNumber(speed * 3.6, 1)} km/h`;
-  return sport === "rowing" ? `${formatDuration(500 / speed)} /500 m` : `${formatDuration(1000 / speed)} min/km`;
-}
-
 // Lap types marked in the lap table; by interval laps the type belongs to the segment the lap comes from.
 function intensitySelect(lap, index) {
   return intensitySelectElement(lap.intensity, `${t("lapType")} ${index + 1}`, (value) => {
@@ -649,7 +643,7 @@ function renderLaps(laps, sport) {
   const columns = [
     [t("lapColumn"), (lap, index) => String(index + 1)],
     [t("lapType"), (lap, index) => intensitySelect(lap, index)],
-    ...(state.result?.segments ? [[t("segmentTarget"), (lap) => (lap.target ? `${lap.target} ${lap.targetType === "power" ? "W" : sport === "running" ? "spm" : "rpm"}` : "—")]] : []),
+    ...(state.result?.segments ? [[t("segmentTarget"), (lap) => (lap.target ? `${lap.target} ${lap.targetType === "power" ? "W" : cadenceUnit(sport)}` : "—")]] : []),
     [t("lapTime"), (lap) => formatDuration(lap.timerSeconds)],
     [t("lapDistanceColumn"), (lap) => (lap.distance >= 1000 ? value(lap.distance / 1000, " km", 2) : value(lap.distance, " m"))],
     [sport === "cycling" ? t("lapSpeed") : t("lapPace"), (lap) => speedText(lap.avgSpeed, sport)],
@@ -697,7 +691,7 @@ function renderSummary(summary, startMs, endMs, sport) {
     ? "—" : `${displayNumber(summary.avgPower)} / ${displayNumber(summary.maxPower)} W${perKgText(summary.avgPower, startMs) ? ` · ${perKgText(summary.avgPower, startMs)}` : ""}`;
   byId("summaryCadenceLabel").textContent = t("cadence");
   byId("summaryCadence").textContent = summary.avgCadence == null
-    ? "—" : `${displayNumber(summary.avgCadence)} / ${displayNumber(summary.maxCadence)} ${sport === "running" ? "spm" : "rpm"}`;
+    ? "—" : `${displayNumber(summary.avgCadence)} / ${displayNumber(summary.maxCadence)} ${cadenceUnit(sport)}`;
   const speedLabel = byId("summarySpeedLabel");
   const speedValue = byId("summarySpeed");
   if (summary.avgSpeed == null || summary.avgSpeed <= 0) {
