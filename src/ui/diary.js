@@ -860,10 +860,32 @@ function renderCalendar(range, entries) {
     });
     return button;
   };
+  // Each row closes with its week's sum over the days shown: the distance and time ridden, then how many times
+  // strength, the mat and breathing were done. Empty for a week with nothing.
+  const sumCell = (week) => {
+    const shown = week.filter((day) => day >= range[0] && day < range[1]);
+    const ridden = entries.filter((entry) => shown.includes(dayKey(entry.startMs, zone)));
+    const meters = ridden.reduce((sum, entry) => sum + (entry.summary.distance ?? 0), 0);
+    const seconds = ridden.reduce((sum, entry) => sum + (entry.summary.timerSeconds ?? 0), 0);
+    const sets = shown.flatMap((day) => doneCards(day));
+    const counts = [
+      ["💪", shown.filter((day) => savedDefaults().strengthLog?.[day]).length],
+      ["🧎", sets.filter((set) => !set.breath).length],
+      ["🌬️", sets.filter((set) => set.breath).length],
+    ].filter(([, count]) => count);
+    const cell = Object.assign(document.createElement("div"), { className: "diary-week-sum" });
+    if (ridden.length) cell.append(
+      Object.assign(document.createElement("strong"), { className: "diary-week-sum-km", textContent: km(meters) }),
+      Object.assign(document.createElement("span"), { className: "diary-week-sum-time", textContent: formatDuration(seconds) }),
+    );
+    if (counts.length) cell.append(Object.assign(document.createElement("span"), { className: "diary-week-sum-sets", textContent: counts.map(([icon, count]) => `${icon} ${count}`).join("  ") }));
+    return cell;
+  };
   const rows = [];
-  for (let index = 0; index < cells.length; index += 7) rows.push(weekCell(days[index]), ...cells.slice(index, index + 7));
+  for (let index = 0; index < cells.length; index += 7) rows.push(weekCell(days[index]), ...cells.slice(index, index + 7), sumCell(days.slice(index, index + 7)));
   const corner = Object.assign(document.createElement("div"), { className: "diary-weekday", textContent: t("diaryWeekShort") });
-  byId("diaryCalendar").replaceChildren(corner, ...head, ...rows);
+  const sumHead = Object.assign(document.createElement("div"), { className: "diary-weekday diary-week-sum-head", textContent: t("diaryWeekSum") });
+  byId("diaryCalendar").replaceChildren(corner, ...head, sumHead, ...rows);
   byId("diaryCalendar").classList.toggle("is-week", view.period === "week");
 }
 
