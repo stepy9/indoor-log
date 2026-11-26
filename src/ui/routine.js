@@ -3,7 +3,7 @@
 // as the warm-up and the stretching. A set can be saved to run again as it is, and put on weekdays in the plan.
 // The choices are remembered; a set done is logged by day.
 import { element } from "./dom.js";
-import { dayKey, todayKey } from "../dates.js";
+import { dayKey, dayMs, todayKey } from "../dates.js";
 import { confirmDialog } from "./confirm.js";
 import { areasOf, gearStyleTools, gearTools, balanceReps, balanceWeak, pilatesLevels, breathTechniques, breathMinutes, buildRoutine, byLength, defaultDose, exerciseGroups, logRoutine, plannedRoutine, togglePlanDay, withoutSaved, nextLevel, recordFeel, stabilityFeels, routineAims, routineAreas, routineMinutes, routineStyles, stabilityChains, stabilityLevels, weakerExtra, trainingStyles, warmupKinds, stretchKinds } from "../routines.js";
 import { exercises, strengthLevel } from "../recovery.js";
@@ -316,7 +316,7 @@ function playSet(set, day, { intro = true } = {}) {
       }
       // The warm-up and strength count where the Today card's do: by day in their own logs.
       if (set.style === "warmup" || set.style === "strength") {
-        const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
+        const since = new Date(Date.now() - 28 * dayMs).toISOString().slice(0, 10);
         if (set.style === "warmup") saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [day]: set.exercises } });
         else saveDefaults({ strengthLog: { ...strengthLog(), [day]: set.exercises } });
         changed();

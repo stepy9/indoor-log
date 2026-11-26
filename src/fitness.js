@@ -1,4 +1,4 @@
-import { noon } from "./dates.js";
+import { dayMs, noon } from "./dates.js";
 import { bestAverage, workoutKind } from "./analysis.js";
 import { addDays, dayKey } from "./diary.js";
 import { toRecords, valueOn } from "./history.js";
@@ -170,7 +170,7 @@ export function ftpTimeline(entries) {
     if (!cpDurations.some((duration) => own[duration] > 0)) continue;
     const kept = (seen[entry.sport] ??= []);
     kept.push(entry);
-    const since = entry.startMs - ftpWindowDays * 86_400_000;
+    const since = entry.startMs - ftpWindowDays * dayMs;
     const window = {};
     for (const other of kept) {
       if (other.startMs <= since) continue;
@@ -290,7 +290,7 @@ export function goalForecast(history, goalKey, restFrom) {
 export function goalPlan(history, goalKey, level = 15) {
   const last = history.at(-1);
   if (!last || !goalKey || goalKey <= last.day) return null;
-  const days = Math.round((noon(goalKey) - noon(last.day)) / 86_400_000);
+  const days = Math.round((noon(goalKey) - noon(last.day)) / dayMs);
   const average = recentAverage(history);
   // The days after the last one up to the one before the goal: its morning form comes from them.
   const formWith = (trainingDays) => {

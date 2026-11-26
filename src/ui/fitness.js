@@ -2,7 +2,7 @@ import { node } from "./dom.js";
 import { ftpRecords, weightRecords, activityLoad, estimateMaxHeartRate, ftpOn, ftpSourceOn, ftpSuggestion, curveDurations, decoupling, outputAtHeartRate, commonHeartRate, heartRateWindow, fatigueDays, fitnessDays, forSport, formState, formSummary, heartRateAt, freshInDays, goalForecast, goalPlan, weightOn, heartRateZones, loadHistory, powerCurve, powerZones, timeInZones, withCleanHeartRate, lapHeartRates, focusAdvice, trainingFocus } from "../fitness.js";
 import { bestTime, effortDistances, isFtpTest, workoutKind } from "../analysis.js";
 import { longestByWeek, nextStep, steadyCadence, steadyStartWatts, suggestedLevels, trainingDays, weekChecklist, weekPlan } from "../plan.js";
-import { axisTicks, mondayOf, noon, todayKey } from "../dates.js";
+import { axisTicks, dayMs, mondayOf, noon, todayKey } from "../dates.js";
 import { bodyPoints } from "../reminders.js";
 import { hrvDays, hrvOn, hrvSeries } from "../hrv.js";
 import { shortSleepHours, sleepOn } from "../sleep.js";
@@ -156,7 +156,7 @@ function shownGoals(history, settings) {
 // weeks; with the next seven days laid out on its training days. Shared with the diary's calendar.
 // { sport, plan, days: [{ day, type }] } or null without enough to go on.
 export function trainingPlan(entries, chosen = "all") {
-  const since = Date.now() - 28 * 86_400_000;
+  const since = Date.now() - 28 * dayMs;
   const counts = new Map();
   for (const entry of entries) if (entry.startMs >= since) counts.set(entry.sport, (counts.get(entry.sport) ?? 0) + 1);
   const sport = chosen !== "all" ? chosen : [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -623,8 +623,8 @@ function renderFtpChart(settings) {
   const end = Date.now();
   const days = ranges[view.range];
   const firstMs = Math.min(...view.entries.map((entry) => entry.startMs));
-  const start = Number.isFinite(days) ? Math.max(firstMs, end - days * 86_400_000) : firstMs;
-  const step = Math.max(86_400_000, Math.ceil((end - start) / 400 / 86_400_000) * 86_400_000);
+  const start = Number.isFinite(days) ? Math.max(firstMs, end - days * dayMs) : firstMs;
+  const step = Math.max(dayMs, Math.ceil((end - start) / 400 / dayMs) * dayMs);
   // Whole days on the axis: half a day before the first one and after today, each day centred on its noon.
   const noonOf = (ms) => noon(dayKey(ms, zone));
   const todayNoon = noonOf(end);
@@ -636,7 +636,7 @@ function renderFtpChart(settings) {
     for (let noon = noonOf(start); noon <= todayNoon; noon += step) points.push({ ms: noon, ftp: ftpOn(settings, sport, Math.min(end, noon + 43_199_999)) });
     // Each day the FTP changes on, with where the new value comes from.
     const changes = [];
-    for (let noon = noonOf(start) + 86_400_000; noon <= todayNoon; noon += 86_400_000) {
+    for (let noon = noonOf(start) + dayMs; noon <= todayNoon; noon += dayMs) {
       const before = ftpOn(settings, sport, noon - 43_200_001);
       const source = ftpSourceOn(settings, sport, Math.min(end, noon + 43_199_999));
       if (source && before && Math.round(source.ftp) !== Math.round(before)) changes.push({ ms: noon, before, ...source });
@@ -879,9 +879,9 @@ function renderBodyChart(load) {
   const height = 240;
   const margin = { left: 44, right: data.length > 1 ? 44 : 14, top: 14, bottom: 26 };
   const axisStart = Date.parse(`${from}T00:00:00Z`);
-  const axisEnd = Date.parse(`${end}T00:00:00Z`) + 86_400_000;
+  const axisEnd = Date.parse(`${end}T00:00:00Z`) + dayMs;
   const xForKey = (key) => margin.left + ((noon(key) - axisStart) / (axisEnd - axisStart)) * (width - margin.left - margin.right);
-  const dayWidth = (width - margin.left - margin.right) / ((axisEnd - axisStart) / 86_400_000);
+  const dayWidth = (width - margin.left - margin.right) / ((axisEnd - axisStart) / dayMs);
   const children = [];
   const layers = [];
   data.forEach((series, index) => {
@@ -1306,9 +1306,9 @@ function renderEfficiencyHeart(results, bpm) {
 // duration and, for one sport, the fastest time for each distance; each with its workout, how long ago,
 // and the W/kg by the weight on that day. A record from the last 30 days is marked new.
 function renderRecords(entries) {
-  const recent = Date.now() - 30 * 86_400_000;
+  const recent = Date.now() - 30 * dayMs;
   const ago = (ms) => {
-    const days = Math.floor((Date.now() - ms) / 86_400_000);
+    const days = Math.floor((Date.now() - ms) / dayMs);
     return days < 1 ? t("fitnessToday") : days === 1 ? t("fitnessYesterday") : t("fitnessDaysAgo", { days });
   };
   const fromCell = (entry) => {

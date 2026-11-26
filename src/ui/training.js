@@ -1,6 +1,6 @@
 import { mean } from "../stats.js";
 import { node, svgNode } from "./dom.js";
-import { noon, todayKey } from "../dates.js";
+import { dayMs, noon, todayKey } from "../dates.js";
 import { breathTip, routineBlock, routineTip } from "./routine.js";
 import { sessionTip, strengthBlock, strengthLog, stretchBlock, warmupBlock, warmupLog } from "./recovery.js";
 import { bestAverage, workoutKind } from "../analysis.js";
@@ -499,11 +499,11 @@ function progressCard(sport, entries, plan, settings) {
   };
   // Power in zone 2: the last 12 steady workouts' points, the trend through all of the last four months dashed.
   const heart = plan.steadyHeartRate;
-  const points = entries.filter((entry) => workoutKind(entry) === "steady" && entry.startMs > Date.now() - 120 * 86_400_000)
+  const points = entries.filter((entry) => workoutKind(entry) === "steady" && entry.startMs > Date.now() - 120 * dayMs)
     .map((entry) => ({ day: dayKey(entry.startMs, zone), watts: zoneTwoWatts(entry, heart) })).filter((point) => point.watts);
   const trend = zoneTwoTrend(points);
   const shown = trend.points.slice(-12);
-  const dayNumber = (key) => noon(key) / 86_400_000;
+  const dayNumber = (key) => noon(key) / dayMs;
   let line = null;
   if (trend.perFourWeeks != null && shown.length > 1) {
     // Through the shown points' mean, at the trend's slope, from the first shown to the last.

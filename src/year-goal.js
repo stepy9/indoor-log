@@ -1,8 +1,8 @@
-import { noon } from "./dates.js";
+import { dayMs, noon } from "./dates.js";
 // A yearly distance goal: the kilometres done this year, how far ahead or behind the share of the year gone by,
 // and how many a day are left to reach it.
 
-const dayOfYear = (key) => (noon(key) - noon(`${key.slice(0, 4)}-01-01`)) / 86_400_000 + 1;
+const dayOfYear = (key) => (noon(key) - noon(`${key.slice(0, 4)}-01-01`)) / dayMs + 1;
 const daysInYear = (year) => ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365);
 
 // workouts: [{ day: "YYYY-MM-DD", km }]; goal: km for the year; today: "YYYY-MM-DD", counted as done.

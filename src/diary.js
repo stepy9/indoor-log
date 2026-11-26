@@ -1,7 +1,7 @@
 // Days, weeks, months and years of the training diary, and what was done in them.
 // A day is its "YYYY-MM-DD" in the chosen time zone; arithmetic on days goes through UTC noon, so no clock change shifts it.
 
-import { addDays, dayKey, mondayOf, noon } from "./dates.js";
+import { addDays, dayKey, dayMs, mondayOf, noon } from "./dates.js";
 
 export { addDays, dayKey };
 
@@ -59,7 +59,7 @@ export function previousRange(period, key, today, basis = "previous", picked = n
 export function weekNumber(key) {
   const thursday = addDays(weekStart(key), 3);
   const first = weekStart(`${thursday.slice(0, 4)}-01-04`);
-  return Math.round((toDate(weekStart(key)) - toDate(first)) / (7 * 86_400_000)) + 1;
+  return Math.round((toDate(weekStart(key)) - toDate(first)) / (7 * dayMs)) + 1;
 }
 
 // The first days of the periods the activities fall in, newest first.

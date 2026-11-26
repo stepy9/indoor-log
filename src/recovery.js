@@ -3,7 +3,7 @@
 // The set runs as timed steps with a short rest between. No DOM here, so it is tested on its own; the names and
 // how-tos live in i18n under recovery_<id> and recoveryHow_<id>.
 
-import { mondayOf, noon } from "./dates.js";
+import { dayMs, mondayOf, noon } from "./dates.js";
 import { routineExercises } from "./routine-exercises.js";
 
 // A pose of the side-view figure in a 220 × 170 box, the mat's top at y 150: the trunk from the hip through a
@@ -418,7 +418,7 @@ const warmFlow = ["catCow", "bridge", "armSwings", "hipHinge", "squat", "legSwin
 // The day's turn of a pool: take of them, starting further on each day and wrapping round, so over a few days
 // each comes. day: "YYYY-MM-DD" (null: the first turn).
 export function pick({ core, pool, take }, day = null, order = flow) {
-  const number = day ? Math.round(noon(day) / 86_400_000) : 0;
+  const number = day ? Math.round(noon(day) / dayMs) : 0;
   const start = (number * take) % pool.length;
   const picked = Array.from({ length: Math.min(take, pool.length) }, (_, index) => pool[(start + index) % pool.length]);
   return [...core, ...picked].sort((a, b) => order.indexOf(a) - order.indexOf(b));
@@ -508,7 +508,7 @@ const repSeconds = 3;
 export const strengthBreakDays = 14;
 export function strengthLevel(log = {}, today = null) {
   const days = Object.keys(log).filter((day) => log[day] && (!today || day <= today)).sort();
-  const off = (from, to) => Math.max(0, Math.floor((Math.round((noon(to) - noon(from)) / 86_400_000) - strengthBreakDays) / 7));
+  const off = (from, to) => Math.max(0, Math.floor((Math.round((noon(to) - noon(from)) / dayMs) - strengthBreakDays) / 7));
   let level = 0;
   days.forEach((day, index) => {
     if (index) level = Math.max(0, level - off(days[index - 1], day));
@@ -575,7 +575,7 @@ export function sessionDetail(kind, logged, day, log = {}) {
 const hardDays = new Set(["intervals", "ftpTestShort", "ftpTest", "goal", "opener"]);
 export function strengthToday(log = {}, today, { type = null, taper = null } = {}) {
   const monday = mondayOf(today);
-  const yesterday = new Date(noon(today) - 86_400_000).toISOString().slice(0, 10);
+  const yesterday = new Date(noon(today) - dayMs).toISOString().slice(0, 10);
   const done = Object.keys(log).filter((day) => log[day] && day >= monday && day <= today).length;
   const rest = log[today] ? "today" : done >= strengthPerWeek ? "enough" : taper === "final" ? "taper" : hardDays.has(type) ? "hard" : log[yesterday] ? "yesterday" : null;
   return { due: !rest, done, rest };

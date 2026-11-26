@@ -1,3 +1,4 @@
+import { dayMs } from "./dates.js";
 import { mergeDuplicates } from "./library.js";
 import { mergeHistory, toRecords, trackedGeneral, trackedSport, valueOn } from "./history.js";
 
@@ -139,7 +140,7 @@ const checkVersion = (data) => {
 
 // Deletions older than a year are dropped to keep the file small.
 export function syncText(state, now = Date.now()) {
-  const deleted = Object.fromEntries(Object.entries(state.deleted ?? {}).filter(([, at]) => now - at < 365 * 86_400_000));
+  const deleted = Object.fromEntries(Object.entries(state.deleted ?? {}).filter(([, at]) => now - at < 365 * dayMs));
   return JSON.stringify({ format: syncFormat, version: syncVersion, entries: state.entries, deleted });
 }
 

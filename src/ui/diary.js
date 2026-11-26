@@ -1,5 +1,5 @@
 import { svgNode } from "./dom.js";
-import { noon, todayKey } from "../dates.js";
+import { dayMs, noon, todayKey } from "../dates.js";
 import { workoutKind, workoutKinds } from "../analysis.js";
 import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, periodRange, periodsWith, previousRange, shiftPeriod, totals } from "../diary.js";
 import { listEntries } from "../library.js";
@@ -704,8 +704,8 @@ function yearGoalChart(sport, goal, year, entries) {
   const monthStep = width - left - right < 420 ? 2 : 1;
   for (let month = 0; month < 12; month += monthStep) {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const day = (noon(key) - noon(`${year}-01-01`)) / 86_400_000;
-    const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - noon(`${year}-01-01`)) / 86_400_000;
+    const day = (noon(key) - noon(`${year}-01-01`)) / dayMs;
+    const nextDay = month === 11 ? line.days : (Date.parse(`${year}-${String(month + 2).padStart(2, "0")}-01T12:00:00Z`) - noon(`${year}-01-01`)) / dayMs;
     children.push(svgNode("text", { x: xFor((day + nextDay) / 2), y: height - 8, class: "diary-tick" }, format(key, { month: "short" })));
   }
   // The even pace to the goal, and the running total over it.

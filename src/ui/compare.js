@@ -1,6 +1,6 @@
 import { cadenceUnit, metricLabel, metricText, valueText } from "./units.js";
 import { svgNode } from "./dom.js";
-import { noon } from "../dates.js";
+import { dayMs, noon } from "../dates.js";
 import { rerenderFitness, setupFitness, showFitness } from "./fitness.js";
 import { rerenderTraining, setupTraining, showTraining, trainingShown } from "./training.js";
 import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengthRange, invertedMetric, movingAverage, rangesFor, recordFlags, trendDirection, trendDistances, trendIsTime, trendMetrics, trendValue, paceFrom, powerDurations, series, workoutKind, workoutKinds, sliceEntry, lapValue, levelValues } from "../analysis.js";
@@ -739,11 +739,11 @@ function dateTicks(low, high, maxCount, { group = "activity" } = {}) {
     return ticks;
   };
   // Under two weeks, days, as many as fit.
-  if (group === "activity" && high - low < 14 * 86_400_000) {
+  if (group === "activity" && high - low < 14 * dayMs) {
     const start = new Date(low);
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() + 1);
-    const step = Math.max(1, Math.ceil((high - low) / 86_400_000 / maxCount));
+    const step = Math.max(1, Math.ceil((high - low) / dayMs / maxCount));
     const ticks = [];
     for (const date = start; date.getTime() <= high; date.setDate(date.getDate() + step)) {
       ticks.push({ x: date.getTime(), text: new Intl.DateTimeFormat(locale(), { day: "numeric", month: "numeric" }).format(date) });
@@ -792,7 +792,7 @@ function renderTrendChart() {
   const height = 320;
   // A phone keeps the plot wide with a narrower label column.
   const margin = { top: 16, right: width < 500 ? 12 : 24, bottom: 30, left: width < 500 ? 48 : 72 };
-  const day = 86_400_000;
+  const day = dayMs;
   // A grouped point sits at its period's first day, so the axis reaches to the last period's end.
   const tail = { activity: day, week: 7 * day, month: 31 * day }[view.trendGroup];
   const minX = points[0].x - day;

@@ -7,7 +7,7 @@ import { bestAverage, bestTime, effortDistances, lapValue, paceFrom, series, dow
 import { deleteEntry, listEntries, saveEntries } from "../library.js";
 import { sameWorkoutHistory } from "../same-workout.js";
 import { activityLoad, aerobicEffect, benefitGroup, decoupling, forSport, primaryBenefit, workKilojoules } from "../fitness.js";
-import { addDays, dayKey, mondayOf } from "../dates.js";
+import { addDays, dayKey, dayMs, mondayOf } from "../dates.js";
 import { hasTraining, planLog, scoreFor, steadyTargets } from "./score.js";
 import { scoreBadge } from "./diary.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
@@ -306,7 +306,7 @@ function recordMark(entry, value, key, compute, higherBetter) {
     return !Number.isFinite(theirs) || !better(theirs, value) && theirs !== value;
   });
   if (beats(earlier)) return "record";
-  const recent = earlier.filter((other) => other.startMs >= entry.startMs - 90 * 86_400_000);
+  const recent = earlier.filter((other) => other.startMs >= entry.startMs - 90 * dayMs);
   return recent.length && beats(recent) ? "recent" : null;
 }
 

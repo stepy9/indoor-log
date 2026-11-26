@@ -1,3 +1,4 @@
+import { dayMs } from "./dates.js";
 import { mean } from "./stats.js";
 import { calorieProfileOn, heartRateCalories } from "./core.js";
 import { cleanTitle } from "./files.js";
@@ -221,7 +222,7 @@ export function lapLevelsFromPlan(laps, steps, toLevel) {
 export function backupDue(count, last, now = Date.now()) {
   if (count < 3) return false;
   if (!last?.at) return true;
-  return count > (last.count ?? 0) && now - last.at > 30 * 86_400_000;
+  return count > (last.count ?? 0) && now - last.at > 30 * dayMs;
 }
 
 // A backup is one JSON file with every entry and the remembered settings (trainers among them), read back by parseBackup.

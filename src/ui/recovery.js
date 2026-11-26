@@ -2,6 +2,7 @@
 // work, each exercise with its dose, how-to and, where it has one, a figure moving between its two poses in time with
 // the breath. A button runs the set step by step, full screen on a phone: a countdown per exercise and side, a short
 // rest between, and at the end the set is marked done.
+import { dayMs } from "../dates.js";
 import { element } from "./dom.js";
 import { afterWorkout, sessionDetail, exerciseViews, exercises, steps, strengthLevel, strengthSession, strengthToday, warmupBefore, warmupRest } from "../recovery.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -453,7 +454,7 @@ export function warmupBlock(type, day = null, today = null) {
     onDone: () => {
       if (!today || day !== today) return;
       // Kept to the last few weeks, so the synced settings do not grow.
-      const since = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10);
+      const since = new Date(Date.now() - 28 * dayMs).toISOString().slice(0, 10);
       // The day keeps the exercises done (true in logs from before), for the activity's detail.
       saveDefaults({ warmupLog: { ...Object.fromEntries(Object.entries(warmupLog()).filter(([key]) => key >= since)), [today]: plan.exercises } });
       window.dispatchEvent(new Event("settings-change"));
