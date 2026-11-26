@@ -2,6 +2,7 @@
 // each week's plan against what was ridden, and the run of days ridden. The plan of each day is kept as it
 // stood before the day (logPlan), as the plan itself moves on with every workout. No DOM here.
 
+import { isIntervalSession, weekOf } from "./workouts.js";
 import { mean } from "./stats.js";
 import { addDays, dayMs, mondayOf, noon } from "./dates.js";
 const clamp = (value) => Math.max(0, Math.min(1, value));
@@ -179,7 +180,7 @@ export function scoreWorkout(facts, planned, fallback = null) {
 // ridden, as it is still open; the days after it not at all. { monday, planned, ridden, long: [done, planned], intervals: [done, planned], score }.
 export function weekAdherence(log, workouts, monday, today, excuses = {}) {
   const days = Array.from({ length: 7 }, (_, index) => addDays(monday, index)).filter((day) => day <= today);
-  const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7) && workout.day <= today);
+  const inWeek = weekOf(workouts, monday).filter((workout) => workout.day <= today);
   const riddenOn = (day) => inWeek.some((workout) => workout.day === day);
   // A day excused and not ridden is no day missed: it leaves the plan.
   const plannedDays = days.filter((day) => log[day] && (riddenOn(day) || (day < today && !excuses[day])));
@@ -187,7 +188,7 @@ export function weekAdherence(log, workouts, monday, today, excuses = {}) {
   const count = (type) => plannedDays.filter((day) => log[day].type === type).length;
   const longPlanned = count("long");
   const longDone = inWeek.filter((workout) => workout.kind === "steady" && log[workout.day]?.longMinutes && workout.minutes >= log[workout.day].longMinutes * 0.9).length;
-  const intervalsDone = inWeek.filter((workout) => workout.kind === "intervals" && !workout.ftpTest).length;
+  const intervalsDone = inWeek.filter(isIntervalSession).length;
   const scores = inWeek.map((workout) => workout.score).filter(Number.isFinite);
   return {
     monday,
@@ -233,7 +234,7 @@ export function lastMondays(today, weeks) {
 // [{ monday, minutes }] with 0 for a week without one. workouts: [{ day, minutes, kind }].
 export function longestMinutesByWeek(workouts, today, weeks = 8) {
   return lastMondays(today, weeks).map((monday) => {
-    const inWeek = workouts.filter((workout) => workout.kind === "steady" && workout.day >= monday && workout.day < addDays(monday, 7));
+    const inWeek = weekOf(workouts, monday).filter((workout) => workout.kind === "steady");
     return { monday, minutes: inWeek.length ? Math.round(Math.max(...inWeek.map((workout) => workout.minutes))) : 0 };
   });
 }

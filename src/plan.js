@@ -4,6 +4,7 @@
 // workouts a week that grow slowly. Holds back when the heart drifts, the form is low or the fitness climbs fast.
 // No DOM here, so all of it is tested on its own.
 
+import { isIntervalSession, weekOf } from "./workouts.js";
 import { mean, median } from "./stats.js";
 import { addDays, dayMs, mondayOf, noon, weekdayOf } from "./dates.js";
 
@@ -71,7 +72,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // Weeks from Monday: this one so far, the last full one.
   const thisMonday = mondayOf(today);
   const lastMonday = addDays(thisMonday, -7);
-  const inWeek = (monday) => workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7));
+  const inWeek = (monday) => weekOf(workouts, monday);
   const kmOf = (list) => list.reduce((sum, workout) => sum + (workout.km || 0), 0);
   const lastWeekKm = kmOf(inWeek(lastMonday));
   const thisWeek = inWeek(thisMonday);
@@ -142,7 +143,7 @@ export function nextStep({ workouts, form = 0, ramp = 0, ftp = null, today, focu
   // Intervals: one or two a week, of the kind set (two minutes by default); a repeat more every two done in the last
   // eight weeks, or for the tempo ones a minute more to each of the two. None in a week of the FTP test.
   const intervalsDone = workouts.filter((workout) => workout.kind === "intervals" && workout.day > since(56)).length;
-  const intervalsThisWeek = thisWeek.filter((workout) => workout.kind === "intervals" && !workout.ftpTest).length;
+  const intervalsThisWeek = thisWeek.filter(isIntervalSession).length;
   const kind = intervalKinds[prefs.intervalType] ? prefs.intervalType : "medium";
   const shape = intervalKinds[kind];
   const grownBy = Math.floor(intervalsDone / 2) - (lighter ? 1 : 0);
@@ -415,7 +416,7 @@ export function kmByKindByWeek(workouts, plan, today, weeks = 8, log = {}, start
   const thisMonday = mondayOf(today);
   return Array.from({ length: weeks }, (_, index) => {
     const monday = addDays(thisMonday, (index - weeks + 1) * 7);
-    const inWeek = workouts.filter((workout) => workout.day >= monday && workout.day < addDays(monday, 7));
+    const inWeek = weekOf(workouts, monday);
     return { monday, parts: weekKmByKind([{ status: "done", workouts: inWeek }], plan, kindsOfWeek(inWeek.filter((workout) => !start || workout.day >= start), plan, log, start)) };
   });
 }
@@ -462,7 +463,7 @@ export function longestByWeek(workouts, today, weeks = 8) {
   const thisMonday = mondayOf(today);
   return Array.from({ length: weeks }, (_, index) => {
     const monday = addDays(thisMonday, (index - weeks + 1) * 7);
-    const inWeek = workouts.filter((workout) => workout.kind === "steady" && workout.day >= monday && workout.day < addDays(monday, 7));
+    const inWeek = weekOf(workouts, monday).filter((workout) => workout.kind === "steady");
     return { monday, km: inWeek.length ? Math.max(...inWeek.map((workout) => workout.km)) : 0 };
   });
 }

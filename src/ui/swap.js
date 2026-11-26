@@ -2,7 +2,7 @@
 // a warning where the swap would break a rule the plan keeps (a hard day after the longer one, the 20-minute test
 // too soon after the short one); a swap is allowed anyway.
 import { node } from "./dom.js";
-import { noon } from "../dates.js";
+
 import { longTires, planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
 import { plannedText } from "./diary.js";
