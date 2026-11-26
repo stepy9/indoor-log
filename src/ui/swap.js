@@ -6,10 +6,9 @@ import { noon } from "../dates.js";
 import { longTires, planRuleBreaks } from "../plan.js";
 import { setSwap, swappedWith } from "./excuse.js";
 import { plannedText } from "./diary.js";
-import { state, t } from "./context.js";
+import { locale, t } from "./context.js";
 import { showToast } from "./toast.js";
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(noon(key)));
 
 // result: the sport's trainingPlan; day: the day whose workout to swap; today: "YYYY-MM-DD". onDone after a change.

@@ -1,4 +1,4 @@
-import { byId, sportLabel, state, t, zone } from "./context.js";
+import { byId, shortDateTime, sportLabel, state, t } from "./context.js";
 
 const panel = byId("batchPanel");
 const tabs = byId("batchTabs");
@@ -8,12 +8,6 @@ const folderExportButton = byId("batchFolderExportButton");
 const applyButton = byId("batchApplyButton");
 const selectAllButton = byId("batchSelectAllButton");
 
-function shortDate(epochMs) {
-  if (!Number.isFinite(epochMs)) return "—";
-  return new Intl.DateTimeFormat(state.language === "en" ? "en-GB" : "cs-CZ", {
-    timeZone: zone, day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(new Date(epochMs));
-}
 
 function statusFor(item) {
   if (item.status === "saving") return ["is-busy", t("batchSaving")];
@@ -51,7 +45,7 @@ export function renderBatchTabs({ onSelect, onToggle, onToggleAll }) {
     button.dataset.tip = item.failure ?? item.error ?? item.title;
     const [statusClass, statusText] = statusFor(item);
     button.innerHTML = `<span class="batch-tab-meta"></span><span class="batch-tab-title"></span><span class="batch-tab-status ${statusClass}"></span>`;
-    button.querySelector(".batch-tab-meta").textContent = `${shortDate(item.startMs)}${item.sport ? ` · ${sportLabel(item.sport)}` : ""}`;
+    button.querySelector(".batch-tab-meta").textContent = `${shortDateTime(item.startMs)}${item.sport ? ` · ${sportLabel(item.sport)}` : ""}`;
     button.querySelector(".batch-tab-title").textContent = item.title;
     button.querySelector(".batch-tab-status").textContent = statusText;
     button.addEventListener("click", () => onSelect(item));

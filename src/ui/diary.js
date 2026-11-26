@@ -5,7 +5,7 @@ import { addDays, calendarDays, dayKey, weekNumber, inPeriod, periodBuckets, per
 import { listEntries } from "../library.js";
 import { aerobicEffect, benefitGroup, benefitGroups, benefits, focusAdvice, focusTargets, primaryBenefit, trainingFocus, withCleanHeartRate } from "../fitness.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, formatDuration, locale, sportLabel, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { steadyGuide, trainingPlan, zoneGroups } from "./fitness.js";
 import { bodyHistory, bodyToday, enterBodyValue, settingsFor } from "./settings.js";
@@ -336,7 +336,6 @@ function pickedStart(range) {
 // Opens an activity in the comparison; set by the app, which owns the switching between views.
 let openActivity = () => {};
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 // Each kind keeps its place in the categorical palette.
 const kindColor = (kind) => `var(--compare-${workoutKinds.indexOf(kind) + 1})`;

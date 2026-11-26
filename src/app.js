@@ -20,6 +20,7 @@ import { setupExercises } from "./ui/recovery.js";
 import { setupRoutine } from "./ui/routine.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
 import {
+  locale,
   applyStaticTranslations, byId, displayNumber, elements, formatDuration, setNotice, sportLabel, state, t, timeRange, translateMessage, setZone, zone,
 } from "./ui/context.js";
 import { exportFit, saveFit, saveToLibrary } from "./ui/export.js";
@@ -501,10 +502,10 @@ function updateFileRows() {
   elements.fitName.textContent = state.fitFile?.name ?? t("dropFit");
   elements.fitName.classList.toggle("has-file", Boolean(state.fitFile));
   elements.kinomapDetail.textContent = state.kinomap
-    ? `${state.kinomap.records.length.toLocaleString(state.language === "en" ? "en-GB" : "cs-CZ")} ${t("records")} · ${sportLabel(state.kinomap.sport)} · ${state.kinomap.calories == null ? t("noPowerEstimate") : `${state.kinomap.calories} kcal`}`
+    ? `${state.kinomap.records.length.toLocaleString(locale())} ${t("records")} · ${sportLabel(state.kinomap.sport)} · ${state.kinomap.calories == null ? t("noPowerEstimate") : `${state.kinomap.calories} kcal`}`
     : "";
   elements.fitDetail.textContent = state.fit
-    ? [`${state.fit.records.length.toLocaleString(state.language === "en" ? "en-GB" : "cs-CZ")} ${t("records")}`, state.fit.sessions[0]?.sportProfileName]
+    ? [`${state.fit.records.length.toLocaleString(locale())} ${t("records")}`, state.fit.sessions[0]?.sportProfileName]
       .filter(Boolean).join(" · ")
     : "";
 }

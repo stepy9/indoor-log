@@ -51,7 +51,17 @@ export function setZone(value) {
   zone = value;
 }
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
+// The language's locale for every number and date the app writes.
+export const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
+
+// An activity's start as lists show it, 13. 3. 2026 19:43; a dash without one.
+export function shortDateTime(epochMs) {
+  if (!Number.isFinite(epochMs)) return "—";
+  return new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(epochMs));
+}
+
+// A day as tables and tooltips show it, 13. 3. 26.
+export const shortDay = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
 
 // Wall-clock time of day in the output time zone, e.g. 19:43:51.
 export function clockTime(epochMs) {
@@ -119,6 +129,5 @@ export function formatDuration(seconds) {
 }
 
 export function displayNumber(value, digits = 0) {
-  const locale = state.language === "en" ? "en-GB" : "cs-CZ";
-  return Number.isFinite(value) ? new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value) : "—";
+  return Number.isFinite(value) ? new Intl.NumberFormat(locale(), { maximumFractionDigits: digits }).format(value) : "—";
 }

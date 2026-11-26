@@ -9,7 +9,7 @@ import { figureMarkup } from "../figure-svg.js";
 import { videoButton } from "./video.js";
 import { primaryBenefit } from "../fitness.js";
 import { saveEntries } from "../library.js";
-import { byId, formatDuration, state, t } from "./context.js";
+import { byId, formatDuration, locale, state, t } from "./context.js";
 import { showToast } from "./toast.js";
 
 
@@ -51,7 +51,7 @@ export function dose(id, seconds = exercises[id].seconds, reps = null) {
 }
 
 // Minutes as the app's language writes them, a half as ",5" in Czech.
-export const minutesText = (seconds) => new Intl.NumberFormat(state.language === "en" ? "en-GB" : "cs-CZ", { maximumFractionDigits: 1 }).format(seconds / 60);
+export const minutesText = (seconds) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(seconds / 60);
 
 // A tag saying whether to hold still or to move, beside the name.
 export const nameLine = (id) => {
@@ -120,7 +120,7 @@ function speak(text, delay = 500) {
     const synth = window.speechSynthesis;
     if (!soundOn() || !synth || !text) return;
     synth.cancel();
-    const lang = state.language === "en" ? "en-GB" : "cs-CZ";
+    const lang = locale();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     const voice = synth.getVoices().find((item) => item.lang?.replace("_", "-") === lang) ?? synth.getVoices().find((item) => item.lang?.startsWith(lang.slice(0, 2)));

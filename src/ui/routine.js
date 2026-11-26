@@ -11,7 +11,7 @@ import { dose, figures, minutesText, nameLine, openExercises, playSteps, strengt
 import { videoButton } from "./video.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { listEntries, saveEntries } from "../library.js";
-import { byId, state, t, zone } from "./context.js";
+import { byId, locale, t, zone } from "./context.js";
 import { showToast } from "./toast.js";
 
 const button = (className, text, onClick, label = null) => {
@@ -31,7 +31,7 @@ export const routinePlan = () => savedDefaults().routinePlan ?? {};
 export const routineSaved = () => savedDefaults().routineSaved ?? [];
 export const stabilityLog = () => savedDefaults().stabilityLog ?? {};
 // A weekday's short name in the app's language, 0 Monday (1 January 2024 was one).
-const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(state.language === "en" ? "en-GB" : "cs-CZ", { weekday: form, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + weekday)));
+const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(locale(), { weekday: form, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + weekday)));
 // A set's short description: its name when it has one, else "Yin yoga 15 min".
 const setText = (set) => set.name ? `${set.name} · ${set.minutes} min` : t("routineWhat", { style: t(`routineStyle_${set.style}`), minutes: set.minutes });
 // mode: "auto" or "custom"; levels: each stabilization chain's level; ball: the pelvis's ball moves; weak, reps:

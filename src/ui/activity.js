@@ -12,7 +12,7 @@ import { scoreBadge } from "./diary.js";
 import { trainingPlan, zoneGroups } from "./fitness.js";
 import { partsText } from "./training.js";
 import { showToast } from "./toast.js";
-import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, formatDuration, locale, shortDay, sportLabel, state, t, zone } from "./context.js";
 import { kindLabel } from "./library.js";
 import { perKgText, settingsFor } from "./settings.js";
 import { sessionLines, stretchBlock } from "./recovery.js";
@@ -25,11 +25,9 @@ const view = { entry: null, entries: [], metric: "power" };
 let onCompare = () => {};
 let onEdit = () => {};
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const longDate = (ms) => new Intl.DateTimeFormat(locale(), {
   timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
 }).format(new Date(ms));
-const dayDate = (ms) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(ms));
 const unit = (value, suffix, digits = 0) => (Number.isFinite(value) ? `${displayNumber(value, digits)} ${suffix}` : null);
 const cadenceUnit = (sport) => (sport === "running" ? "spm" : "rpm");
 
@@ -416,7 +414,7 @@ function sameWorkout(entry) {
   const last = history.earlier[0];
   const signed = (value, digits, suffix) => (value == null ? "—" : `${value > 0 ? "+" : value < 0 ? "−" : "±"}${displayNumber(Math.abs(value), digits)}${suffix}`);
   const text = t(last.change.power != null ? "sameSummary" : "sameSummaryHeart", {
-    day: dayDate(last.entry.startMs), power: signed(last.change.power, 0, " W"), heart: signed(last.change.heartRate, 0, " bpm"), efficiency: signed(last.change.efficiency, 1, " %"),
+    day: shortDay(last.entry.startMs), power: signed(last.change.power, 0, " W"), heart: signed(last.change.heartRate, 0, " bpm"), efficiency: signed(last.change.efficiency, 1, " %"),
   });
   const card = element("section", "card");
   const link = element("button", "link-button", t("activityCompareSame"));

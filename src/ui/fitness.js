@@ -20,7 +20,7 @@ import { busiestBand, strokeBands, strokeDistance } from "../technique.js";
 import { hoverTip, infoHint } from "./info.js";
 import { renderLimited } from "./more.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, formatDuration, locale, sportLabel, state, t, zone } from "./context.js";
 
 // The Analysis tab: training load with fitness, fatigue and form, time in zones, the power curve and aerobic decoupling.
 
@@ -46,7 +46,6 @@ const view = {
 let openActivity = () => {};
 
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const dayText = (key, options = { day: "numeric", month: "numeric", year: "numeric" }) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 const ofSport = (entries) => (view.sport === "all" ? entries : entries.filter((entry) => entry.sport === view.sport));

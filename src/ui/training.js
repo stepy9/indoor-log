@@ -12,7 +12,7 @@ import { lastFtpTyped, planNotes, trainingPlan } from "./fitness.js";
 import { anyTraining, hasTraining, planLog, planStart, scoreFor, zoneTwoWatts } from "./score.js";
 import { addFtpRecord, currentFtp, dismiss, dismissed, openSettings, ownPlans, settingsFor } from "./settings.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
-import { byId, displayNumber, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, locale, sportLabel, t, zone } from "./context.js";
 import { hoverTip, infoHint } from "./info.js";
 import { excuses, excuseText, openExcuse, swappedWith, swaps } from "./excuse.js";
 import { kmByKindByWeek, longestByWeek, nextWeekPlan } from "../plan.js";
@@ -33,7 +33,6 @@ const view = {
 let openActivity = () => {};
 
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const format = (key, options) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", ...options }).format(new Date(noon(key)));
 
 // The sports with the Training section, the one picked first.

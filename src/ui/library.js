@@ -5,7 +5,7 @@ import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
 import { addEntries, backupText, deleteEntries, deleteEntry, entryFromFit, entryFromWorkout, findWorkout, listEntries, parseBackup, saveEntries, backupDue, sameWorkout } from "../library.js";
 import { showToast } from "./toast.js";
-import { byId, displayNumber, formatDuration, setNotice, sportLabel, state, t, translateMessage, zone } from "./context.js";
+import { byId, displayNumber, formatDuration, setNotice, shortDateTime, sportLabel, t, translateMessage, zone } from "./context.js";
 import { restoreSettings, saveDefaults, savedDefaults, settingsSnapshot } from "./preferences.js";
 import { renderLimited } from "./more.js";
 import { cloudConnected, onCloudStatus } from "./cloud.js";
@@ -85,11 +85,6 @@ function iconButton(label, paths) {
   return button;
 }
 
-function shortDate(epochMs) {
-  return new Intl.DateTimeFormat(state.language === "en" ? "en-GB" : "cs-CZ", {
-    timeZone: zone, day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(new Date(epochMs));
-}
 
 
 // The library shows one sport at a time; the tab opened last is kept for the next visit.
@@ -138,7 +133,7 @@ function renderRows() {
   renderLimited(byId("libraryRows"), entries.map((entry) => {
     const row = document.createElement("tr");
     const cells = [
-      shortDate(entry.startMs),
+      shortDateTime(entry.startMs),
       "",
       formatDuration(entry.summary.timerSeconds),
       `${displayNumber(entry.summary.distance / 1000, 2)} km`,

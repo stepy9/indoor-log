@@ -1,4 +1,4 @@
-import { state, t, zone } from "./context.js";
+import { locale, t, zone } from "./context.js";
 import { monthLayout, todayKey } from "../dates.js";
 
 // A small month calendar of the app's own, as the browser's follows its language and starts weeks on Sunday:
@@ -7,7 +7,6 @@ import { monthLayout, todayKey } from "../dates.js";
 
 let open = null;
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
 const monthDayKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
 function close() {

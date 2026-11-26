@@ -8,7 +8,7 @@ import { percentSteps, percentTable, saveTrainers, trainers } from "./trainers.j
 
 // Trainers whose percentage conversion is unfolded in the settings, kept across re-renders.
 const openConversions = new Set();
-import { byId, displayNumber, sportLabel, state as appState, t, zone } from "./context.js";
+import { byId, displayNumber, locale, shortDay, sportLabel, state as appState, t, zone } from "./context.js";
 import { addDays, dayKey } from "../diary.js";
 import { goalFor, withGoal } from "../year-goal.js";
 import { changeDay, fromGoalHistory, fromRecords, withRecords, setValue, trackedGeneral, trackedSport, valueOn } from "../history.js";
@@ -530,7 +530,7 @@ async function fitCoverageInto(container) {
   if (missing.length) {
     const details = node("details", { class: "settings-cloud-missing" });
     const list = node("ul");
-    for (const entry of missing) list.append(node("li", {}, `${new Date(entry.startMs).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ")} · ${entry.name}`));
+    for (const entry of missing) list.append(node("li", {}, `${shortDay(entry.startMs)} · ${entry.name}`));
     details.append(node("summary", {}, t("cloudFitMissing", { count: missing.length })), list);
     const rebuild = node("button", { type: "button", class: "outline-button" }, t("cloudFitRebuild", { count: missing.length }));
     const progress = node("span", { class: "field-note" });
@@ -559,7 +559,7 @@ function cloudBlock() {
     const line = !connected ? t("cloudOff")
       : state === "syncing" ? t("cloudSyncing")
       : state === "error" ? t("cloudError", { message: error })
-      : at ? t("cloudSynced", { when: new Date(at).toLocaleString(appState.language === "en" ? "en-GB" : "cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) })
+      : at ? t("cloudSynced", { when: new Date(at).toLocaleString(locale(), { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) })
       : t("cloudConnected");
     const actions = node("div", { class: "settings-cloud-actions" });
     let extra = [];
@@ -788,7 +788,7 @@ function daysRow(key, label, picked, onChange) {
   const chosen = new Set(picked ?? []);
   const row = node("div", { class: "segmented settings-days", role: "group", "aria-label": label });
   for (let day = 0; day < 7; day += 1) {
-    const name = new Date(Date.UTC(2024, 0, 1 + day)).toLocaleDateString(appState.language === "en" ? "en-GB" : "cs-CZ", { weekday: "short", timeZone: "UTC" });
+    const name = new Date(Date.UTC(2024, 0, 1 + day)).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
     const button = node("button", { type: "button", "aria-pressed": String(chosen.has(day)), "data-key": `${key}-${day}` }, name);
     button.addEventListener("click", () => {
       if (chosen.has(day)) chosen.delete(day);

@@ -6,7 +6,7 @@ import { bestAverage, bestTime, downsample, effortDistances, groupTrend, inLengt
 import { weekNumber } from "../diary.js";
 import { sameIntervals, sameName, sameWorkoutHistory } from "../same-workout.js";
 import { listEntries } from "../library.js";
-import { byId, displayNumber, formatDuration, sportLabel, state, t, zone } from "./context.js";
+import { byId, displayNumber, formatDuration, locale, shortDateTime, shortDay, sportLabel, t, zone } from "./context.js";
 import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
@@ -57,10 +57,6 @@ const view = {
 
 let previousView = "setupView";
 
-const locale = () => (state.language === "en" ? "en-GB" : "cs-CZ");
-const shortDate = (epochMs) => new Intl.DateTimeFormat(locale(), {
-  timeZone: zone, day: "numeric", month: "numeric", year: "2-digit", hour: "2-digit", minute: "2-digit",
-}).format(new Date(epochMs));
 
 const selected = () => view.entries.filter((entry) => view.slots.has(entry.id));
 
@@ -181,7 +177,7 @@ function renderList() {
     meta.append(
       Object.assign(document.createElement("span"), {
         // Each value keeps together, so a narrow row wraps only between them.
-        textContent: [shortDate(entry.startMs), formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`]
+        textContent: [shortDateTime(entry.startMs), formatDuration(entry.summary.timerSeconds), `${displayNumber(entry.summary.distance / 1000, 2)} km`]
           .map((part) => part.replaceAll(" ", " ")).join(" · "),
       }),
       kindSelect(entry, render, "kind-tag"),
@@ -438,7 +434,7 @@ function renderHover() {
       const item = document.createElement("span");
       const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
       swatch.style.background = `var(--compare-${row.line.slot})`;
-      const label = stacked ? (single ? metricLabel(row.panel.metric, view.sport) : `${shortDate(row.line.entry.startMs)} · ${metricLabel(row.panel.metric, view.sport)}`) : shortDate(row.line.entry.startMs);
+      const label = stacked ? (single ? metricLabel(row.panel.metric, view.sport) : `${shortDateTime(row.line.entry.startMs)} · ${metricLabel(row.panel.metric, view.sport)}`) : shortDateTime(row.line.entry.startMs);
       item.append(swatch, `${label}  ${metricText(row.value, row.panel.metric, view.sport)}`);
       return item;
     }),
@@ -457,8 +453,8 @@ function renderTable(id, rows, picked) {
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
     swatch.style.background = `var(--compare-${view.slots.get(entry.id)})`;
     // The date alone keeps six columns narrow; the time and name are in the tooltip.
-    th.append(swatch, dayDate(entry.startMs));
-    th.dataset.tip = `${entry.name} · ${shortDate(entry.startMs)}`;
+    th.append(swatch, shortDay(entry.startMs));
+    th.dataset.tip = `${entry.name} · ${shortDateTime(entry.startMs)}`;
     return th;
   }));
   // A row none of the activities has a value for stays out.
@@ -721,7 +717,6 @@ function trendText(value, metric, sport) {
   return `${displayNumber(value)} ${metric === "avgHeartRate" ? "bpm" : metric === "calories" ? "kcal" : "W"}`;
 }
 
-const dayDate = (epochMs) => new Intl.DateTimeFormat(locale(), { timeZone: zone, day: "numeric", month: "numeric", year: "2-digit" }).format(new Date(epochMs));
 
 // Calendar ticks between two instants: the finest of every week, every one, two, three or six months,
 // or every one, two or five years that gives no more than the asked count.
@@ -876,7 +871,7 @@ function renderTrendHover() {
   layout.guide.replaceChildren(svgNode("circle", { class: "trend-ring", cx: x, cy: layout.yFor(point.y), r: 8 }));
   const lines = point.entries
     ? [groupTitle(point.from), t("trendSessions", { count: point.entries.length })]
-    : [shortDate(point.entry.startMs), point.entry.name];
+    : [shortDateTime(point.entry.startMs), point.entry.name];
   tooltip.replaceChildren(
     Object.assign(document.createElement("strong"), { textContent: trendText(point.y, view.trendMetric, view.sport) }),
     ...lines.map((text) => Object.assign(document.createElement("span"), { textContent: text })),
@@ -918,7 +913,7 @@ function renderTrendTable() {
     const shown = `${trendText(value, metric, sport)}${point.record ? " ★" : ""}`;
     const cells = grouped
       ? [groupTitle(point.from), String(entries.length), formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change]
-      : [shortDate(point.entry.startMs), point.entry.name, formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change];
+      : [shortDateTime(point.entry.startMs), point.entry.name, formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change];
     row.append(...cells.map((text, index) => Object.assign(document.createElement("td"), { textContent: text, className: index === 5 ? tone : index === 4 && point.record ? "is-record" : "" })));
     if (point.record) row.cells[4].dataset.tip = t("trendRecord");
     if (!grouped) {
