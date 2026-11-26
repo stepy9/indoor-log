@@ -381,8 +381,8 @@ function wirePlayer() {
   const showBell = () => {
     bell.setAttribute("aria-pressed", String(soundOn()));
     bell.textContent = soundOn() ? "🔔" : "🔕";
-    bell.title = t(soundOn() ? "playerSoundOn" : "playerSoundOff");
-    bell.setAttribute("aria-label", bell.title);
+    bell.dataset.tip = t(soundOn() ? "playerSoundOn" : "playerSoundOff");
+    bell.setAttribute("aria-label", bell.dataset.tip);
   };
   showBell();
   bell.addEventListener("click", () => {

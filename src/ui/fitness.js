@@ -549,7 +549,7 @@ function zoneGroup(entries, settings, by, sport, previous) {
     const low = valueAt(bounds[index]);
     const high = bounds[index + 1] ? valueAt(bounds[index + 1]) : null;
     const exact = low == null ? "" : high == null ? `> ${Math.round(low)} ${unit}` : index === 0 ? `< ${Math.round(high)} ${unit}` : `${Math.round(low)}–${Math.round(high) - 1} ${unit}`;
-    const row = node("div", { class: `fitness-zone${before ? " has-change" : ""}`, ...(exact ? { title: `Z${index + 1}: ${exact}` } : {}) });
+    const row = node("div", { class: `fitness-zone${before ? " has-change" : ""}`, ...(exact ? { "data-tip": `Z${index + 1}: ${exact}` } : {}) });
     const bar = node("div", { class: "fitness-zone-track" });
     const fill = node("div", { class: "fitness-zone-fill" });
     fill.style.width = `${(seconds / highest) * 100}%`;
@@ -616,8 +616,7 @@ function renderCurve(current, previous, earlier, settings) {
   for (const point of curve) {
     if (point.value == null) continue;
     const dot = node("circle", { cx: xFor(point.duration), cy: yFor(point.value), r: point.record ? 6 : 4.5, class: `fitness-curve-dot${point.record ? " is-record" : ""}` });
-    const title = node("title", {}, `${durationText(point.duration)}: ${point.value} W${point.record ? ` · ${t("fitnessRecord")}` : ""} · ${point.entry.name ?? ""} ${dayText(dayKey(point.entry.startMs, zone))}`);
-    dot.append(title);
+    dot.dataset.tip = `${durationText(point.duration)}: ${point.value} W${point.record ? ` · ${t("fitnessRecord")}` : ""} · ${point.entry.name ?? ""} ${dayText(dayKey(point.entry.startMs, zone))}`;
     dot.addEventListener("click", () => openActivity(point.entry));
     children.push(dot);
   }
@@ -695,7 +694,7 @@ function renderFtpChart(settings) {
     for (const effort of line.efforts) {
       // A hollow ring: an effort to compare with, not a value of the line.
       const dot = node("circle", { cx: xFor(effort.ms), cy: yFor(effort.ftp), r: 3.5, class: "fitness-ftp-dot", style: `stroke: ${line.color}` });
-      dot.append(node("title", {}, `${dayText(dayKey(effort.ms, zone))} · ${effort.entry.name ?? ""}: 95 % ${t("fitnessBest20")} = ${Math.round(effort.ftp)} W`));
+      dot.dataset.tip = `${dayText(dayKey(effort.ms, zone))} · ${effort.entry.name ?? ""}: 95 % ${t("fitnessBest20")} = ${Math.round(effort.ftp)} W`;
       dot.addEventListener("click", () => openActivity(effort.entry));
       children.push(dot);
     }
@@ -704,7 +703,7 @@ function renderFtpChart(settings) {
       const x = xFor(change.ms);
       const y = yFor(change.ftp);
       const mark = node("path", { d: `M${x.toFixed(1)},${(y - 5).toFixed(1)}l5,5l-5,5l-5,-5z`, class: `fitness-ftp-change${change.entry ? " is-link" : ""}`, style: `fill: ${line.color}` });
-      mark.append(node("title", {}, `${dayText(dayKey(change.ms, zone))}: ${ftpChangeText(change)}`));
+      mark.dataset.tip = `${dayText(dayKey(change.ms, zone))}: ${ftpChangeText(change)}`;
       if (change.entry) mark.addEventListener("click", () => openActivity(change.entry));
       children.push(mark);
     }
@@ -1246,7 +1245,7 @@ function trendChart(chart, points, label) {
   }
   for (const point of points) {
     const dot = node("circle", { cx: xFor(point.ms), cy: yFor(point.value), r: 4, class: "fitness-curve-dot" });
-    dot.append(node("title", {}, label(point, digits)));
+    dot.dataset.tip = label(point, digits);
     dot.addEventListener("click", () => openActivity(point.entry));
     children.push(dot);
   }

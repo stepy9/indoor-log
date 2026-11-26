@@ -156,7 +156,7 @@ function open({ name, steps, note, taken }, onSave) {
         item.intensity = value;
         row.className = `is-${value}`;
       });
-      const remove = el("button", { type: "button", class: "link-button", title: t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` }, "×");
+      const remove = el("button", { type: "button", class: "link-button", "data-tip": t("removeSegment"), "aria-label": `${t("removeSegment")} ${index + 1}` }, "×");
       remove.addEventListener("click", () => {
         draft.splice(index, 1);
         render();
@@ -166,7 +166,7 @@ function open({ name, steps, note, taken }, onSave) {
       const moves = el("span", { class: "step-moves" });
       for (const [by, path, key] of [[-1, "M6 15l6-6 6 6", "workoutStepUp"], [1, "M6 9l6 6 6-6", "workoutStepDown"]]) {
         const to = index + by;
-        const button = el("button", { type: "button", class: "row-icon-button", title: t(key), "aria-label": `${t(key)} ${index + 1}` });
+        const button = el("button", { type: "button", class: "row-icon-button", "data-tip": t(key), "aria-label": `${t(key)} ${index + 1}` });
         button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
         button.disabled = to < 0 || to >= draft.length;
         button.addEventListener("click", () => {
@@ -254,7 +254,7 @@ export function workoutList(names, plans, notes, write) {
         if (result.note) nextNotes[result.name] = result.note;
         save(names.map((other) => (other === name ? result.name : other)), nextPlans, nextNotes);
       }));
-      const remove = el("button", { type: "button", class: "row-icon-button", title: t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` }, "×");
+      const remove = el("button", { type: "button", class: "row-icon-button", "data-tip": t("workoutRemove"), "aria-label": `${t("workoutRemove")} ${name}` }, "×");
       remove.addEventListener("click", () => {
         if (!confirm(t("workoutRemoveConfirm", { name }))) return;
         const nextPlans = { ...plans };

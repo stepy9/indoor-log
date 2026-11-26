@@ -1,3 +1,4 @@
+import { tipOn } from "./info.js";
 import { buildWorkout, decodeGarminFit, parseKinomap } from "../core.js";
 import { titleFromKinomapFileName } from "../files.js";
 import { detectedKind, workoutKind, workoutKinds } from "../analysis.js";
@@ -77,7 +78,7 @@ export function kindSelect(entry, onChange, className = "kind-select") {
 
 // A row's action as an icon; its name is the tooltip and what a screen reader says.
 function iconButton(label, paths) {
-  const button = Object.assign(document.createElement("button"), { type: "button", className: "row-icon-button", title: label });
+  const button = tipOn(Object.assign(document.createElement("button"), { type: "button", className: "row-icon-button" }), label);
   button.setAttribute("aria-label", label);
   button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
   return button;
@@ -144,11 +145,11 @@ function renderRows() {
     row.append(...cells.map((text) => Object.assign(document.createElement("td"), { textContent: text })));
     // The name without the "Kinomap - " every conversion starts with; all of it on hovering.
     row.children[1].textContent = entry.name.replace(/^Kinomap - /, "");
-    row.children[1].title = entry.name;
+    row.children[1].dataset.tip = entry.name;
     row.children[1].className = "library-name";
     // Where it came from, on hovering the date rather than in a column of its own: it is the same for most.
     // A conversion saved as a FIT is the same file an import of that FIT would give.
-    row.children[0].title = t(`librarySource_${entry.exported ? "export" : entry.source}`);
+    row.children[0].dataset.tip = t(`librarySource_${entry.exported ? "export" : entry.source}`);
     // The type reads only: the pencil opens the activity to change it, its trainer and resistance among the rest.
     row.children[1].after(Object.assign(document.createElement("td"), { textContent: kindLabel(workoutKind(entry), entry.sport) }));
     const remove = iconButton(t("libraryDelete"), '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>');
@@ -233,7 +234,7 @@ export async function updateBackupReminder() {
   const due = await backupIsDue();
   for (const button of [byId("topbarMoreButton"), byId("settingsButton")]) {
     button.classList.toggle("is-due", due);
-    button.title = due ? t("backupDueHint") : "";
+    button.dataset.tip = due ? t("backupDueHint") : "";
   }
   window.dispatchEvent(new Event("backup-reminder"));
 }

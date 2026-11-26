@@ -236,7 +236,7 @@ function updateSaveButton() {
   const wrong = byId("settingsDialog").querySelector('input[aria-invalid="true"]');
   button.disabled = !state.dirty || Boolean(wrong);
   byId("settingsUnsaved").hidden = !state.dirty;
-  button.title = wrong ? t("fieldsInvalid") : "";
+  button.dataset.tip = wrong ? t("fieldsInvalid") : "";
 }
 
 function save() {
@@ -268,7 +268,7 @@ function numberField(label, value, placeholder, apply, { min, max } = {}) {
 function dateField(key, value, onChange) {
   const box = node("span", { class: "date-field" });
   const text = node("input", { type: "text", inputmode: "numeric", "data-key": key, "aria-label": t("settingsFtpFrom") });
-  const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), title: t("settingsPickDate") });
+  const button = node("button", { type: "button", class: "date-field-button", "aria-label": t("settingsPickDate"), "data-tip": t("settingsPickDate") });
   button.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/></svg>`;
   const shown = (key) => formatDay(key, appState.language);
   text.value = shown(value);
@@ -572,7 +572,7 @@ function cloudBlock() {
       const now = node("button", { type: "button", class: "outline-button" }, t("cloudSyncNow"));
       // With unsaved edits it waits: they must not go up, nor what comes in land under them.
       now.disabled = state.dirty;
-      if (state.dirty) now.title = t("cloudSyncAfterSave");
+      if (state.dirty) now.dataset.tip = t("cloudSyncAfterSave");
       now.addEventListener("click", () => syncNow());
       const off = node("button", { type: "button", class: "link-button" }, t("cloudDisconnect"));
       off.addEventListener("click", () => {
@@ -638,7 +638,7 @@ function cloudBlock() {
       for (const [label, set, count] of items) {
         const item = node("li", { class: set ? "is-set" : "" });
         item.append(node("span", { class: "settings-cloud-tick", "aria-hidden": "true" }, set ? "✓" : "–"), document.createTextNode(count != null ? `${label} (${count})` : label));
-        item.title = set ? t("cloudItemSynced") : t("cloudItemNotSet");
+        item.dataset.tip = set ? t("cloudItemSynced") : t("cloudItemNotSet");
         list.append(item);
       }
       statusGroup.append(list);

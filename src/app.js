@@ -14,7 +14,7 @@ import { detectedKind } from "./analysis.js";
 import { entryFromWorkout, workoutFromEntry } from "./library.js";
 import { leaveConverter, openConverter, openInCompare, rerenderCompare, setupCompare } from "./ui/compare.js";
 import { openActivity, setupActivity } from "./ui/activity.js";
-import { setupInfoNotes } from "./ui/info.js";
+import { setupInfoNotes, setupTips } from "./ui/info.js";
 import { setupExercises } from "./ui/recovery.js";
 import { setupRoutine } from "./ui/routine.js";
 import { intensitySelectElement, openIntervalsDialog } from "./ui/intervals.js";
@@ -214,8 +214,8 @@ function renderFeelFaces() {
   for (const button of faces.children) {
     const checked = button.dataset.value === value;
     button.setAttribute("aria-checked", String(checked));
-    button.title = t(`feel${button.dataset.value}`);
-    button.setAttribute("aria-label", button.title);
+    button.dataset.tip = t(`feel${button.dataset.value}`);
+    button.setAttribute("aria-label", button.dataset.tip);
   }
   const label = byId("feelLabel");
   label.textContent = value === "" ? t("feelNotSet") : t(`feel${value}`);
@@ -1158,6 +1158,7 @@ const appVersion = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
 for (const element of document.querySelectorAll(".app-version")) element.textContent = appVersion ? `v ${appVersion}` : "";
 setupCloud();
 setupInfoNotes();
+setupTips();
 const observer = new ResizeObserver(drawChart);
 observer.observe(elements.chart);
 setTheme(savedTheme(), false);

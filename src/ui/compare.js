@@ -9,7 +9,7 @@ import { kindLabel, kindSelect, openLibrary } from "./library.js";
 import { rerenderDiary, setupDiary, showDiary } from "./diary.js";
 import { saveDefaults, savedDefaults } from "./preferences.js";
 import { renderLimited } from "./more.js";
-import { infoHint } from "./info.js";
+import { infoHint, tipOn } from "./info.js";
 import { benefitText, openActivity } from "./activity.js";
 import { perKgText, settingsFor, weightOnDay } from "./settings.js";
 import { aerobicEffect, forSport, primaryBenefit, withCleanHeartRate, workKilojoules } from "../fitness.js";
@@ -179,7 +179,7 @@ function renderList() {
     text.className = "compare-item-text";
     text.append(
       // Every converted name starts with "Kinomap - "; the list leaves it out, the tooltip keeps it.
-      Object.assign(document.createElement("strong"), { textContent: entry.name.replace(/^Kinomap - /, ""), title: entry.name }),
+      tipOn(Object.assign(document.createElement("strong"), { textContent: entry.name.replace(/^Kinomap - /, "") }), entry.name),
     );
     // Under the name: date, time and distance, with the workout type at the end of the line.
     const meta = Object.assign(document.createElement("span"), { className: "compare-item-meta" });
@@ -300,8 +300,8 @@ function renderChart() {
   if (zoom) {
     const step = axisText((zoom[1] - zoom[0]) / 2);
     for (const [id, key] of [["compareZoomLeft", "zoomLeftBy"], ["compareZoomRight", "zoomRightBy"]]) {
-      byId(id).title = t(key, { step });
-      byId(id).setAttribute("aria-label", byId(id).title);
+      byId(id).dataset.tip = t(key, { step });
+      byId(id).setAttribute("aria-label", byId(id).dataset.tip);
     }
   }
   if (!panels.length) {
@@ -463,7 +463,7 @@ function renderTable(id, rows, picked) {
     swatch.style.background = `var(--compare-${view.slots.get(entry.id)})`;
     // The date alone keeps six columns narrow; the time and name are in the tooltip.
     th.append(swatch, dayDate(entry.startMs));
-    th.title = `${entry.name} · ${shortDate(entry.startMs)}`;
+    th.dataset.tip = `${entry.name} · ${shortDate(entry.startMs)}`;
     return th;
   }));
   // A row none of the activities has a value for stays out.
@@ -655,7 +655,7 @@ function renderSame(all) {
     const when = document.createElement("td");
     if (isCurrent) when.textContent = `${day(item.entry.startMs)} (${t("sameThis")})`;
     else {
-      const link = Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: day(item.entry.startMs), title: t("sameAdd") });
+      const link = tipOn(Object.assign(document.createElement("button"), { type: "button", className: "link-button", textContent: day(item.entry.startMs) }), t("sameAdd"));
       link.addEventListener("click", () => toggle(item.entry, true));
       when.append(link);
     }
@@ -925,7 +925,7 @@ function renderTrendTable() {
       ? [groupTitle(point.from), String(entries.length), formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change]
       : [shortDate(point.entry.startMs), point.entry.name, formatDuration(seconds), `${displayNumber(meters / 1000, 2)} km`, shown, change];
     row.append(...cells.map((text, index) => Object.assign(document.createElement("td"), { textContent: text, className: index === 5 ? tone : index === 4 && point.record ? "is-record" : "" })));
-    if (point.record) row.cells[4].title = t("trendRecord");
+    if (point.record) row.cells[4].dataset.tip = t("trendRecord");
     if (!grouped) {
       row.className = "is-link";
       row.addEventListener("click", () => openActivity(point.entry));

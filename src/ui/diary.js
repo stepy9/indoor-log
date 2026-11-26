@@ -12,7 +12,7 @@ import { shortSleepHours, sleepParts } from "../sleep.js";
 import { checkNumber, markField } from "./validate.js";
 import { kindsOfWeek, kmByKindByWeek, weekKmByKind } from "../plan.js";
 import { planLog, planStart } from "./score.js";
-import { hoverTip, infoHint } from "./info.js";
+import { hoverTip, infoHint, tipOn } from "./info.js";
 import { sessionTip } from "./recovery.js";
 import { breathTip, routineTip } from "./routine.js";
 import { anyTraining, hasTraining, scoreFor } from "./score.js";
@@ -764,7 +764,7 @@ function activityButton(entry, settings) {
   // With several sports shown, each activity also names its sport by an icon.
   if (mixedSports()) name.prepend(Object.assign(document.createElement("span"), { className: "diary-sport", textContent: `${sportIcon[entry.sport]} `, ariaHidden: "true" }));
   // Stretched after it, through the set in the activity's detail.
-  if (entry.stretched) name.append(Object.assign(document.createElement("span"), { className: "diary-stretched", textContent: " ✓", title: t("recoveryStretched") }));
+  if (entry.stretched) name.append(tipOn(Object.assign(document.createElement("span"), { className: "diary-stretched", textContent: " ✓" }), t("recoveryStretched")));
   button.append(
     name,
     Object.assign(document.createElement("span"), { className: "diary-activity-meta", textContent: `${km(entry.summary.distance ?? 0, 2)} · ${formatDuration(entry.summary.timerSeconds)}` }),
@@ -852,7 +852,7 @@ function renderCalendar(range, entries) {
   // Each row opens with its week number, which opens that week.
   const weekCell = (day) => {
     const button = Object.assign(document.createElement("button"), { type: "button", className: "diary-week-number", textContent: String(weekNumber(day)) });
-    button.title = t("diaryOpenWeek", { week: weekNumber(day) });
+    button.dataset.tip = t("diaryOpenWeek", { week: weekNumber(day) });
     button.setAttribute("aria-pressed", String(view.period === "week"));
     button.addEventListener("click", () => {
       view.period = "week";
@@ -875,7 +875,7 @@ function renderLegend(entries) {
   byId("diaryLegend").replaceChildren(...groups.map(({ key, label, color }) => {
     const item = Object.assign(document.createElement("button"), { type: "button", className: "diary-legend-item" });
     item.setAttribute("aria-pressed", String(!view.hidden.has(key)));
-    item.title = t("diaryLegendToggle");
+    item.dataset.tip = t("diaryLegendToggle");
     const swatch = Object.assign(document.createElement("i"), { className: "compare-swatch" });
     swatch.style.background = color;
     item.append(swatch, label);
@@ -911,7 +911,7 @@ function renderFocus(current, previous) {
     fill.style.width = `${now}%`;
     // The range the share should fall in, dashed over the bar.
     const [low, high] = focusTargets[group];
-    const target = Object.assign(document.createElement("div"), { className: "diary-focus-target", title: t("diaryFocusTarget", { low, high }) });
+    const target = tipOn(Object.assign(document.createElement("div"), { className: "diary-focus-target" }), t("diaryFocusTarget", { low, high }));
     target.style.left = `${low}%`;
     target.style.width = `${high - low}%`;
     track.append(fill, target);

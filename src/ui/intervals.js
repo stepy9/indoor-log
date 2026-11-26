@@ -92,7 +92,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
   const updateSave = () => {
     const button = byId("intervalsSave");
     button.disabled = Boolean(wrongField());
-    button.title = button.disabled ? t("fieldsInvalid") : "";
+    button.dataset.tip = button.disabled ? t("fieldsInvalid") : "";
   };
   if (dialog._fieldCheck) dialog.removeEventListener("field-check", dialog._fieldCheck);
   dialog._fieldCheck = updateSave;
@@ -157,7 +157,7 @@ export function openIntervalsDialog(workout, segments, onSave, options = {}) {
       remove.type = "button";
       remove.className = "link-button";
       remove.textContent = "×";
-      remove.title = t("removeSegment");
+      remove.dataset.tip = t("removeSegment");
       remove.setAttribute("aria-label", `${t("removeSegment")} ${index + 1}`);
       remove.disabled = draft.length === 1;
       remove.addEventListener("click", () => {

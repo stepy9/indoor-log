@@ -48,7 +48,7 @@ export function renderBatchTabs({ onSelect, onToggle, onToggleAll }) {
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", String(item.id === batch.activeId));
     button.disabled = Boolean(item.error) || batch.busy;
-    button.title = item.failure ?? item.error ?? item.title;
+    button.dataset.tip = item.failure ?? item.error ?? item.title;
     const [statusClass, statusText] = statusFor(item);
     button.innerHTML = `<span class="batch-tab-meta"></span><span class="batch-tab-title"></span><span class="batch-tab-status ${statusClass}"></span>`;
     button.querySelector(".batch-tab-meta").textContent = `${shortDate(item.startMs)}${item.sport ? ` · ${sportLabel(item.sport)}` : ""}`;

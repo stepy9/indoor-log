@@ -38,6 +38,52 @@ export function hoverTip(element, text) {
   return element;
 }
 
+// Marks element for the shared tooltip below, as hoverTip does with a box of its own; returns it for chaining.
+export function tipOn(element, text) {
+  if (text) element.dataset.tip = text;
+  else delete element.dataset.tip;
+  return element;
+}
+
+// The same tooltip for any element marked data-tip, where a child box would not do (a button whose text a
+// translation rewrites, a disabled one, a table cell): one box shown under the element, or above it near the
+// bottom, kept on screen and inside an open dialog, which would cover one outside it.
+export function setupTips() {
+  if (!matchMedia("(hover: hover)").matches) return;
+  const box = Object.assign(document.createElement("div"), { className: "tile-info-text app-tip" });
+  box.setAttribute("role", "tooltip");
+  let current = null;
+  const hide = () => {
+    current = null;
+    box.remove();
+  };
+  const show = (element) => {
+    const text = element.dataset.tip;
+    if (!text) return hide();
+    current = element;
+    box.textContent = text;
+    (element.closest("dialog[open]") ?? document.body).append(box);
+    const target = element.getBoundingClientRect();
+    const tip = box.getBoundingClientRect();
+    const left = Math.min(Math.max(8, target.left + target.width / 2 - tip.width / 2), innerWidth - tip.width - 8);
+    const below = target.bottom + 6;
+    box.style.left = `${left}px`;
+    box.style.top = `${below + tip.height > innerHeight - 8 ? target.top - 6 - tip.height : below}px`;
+  };
+  document.addEventListener("mouseover", (event) => {
+    const element = event.target.closest?.("[data-tip]");
+    if (element === current) return;
+    if (element) show(element);
+    else if (current) hide();
+  });
+  document.addEventListener("focusin", (event) => {
+    if (event.target.matches?.("[data-tip]:focus-visible")) show(event.target);
+  });
+  document.addEventListener("focusout", hide);
+  document.addEventListener("pointerdown", hide);
+  addEventListener("scroll", hide, true);
+}
+
 // An ⓘ whose tooltip, opened by hover or a tap, lays out text as renderInfo does; set() changes the text later,
 // an empty text hiding the ⓘ.
 export function infoHint(text = "", tones = []) {

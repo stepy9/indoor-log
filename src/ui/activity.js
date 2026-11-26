@@ -354,7 +354,7 @@ function bestEfforts(entry) {
     const value = el("span", "diary-tile-value", item.value);
     if (item.mark) {
       value.append(el("span", "activity-record", item.mark === "record" ? " ★" : " ☆"));
-      tile.title = t(item.mark === "record" ? "activityRecord" : "activityRecent");
+      tile.dataset.tip = t(item.mark === "record" ? "activityRecord" : "activityRecent");
     }
     tile.append(el("span", "diary-tile-label", item.label), value);
     return tile;
@@ -533,7 +533,7 @@ function renderSessions(entry, settings) {
         if (button) {
           button.className = "activity-chip is-action";
           button.textContent = `▶ ${t("exercisesStretch")} · ${plan.minutes} min`;
-          button.title = plan.exercises.map((id) => t(`recovery_${id}`)).join(", ");
+          button.dataset.tip = plan.exercises.map((id) => t(`recovery_${id}`)).join(", ");
           box.append(button);
         }
       } catch {}
