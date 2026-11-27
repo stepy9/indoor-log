@@ -216,7 +216,7 @@ function drawnParts(pose, view, strength) {
 // for a view from above, where the floor is all round it.
 function shadow(pose) {
   if (pose.bands || !(pose.legs || pose.body)) return null;
-  const all = pose.body ? Object.values(pose.body) : [...pose.legs.flat(), ...(pose.arms ?? []).flat(), ...(pose.feet ?? []).filter(Boolean), ...(pose.trunk ?? [])];
+  const all = pose.body ? Object.values(pose.body).filter(Array.isArray) : [...pose.legs.flat(), ...(pose.arms ?? []).flat(), ...(pose.feet ?? []).filter(Boolean), ...(pose.trunk ?? [])];
   const floor = Math.max(...all.map(([, y]) => y));
   const near = all.filter(([, y]) => y >= floor - 8).map(([x]) => x);
   const [left, right] = [Math.min(...near), Math.max(...near)];

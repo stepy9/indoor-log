@@ -153,7 +153,7 @@ test("figureMarkup animates a view's poses, ghosts a move's start and draws far 
   const held = figureMarkup(hip, { hold: true });
   assert.ok(held.includes("<animate"));
   assert.ok(!held.includes('class="ghost"'));
-  assert.ok(held.indexOf("limb leg far") < held.indexOf('class="trunk"'));
+  assert.ok(held.indexOf("body-part right far") < held.indexOf('class="torso chest"'));
   assert.ok(held.includes('class="mat pad"'));
   const [arms] = exerciseViews("armSwings");
   const moving = figureMarkup(arms);

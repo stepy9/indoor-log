@@ -6,6 +6,7 @@
 import { dayMs, mondayOf, noon } from "./dates.js";
 import { routineExercises } from "./routine-exercises.js";
 import { breathPhases } from "./breathing.js";
+import { bodyFromLines } from "./figure-body.js";
 
 // A pose of the side-view figure in a 220 × 170 box, the mat's top at y 150: the trunk from the hip through a
 // control point to the shoulder, the neck's end and the head's centre, arms and legs as joint lists from the
@@ -293,6 +294,16 @@ export const exercises = {
 // The breath with each move (breathing.js): its phases for the figure, and a spoken cue of its own.
 for (const [id, phases] of Object.entries(breathPhases)) exercises[id] = { ...exercises[id], breathing: phases, breath: true };
 
+// The exercises whose line figures are drawn as a body (figure-body.js), seen from the side in one plane; the others
+// keep their lines until they are converted.
+const asBody = new Set([
+  "squat", "lunge", "bridge", "shoulderBridge", "hipHinge", "plank", "pushUp", "calf", "hamstring", "kneesToChest",
+  "childPose", "catCow", "downDog", "sphinx", "stabFront1", "stabFront2", "stabFront3", "stabFront4", "stabBack1",
+  "stabBack2", "stabBack3", "stabBack4", "ballLower", "ballUpper", "ballBoth", "hundred", "rollUp", "teaser",
+  "spineStretch", "toeSquat", "yinSquat", "bosuSquat", "bosuLunge", "bosuPlank", "inchworm", "legSwings", "armSwings",
+  "reverseTable", "caterpillar", "hipFlexor", "kneelingQuad", "quadStretch", "meltingHeart", "archToHeels", "scapPushUp",
+]);
+
 // The views an exercise is drawn in, for figure-svg.js: its side view first (on the mat, by its wall and props,
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
 // far, arrows }.
@@ -303,7 +314,8 @@ export function exerciseViews(id) {
   const blocks = [...(floor ? [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }] : []), ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
   // A move without arrows drawn by hand gets one worked out from its poses.
   const way = (list, own, key = view) => own ?? (hold ? undefined : moveArrows(list, arrowHints[`${id}:${key}`] ?? arrowHints[id]));
-  return [{ key: view, poses, focus, blocks, far, left, near, flat, fist, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, left, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
+  const views = [{ key: view, poses, focus, blocks, far, left, near, flat, fist, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, left, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
+  return asBody.has(id) ? views.map(bodyFromLines) : views;
 }
 
 // The way a move goes, from its first pose to its second: a dashed arc beside the point that travels furthest (a
