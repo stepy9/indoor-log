@@ -289,6 +289,17 @@ function renderSaved() {
   byId("routineSavedCards").replaceChildren(...(entry ? savedItems(entry).map((item) => card(item.id, itemDose(item))) : []));
 }
 
+// Weekdays (0 Monday) as runs: [0, 1, 2, 4] is "po–st, pá"; two days in a row stay apart ("po, út").
+function dayRuns(days) {
+  const runs = [];
+  for (const day of days) {
+    const last = runs.at(-1);
+    if (last && day === last[1] + 1) last[1] = day;
+    else runs.push([day, day]);
+  }
+  return runs.flatMap(([from, to]) => (to - from >= 2 ? [`${weekdayName(from)}–${weekdayName(to)}`] : from === to ? [weekdayName(from)] : [weekdayName(from), weekdayName(to)])).join(", ");
+}
+
 function render() {
   const picked = choice();
   const pick = (key) => (value) => { saveChoice({ [key]: value }); render(); };
@@ -367,7 +378,13 @@ function render() {
     day.setAttribute("aria-pressed", String(plan[weekday]?.style === style));
     return day;
   }));
-  const planned = Object.entries(plan).sort(([a], [b]) => a - b).flatMap(([weekday, item]) => { const set = plannedSet(item); return set ? [`${weekdayName(Number(weekday))} ${setText(set)}`] : []; });
+  // Each set once, with its days: a run of days as "po–pá", others by commas ("po–st, pá Mobility · 10 min").
+  const byText = new Map();
+  for (const [weekday, item] of Object.entries(plan).sort(([a], [b]) => a - b)) {
+    const set = plannedSet(item);
+    if (set) byText.set(setText(set), [...(byText.get(setText(set)) ?? []), Number(weekday)]);
+  }
+  const planned = [...byText].map(([text, days]) => `${dayRuns(days)} ${text}`);
   byId("routinePlanNote").textContent = planned.length ? t("routinePlanList", { list: planned.join(", ") }) : t("routinePlanEmpty");
   renderSaved();
   summarize(custom);
