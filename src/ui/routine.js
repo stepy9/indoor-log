@@ -151,6 +151,20 @@ function plannedSet(item, day = null) {
 }
 
 // The saved sets, each to start, put on weekdays in the plan or take out (its days in the plan with it).
+// The saved set open in the editor: Save then rewrites it under its id, so its days in the plan stay.
+let editing = null;
+
+// A saved set back in the editor as a hand-made list, with its name.
+function editSaved(entry) {
+  const { exercises: ids = [], seconds = {}, reps = {} } = entry.set;
+  saveChoice({ mode: "custom", custom: [...new Set(ids)].map((id) => (reps[id] ? { id, reps: reps[id] } : seconds[id] ? { id, seconds: seconds[id] } : { id })) });
+  editing = entry.id;
+  byId("routineName").value = entry.name;
+  render();
+  byId("routineNote").textContent = t("routineEditing", { name: entry.name });
+  byId("routineSetup").scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
 function renderSaved() {
   const saved = routineSaved();
   // The morning mobility offered until it is saved (and again once taken out).
@@ -173,11 +187,12 @@ function renderSaved() {
       const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
       if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("delete"), danger: true }))) return;
       saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
+      if (editing === entry.id) editing = null;
       settingsChanged();
       render();
       showToast(t("savedSetRemoved"));
     }, t("routineRemove"));
-    row.append(text, button("outline-button", t("routineSavedStart"), () => {
+    row.append(text, button("outline-button", t("routineSavedEdit"), () => editSaved(entry)), button("outline-button", t("routineSavedStart"), () => {
       playSet({ ...entry.set, name: entry.name }, todayKey(zone));
     }), remove);
     // Its weekdays in the plan; a day held by another set changes over to this one.
@@ -252,6 +267,9 @@ function render() {
   ].join(" ");
   byId("routineStart").textContent = t("routineStart", { minutes: set.minutes });
   byId("routineStart").disabled = byId("save").disabled = !set.steps.length;
+  // Editing holds only for a hand-made list; switched to automatic, Save makes a new set again.
+  if (!custom) editing = null;
+  byId("save").textContent = t(editing && routineSaved().some((entry) => entry.id === editing) ? "routineSaveChanges" : "save");
   byId("routineName").placeholder = t("routineNamePlaceholder", { name: defaultName(picked, set) });
   // The plan: the days this style (or the hand-made set) is planned on pressed; a press puts the day in with the
   // choice now made.
@@ -392,7 +410,13 @@ export function setupRoutine() {
     if (!set.steps.length) return;
     const name = byId("routineName").value.trim() || defaultName(picked, set);
     const { style, minutes, exercises: ids, seconds, reps, steps } = set;
-    saveDefaults({ routineSaved: [...routineSaved(), { id: Date.now().toString(36), name, set: { style, minutes, exercises: ids, seconds, reps: reps ?? {}, steps } }] });
+    const saved = { name, set: { style, minutes, exercises: ids, seconds, reps: reps ?? {}, steps } };
+    // An edited set keeps its id (and so its days in the plan); one taken out meanwhile is saved anew.
+    const list = routineSaved();
+    const edited = editing && list.some((entry) => entry.id === editing);
+    saveDefaults({ routineSaved: edited ? list.map((entry) => (entry.id === editing ? { id: editing, ...saved } : entry)) : [...list, { id: Date.now().toString(36), ...saved }] });
+    editing = null;
+    byId("save").textContent = t("save");
     byId("routineName").value = "";
     settingsChanged();
     renderSaved();
