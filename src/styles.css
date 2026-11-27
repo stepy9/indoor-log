@@ -2235,6 +2235,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 /* A saved set: its name a button showing its exercises beside the list; the one shown marked. */
 .routine-saved-item .routine-saved-name { padding: 0; border: 0; color: var(--ink); background: none; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .routine-saved-list { margin-top: 0; }
+.routine-saved-item > button { margin: 0; align-self: center; }
 .routine-new-link { margin: 4px 0 12px; }
 .routine-saved-head { margin: 0 0 10px; font-size: var(--fs-md); font-weight: 600; }
 .routine-saved-fold { flex: 1 1 100%; }
