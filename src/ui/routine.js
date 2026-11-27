@@ -77,8 +77,8 @@ function renderCustom(picked) {
       update(list.map((entry, at) => (at === index ? { id: entry.id, ...(entry.side ? { side: entry.side } : {}), ...(counted ? { reps: value } : { seconds: value }) } : entry)));
     });
     const sided = exercises[item.id].sides > 1;
-    const unit = element("span", "routine-custom-unit", `${t(counted ? "routineUnitReps" : "routineUnitSeconds")}${sided && !item.side ? ` ${t("sessionPerSide")}` : ""}`);
-    // Left and right, both on by default; one can be turned off (not both), to do that side alone, the other
+    const unit = element("span", "routine-custom-unit", `${t(counted ? "routineUnitReps" : "routineUnitSeconds")}`);
+    // Left and right, both on by default (the unit then says no "per side": the toggles do, and it does not jump); one can be turned off (not both), to do that side alone, the other
     // maybe later in the set.
     const sides = element("div", "segmented routine-custom-sides");
     if (sided) {
