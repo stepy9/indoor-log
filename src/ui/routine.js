@@ -323,6 +323,11 @@ function render() {
   byId("save").textContent = t(edited ? "routineSaveChanges" : "save");
   byId("routineEditing").hidden = !edited;
   byId("routineEditingText").textContent = edited ? t("routineEditing", { name: edited.name }) : "";
+  // While a saved set is edited the tab says so, and what does not belong to it is hidden: the switch to an automatic
+  // set (which would drop the edit) and the plan of this editor (the set keeps its days on its card in My sets).
+  byId("routineTabNew").textContent = t(edited ? "routineTabEdit" : "routineTabNew");
+  byId("routineMode").hidden = Boolean(edited);
+  if (edited) byId("routinePlanDays").closest(".routine-plan").hidden = byId("routinePlanNote").hidden = true;
   byId("routineName").placeholder = t("routineNamePlaceholder", { name: defaultName(picked, set) });
   // The plan: the days this style (or the hand-made set) is planned on pressed; a press puts the day in with the
   // choice now made.

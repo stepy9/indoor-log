@@ -2089,6 +2089,7 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 
 /* The Set tab: the mode, a hand-made set's list, the saved sets and the start and save row. */
 .routine-mode { margin: 12px 0 4px; }
+.routine-mode[hidden] { display: none !important; }
 .routine-custom-list, .routine-saved-list { display: grid; gap: 6px; margin: 12px 0; padding: 0; list-style: none; }
 .routine-custom-item, .routine-saved-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); }
 .routine-custom-name { flex: 1 1 160px; font-weight: 600; }
