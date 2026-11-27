@@ -2252,3 +2252,6 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 @media (max-width: 900px) { .routine-saved-detail { display: none; } }
 /* Editing a saved set: a line above the editor naming it, with a way out. */
 .routine-editing { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--accent-soft); font-weight: 600; }
+.routine-saved-plan { flex: 1 1 100%; margin: 0; }
+.routine-other-plan { margin: 4px 0 12px; }
+.routine-other-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }

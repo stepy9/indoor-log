@@ -187,14 +187,19 @@ function initialTab() {
   return stored === "mine" || stored === "new" ? stored : routineSaved().length ? "mine" : "new";
 }
 
-// The saved set open in the editor: Save then rewrites it under its id, so its days in the plan stay.
+// The saved set open in the editor: Save then rewrites it under its id.
 let editing = null;
+// The weekdays marked in the editor, put in the plan only with Save (an edited set's own days to begin with), so a
+// stray tap changes nothing until saved.
+let draftDays = new Set();
+const savedDays = (id) => [0, 1, 2, 3, 4, 5, 6].filter((weekday) => planHasSaved(routinePlan(), weekday, id));
 const editedEntry = () => (editing ? routineSaved().find((entry) => entry.id === editing) ?? null : null);
 
 // A saved set back in the editor as a hand-made list, with its name.
 function editSaved(entry) {
   saveChoice({ mode: "custom", custom: savedItems(entry) });
   editing = entry.id;
+  draftDays = new Set(savedDays(entry.id));
   byId("routineName").value = entry.name;
   showTab("new");
   render();
@@ -253,21 +258,9 @@ function renderSaved() {
     row.append(text, button("outline-button", t("routineSavedEdit"), () => editSaved(entry)), button("accent-button routine-saved-start", t("routineSavedStart"), () => {
       playSet({ ...entry.set, name: entry.name }, todayKey(zone));
     }), remove);
-    // Its weekdays in the plan, beside any other set on the same day.
-    const plan = routinePlan();
-    const days = element("div", "segmented routine-saved-days");
-    days.setAttribute("role", "group");
-    days.setAttribute("aria-label", t("routinePlanLabel"));
-    days.append(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
-      const day = button("", weekdayName(weekday), () => {
-        saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, { style: "saved", saved: entry.id }) });
-        settingsChanged();
-        render();
-        showToast(t("savedRoutinePlan"));
-      });
-      day.setAttribute("aria-pressed", String(planHasSaved(plan, weekday, entry.id)));
-      return day;
-    }));
+    // Its weekdays in the plan, as text: they change under Edit, with Save, not by a tap here.
+    const onDays = savedDays(entry.id);
+    const days = element("span", "field-note routine-saved-plan", onDays.length ? t("routineCardPlan", { days: dayRuns(onDays) }) : t("routineCardNoPlan"));
     // Its exercises in a fold under it, for a screen without the column beside the list.
     const fold = element("details", "routine-saved-fold");
     fold.open = unfolded.has(entry.id);
@@ -283,6 +276,32 @@ function renderSaved() {
     row.append(days, fold);
     return row;
   }), ...offer.map((item) => { const row = element("li", "routine-saved-offer"); row.append(item); return row; }));
+  // Automatic sets put in the plan before only saved ones could be (each built anew on its days): listed with their
+  // days, each to take out.
+  const plan = routinePlan();
+  const others = new Map();
+  for (const weekday of Object.keys(plan).sort((x, y) => x - y)) {
+    for (const item of planItems(plan, weekday)) {
+      if (item.style === "saved") continue;
+      const key = JSON.stringify(item);
+      others.set(key, { item, days: [...(others.get(key)?.days ?? []), Number(weekday)] });
+    }
+  }
+  const otherBox = byId("routineOtherPlan");
+  otherBox.hidden = !others.size;
+  otherBox.replaceChildren(...(others.size ? [element("span", "field-label", t("routineOtherPlan"))] : []), ...[...others.values()].map(({ item, days }) => {
+    const set = plannedSet(item);
+    const row = element("p", "field-note routine-other-item", `${dayRuns(days)} ${set ? setText(set) : t(`routineStyle_${item.style}`)}`);
+    row.append(button("link-button icon-x", "", () => {
+      let next = routinePlan();
+      for (const weekday of days) next = togglePlanDay(next, weekday, item);
+      saveDefaults({ routinePlan: next });
+      settingsChanged();
+      render();
+      showToast(t("savedRoutinePlan"));
+    }, t("routineRemove")));
+    return row;
+  }));
   // Beside the list: the chosen set's exercises as cards, each with its figures, how-to and video.
   const entry = saved.find((item) => item.id === selected);
   byId("routineSavedHead").textContent = entry ? `${entry.name} · ${entry.set.minutes} min` : "";
@@ -359,35 +378,21 @@ function render() {
   byId("routineEditing").hidden = !edited;
   byId("routineEditingText").textContent = edited ? t("routineEditing", { name: edited.name }) : "";
   // While a saved set is edited the tab says so, and what does not belong to it is hidden: the switch to an automatic
-  // set (which would drop the edit) and the plan of this editor (the set keeps its days on its card in My sets).
+  // set (which would drop the edit).
   byId("routineTabNew").textContent = t(edited ? "routineTabEdit" : "routineTabNew");
   byId("routineMode").hidden = Boolean(edited);
-  if (edited) byId("routinePlanDays").closest(".routine-plan").hidden = byId("routinePlanNote").hidden = true;
   byId("routineName").placeholder = t("routineNamePlaceholder", { name: defaultName(picked, set) });
-  // The plan: the days this style (or the hand-made set) is planned on pressed; a press puts the day in with the
-  // choice now made.
-  const plan = routinePlan();
-  const style = custom ? "custom" : picked.style;
+  // The days the set is to be planned on, marked here and put in the plan with Save.
   byId("routinePlanDays").replaceChildren(...[0, 1, 2, 3, 4, 5, 6].map((weekday) => {
     const day = button("", weekdayName(weekday), () => {
-      saveDefaults({ routinePlan: togglePlanDay(routinePlan(), weekday, (({ day, strengthSteps, ...kept }) => kept)(current(choice()))) });
-      settingsChanged();
-      render();
-      showToast(t("savedRoutinePlan"));
+      if (draftDays.has(weekday)) draftDays.delete(weekday);
+      else draftDays.add(weekday);
+      day.setAttribute("aria-pressed", String(draftDays.has(weekday)));
     });
-    day.setAttribute("aria-pressed", String(planItems(plan, weekday).some((item) => item.style === style)));
+    day.setAttribute("aria-pressed", String(draftDays.has(weekday)));
     return day;
   }));
-  // Each set once, with its days: a run of days as "po–pá", others by commas ("po–st, pá Mobility · 10 min").
-  const byText = new Map();
-  for (const weekday of Object.keys(plan).sort((a, b) => a - b)) {
-    for (const item of planItems(plan, weekday)) {
-      const set = plannedSet(item);
-      if (set) byText.set(setText(set), [...(byText.get(setText(set)) ?? []), Number(weekday)]);
-    }
-  }
-  const planned = [...byText].map(([text, days]) => `${dayRuns(days)} ${text}`);
-  byId("routinePlanNote").textContent = planned.length ? t("routinePlanList", { list: planned.join(", ") }) : t("routinePlanEmpty");
+  byId("routinePlanNote").textContent = t("routinePlanEmpty");
   renderSaved();
   summarize(custom);
   const extra = set.weak && set.weak !== "none" ? ` · ${t(`routineWeakMore_${set.weak}`, { extra: weakerExtra })}` : "";
@@ -493,8 +498,8 @@ export function setupRoutine() {
   if (wired) return;
   wired = true;
   for (const item of document.querySelectorAll("[data-routine-tab]")) item.addEventListener("click", () => showTab(item.dataset.routineTab));
-  byId("routineNewLink").addEventListener("click", () => { editing = null; byId("routineName").value = ""; showTab("new"); render(); });
-  byId("routineEditCancel").addEventListener("click", () => { editing = null; byId("routineName").value = ""; showTab("mine"); render(); });
+  byId("routineNewLink").addEventListener("click", () => { editing = null; draftDays = new Set(); byId("routineName").value = ""; showTab("new"); render(); });
+  byId("routineEditCancel").addEventListener("click", () => { editing = null; draftDays = new Set(); byId("routineName").value = ""; showTab("mine"); render(); });
   // Folded on a phone, so the cards come first; open on a wider screen, where the fold's head is not shown.
   const narrow = window.matchMedia("(max-width: 640px)");
   const fold = () => { const setup = byId("routineSetup"); setup.open = !narrow.matches || setup.classList.contains("is-custom"); };
@@ -519,9 +524,13 @@ export function setupRoutine() {
     const list = routineSaved();
     const edited = Boolean(editedEntry());
     const id = edited ? editing : Date.now().toString(36);
-    saveDefaults({ routineSaved: edited ? list.map((entry) => (entry.id === editing ? { id, ...saved } : entry)) : [...list, { id, ...saved }] });
+    // Its days in the plan as marked: out of every day, then onto those, beside the other sets there.
+    let plan = withoutSaved(routinePlan(), id);
+    for (const weekday of [...draftDays].sort()) plan = togglePlanDay(plan, weekday, { style: "saved", saved: id });
+    saveDefaults({ routineSaved: edited ? list.map((entry) => (entry.id === editing ? { id, ...saved } : entry)) : [...list, { id, ...saved }], routinePlan: plan });
     // Saved, it is shown in My sets, chosen there.
     editing = null;
+    draftDays = new Set();
     selected = id;
     byId("routineName").value = "";
     settingsChanged();
