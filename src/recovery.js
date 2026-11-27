@@ -184,7 +184,7 @@ export const exercises = {
     arrows: [{ d: "M98,52 L98,86", both: true }],
     poses: [
       { trunk: [[126, 118], [94, 107], [62, 96]], neck: [52, 93], head: [41, 90], arms: [[[62, 96], [66, 122], [68, 146]], [[62, 96], [62, 122], [62, 146]]], legs: [[[126, 118], [160, 130], [192, 141]], [[126, 118], [157, 129], [188, 140]]], feet: [[198, 148], [194, 148]] },
-      { trunk: [[126, 134], [93, 131], [60, 128]], neck: [50, 127], head: [39, 126], arms: [[[60, 128], [84, 126], [68, 146]], [[60, 128], [80, 124], [62, 146]]], legs: [[[126, 134], [160, 138], [192, 141]], [[126, 134], [157, 137], [188, 140]]], feet: [[198, 148], [194, 148]] },
+      { trunk: [[126, 130], [88, 124], [50, 118]], neck: [40, 116], head: [29, 113], arms: [[[50, 118], [73, 122], [68, 146]], [[50, 118], [73, 124], [62, 146]]], legs: [[[126, 130], [160, 136], [192, 141]], [[126, 130], [157, 135], [188, 140]]], feet: [[198, 148], [194, 148]] },
     ],
     focus: ["arm1"],
   },
@@ -297,13 +297,13 @@ for (const [id, phases] of Object.entries(breathPhases)) exercises[id] = { ...ex
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
 // far, arrows }.
 export function exerciseViews(id) {
-  const { poses, focus = [], wall, props = [], far, arrows, more = [], view = "side", floor = true, weights, hold } = exercises[id];
+  const { poses, focus = [], wall, props = [], far, left, near, flat, fist, arrows, more = [], view = "side", floor = true, weights, hold } = exercises[id];
   if (!poses) return [];
   // The floor under a side view; a view from above has its mat among the props.
   const blocks = [...(floor ? [{ x: 14, y: 150, width: 192, height: 8, rx: 4 }] : []), ...(wall != null ? [{ x: wall, y: 6, width: 7, height: 146, rx: 3 }] : []), ...props];
   // A move without arrows drawn by hand gets one worked out from its poses.
   const way = (list, own, key = view) => own ?? (hold ? undefined : moveArrows(list, arrowHints[`${id}:${key}`] ?? arrowHints[id]));
-  return [{ key: view, poses, focus, blocks, far, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
+  return [{ key: view, poses, focus, blocks, far, left, near, flat, fist, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, left, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
 }
 
 // The way a move goes, from its first pose to its second: a dashed arc beside the point that travels furthest (a

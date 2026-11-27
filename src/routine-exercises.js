@@ -353,14 +353,16 @@ function banana() {
   return { view: "top", floor: false, props: [{ x: 18, y: 2, width: 184, height: 158, rx: 10 }], poses: [straight, curved], focus: ["trunk"] };
 }
 
-// Thread the needle: on all fours, one arm opening up to the ceiling, then threaded under the body, the shoulder and
-// the side of the head down on the mat.
+// Thread the needle: on all fours, the far arm opening up to the ceiling over the back, then threaded under the chest,
+// out of sight there as from the side it goes away from us; the shoulder and the temple come down on the mat while
+// the near hand stays put, its elbow bending. The hips stay over the knees.
 function threadNeedle() {
   const legs = [[[140, 96], [140, 146], [188, 146]], [[140, 96], [144, 146], [190, 146]]];
   const feet = [[196, 140], [198, 140]];
-  const open = { trunk: [[140, 96], [100, 92], [62, 96]], neck: [52, 92], head: [42, 86], arms: [[[62, 96], [62, 121], [60, 146]], [[62, 96], [66, 68], [70, 40]]] };
-  const threaded = { trunk: [[140, 100], [104, 106], [72, 126]], neck: [62, 132], head: [52, 138], arms: [[[72, 126], [58, 136], [48, 146]], [[72, 126], [98, 140], [124, 146]]] };
-return { poses: [{ ...open, legs, feet }, { ...threaded, legs, feet }], far: { arms: [0], legs: [1] }, focus: ["trunk", "arm1"] };
+  const open = { trunk: [[140, 96], [100, 92], [64, 94]], neck: [54, 88], head: [46, 78], arms: [[[64, 94], [68, 66], [72, 38]], [[64, 94], [62, 120], [60, 146]]] };
+  const threaded = { trunk: [[140, 100], [104, 110], [72, 134]], neck: [60, 138], head: [48, 138], arms: [[[72, 134], [84, 142], [98, 146]], [[72, 134], [52, 120], [60, 146]]] };
+  // Facing left, the near limbs are the left ones: the left arm moves (in blue), the right one stays planted.
+  return { poses: [{ ...open, legs, feet }, { ...threaded, legs, feet }], far: { arms: [1], legs: [1] }, left: { arms: [0], legs: [0] }, focus: ["trunk"] };
 }
 
 // Child's pose in yin: the knees wide and the forehead down, the arms long ahead; drawn as recovery.js's own.
@@ -412,28 +414,60 @@ function back4() {
 
 // Lying on the side, seen from the front: up on the lower forearm and the lower knee (bent to a right angle), the
 // top leg long, the body one line (9.9–9.12).
-const sideUp = { trunk: [[140, 116], [102, 106], [64, 98]], neck: [54, 94], head: [43, 91], arms: [[[64, 98], [64, 146], [30, 146]], [[64, 98], [36, 84], [8, 70]]], legs: [[[140, 116], [148, 146], [194, 146]], [[140, 116], [176, 122], [212, 128]]], feet: [null, [216, 116]] };
-const sideDown = { ...sideUp, trunk: [[140, 136], [102, 124], [64, 110]], neck: [54, 105], head: [43, 101], arms: [[[64, 110], [64, 146], [30, 146]], [[64, 110], [36, 96], [8, 82]]], legs: [[[140, 136], [148, 146], [194, 146]], [[140, 136], [176, 138], [212, 140]]], feet: [null, [216, 128]] };
+
+// Lying on the right side facing us, the head on our left: the top arm and leg are the left ones. The lower forearm
+// and shin point at us and away, so they are drawn short.
+const sideLeft = { arms: [1], legs: [1] };
+// The same from above, the front of the body towards the bottom: there the top knee is seen to come forward to the
+// belly rather than up, and the top arm to swing back and forward. From above the shoulders and the hips lie one over
+// the other, so the trunk shows its depth: the top side's points a little back, the lower side's a little forward.
+// The lower forearm lies on the mat pointing forward, the lower shin goes back from the knee. Its top limbs as given.
+const sideAboveBody = { nose: [45, 78], lShoulder: [74, 58], rShoulder: [74, 82], rElbow: [74, 76], rWrist: [76, 100], rIndex: [77, 109], lHip: [150, 60], rHip: [150, 80], rKnee: [184, 76], rAnkle: [186, 48], rToe: [195, 42] };
+const longArm = { lElbow: [47, 64], lWrist: [22, 64], lIndex: [13, 64] };
+const longLeg = { lKnee: [182, 64], lAnkle: [204, 64], lToe: [210, 56] };
+const sideAbove = (top = {}) => ({ body: { ...sideAboveBody, ...longArm, ...longLeg, ...top } });
+const sideTop = (poses, own = {}) => ({ key: "top", blocks: [{ x: 8, y: 22, width: 204, height: 104, rx: 10 }], poses, focus: ["trunk"], left: sideLeft, near: "l", ...own });
+// Drawn as a body, the top pose taken from the book's video by pose estimation (MediaPipe). The lower shin goes back
+// from the knee, so, seen a little from above, up and paler; the lower forearm lies on the mat with the elbow under
+// the shoulder, pointing at us, so short, the hand flat at its end.
+const sideBodyUp = { body: { nose: [61, 106.4], lShoulder: [72.6, 94.8], rShoulder: [73.1, 119.3], lElbow: [48.8, 85.1], rElbow: [70, 144.5], lWrist: [26.5, 81.9], rWrist: [61, 147.5], lIndex: [17.6, 80.6], rIndex: [51, 149.5], lHip: [123.5, 106.2], rHip: [120, 124.6], lKnee: [161.5, 101.2], rKnee: [151.3, 145], lAnkle: [196, 98.3], rAnkle: [163.3, 133], lToe: [206, 94.3], rToe: [173.3, 132] } };
+// The side planks' body figure: left limbs on top, towards us; the lower shin going away, the lower hand flat.
+const sideBody = { left: sideLeft, near: "l", far: ["rShin", "rFoot"], flat: ["r"] };
+// The same with the top hand in a fist, for the running swing.
+const sideBodyFist = { ...sideBody, fist: ["l"] };
+// From above, the running swing: the elbow back behind the back (up), or the fist forward before the chest (down);
+// and the top knee drawn in to the belly.
+const swingBack = { lElbow: [94, 44], lWrist: [107, 63], lIndex: [111, 69] };
+const swingForward = { lElbow: [82, 92], lWrist: [60, 102], lIndex: [53, 104] };
+const kneeInAbove = { lKnee: [131, 96], lAnkle: [164, 104], lToe: [170, 112] };
+// The top pose with some of its joints moved.
+const sideWith = (joints) => ({ body: { ...sideBodyUp.body, ...joints } });
+// The top arm bent at a right angle with a fist, swinging as in running: the elbow back behind the back, the fist
+// forward before the chest. Lying on the side facing us, that swing goes mostly towards us and away, so from the front
+// the arm only slides along the body's top, back towards the hips and forward towards the head, and looks short.
+const armBack = { lElbow: [97, 99], lWrist: [95, 110], lIndex: [94, 115] };
+const armForward = { lElbow: [55, 104], lWrist: [45, 97], lIndex: [41, 94] };
+// The top knee drawn in to the belly at the hip's height: towards us, so short, the shin hanging down from it.
+const kneeIn = { lKnee: [101, 110], lAnkle: [124, 127], lToe: [133, 133] };
 
 function side1() {
-  return { view: "front", poses: [sideDown, sideUp], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+  // Held up, still: the same pose twice, the trunk's work showing as its colour comes up.
+  return { view: "front", poses: [sideBodyUp, sideBodyUp], ...sideBody, focus: ["trunk"] };
 }
 function side2() {
   // The top arm bent at a right angle swinging back and forward, as in running.
-  const back = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [90, 90], [100, 66]]] };
-  const forward = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [40, 86], [44, 60]]] };
-  return { view: "front", poses: [back, forward], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+  const top = sideTop([sideAbove(swingBack), sideAbove(swingForward)], { fist: ["l"] });
+  return { view: "front", poses: [sideWith(armBack), sideWith(armForward)], ...sideBodyFist, focus: ["trunk"], more: [top] };
 }
 function side3() {
-  // The top leg drawn up to the chest and long again, kept at the hip's height.
-  const drawn = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [36, 84], [8, 70]]], legs: [sideUp.legs[0], [[140, 116], [104, 112], [134, 124]]], feet: [null, [146, 118]] };
-  return { view: "front", poses: [sideUp, drawn], far: { arms: [0], legs: [0] }, focus: ["trunk", "thigh1"] };
+  // The top leg stretched long and its knee drawn in to the belly, kept at the hip's height.
+  const top = sideTop([sideAbove(), sideAbove(kneeInAbove)]);
+  return { view: "front", poses: [sideBodyUp, sideWith(kneeIn)], ...sideBody, focus: ["trunk"], more: [top] };
 }
 function side4() {
   // Running on the side: the arm back as the knee comes forward, and the other way round.
-  const a = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [90, 90], [100, 66]]], legs: [sideUp.legs[0], [[140, 116], [106, 112], [118, 138]]], feet: [null, [106, 142]] };
-  const b = { ...sideUp, arms: [sideUp.arms[0], [[64, 98], [40, 86], [44, 60]]], legs: [sideUp.legs[0], [[140, 116], [178, 124], [214, 130]]], feet: [null, [218, 118]] };
-  return { view: "front", poses: [a, b], far: { arms: [0], legs: [0] }, focus: ["trunk"] };
+  const top = sideTop([sideAbove({ ...swingBack, ...kneeInAbove }), sideAbove(swingForward)], { fist: ["l"] });
+  return { view: "front", poses: [sideWith({ ...armBack, ...kneeIn }), sideWith(armForward)], ...sideBodyFist, focus: ["trunk"], more: [top] };
 }
 
 // On the back with a gym ball between the heels and the buttocks (9.13–9.16), its weight pressed by the heels.

@@ -35,6 +35,11 @@ test("each figure's poses have the same parts, so they animate", () => {
   for (const [id, { poses, focus = [] }] of Object.entries(exercises)) {
     if (!poses) continue;
     const [a, b] = poses;
+    // A figure drawn as a body: the same joints in each pose.
+    if (a.body) {
+      assert.deepEqual(Object.keys(b.body).sort(), Object.keys(a.body).sort(), id);
+      continue;
+    }
     assert.equal(a.arms.length, b.arms.length, id);
     assert.equal(a.legs.length, b.legs.length, id);
     a.legs.forEach((leg, index) => assert.equal(leg.length, b.legs[index].length, id));
@@ -89,6 +94,11 @@ test("every view's poses have the same parts as its first, so they animate, and 
       const [first, ...rest] = poses;
       const label = `${id} view ${number}`;
       assert.ok(poses.length >= 2, label);
+      if (first.body) {
+        for (const pose of rest) assert.deepEqual(Object.keys(pose.body).sort(), Object.keys(first.body).sort(), label);
+        for (const name of focus) assert.equal(name, "trunk", `${label}: ${name}`);
+        continue;
+      }
       for (const pose of rest) {
         assert.equal(Boolean(pose.trunk), Boolean(first.trunk), label);
         assert.equal(pose.arms.length, first.arms.length, label);
@@ -113,6 +123,27 @@ test("every view's poses have the same parts as its first, so they animate, and 
       }
     }
   }
+});
+
+test("a figure drawn as a body animates its shapes, keeps a planted hand put and mirrors left for right", async () => {
+  const { figureMarkup, between } = await import("../src/figure-svg.js");
+  const { exerciseViews } = await import("../src/recovery.js");
+  const [view] = exerciseViews("stabSide3");
+  const [down, up] = view.poses; // long and drawn in
+  assert.ok(down.body && up.body);
+  // Halfway the planted hand stays on the mat and the thigh keeps about its length.
+  const half = between(down, up, 0.5);
+  assert.deepEqual(half.body.rWrist, down.body.rWrist);
+  const thigh = (pose) => Math.hypot(pose.body.rKnee[0] - pose.body.rHip[0], pose.body.rKnee[1] - pose.body.rHip[1]);
+  assert.ok(Math.abs(thigh(half) - (thigh(down) + thigh(up)) / 2) < 1);
+  const svg = figureMarkup(view, { hold: true });
+  assert.match(svg, /<polygon class="body-part left"[^>]*><animate attributeName="points"/);
+  assert.match(svg, /class="body-part left"/);
+  assert.ok(!svg.includes("matrix(-1"));
+  // The other side: turned over and its left limbs now the right ones.
+  const mirrored = figureMarkup(view, { hold: true, mirror: true });
+  assert.ok(mirrored.includes('<g transform="matrix(-1 0 0 1 220 0)">'));
+  assert.equal((mirrored.match(/body-part right/g) ?? []).length, (svg.match(/body-part left/g) ?? []).length);
 });
 
 test("figureMarkup animates a view's poses, ghosts a move's start and draws far limbs behind the body", async () => {

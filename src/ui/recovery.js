@@ -17,20 +17,30 @@ import { showToast } from "./toast.js";
 
 
 // One view drawn: the markup of figure-svg.js, made an element; cue: with the breath under it (the first view only).
-function drawView(id, view, cue = true) {
+function drawView(id, view, cue = true, mirror = false) {
   const holder = document.createElement("div");
-  const { hold, breathing } = exercises[id];
-  holder.innerHTML = figureMarkup(view, { hold: Boolean(hold), className: `recovery-figure is-${view.key}` });
+  const { hold, breathing, tempo } = exercises[id];
+  // Less motion asked for: the poses take turns without moving between them.
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  holder.innerHTML = figureMarkup(view, { hold: Boolean(hold), tempo, reduced, mirror, className: `recovery-figure is-${view.key}` });
   const svg = holder.firstElementChild;
-  const breath = cue ? breathCue(view, { hold, breathing }) : null;
-  if (!breath) return svg;
+  const breath = cue ? breathCue(view, { hold, breathing, tempo }) : null;
+  // Where the figure tells its left limbs from its right by colour, a key to it under the figure.
+  const legend = view.left ? element("div", "figure-legend") : null;
+  if (legend) legend.innerHTML = `<span><i class="left"></i>${t("figureLeft")}</span><span><i></i>${t("figureRight")}</span>`;
+  if (!breath) {
+    if (!legend) return svg;
+    const box = element("div", "recovery-figure-box");
+    box.append(svg, legend);
+    return box;
+  }
   // The figure with its breath under it as text, which keeps a readable size however small the figure is drawn;
   // two words taking turns by a CSS animation of the figure's own length, started with it.
   const box = element("div", "recovery-figure-box");
   const line = element("div", `breath-line is-${breath.split}`);
   line.style.setProperty("--breath-dur", breath.dur);
   for (const [phase, part] of [[breath.first, "first"], [breath.second, "second"]]) line.append(element("span", `breath-cue is-${phase} is-${part}`, `${phase === "in" ? "↑" : "↓"} ${t(phase === "in" ? "breathIn" : "breathOut")}`));
-  box.append(svg, line);
+  box.append(svg, line, ...(legend ? [legend] : []));
   return box;
 }
 
@@ -42,13 +52,14 @@ export function figure(id) {
   return side ? drawView(id, side) : null;
 }
 
-// Every view, each captioned when there is more than one ("from the side", "from above", "close up").
-export function figures(id) {
+// Every view, each captioned when there is more than one ("from the side", "from above", "close up"). mirror: the
+// figure turned left for right, for a move's second side.
+export function figures(id, { mirror = false } = {}) {
   const all = views(id);
-  if (all.length < 2) return all.map((view) => drawView(id, view));
+  if (all.length < 2) return all.map((view) => drawView(id, view, true, mirror));
   return all.map((view, index) => {
     const box = Object.assign(document.createElement("figure"), { className: "recovery-view" });
-    box.append(drawView(id, view, index === 0), Object.assign(document.createElement("figcaption"), { textContent: t(`recoveryView_${view.key}`) }));
+    box.append(drawView(id, view, index === 0, mirror), Object.assign(document.createElement("figcaption"), { textContent: t(`recoveryView_${view.key}`) }));
     return box;
   });
 }
@@ -203,7 +214,9 @@ function showStep() {
   byId("recoveryPlayerVideo").replaceChildren(...(video ? [video] : []));
   byId("recoveryPlayerVideo").hidden = !video;
   const pacer = exercises[id].pattern ? [Object.assign(element("div", "breath-pacer"), { innerHTML: '<div class="breath-circle"></div>' })] : [];
-  const art = pacer.length ? pacer : figures(id);
+  // The second side drawn mirrored, from the pause before it on.
+  const side = work ? step.side : coming?.id === id ? coming.side : null;
+  const art = pacer.length ? pacer : figures(id, { mirror: side === 2 });
   player.breath = null;
   byId("recoveryPlayerFigure").replaceChildren(...art);
   byId("recoveryPlayerFigure").classList.toggle("has-views", art.length > 1);
@@ -383,6 +396,8 @@ function wirePlayer() {
     const circle = byId("recoveryPlayerFigure").querySelector(".breath-circle");
     if (circle && player.paused) Object.assign(circle.style, { transform: getComputedStyle(circle).transform, transitionDuration: "0s" });
     player.breath = null;
+    // The figures stop with the set and go on from where they stood (the breath under them by CSS).
+    for (const svg of byId("recoveryPlayerFigure").querySelectorAll("svg.recovery-figure")) svg[player.paused ? "pauseAnimations" : "unpauseAnimations"]();
     dialog.classList.toggle("is-paused", player.paused);
     byId("recoveryPlayerPause").textContent = t(player.paused ? "recoveryResume" : "recoveryPause");
   });

@@ -1558,7 +1558,6 @@ input.is-invalid[aria-invalid="true"], input.is-invalid[aria-invalid="true"]:foc
   .recovery-player[open] { display: flex; }
   .recovery-player-how { flex: 1; }
 }
-@media (prefers-reduced-motion: reduce) { .recovery-figure animate { display: none; } }
 
 /* The own Kinomap workouts in the Training settings: a row each, and the steps' editor. */
 .workout-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 4px; }
@@ -1891,9 +1890,34 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .recovery-figure .head, .recovery-figure .hand { fill: color-mix(in srgb, var(--ink) 82%, var(--surface)); stroke: none; }
 .recovery-figure .far:is(.limb, .foot) { stroke: color-mix(in srgb, var(--ink) 42%, var(--surface)); }
 .recovery-figure .hand.far { fill: color-mix(in srgb, var(--ink) 42%, var(--surface)); }
-.recovery-figure .focus { stroke: var(--orange); stroke-width: 20; opacity: .5; }
+/* The body's left limbs in blue, so left and right are told apart; the far one paler. */
+.recovery-figure .left:is(.limb, .foot) { stroke: var(--figure-left); }
+.recovery-figure .hand.left { fill: var(--figure-left); }
+.recovery-figure .far.left:is(.limb, .foot) { stroke: color-mix(in srgb, var(--figure-left) 50%, var(--surface)); }
+.recovery-figure .hand.far.left { fill: color-mix(in srgb, var(--figure-left) 50%, var(--surface)); }
+.recovery-figure { --figure-left: #2f6bd0; }
+/* A figure drawn as a body: filled shapes; the chest and the pelvis apart in tone, so the trunk's turn shows. */
+.recovery-figure .body-part { fill: color-mix(in srgb, var(--ink) 82%, var(--surface)); stroke: none; }
+.recovery-figure .body-part.left { fill: var(--figure-left); }
+.recovery-figure .body-part.far { fill: color-mix(in srgb, var(--ink) 42%, var(--surface)); }
+.recovery-figure .body-part.far.left { fill: color-mix(in srgb, var(--figure-left) 50%, var(--surface)); }
+.recovery-figure .torso { stroke-width: 6; stroke-linejoin: round; }
+.recovery-figure .torso.chest { fill: color-mix(in srgb, var(--ink) 72%, var(--surface)); stroke: color-mix(in srgb, var(--ink) 72%, var(--surface)); }
+.recovery-figure .torso.belly { fill: color-mix(in srgb, var(--ink) 58%, var(--surface)); stroke: color-mix(in srgb, var(--ink) 58%, var(--surface)); }
+.recovery-figure .focus.fill { fill: var(--orange); fill-opacity: .5; stroke: none; }
+.figure-legend { display: flex; gap: 12px; justify-content: center; color: var(--subtle); font-size: var(--fs-sm); }
+.figure-legend i { display: inline-block; width: 14px; height: 5px; border-radius: 3px; margin-right: 5px; vertical-align: middle; background: color-mix(in srgb, var(--ink) 82%, var(--surface)); }
+.figure-legend i.left { background: #2f6bd0; }
+.recovery-figure .focus { stroke: var(--orange); stroke-width: 20; }
 .recovery-figure .ghost { opacity: .16; }
+.recovery-figure .ghost.is-end { opacity: .09; }
+.recovery-figure .shadow { fill: var(--ink); opacity: .1; stroke: none; }
 .recovery-figure .move-arrow { stroke: var(--orange); stroke-width: 3; fill: none; stroke-dasharray: 5 5; opacity: .85; }
+/* A one-way arrow's dashes run its way; one there and back runs out and back with the figure, by its own animation. */
+.recovery-figure .move-arrow:not(.is-both) { animation: arrowFlow .8s linear infinite; }
+@keyframes arrowFlow { to { stroke-dashoffset: -10; } }
+.is-paused .recovery-figure .move-arrow, .is-paused .breath-line .breath-cue { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .recovery-figure .move-arrow { animation: none; } }
 .recovery-figure .move-arrow-head { fill: var(--orange); stroke: none; }
 .recovery-figure .ball { fill: color-mix(in srgb, var(--accent) 30%, var(--surface)); stroke: color-mix(in srgb, var(--accent) 60%, var(--surface)); stroke-width: 2; }
 .recovery-figure .weight { stroke: var(--ink); stroke-width: 8; }
