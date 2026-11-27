@@ -306,6 +306,12 @@ const asBody = new Set([
   "chest", "crossArm", "cossackShift", "sideLungeHold", "dragonfly", "butterfly", "hipCircles", "bandPullApart",
   "bandSideStep", "lungeSideBend", "triangle", "chop", "sideLungeRaise", "bosuBalance", "sideKick", "bandClamshell",
   "legCircles",
+  // Turning and reaching across, and the views from above: those show the trunk's width, as facing us.
+  "threadNeedle", "openBook", "figureFour", "ninetyNinety", "swan", "banana", "saw", "supineTwist", "happyBaby",
+  "hipSwitch", "lungeTwist", "allFoursSide", "crissCross", "forearm", "bandRotation", "kneelRow", "backLungePress", "frog",
+  "shoelace", "latStretch", "dragon", "rollGlutes", "deadBug", "sidePlank", "lungeReach", "forearmOpen", "ankleRock",
+  "tricepsOverhead", "rollingBall", "singleLegStretch", "doubleLegStretch", "swimming", "ballOblique", "bridgePress",
+  "rollThoracic", "rollQuads", "rollCalves", "bandRow",
 ]);
 // Those of them whose every view faces us, though named a side view.
 const facingAll = new Set(["triangle", "bosuBalance"]);
@@ -325,7 +331,7 @@ export function exerciseViews(id) {
   const views = [{ key: view, poses, focus, blocks, far, left, near, flat, fist, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, left, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
   // A body shows its move well enough by itself and its start's ghost; only a circling move keeps its arrow, for
   // the way round.
-  return asBody.has(id) ? views.map((one) => bodyFromLines(one, { facing: one.key === "front" || facingAll.has(id) })).map((one) => (circling.has(id) ? one : { ...one, arrows: [] })) : views;
+  return asBody.has(id) ? views.map((one) => bodyFromLines(one, { facing: one.key === "front" || one.key === "top" || facingAll.has(id) })).map((one) => (circling.has(id) ? one : { ...one, arrows: [] })) : views;
 }
 
 // The way a move goes, from its first pose to its second: a dashed arc beside the point that travels furthest (a
