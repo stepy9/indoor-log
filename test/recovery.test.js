@@ -96,7 +96,7 @@ test("every view's poses have the same parts as its first, so they animate, and 
       assert.ok(poses.length >= 2, label);
       if (first.body) {
         for (const pose of rest) assert.deepEqual(Object.keys(pose.body).sort(), Object.keys(first.body).sort(), label);
-        for (const name of focus) assert.equal(name, "trunk", `${label}: ${name}`);
+        for (const name of focus) assert.match(name, /^(trunk|[lr](Thigh|Shin|Leg|Arm|Fore))$/, `${label}: ${name}`);
         continue;
       }
       for (const pose of rest) {

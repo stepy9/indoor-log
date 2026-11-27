@@ -34,7 +34,7 @@ export function figureParts(pose, view) {
   });
   // A close-up's parts: bands of their own widths (a forearm, a palm, fingers), far ones darker and behind.
   const bands = (wantFar) => (pose.bands ?? []).flatMap((band, index) => (isFar("bands", index) === wantFar
-    ? [["polyline", `limb band${wantFar ? " far" : ""}`, { points: points(band), style: `stroke-width: ${view.bandWidths?.[index] ?? 12}px` }]] : []));
+    ? [["polyline", `limb band${wantFar ? ` far ${rightClass}` : ` ${leftClass}`}`, { points: points(band), style: `stroke-width: ${view.bandWidths?.[index] ?? 12}px` }]] : []));
   const list = [
     // A gym ball behind the body, and a towel or strap held, from the hand to the foot.
     ...(pose.ball ? [["circle", "ball", { cx: pose.ball[0], cy: pose.ball[1], r: pose.ball[2] ?? 20 }]] : []),

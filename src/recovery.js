@@ -158,11 +158,11 @@ export const exercises = {
     // From above, lying on the side, head left, knees bent forward: the top arm opens from in front to behind,
     // the chest turning with it.
     props: [{ x: 18, y: 20, width: 184, height: 136, rx: 10 }],
-    far: { arms: [0], legs: [0] },
-    arrows: ["M102,142 A54,54 0 0 0 102,36"],
+    // The hips stay stacked (narrow from above); the shoulders, stacked at first, open across as the chest turns up.
+    near: "l", far: ["rLimbs"],
     poses: [
-      { trunk: [[140, 90], [105, 90], [70, 90]], neck: [58, 90], head: [46, 90], arms: [[[70, 90], [72, 118], [74, 146]], [[70, 90], [78, 116], [84, 142]]], legs: [[[140, 90], [152, 128], [184, 132]], [[140, 90], [146, 126], [178, 128]]] },
-      { trunk: [[140, 90], [105, 90], [70, 90]], neck: [58, 90], head: [46, 88], arms: [[[70, 90], [72, 118], [74, 146]], [[70, 90], [78, 64], [84, 38]]], legs: [[[140, 90], [152, 128], [184, 132]], [[140, 90], [146, 126], [178, 128]]] },
+      { body: { nose: [46, 96], lShoulder: [70, 86], rShoulder: [70, 96], lHip: [140, 86], rHip: [140, 94], lElbow: [78, 116], lWrist: [84, 142], lIndex: [86, 150], rElbow: [72, 118], rWrist: [74, 146], rIndex: [74, 154], lKnee: [146, 126], lAnkle: [178, 128], lToe: [186, 128], rKnee: [152, 128], rAnkle: [184, 132], rToe: [192, 132] } },
+      { body: { nose: [46, 84], lShoulder: [72, 72], rShoulder: [70, 100], lHip: [140, 86], rHip: [140, 94], lElbow: [78, 62], lWrist: [84, 36], lIndex: [86, 28], rElbow: [72, 118], rWrist: [74, 146], rIndex: [74, 154], lKnee: [146, 126], lAnkle: [178, 128], lToe: [186, 128], rKnee: [152, 128], rAnkle: [184, 132], rToe: [192, 132] } },
     ],
     focus: ["trunk"],
   },

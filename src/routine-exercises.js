@@ -292,17 +292,18 @@ function swan() {
   const legs = [[hip, [86, 140], [118, 146]], [hip, [164, 144], [208, 146]]];
   const up = { trunk: [hip, [110, 96], [100, 66]], neck: [98, 56], head: [96, 45], arms: [[[100, 66], [90, 106], [84, 144]]] };
   const folded = { trunk: [hip, [88, 116], [56, 122]], neck: [46, 126], head: [36, 130], arms: [[[56, 122], [52, 144], [20, 146]]] };
-  return { poses: [{ ...up, legs, feet: [[126, 146], [214, 144]] }, { ...folded, legs, feet: [[126, 146], [214, 144]] }], far: { legs: [0] }, focus: ["thigh0"] };
+  // The front leg the near one, so it shows over the long back one.
+  return { poses: [{ ...up, legs, feet: [[126, 146], [214, 144]] }, { ...folded, legs, feet: [[126, 146], [214, 144]] }], far: { legs: [1] }, focus: ["thigh0"] };
 }
 
-// 90/90: seated, the front leg and the back one each bent at a right angle, the trunk turning over the front shin.
-// Seen from above, the two right angles read only so.
+// 90/90: seated, seen from above with the face down the picture. The front (left) leg's thigh goes forward and its
+// shin across in front; the back (right) leg's thigh out to the side and its shin back. Sitting up, the trunk is short
+// from above, the shoulders just over the hips; folding over the front shin, it stretches forward over it.
 function ninetyNinety() {
-  const hip = [110, 100];
-  const legs = [[[104, 104], [72, 104], [72, 140]], [[116, 104], [148, 104], [148, 68]]];
-  const up = { trunk: [hip, [110, 74], [110, 48]], neck: [110, 36], head: [110, 24], arms: [[[98, 50], [84, 72], [76, 94]], [[122, 50], [136, 72], [144, 94]]] };
-  const folded = { trunk: [hip, [96, 104], [82, 112]], neck: [74, 118], head: [66, 124], arms: [[[74, 106], [60, 120], [54, 138]], [[90, 118], [98, 130], [94, 146]]] };
-  return { view: "top", floor: false, props: [{ x: 18, y: 10, width: 184, height: 150, rx: 10 }], poses: [{ ...up, legs, feet: [[58, 144], [154, 56]] }, { ...folded, legs, feet: [[58, 144], [154, 56]] }], far: { legs: [1] }, focus: ["thigh0"] };
+  const legs = { lHip: [124, 96], rHip: [96, 96], lKnee: [124, 130], lAnkle: [90, 132], lToe: [80, 132], rKnee: [62, 100], rAnkle: [62, 66], rToe: [62, 56] };
+  const up = { ...legs, nose: [110, 100], lShoulder: [128, 92], rShoulder: [92, 92], lElbow: [136, 104], lWrist: [140, 118], lIndex: [140, 126], rElbow: [84, 104], rWrist: [80, 118], rIndex: [80, 126] };
+  const folded = { ...legs, nose: [108, 148], lShoulder: [122, 128], rShoulder: [96, 130], lElbow: [130, 140], lWrist: [128, 152], lIndex: [128, 158], rElbow: [92, 142], rWrist: [94, 154], rIndex: [94, 160] };
+  return { view: "top", floor: false, props: [{ x: 18, y: 10, width: 184, height: 150, rx: 10 }], poses: [{ body: up }, { body: folded }], near: "r", focus: ["lThigh"] };
 }
 
 // A twist lying down: on the back, the arms out, both knees bent and let down to one side, the head turned away.
@@ -311,7 +312,17 @@ function supineTwist() {
   const flat = { trunk: [hip, [88, 140], [48, 140]], neck: [36, 139], head: [26, 138], arms: [[[48, 140], [54, 112], [60, 84]]] };
   const a = { ...flat, legs: [[hip, [152, 100], [176, 144]], [hip, [148, 98], [170, 142]]], feet: [[190, 146], [184, 144]] };
   const b = { ...flat, legs: [[hip, [152, 120], [184, 146]], [hip, [150, 116], [180, 140]]], feet: [[196, 146], [192, 140]] };
-  return { poses: [a, b], far: { legs: [0] }, focus: ["trunk"] };
+  // From above, the head up the picture and the arms out: the knees bent up, then let down to the body's left (our
+  // right), the head turned the other way.
+  const back = { lShoulder: [124, 50], rShoulder: [96, 50], lHip: [119, 102], rHip: [101, 102], lElbow: [148, 52], lWrist: [172, 54], lIndex: [181, 54], rElbow: [72, 52], rWrist: [48, 54], rIndex: [39, 54] };
+  const top = {
+    key: "top", blocks: [{ x: 26, y: 12, width: 168, height: 148, rx: 10 }], facing: true, focus: ["trunk"],
+    poses: [
+      { body: { ...back, nose: [110, 30], lKnee: [118, 118], lAnkle: [118, 140], lToe: [118, 150], rKnee: [102, 118], rAnkle: [102, 140], rToe: [102, 150] } },
+      { body: { ...back, nose: [102, 31], lKnee: [152, 112], lAnkle: [148, 138], lToe: [152, 147], rKnee: [148, 122], rAnkle: [144, 147], rToe: [148, 156] } },
+    ],
+  };
+  return { poses: [a, b], far: { legs: [0] }, focus: ["trunk"], more: [top] };
 }
 
 // Frog: on the forearms, the knees wide apart and bent at a right angle, the hips sinking back between them.
@@ -604,8 +615,10 @@ function bandRotation() {
   const a = { ...frontStand, arms: [[[98, 48], [96, 72], [106, 80]], [[122, 48], [124, 72], [126, 96]]], strap: [[106, 80], [204, 80]] };
   const b = { ...frontStand, arms: [[[98, 48], [96, 72], [72, 76]], [[122, 48], [124, 72], [126, 96]]], strap: [[72, 76], [204, 80]] };
   // From above, the face down the picture: the elbow at the side, the forearm pointing ahead, then turned out.
-  const above = (hand) => ({ trunk: [[84, 70], [110, 66], [136, 70]], neck: [110, 76], head: [110, 84], arms: [[[84, 70], [80, 82], hand], [[136, 70], [140, 82], [140, 92]]], legs: [[[104, 70], [104, 72], [104, 74]], [[116, 70], [116, 72], [116, 74]]], strap: [hand, [204, hand[1]]] });
-  const top = { key: "top", blocks: [{ x: 30, y: 30, width: 160, height: 110, rx: 10 }], poses: [above([86, 118]), above([42, 98])], far: { arms: [1] }, focus: ["arm0"] };
+  // Standing, from above the trunk is short: the shoulders over the hips, the legs under them. The working arm is the
+  // body's right (our left).
+  const above = (wrist, index) => ({ body: { nose: [110, 82], lShoulder: [126, 70], rShoulder: [94, 70], lHip: [118, 74], rHip: [102, 74], lKnee: [118, 75], lAnkle: [118, 76], lToe: [118, 84], rKnee: [102, 75], rAnkle: [102, 76], rToe: [102, 84], lElbow: [130, 84], lWrist: [130, 100], lIndex: [130, 108], rElbow: [90, 86], rWrist: wrist, rIndex: index }, strap: [wrist, [204, wrist[1]]] });
+  const top = { key: "top", blocks: [{ x: 30, y: 30, width: 160, height: 110, rx: 10 }], poses: [above([90, 110], [90, 118]), above([66, 100], [58, 102])], facing: true, focus: ["rArm"] };
   return { view: "front", poses: [a, b], far: { arms: [1] }, focus: ["arm0"], more: [top] };
 }
 // Side steps: the band round the knees, half-squatting, a step to the side and the other foot after it.
@@ -715,16 +728,15 @@ function saw() {
   const feet = [[16, 130], [204, 130]];
   const a = { trunk: [[110, 134], [110, 106], [110, 78]], neck: [110, 66], head: [110, 54], arms: [[[98, 80], [70, 80], [42, 80]], [[122, 80], [150, 80], [178, 80]]], legs, feet };
   const b = { trunk: [[110, 134], [128, 114], [146, 98]], neck: [154, 98], head: [164, 100], arms: [[[140, 98], [170, 118], [196, 134]], [[156, 96], [150, 70], [138, 46]]], legs, feet };
-  // From above, the head over the hips and the legs apart down the picture: the arms out to the sides, then the
-  // shoulders turned and the front hand down past the opposite foot, the other arm back.
-  const legsAbove = [[[102, 100], [72, 124], [42, 150]], [[118, 100], [148, 124], [178, 150]]];
+  // From above, the face down the picture and the legs apart: sitting up the trunk is short, the arms out to the
+  // sides; then the shoulders turn and lean forward, the left hand reaching past the right foot and the right arm back.
+  const seat = { lHip: [122, 100], rHip: [98, 100], lKnee: [150, 124], lAnkle: [178, 150], lToe: [184, 156], rKnee: [70, 124], rAnkle: [42, 150], rToe: [36, 156] };
   const top = {
-    key: "top", blocks: [{ x: 22, y: 14, width: 176, height: 148, rx: 10 }],
+    key: "top", blocks: [{ x: 22, y: 14, width: 176, height: 148, rx: 10 }], facing: true, focus: ["trunk"],
     poses: [
-      { trunk: [[86, 80], [110, 78], [134, 80]], neck: [110, 88], head: [110, 100], arms: [[[86, 80], [60, 80], [34, 80]], [[134, 80], [160, 80], [186, 80]]], legs: legsAbove },
-      { trunk: [[84, 74], [104, 86], [124, 100]], neck: [100, 96], head: [96, 104], arms: [[[84, 74], [66, 56], [50, 38]], [[124, 100], [96, 122], [62, 140]]], legs: legsAbove },
+      { body: { ...seat, nose: [110, 104], lShoulder: [128, 96], rShoulder: [92, 96], lElbow: [154, 96], lWrist: [180, 96], lIndex: [189, 96], rElbow: [66, 96], rWrist: [40, 96], rIndex: [31, 96] } },
+      { body: { ...seat, nose: [84, 120], lShoulder: [104, 116], rShoulder: [84, 92], lElbow: [72, 130], lWrist: [50, 146], lIndex: [44, 152], rElbow: [80, 72], rWrist: [86, 46], rIndex: [88, 38] } },
     ],
-    focus: ["trunk", "arm1"],
   };
   return { view: "front", poses: [a, b], focus: ["trunk"], more: [top] };
 }
