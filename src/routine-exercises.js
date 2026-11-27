@@ -816,7 +816,7 @@ const build = (make, extra) => ({ ...make(), ...extra });
 // book: the video's number in the book, so its own video can be looked up.
 export const routineExercises = {
   lungeReach: build(lungeReach, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "legs"], book: "9.17" }),
-  hipSwitch: build(hipSwitch, { style: "mobility", seconds: 45, sides: 2, areas: ["hips"], book: "9.18" }),
+  hipSwitch: build(hipSwitch, { style: "mobility", seconds: 45, sides: 1, areas: ["hips"], book: "9.18" }),
   reverseTable: build(reverseTable, { style: "mobility", seconds: 45, sides: 1, areas: ["shoulders", "back", "hips"], book: "9.19" }),
   forearmOpen: build(forearmOpen, { style: "mobility", seconds: 45, sides: 2, areas: ["hips", "back"], book: "9.20" }),
   archToHeels: build(archToHeels, { style: "mobility", seconds: 45, sides: 1, areas: ["back", "shoulders"], book: "9.21" }),
