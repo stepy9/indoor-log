@@ -888,7 +888,7 @@ export const routineExercises = {
   // Pilates: breath, a hint of how to breathe said with the move (recoveryBreath_<id>); advanced, only in the
   // harder set. A move changing legs as it goes counts the repeats of both together.
   hundred: build(hundred, { style: "pilates", seconds: 100, sides: 1, areas: ["back"], breath: true }),
-  rollUp: build(rollUp, { style: "pilates", reps: 6, seconds: 40, sides: 1, areas: ["back", "legs"], breath: true }),
+  rollUp: build(rollUp, { style: "pilates", reps: 6, seconds: 40, tempo: 7, sides: 1, areas: ["back", "legs"], breath: true }),
   legCircles: build(legCircles, { style: "pilates", reps: 10, seconds: 40, sides: 2, areas: ["hips"], breath: true }),
   rollingBall: build(rollingBall, { style: "pilates", reps: 8, seconds: 30, sides: 1, areas: ["back"], breath: true }),
   singleLegStretch: build(singleLegStretch, { style: "pilates", reps: 16, seconds: 45, sides: 1, areas: ["back", "hips"], breath: true }),

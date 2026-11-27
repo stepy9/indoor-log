@@ -151,31 +151,73 @@ export function bodyParts(pose, view, { left = "left", right = "right" } = {}) {
     ...(pose.ball ? [["circle", "ball", { cx: pose.ball[0], cy: pose.ball[1], r: pose.ball[2] ?? 20 }]] : []),
     ...(pose.strap ? [["polyline", "strap", { points: pose.strap.map(fmt).join(" ") }]] : []),
     ...back.filter(isFar),
-    ...back.filter((part) => !isFar(part)),
-    ...limbFocus(backSide),
+    ...(view.facing ? [] : [...back.filter((part) => !isFar(part)), ...limbFocus(backSide)]),
     ...segment(mix(shoulders, hips, 0.12), mix(shoulders, head, 0.8), 10 * s, 8 * s, "body-part neck-shape"),
     ["polygon", "torso belly", { points: belly.map(fmt).join(" ") }],
     ["polygon", "torso chest", { points: chest.map(fmt).join(" ") }],
     ["ellipse", "body-part head-shape", { cx: head[0], cy: head[1], rx: 7.5 * s, ry: 8.5 * s }],
     // Under the near limbs, which stay clear.
     ...(focus.includes("trunk") ? [["polygon", "focus fill", { points: outline.map(fmt).join(" ") }]] : []),
+    // Facing us, both sides' limbs are in front of the trunk.
+    ...(view.facing ? [...back.filter((part) => !isFar(part)), ...limbFocus(backSide)] : []),
     ...limbs(near),
     ...limbFocus(near),
   ];
 }
 
-// Between two body poses: the trunk's points from one to the other, the limbs turning at their joints from there and
-// keeping their length, a hand or a foot that stays put in both kept there.
+// Between two body poses. The trunk turns about the hips and keeps its length (a body rolling up sweeps round rather
+// than folding through itself); the shoulders, the waist and the head turn with it. The arms move against the trunk,
+// so they go round with it (over the head, not through the floor); the legs from the hips as they are. Each limb turns
+// at its joints and keeps its length; a hand or a foot that stays put in both kept there.
+const angleOf = (from, to) => Math.atan2(to[1] - from[1], to[0] - from[0]);
+const rotate = (point, centre, angle) => {
+  const [dx, dy] = [point[0] - centre[0], point[1] - centre[1]];
+  return [centre[0] + dx * Math.cos(angle) - dy * Math.sin(angle), centre[1] + dx * Math.sin(angle) + dy * Math.cos(angle)];
+};
 export function bodyBetween(a, b, t, { chain, pinned, planted, hung }) {
   const out = { ...(a.body.scale ? { scale: a.body.scale } : {}) };
-  for (const name of ["nose", "lShoulder", "rShoulder", "lHip", "rHip", "lWaist", "rWaist"]) if (a.body[name]) out[name] = mix(a.body[name], b.body[name], t);
+  const centre = (pose, x, y) => mix(pose.body[x], pose.body[y], 0.5);
+  const [hipsA, hipsB] = [centre(a, "lHip", "rHip"), centre(b, "lHip", "rHip")];
+  const [axisA, axisB] = [angleOf(hipsA, centre(a, "lShoulder", "rShoulder")), angleOf(hipsB, centre(b, "lShoulder", "rShoulder"))];
+  const turn = ((((axisB - axisA) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
+  const hips = mix(hipsA, hipsB, t);
+  const axis = axisA + turn * t;
+  // A point of the trunk: where it sits against the hips and the axis in each pose, carried from one to the other.
+  // The waist turns later than the shoulders, so a back curling up or down rounds as it goes, vertebra by vertebra.
+  const onTrunk = (name, lag = 1) => {
+    const local = (pose, at, ax) => rotate(pose.body[name], at, -ax);
+    const [la, lb] = [local(a, hipsA, axisA), local(b, hipsB, axisB)];
+    const here = mix([la[0] - hipsA[0], la[1] - hipsA[1]], [lb[0] - hipsB[0], lb[1] - hipsB[1]], t);
+    return rotate([hips[0] + here[0], hips[1] + here[1]], hips, axisA + turn * t ** lag);
+  };
+  for (const name of ["nose", "lShoulder", "rShoulder"]) out[name] = onTrunk(name);
+  for (const name of ["lWaist", "rWaist"]) if (a.body[name]) out[name] = onTrunk(name, 1.8);
+  // The hips stay where they are in each pose, from one to the other, so the legs hang from them as they were.
+  for (const name of ["lHip", "rHip"]) out[name] = mix(a.body[name], b.body[name], t);
   for (const side of ["l", "r"]) {
-    for (const [root, middle, end, tip] of [["Shoulder", "Elbow", "Wrist", "Index"], ["Hip", "Knee", "Ankle", "Toe"]]) {
-      const [la, lb] = [[root, middle, end].map((name) => a.body[side + name]), [root, middle, end].map((name) => b.body[side + name])];
-      const start = out[side + root];
-      const limb = planted(la, lb) ? pinned(la, lb, t, start) : chain(la, lb, t, start);
-      [out[side + middle], out[side + end]] = [limb[1], limb[2]];
-      out[side + tip] = hung(a.body[side + end], a.body[side + tip], b.body[side + end], b.body[side + tip], limb[2], t);
+    for (const [root, middle, end, tip, withTrunk] of [["Shoulder", "Elbow", "Wrist", "Index", true], ["Hip", "Knee", "Ankle", "Toe", false]]) {
+      const names = [root, middle, end, tip].map((name) => side + name);
+      const [pa, pb] = [names.map((name) => a.body[name]), names.map((name) => b.body[name])];
+      const start = out[names[0]];
+      // A leg the same in both poses from the knee down stays as it is (a straight leg is not folded anew).
+      const same = names.slice(1).every((name, index) => pa[index + 1] && pb[index + 1] && pa[index + 1][0] === pb[index + 1][0] && pa[index + 1][1] === pb[index + 1][1]);
+      if (same && !withTrunk) {
+        [out[names[1]], out[names[2]], out[names[3]]] = [pa[1], pa[2], pa[3]];
+        continue;
+      }
+      if (planted(pa.slice(0, 3), pb.slice(0, 3))) {
+        const limb = pinned(pa.slice(0, 3), pb.slice(0, 3), t, start);
+        [out[names[1]], out[names[2]]] = [limb[1], limb[2]];
+        out[names[3]] = hung(pa[2], pa[3], pb[2], pb[3], limb[2], t);
+        continue;
+      }
+      // An arm in the trunk's own frame, then turned back with the trunk as it is here.
+      const frame = (points, at, ax) => (withTrunk ? points.map((point) => rotate(point, at, -ax)) : points);
+      const [fa, fb] = [frame(pa, hipsA, axisA), frame(pb, hipsB, axisB)];
+      const limb = chain(fa.slice(0, 3), fb.slice(0, 3), t, withTrunk ? rotate(start, hips, -axis) : start);
+      const toe = hung(fa[2], fa[3], fb[2], fb[3], limb[2], t);
+      const back = (point) => (withTrunk ? rotate(point, hips, axis) : point);
+      [out[names[1]], out[names[2]], out[names[3]]] = [back(limb[1]), back(limb[2]), back(toe)];
     }
   }
   const pose = { ...a, body: out };
@@ -184,11 +226,13 @@ export function bodyBetween(a, b, t, { chain, pinned, planted, hung }) {
   return pose;
 }
 
-// A line figure's view made a body one, seen from the side: the line trunk given depth (the chest thicker than the
-// pelvis, bent where the line bends), the near limbs (not far) the left ones, the far ones the right and paler, hands
-// and feet added along the forearms and shins where the figure has none. Its arrows and blocks stay.
+// A line figure's view made a body one. Seen from the side: the line trunk given depth (the chest thicker than the
+// pelvis, bent where the line bends), the near limbs (not far) the left ones, the far ones the right and paler.
+// facing: the body turned to us (a front view, or lying on its side facing us), so the trunk shows its width, the
+// shoulders wider than the hips, and its left limbs are those on its left (our right, standing). Hands and feet are
+// added along the forearms and shins where the figure has none. Its arrows and blocks stay.
 const quad = ([a, c, b], t) => [(1 - t) ** 2 * a[0] + 2 * t * (1 - t) * c[0] + t ** 2 * b[0], (1 - t) ** 2 * a[1] + 2 * t * (1 - t) * c[1] + t ** 2 * b[1]];
-export function bodyFromLines(view) {
+export function bodyFromLines(view, { facing = false } = {}) {
   const first = view.poses[0];
   if (!first?.trunk || first.body) return view;
   const [hip0, , shoulder0] = first.trunk;
@@ -196,8 +240,15 @@ export function bodyFromLines(view) {
   const scale = Math.round((Math.hypot(shoulder0[0] - hip0[0], shoulder0[1] - hip0[1]) / 50) * 100) / 100;
   const farArms = view.far?.arms ?? [];
   const farLegs = view.far?.legs ?? [];
-  // Which index is the near (left) limb: the one not far; with none far, the first.
-  const sides = (count, far) => {
+  // Facing us, the body's left is a quarter turn from its head the clockwise way round (our right, standing).
+  const [fux, fuy] = unit(hip0, shoulder0);
+  const leftward = [-fuy, fux];
+  const middle = mix(hip0, shoulder0, 0.5);
+  const toLeft = (limb) => limb.reduce((sum, [x, y]) => sum + (x - middle[0]) * leftward[0] + (y - middle[1]) * leftward[1], 0);
+  // Which index is the left limb: facing us, the one further to the body's left; from the side the near one (not
+  // far), with none far the first.
+  const sides = (count, far, kind = "arms") => {
+    if (facing && count > 1) return toLeft(first[kind][0]) >= toLeft(first[kind][1]) ? { l: 0, r: 1 } : { l: 1, r: 0 };
     const near = [...Array(count).keys()].find((index) => !far.includes(index)) ?? 0;
     return { l: near, r: count > 1 ? (near === 0 ? 1 : 0) : near };
   };
@@ -208,12 +259,14 @@ export function bodyFromLines(view) {
     const off = (point, depth, sign) => [point[0] + n[0] * depth * sign * scale, point[1] + n[1] * depth * sign * scale];
     // The waist two fifths of the way from the shoulders, on the line's curve.
     const waist = quad(pose.trunk, 0.6);
-    const arm = sides(pose.arms.length, farArms);
-    const leg = sides(pose.legs.length, farLegs);
+    const arm = sides(pose.arms.length, farArms, "arms");
+    const leg = sides(pose.legs.length, farLegs, "legs");
+    // The trunk's half width: from the side its depth; facing us its breadth.
+    const [chestHalf, hipHalf, waistHalf] = facing ? [13, 10, 9] : [10, 8.5, 8];
     const body = { scale, nose: mix(pose.head, pose.neck, -0.25) };
     for (const [side, sign] of [["l", 1], ["r", -1]]) {
       Object.assign(body, {
-        [`${side}Shoulder`]: off(shoulder, 10, sign), [`${side}Hip`]: off(hip, 8.5, sign), [`${side}Waist`]: off(waist, 8, sign),
+        [`${side}Shoulder`]: off(shoulder, chestHalf, sign), [`${side}Hip`]: off(hip, hipHalf, sign), [`${side}Waist`]: off(waist, waistHalf, sign),
       });
       // A limb of two points (straight) bends at its middle.
       const joints = (limb) => (limb.length === 2 ? [limb[0], mix(limb[0], limb[1], 0.5), limb[1]] : limb);
@@ -223,7 +276,7 @@ export function bodyFromLines(view) {
       const [sx, sy] = unit(knee, ankle);
       Object.assign(body, {
         // A hand on the floor lies flat, its fingers forward (the way the head is from the hips).
-        [`${side}Elbow`]: elbow, [`${side}Wrist`]: wrist, [`${side}Index`]: wrist[1] >= 143 ? [wrist[0] + Math.sign(shoulder[0] - hip[0] || 1) * 9, wrist[1] + 1] : [wrist[0] + fx * 9, wrist[1] + fy * 9],
+        [`${side}Elbow`]: elbow, [`${side}Wrist`]: wrist, [`${side}Index`]: !facing && wrist[1] >= 143 ? [wrist[0] + Math.sign(shoulder[0] - hip[0] || 1) * 9, wrist[1] + 1] : [wrist[0] + fx * 9, wrist[1] + fy * 9],
         [`${side}Knee`]: knee, [`${side}Ankle`]: ankle, [`${side}Toe`]: pose.feet?.[leg[side]] ?? [ankle[0] + sx * 12 * scale, ankle[1] + sy * 12 * scale],
       });
     }
@@ -233,16 +286,18 @@ export function bodyFromLines(view) {
   const named = (name) => {
     const [, kind, index] = name.match(/^(arm|leg|thigh|fore)(\d+)$/) ?? [];
     if (!kind) return name === "trunk" || name === "lat" || name === "chest" ? "trunk" : null;
-    const side = Number(index) === sides(first[kind === "arm" || kind === "fore" ? "arms" : "legs"].length, kind === "arm" || kind === "fore" ? farArms : farLegs).l ? "l" : "r";
+    const limbs = kind === "arm" || kind === "fore" ? "arms" : "legs";
+    const side = Number(index) === sides(first[limbs].length, limbs === "arms" ? farArms : farLegs, limbs).l ? "l" : "r";
     return side + { arm: "Arm", leg: "Leg", thigh: "Thigh", fore: "Fore" }[kind];
   };
-  const weights = (view.weights ?? []).map((index) => (index === sides(first.arms.length, farArms).l ? "l" : "r"));
+  const weights = (view.weights ?? []).map((index) => (index === sides(first.arms.length, farArms, "arms").l ? "l" : "r"));
   return {
     ...view,
     poses: view.poses.map(convert),
-    profile: true,
+    profile: !facing,
+    facing,
     near: "l",
-    far: farArms.length || farLegs.length ? ["rLimbs"] : [],
+    far: !facing && (farArms.length || farLegs.length) ? ["rLimbs"] : [],
     left: undefined,
     focus: [...new Set((view.focus ?? []).map(named).filter(Boolean))],
     weights,

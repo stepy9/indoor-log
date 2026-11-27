@@ -302,7 +302,15 @@ const asBody = new Set([
   "stabBack2", "stabBack3", "stabBack4", "ballLower", "ballUpper", "ballBoth", "hundred", "rollUp", "teaser",
   "spineStretch", "toeSquat", "yinSquat", "bosuSquat", "bosuLunge", "bosuPlank", "inchworm", "legSwings", "armSwings",
   "reverseTable", "caterpillar", "hipFlexor", "kneelingQuad", "quadStretch", "meltingHeart", "archToHeels", "scapPushUp",
+  // Seen from the front, or with a front view beside the side one.
+  "chest", "crossArm", "cossackShift", "sideLungeHold", "dragonfly", "butterfly", "hipCircles", "bandPullApart",
+  "bandSideStep", "lungeSideBend", "triangle", "chop", "sideLungeRaise", "bosuBalance", "sideKick", "bandClamshell",
+  "legCircles",
 ]);
+// Those of them whose every view faces us, though named a side view.
+const facingAll = new Set(["triangle", "bosuBalance"]);
+
+const circling = new Set(["armSwings", "hipCircles", "legCircles"]);
 
 // The views an exercise is drawn in, for figure-svg.js: its side view first (on the mat, by its wall and props,
 // with its far limbs and arrows), then any other ("top", "front" or "detail"), each { key, poses, focus, blocks,
@@ -315,7 +323,9 @@ export function exerciseViews(id) {
   // A move without arrows drawn by hand gets one worked out from its poses.
   const way = (list, own, key = view) => own ?? (hold ? undefined : moveArrows(list, arrowHints[`${id}:${key}`] ?? arrowHints[id]));
   const views = [{ key: view, poses, focus, blocks, far, left, near, flat, fist, arrows: way(poses, arrows), weights }, ...more.map((other) => ({ focus, blocks: [], weights, left, ...other, arrows: way(other.poses ?? [], other.arrows, other.key) }))];
-  return asBody.has(id) ? views.map(bodyFromLines) : views;
+  // A body shows its move well enough by itself and its start's ghost; only a circling move keeps its arrow, for
+  // the way round.
+  return asBody.has(id) ? views.map((one) => bodyFromLines(one, { facing: one.key === "front" || facingAll.has(id) })).map((one) => (circling.has(id) ? one : { ...one, arrows: [] })) : views;
 }
 
 // The way a move goes, from its first pose to its second: a dashed arc beside the point that travels furthest (a
