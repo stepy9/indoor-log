@@ -193,14 +193,31 @@ let editing = null;
 // stray tap changes nothing until saved.
 let draftDays = new Set();
 const savedDays = (id) => [0, 1, 2, 3, 4, 5, 6].filter((weekday) => planHasSaved(routinePlan(), weekday, id));
+// The edit as it opened, to tell a change not saved; and the editor's own hand-made list from before, put back when
+// the edit is left without saving.
+let editStart = null;
+let beforeEdit = null;
+const editState = () => JSON.stringify({ custom: choice().custom ?? [], name: byId("routineName").value.trim(), days: [...draftDays].sort() });
+const unsaved = () => Boolean(editedEntry()) && editStart !== null && editState() !== editStart;
+// The edit left: nothing of it kept, the editor as it was before.
+function dropEdit() {
+  if (editing && beforeEdit) saveChoice(beforeEdit);
+  editing = null;
+  editStart = null;
+  beforeEdit = null;
+  draftDays = new Set();
+  byId("routineName").value = "";
+}
 const editedEntry = () => (editing ? routineSaved().find((entry) => entry.id === editing) ?? null : null);
 
 // A saved set back in the editor as a hand-made list, with its name.
 function editSaved(entry) {
+  if (!editing) beforeEdit = { mode: choice().mode, custom: choice().custom ?? [] };
   saveChoice({ mode: "custom", custom: savedItems(entry) });
   editing = entry.id;
   draftDays = new Set(savedDays(entry.id));
   byId("routineName").value = entry.name;
+  editStart = editState();
   showTab("new");
   render();
   byId("exercisesRoutine").scrollIntoView({ block: "start", behavior: "smooth" });
@@ -245,19 +262,9 @@ function renderSaved() {
     text.type = "button";
     text.addEventListener("click", () => { selected = entry.id; renderSaved(); });
     text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min · ${t("routineSavedCount", { count: items.length })}`));
-    const remove = button("link-button icon-x", "", async () => {
-      // A set in the plan asks first, naming its days: they stay empty, what was there before does not come back.
-      const days = Object.keys(routinePlan()).filter((weekday) => planHasSaved(routinePlan(), weekday, entry.id)).map((weekday) => weekdayName(Number(weekday), "long"));
-      if (days.length && !(await confirmDialog({ title: t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }), ok: t("delete"), danger: true }))) return;
-      saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
-      if (editing === entry.id) editing = null;
-      settingsChanged();
-      render();
-      showToast(t("savedSetRemoved"));
-    }, t("routineRemove"));
     row.append(text, button("outline-button", t("routineSavedEdit"), () => editSaved(entry)), button("accent-button routine-saved-start", t("routineSavedStart"), () => {
       playSet({ ...entry.set, name: entry.name }, todayKey(zone));
-    }), remove);
+    }));
     // Its weekdays in the plan, as text: they change under Edit, with Save, not by a tap here.
     const onDays = savedDays(entry.id);
     const days = element("span", "field-note routine-saved-plan", onDays.length ? t("routineCardPlan", { days: dayRuns(onDays) }) : t("routineCardNoPlan"));
@@ -497,9 +504,45 @@ let wired = false;
 export function setupRoutine() {
   if (wired) return;
   wired = true;
-  for (const item of document.querySelectorAll("[data-routine-tab]")) item.addEventListener("click", () => showTab(item.dataset.routineTab));
-  byId("routineNewLink").addEventListener("click", () => { editing = null; draftDays = new Set(); byId("routineName").value = ""; showTab("new"); render(); });
-  byId("routineEditCancel").addEventListener("click", () => { editing = null; draftDays = new Set(); byId("routineName").value = ""; showTab("mine"); render(); });
+  // To My sets from an edit with nothing changed leaves the edit (one with changes asks first, below).
+  for (const item of document.querySelectorAll("[data-routine-tab]")) item.addEventListener("click", () => {
+    if (item.dataset.routineTab === "mine" && editing) { dropEdit(); render(); }
+    showTab(item.dataset.routineTab);
+  });
+  byId("routineNewLink").addEventListener("click", () => { dropEdit(); showTab("new"); render(); });
+  byId("routineEditCancel").addEventListener("click", () => { dropEdit(); showTab("mine"); render(); });
+  // Deleting is inside the edit, so a stray tap on a card cannot do it; it always asks, naming its days in the plan.
+  byId("routineEditDelete").addEventListener("click", async () => {
+    const entry = editedEntry();
+    if (!entry) return;
+    const days = savedDays(entry.id).map((weekday) => weekdayName(weekday, "long"));
+    const title = days.length ? t("routineSavedRemoveConfirm", { name: entry.name, days: days.join(", ") }) : t("routineSavedRemoveAsk", { name: entry.name });
+    if (!(await confirmDialog({ title, ok: t("delete"), danger: true }))) return;
+    dropEdit();
+    saveDefaults({ routineSaved: routineSaved().filter((item) => item.id !== entry.id), routinePlan: withoutSaved(routinePlan(), entry.id) });
+    settingsChanged();
+    showTab("mine");
+    render();
+    showToast(t("savedSetRemoved"));
+  });
+  // Leaving an edit with changes not saved asks first: to My sets, to another tab of the app, closing the page. The
+  // click is held, and made again once the changes are let go. A reload or the window closed gets the browser's ask.
+  const leaving = '[data-routine-tab="mine"], [data-app-view], #addButton, #exercisesClose';
+  document.addEventListener("click", async (event) => {
+    const target = event.target.closest?.(leaving);
+    if (!target || !byId("exercisesDialog").open || !unsaved()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!(await confirmDialog({ title: t("routineLeaveConfirm", { name: editedEntry().name }), ok: t("routineLeaveDrop"), danger: true }))) return;
+    dropEdit();
+    render();
+    target.click();
+  }, true);
+  window.addEventListener("beforeunload", (event) => {
+    if (!unsaved()) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   // Folded on a phone, so the cards come first; open on a wider screen, where the fold's head is not shown.
   const narrow = window.matchMedia("(max-width: 640px)");
   const fold = () => { const setup = byId("routineSetup"); setup.open = !narrow.matches || setup.classList.contains("is-custom"); };
@@ -530,6 +573,8 @@ export function setupRoutine() {
     saveDefaults({ routineSaved: edited ? list.map((entry) => (entry.id === editing ? { id, ...saved } : entry)) : [...list, { id, ...saved }], routinePlan: plan });
     // Saved, it is shown in My sets, chosen there.
     editing = null;
+    editStart = null;
+    beforeEdit = null;
     draftDays = new Set();
     selected = id;
     byId("routineName").value = "";

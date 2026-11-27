@@ -2255,3 +2255,5 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 .routine-saved-plan { flex: 1 1 100%; margin: 0; }
 .routine-other-plan { margin: 4px 0 12px; }
 .routine-other-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.routine-editing-actions { display: flex; gap: 14px; }
+.routine-edit-delete { color: var(--danger-ink, var(--danger)); }
