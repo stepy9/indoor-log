@@ -29,7 +29,8 @@ const unstretched = async (day) => (await allEntries()).filter((entry) => entry.
 export const routineLog = () => savedDefaults().routineLog ?? {};
 export const routinePlan = () => savedDefaults().routinePlan ?? {};
 // Saved sets, each as it was when saved: [{ id, name, set: { style, minutes, exercises, seconds, reps, steps } }].
-export const routineSaved = () => savedDefaults().routineSaved ?? [];
+// One per id: a set added twice (the morning offer tapped twice) shows and plays once.
+export const routineSaved = () => (savedDefaults().routineSaved ?? []).filter((entry, index, list) => list.findIndex((item) => item.id === entry.id) === index);
 export const stabilityLog = () => savedDefaults().stabilityLog ?? {};
 // A weekday's short name in the app's language, 0 Monday (1 January 2024 was one).
 const weekdayName = (weekday, form = "short") => new Intl.DateTimeFormat(locale(), { weekday: form, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + weekday)));
@@ -154,6 +155,7 @@ function renderSaved() {
   const saved = routineSaved();
   // The morning mobility offered until it is saved (and again once taken out).
   const offer = saved.some((entry) => entry.id === morningSetId) ? [] : [button("link-button", t("routineMorningAdd"), () => {
+    if (routineSaved().some((entry) => entry.id === morningSetId)) return renderSaved();
     const { style, minutes, exercises: ids, seconds, reps, steps } = morningSet();
     saveDefaults({ routineSaved: [...routineSaved(), { id: morningSetId, name: t("routineMorningName"), set: { style, minutes, exercises: ids, seconds, reps, steps } }] });
     settingsChanged();
