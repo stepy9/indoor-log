@@ -174,8 +174,45 @@ const rotate = (point, centre, angle) => {
   const [dx, dy] = [point[0] - centre[0], point[1] - centre[1]];
   return [centre[0] + dx * Math.cos(angle) - dy * Math.sin(angle), centre[1] + dx * Math.sin(angle) + dy * Math.cos(angle)];
 };
-export function bodyBetween(a, b, t, { chain, pinned, planted, hung }) {
-  const out = { ...(a.body.scale ? { scale: a.body.scale } : {}) };
+// A limb whose end goes (nearly) straight from one pose's place to the other's: its middle joint found from the
+// bones' lengths, bent to the side the pose bending it more bends to.
+function reach(a, b, t, root, toSide = 0) {
+  const length = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+  const upper = length(a[0], a[1]) * (1 - t) + length(b[0], b[1]) * t;
+  const lower = length(a[1], a[2]) * (1 - t) + length(b[1], b[2]) * t;
+  const end = mix(a[2], b[2], t);
+  const [dx, dy] = [end[0] - root[0], end[1] - root[1]];
+  const span = Math.hypot(dx, dy) || 0.01;
+  const far = Math.min(span, upper + lower - 0.01);
+  const along = (upper ** 2 - lower ** 2 + far ** 2) / (2 * far);
+  const off = Math.sqrt(Math.max(0, upper ** 2 - along ** 2));
+  const bend = (limb) => ((limb[2][0] - limb[0][0]) * (limb[1][1] - limb[0][1]) - (limb[2][1] - limb[0][1]) * (limb[1][0] - limb[0][0])) / ((length(limb[0], limb[1]) * length(limb[0], limb[2])) || 1);
+  const side = toSide || Math.sign(Math.abs(bend(a)) >= Math.abs(bend(b)) ? bend(a) : bend(b)) || 1;
+  const [ux, uy] = [dx / span, dy / span];
+  const middle = [root[0] + ux * along - uy * off * side, root[1] + uy * along + ux * off * side];
+  // Out of reach (the trunk moved away), the limb straight towards its place.
+  const tip = span > upper + lower ? [root[0] + ux * (upper + lower), root[1] + uy * (upper + lower)] : end;
+  return [root, middle, tip];
+}
+
+// A limb from one pose to the other with its first bone turned the long way round, the rest as usual.
+function longWay(a, b, t, root) {
+  const out = [root];
+  for (let index = 1; index < a.length; index += 1) {
+    const [angleA, angleB] = [angleOf(a[index - 1], a[index]), angleOf(b[index - 1], b[index])];
+    let delta = ((((angleB - angleA) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+    if (index === 1) delta -= Math.sign(delta || 1) * 2 * Math.PI;
+    const length = Math.hypot(a[index][0] - a[index - 1][0], a[index][1] - a[index - 1][1]) * (1 - t) + Math.hypot(b[index][0] - b[index - 1][0], b[index][1] - b[index - 1][1]) * t;
+    const angle = angleA + delta * t;
+    const last = out.at(-1);
+    out.push([last[0] + Math.cos(angle) * length, last[1] + Math.sin(angle) * length]);
+  }
+  return out;
+}
+export function bodyBetween(a, b, t, { chain, hung }) {
+  const out = { ...(a.body.scale ? { scale: a.body.scale } : {}), ...(a.body.profile ? { profile: true } : {}), ...(a.body.above ? { above: true } : {}) };
+  // Seen from above there is no floor to keep out of, nor to slide along.
+  const floor = !a.body.above;
   const centre = (pose, x, y) => mix(pose.body[x], pose.body[y], 0.5);
   const [hipsA, hipsB] = [centre(a, "lHip", "rHip"), centre(b, "lHip", "rHip")];
   const [axisA, axisB] = [angleOf(hipsA, centre(a, "lShoulder", "rShoulder")), angleOf(hipsB, centre(b, "lShoulder", "rShoulder"))];
@@ -194,30 +231,59 @@ export function bodyBetween(a, b, t, { chain, pinned, planted, hung }) {
   for (const name of ["lWaist", "rWaist"]) if (a.body[name]) out[name] = onTrunk(name, 1.8);
   // The hips stay where they are in each pose, from one to the other, so the legs hang from them as they were.
   for (const name of ["lHip", "rHip"]) out[name] = mix(a.body[name], b.body[name], t);
+  // Where a limb hangs from, as it is drawn: seen from the side the trunk's middle, facing us its own side.
+  const rootOf = (body, side, root) => (body.profile ? mix(body[`l${root}`], body[`r${root}`], 0.5) : body[side + root]);
   for (const side of ["l", "r"]) {
     for (const [root, middle, end, tip, withTrunk] of [["Shoulder", "Elbow", "Wrist", "Index", true], ["Hip", "Knee", "Ankle", "Toe", false]]) {
-      const names = [root, middle, end, tip].map((name) => side + name);
-      const [pa, pb] = [names.map((name) => a.body[name]), names.map((name) => b.body[name])];
-      const start = out[names[0]];
+      const names = [middle, end, tip].map((name) => side + name);
+      const pa = [rootOf(a.body, side, root), ...names.map((name) => a.body[name])];
+      const pb = [rootOf(b.body, side, root), ...names.map((name) => b.body[name])];
+      const start = rootOf(out, side, root);
       // A leg the same in both poses from the knee down stays as it is (a straight leg is not folded anew).
-      const same = names.slice(1).every((name, index) => pa[index + 1] && pb[index + 1] && pa[index + 1][0] === pb[index + 1][0] && pa[index + 1][1] === pb[index + 1][1]);
+      const same = [1, 2, 3].every((index) => pa[index] && pb[index] && pa[index][0] === pb[index][0] && pa[index][1] === pb[index][1]);
       if (same && !withTrunk) {
-        [out[names[1]], out[names[2]], out[names[3]]] = [pa[1], pa[2], pa[3]];
+        [out[names[0]], out[names[1]], out[names[2]]] = [pa[1], pa[2], pa[3]];
         continue;
       }
-      if (planted(pa.slice(0, 3), pb.slice(0, 3))) {
-        const limb = pinned(pa.slice(0, 3), pb.slice(0, 3), t, start);
-        [out[names[1]], out[names[2]]] = [limb[1], limb[2]];
-        out[names[3]] = hung(pa[2], pa[3], pb[2], pb[3], limb[2], t);
+      // A hand or a foot that stays (nearly) put in both poses, or rests on the floor in both and slides a little
+      // along it, is kept on its way there: the elbow or the knee found from the bones' lengths, bent the way the
+      // pose that bends it more does.
+      const moved = Math.hypot(pa[2][0] - pb[2][0], pa[2][1] - pb[2][1]);
+      // (A limb straight in both poses swings straight instead, as a leg walked aside lying down.)
+      const straightness = (limb) => Math.abs(((limb[2][0] - limb[0][0]) * (limb[1][1] - limb[0][1]) - (limb[2][1] - limb[0][1]) * (limb[1][0] - limb[0][0])) / ((Math.hypot(limb[1][0] - limb[0][0], limb[1][1] - limb[0][1]) * Math.hypot(limb[2][0] - limb[0][0], limb[2][1] - limb[0][1])) || 1));
+      const straight = straightness(pa) < 0.06 && straightness(pb) < 0.06;
+      const onFloor = floor && !straight && pa[2][1] >= 140 && pb[2][1] >= 140 && Math.abs(pa[2][1] - pb[2][1]) < 6;
+      if (moved < 6 || (onFloor && moved < 24)) {
+        const limb = reach(pa, pb, t, start);
+        [out[names[0]], out[names[1]]] = [limb[1], limb[2]];
+        out[names[2]] = hung(pa[2], pa[3], pb[2], pb[3], limb[2], t);
         continue;
       }
       // An arm in the trunk's own frame, then turned back with the trunk as it is here.
       const frame = (points, at, ax) => (withTrunk ? points.map((point) => rotate(point, at, -ax)) : points);
       const [fa, fb] = [frame(pa, hipsA, axisA), frame(pb, hipsB, axisB)];
-      const limb = chain(fa.slice(0, 3), fb.slice(0, 3), t, withTrunk ? rotate(start, hips, -axis) : start);
+      const back = (point, at = hips, ax = axis) => (withTrunk ? rotate(point, at, ax) : point);
+      const from = withTrunk ? rotate(start, hips, -axis) : start;
+      // Turned the short way round, a limb may sweep through the floor (an arm swung overhead, a knee tipping) though
+      // it is above it in both poses. Then another way is taken for the whole move: the long way round, or the middle
+      // joint bent to one side or the other on a straight path of the hand or foot; whichever keeps out of the floor
+      // best, judged over the move as a whole so it does not switch on the way.
+      const ways = [chain, longWay, (x, y, at, r) => reach(x, y, at, r, 1), (x, y, at, r) => reach(x, y, at, r, -1)];
+      const sink = (way) => {
+        let deepest = 0;
+        for (const at of [0.2, 0.35, 0.5, 0.65, 0.8]) {
+          const root = mix(fa[0], fb[0], at);
+          const [hipsAt, axisAt] = [mix(hipsA, hipsB, at), axisA + turn * at];
+          for (const point of way(fa.slice(0, 3), fb.slice(0, 3), at, root)) deepest = Math.max(deepest, back(point, hipsAt, axisAt)[1] - 152);
+        }
+        return deepest;
+      };
+      const above = Math.max(...pa.slice(0, 3).map((point) => point[1]), ...pb.slice(0, 3).map((point) => point[1])) <= 152;
+      let way = chain;
+      if (floor && above && sink(chain) > 0) way = ways.reduce((best, next) => (sink(next) < sink(best) ? next : best));
+      const limb = way(fa.slice(0, 3), fb.slice(0, 3), t, from);
       const toe = hung(fa[2], fa[3], fb[2], fb[3], limb[2], t);
-      const back = (point) => (withTrunk ? rotate(point, hips, axis) : point);
-      [out[names[1]], out[names[2]], out[names[3]]] = [back(limb[1]), back(limb[2]), back(toe)];
+      [out[names[0]], out[names[1]], out[names[2]]] = [back(limb[1]), back(limb[2]), back(toe)];
     }
   }
   const pose = { ...a, body: out };
@@ -263,10 +329,15 @@ export function bodyFromLines(view, { facing = false } = {}) {
     const leg = sides(pose.legs.length, farLegs, "legs");
     // The trunk's half width: from the side its depth; facing us its breadth.
     const [chestHalf, hipHalf, waistHalf] = facing ? [13, 10, 9] : [10, 8.5, 8];
-    const body = { scale, nose: mix(pose.head, pose.neck, -0.25) };
+    const body = { scale, nose: mix(pose.head, pose.neck, -0.25), ...(facing ? {} : { profile: true }), ...(view.key === "top" ? { above: true } : {}) };
     for (const [side, sign] of [["l", 1], ["r", -1]]) {
+      // Facing us, a limb drawn from its own root apart from the trunk's line (an arm from its shoulder, a leg from its
+      // hip) keeps that root as the side's shoulder or hip.
+      const own = (limb, point) => (facing && limb && Math.hypot(limb[0][0] - point[0], limb[0][1] - point[1]) > 3 ? limb[0] : null);
       Object.assign(body, {
-        [`${side}Shoulder`]: off(shoulder, chestHalf, sign), [`${side}Hip`]: off(hip, hipHalf, sign), [`${side}Waist`]: off(waist, waistHalf, sign),
+        [`${side}Shoulder`]: own(pose.arms[arm[side]], shoulder) ?? off(shoulder, chestHalf, sign),
+        [`${side}Hip`]: own(pose.legs[leg[side]], hip) ?? off(hip, hipHalf, sign),
+        [`${side}Waist`]: off(waist, waistHalf, sign),
       });
       // A limb of two points (straight) bends at its middle.
       const joints = (limb) => (limb.length === 2 ? [limb[0], mix(limb[0], limb[1], 0.5), limb[1]] : limb);

@@ -68,7 +68,7 @@ function hipSwitch() {
   const a = pose(up, [k.arm(up.shoulder, 70, 80), k.arm(up.shoulder, 62, 76)], legs, [k.toe(legs[0], 180), k.toe(legs[1], 180)]);
   // The knees down to the mat, the trunk turning forward over them, an arm reaching ahead.
   const turn = k.trunk(hip, -105, { neck: -150 });
-  const down = [k.leg(hip, 172, 20), k.leg(hip, 176, 15)];
+  const down = [k.leg(hip, 172, 0), k.leg(hip, 176, -4)];
   const b = pose(turn, [k.arm(turn.shoulder, -170, -175), k.arm(turn.shoulder, 70, 80)], down, [k.toe(down[0], 0), k.toe(down[1], 0)]);
   // From above, head up and the feet down: the knees up and apart, then both fallen to one side, the trunk turning
   // after them and the arm reaching across.
@@ -195,7 +195,8 @@ function lungeTwist() {
   const k = kit(0.72);
   const knee = [146, 146];
   const hip = at(knee, k.size.thigh, 220);
-  const front = k.leg(hip, 175, 95);
+  // The front thigh rises a little to its knee, so the shin stands down to the mat.
+  const front = k.leg(hip, 196, 90);
   const backLeg = [hip, knee, at(knee, k.size.shin, 0)];
   const low = k.trunk(hip, -160, { neck: -150 });
   const a = pose(low, [k.arm(low.shoulder, 95, 95), k.arm(low.shoulder, 100, 100)], [front, backLeg], [k.toe(front, 180), k.toe(backLeg, 0)]);
@@ -535,10 +536,11 @@ function bridgePress() {
 }
 function sideLungeRaise() {
   // Seen from the front: from standing, a long step to the side into a lunge, the dumbbell raised to the shoulder.
-  const k = kit(0.72);
-  const hip = [110, 94];
+  // Sized so the standing legs reach the mat from the hips.
+  const k = kit(0.62);
+  const hip = [110, 86];
   const up = k.trunk(hip, -90);
-  const standing = [k.leg([104, 94], 92, 90), k.leg([116, 94], 88, 90)];
+  const standing = [k.leg([104, 86], 92, 90), k.leg([116, 86], 88, 90)];
   const a = { ...up, arms: [[[98, 38], [94, 60], [92, 82]], [[122, 38], [126, 60], [128, 82]]], legs: standing, feet: [[96, 146], [124, 146]] };
   delete a.shoulder;
   const low = [100, 108];
@@ -547,16 +549,18 @@ function sideLungeRaise() {
 }
 function backLungePress() {
   // From standing, the dumbbell at the shoulder: a step back down into a lunge, the arm pressing straight up beside the head.
-  const k = kit(0.72);
-  const hip = [110, 94];
+  // Sized so the standing legs reach the mat from the hips.
+  const k = kit(0.62);
+  const hip = [110, 86];
   const up = k.trunk(hip, -90);
   const legs = [k.leg(hip, 90, 90), k.leg(hip, 92, 90)];
   const a = { ...up, arms: [[up.shoulder, [112, 60], [96, 46]], [up.shoulder, [114, 58], [116, 80]]], legs, feet: [[96, 146], [98, 146]] };
   delete a.shoulder;
-  const low = [114, 112];
+  // The front foot stays where it stood; the back one steps behind and the hips sink between them.
+  const low = [144, 112];
   const down = k.trunk(low, -90);
-  const lunge = [[low, [80, 114], [80, 146]], [low, [130, 140], [164, 146]]];
-  const b = { ...down, arms: [[down.shoulder, [114, 30], [116, 6]], [down.shoulder, [118, 78], [120, 100]]], legs: lunge, feet: [[66, 146], [176, 142]] };
+  const lunge = [[low, [110, 114], [110, 146]], [low, [160, 140], [194, 146]]];
+  const b = { ...down, arms: [[down.shoulder, [144, 30], [146, 6]], [down.shoulder, [148, 78], [150, 100]]], legs: lunge, feet: [[96, 146], [206, 142]] };
   delete b.shoulder;
   return { poses: [a, b], far: { arms: [1], legs: [1] }, weights: [0], focus: ["thigh0", "arm0"] };
 }

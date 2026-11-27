@@ -131,7 +131,8 @@ function chain(a, b, t, root = lerpPoint(a[0], b[0], t)) {
 // A point hung off another (a head off the neck, a toe off the ankle), turning with it the same way.
 const hung = (fromA, toA, fromB, toB, from, t) => chain([fromA, toA], [fromB, toB], t, from)[1];
 // A limb whose end stays put in both poses (a palm or a foot on the floor) keeps it there: its middle joint (the elbow,
-// the knee) found from the bones' lengths, bent the way it bends in the first pose.
+// the knee) found from the bones' lengths, bent the way the pose that bends it more does (a push-up's arm, nearly
+// straight above, bends at the bottom), so it does not flip at the end.
 const planted = (a, b) => Math.hypot(a.at(-1)[0] - b.at(-1)[0], a.at(-1)[1] - b.at(-1)[1]) < 1;
 function pinned(a, b, t, root) {
   const end = a[2];
@@ -142,14 +143,15 @@ function pinned(a, b, t, root) {
   const along = (upper ** 2 - lower ** 2 + reach ** 2) / (2 * reach);
   const off = Math.sqrt(Math.max(0, upper ** 2 - along ** 2));
   const [ux, uy] = [dx / Math.hypot(dx, dy || 0.01), dy / Math.hypot(dx, dy || 0.01)];
-  const side = Math.sign((a[2][0] - a[0][0]) * (a[1][1] - a[0][1]) - (a[2][1] - a[0][1]) * (a[1][0] - a[0][0])) || 1;
+  const bend = (limb) => ((limb[2][0] - limb[0][0]) * (limb[1][1] - limb[0][1]) - (limb[2][1] - limb[0][1]) * (limb[1][0] - limb[0][0])) / ((Math.hypot(limb[1][0] - limb[0][0], limb[1][1] - limb[0][1]) * Math.hypot(limb[2][0] - limb[0][0], limb[2][1] - limb[0][1])) || 1);
+  const side = Math.sign(Math.abs(bend(a)) >= Math.abs(bend(b)) ? bend(a) : bend(b)) || 1;
   const middle = [root[0] + ux * along - uy * off * side, root[1] + uy * along + ux * off * side];
   return [root, middle, end];
 }
 export function between(a, b, t) {
   if (t <= 0) return a;
   if (t >= 1) return b;
-  if (a.body) return bodyBetween(a, b, t, { chain, pinned, planted, hung });
+  if (a.body) return bodyBetween(a, b, t, { chain, hung });
   const pose = { ...a };
   // The limb's start kept where it sits against the trunk's shoulder (arms) or hip (legs).
   const anchored = (kind, end) => a[kind]?.map((limb, index) => {
