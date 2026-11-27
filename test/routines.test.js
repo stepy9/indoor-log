@@ -91,15 +91,20 @@ test("balance does every move on the left, then the right, the weaker side more"
 });
 
 test("the plan keeps a set by weekday, a second tap on its style taking the day out", async () => {
-  const { plannedRoutine, togglePlanDay, weekdayOf } = await import("../src/routines.js");
+  const { plannedRoutines, togglePlanDay, weekdayOf } = await import("../src/routines.js");
   assert.equal(weekdayOf("2026-11-23"), 0);
   assert.equal(weekdayOf("2026-11-29"), 6);
   let plan = togglePlanDay({}, 2, { style: "yin", minutes: 15 });
-  assert.equal(plannedRoutine(plan, "2026-11-25").style, "yin");
-  assert.equal(plannedRoutine(plan, "2026-11-24"), null);
+  assert.deepEqual(plannedRoutines(plan, "2026-11-25").map((item) => item.style), ["yin"]);
+  assert.deepEqual(plannedRoutines(plan, "2026-11-24"), []);
+  // A second set on the same day goes beside the first; pressed again, it comes out and the first stays.
   plan = togglePlanDay(plan, 2, { style: "stability" });
-  assert.equal(plannedRoutine(plan, "2026-11-25").style, "stability");
-  assert.deepEqual(togglePlanDay(plan, 2, { style: "stability" }), {});
+  assert.deepEqual(plannedRoutines(plan, "2026-11-25").map((item) => item.style), ["yin", "stability"]);
+  plan = togglePlanDay(plan, 2, { style: "stability" });
+  assert.deepEqual(plannedRoutines(plan, "2026-11-25").map((item) => item.style), ["yin"]);
+  assert.deepEqual(togglePlanDay(plan, 2, { style: "yin" }), {});
+  // A plan kept before, one choice a day, reads as a list of one.
+  assert.deepEqual(plannedRoutines({ 2: { style: "yin" } }, "2026-11-25"), [{ style: "yin" }]);
 });
 
 test("the warm-up's moves and the stretches fill in where the book has few for an area", () => {
@@ -130,11 +135,12 @@ test("a saved set holds its weekdays by its id, and taking it out clears them", 
   const { togglePlanDay, withoutSaved } = await import("../src/routines.js");
   let plan = togglePlanDay({}, 1, { style: "saved", saved: "a" });
   plan = togglePlanDay(plan, 3, { style: "saved", saved: "a" });
-  // Another saved set on the same day takes it over; the same one again takes it out.
+  // Another saved set on the same day goes beside it; the same one again takes it out.
   plan = togglePlanDay(plan, 3, { style: "saved", saved: "b" });
-  assert.deepEqual(plan, { 1: { style: "saved", saved: "a" }, 3: { style: "saved", saved: "b" } });
-  assert.deepEqual(togglePlanDay(plan, 1, { style: "saved", saved: "a" }), { 3: { style: "saved", saved: "b" } });
-  assert.deepEqual(withoutSaved({ ...plan, 5: { style: "yin" } }, "b"), { 1: { style: "saved", saved: "a" }, 5: { style: "yin" } });
+  assert.deepEqual(plan, { 1: [{ style: "saved", saved: "a" }], 3: [{ style: "saved", saved: "a" }, { style: "saved", saved: "b" }] });
+  assert.deepEqual(togglePlanDay(plan, 1, { style: "saved", saved: "a" }), { 3: [{ style: "saved", saved: "a" }, { style: "saved", saved: "b" }] });
+  // Taken out, a set leaves its days, the other sets stay; a plan kept before (one choice a day) too.
+  assert.deepEqual(withoutSaved({ ...plan, 5: { style: "yin" } }, "a"), { 3: [{ style: "saved", saved: "b" }], 5: [{ style: "yin" }] });
 });
 
 test("with equipment: a tool's exercises fill the length, and what is not at home is left out of the catalogue", async () => {

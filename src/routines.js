@@ -349,20 +349,26 @@ export function nextLevel(entries = [], level = 1) {
   return { level, change: 0 };
 }
 
-// The plan: weekdays (0 Monday … 6 Sunday) each with the choice of a set, { "2": { style: "yin", … } }. The set
-// planned for a day, or null.
+// The plan: weekdays (0 Monday … 6 Sunday) each with the sets chosen for it, { "2": [{ style: "yin", … }, …] }.
+// A plan from before a day could hold several has one choice a day, not in a list; it reads as a list of one.
 export { weekdayOf };
-export const plannedRoutine = (plan = {}, day) => plan[weekdayOf(day)] ?? null;
-// A plan without the days of a saved set taken out.
-export const withoutSaved = (plan = {}, id) => Object.fromEntries(Object.entries(plan).filter(([, item]) => !(item.style === "saved" && item.saved === id)));
-// A weekday put in the plan with the choice now made, or taken out when it already has that style (a saved set:
-// { style: "saved", saved: its id }, the very set).
+export const planItems = (plan = {}, weekday) => { const value = plan[weekday]; return Array.isArray(value) ? value : value ? [value] : []; };
+// The sets planned for a day, in the order put in.
+export const plannedRoutines = (plan = {}, day) => planItems(plan, weekdayOf(day));
+const isSaved = (item, id) => item.style === "saved" && item.saved === id;
+export const planHasSaved = (plan, weekday, id) => planItems(plan, weekday).some((item) => isSaved(item, id));
+// A plan with a saved set taken out of every day; a day left empty goes.
+export function withoutSaved(plan = {}, id) {
+  return Object.fromEntries(Object.keys(plan).map((weekday) => [weekday, planItems(plan, weekday).filter((item) => !isSaved(item, id))]).filter(([, items]) => items.length));
+}
+// A set put on a weekday beside the others there, or taken out when the day already has it: the same style (a
+// saved set: { style: "saved", saved: its id }, the very set).
 const samePlanned = (a, b) => a?.style === b.style && (b.style !== "saved" || a.saved === b.saved);
 export function togglePlanDay(plan = {}, weekday, choice) {
-  const next = { ...plan };
-  if (samePlanned(next[weekday], choice)) delete next[weekday];
-  else next[weekday] = choice;
-  return next;
+  const items = planItems(plan, weekday);
+  const next = items.some((item) => samePlanned(item, choice)) ? items.filter((item) => !samePlanned(item, choice)) : [...items, choice];
+  const { [weekday]: _, ...rest } = plan;
+  return next.length ? { ...rest, [weekday]: next } : rest;
 }
 
 // The sets done, kept by day for the calendar and the plan: { "YYYY-MM-DD": [{ style, area, minutes, exercises }] },
@@ -376,7 +382,7 @@ export const morningSet = () => customSet([{ id: "archToHeels" }, { id: "forearm
 export function weekCount(log = {}, plan = {}, entry, day) {
   const monday = addDays(day, -weekdayOf(day));
   const done = [0, 1, 2, 3, 4, 5, 6].map((offset) => addDays(monday, offset)).filter((key) => (log[key] ?? []).some((item) => item.name === entry.name)).length;
-  const target = Object.values(plan).filter((item) => item.style === "saved" && item.saved === entry.id).length;
+  const target = Object.keys(plan).filter((weekday) => planHasSaved(plan, weekday, entry.id)).length;
   return { done, target };
 }
 export function logRoutine(log = {}, day, done) {
