@@ -74,9 +74,29 @@ function renderCustom(picked) {
     amount.setAttribute("aria-label", t(`recovery_${item.id}`));
     amount.addEventListener("change", () => {
       const value = Math.max(1, Math.round(Number(amount.value) || 0));
-      update(list.map((entry, at) => (at === index ? { id: entry.id, ...(counted ? { reps: value } : { seconds: value }) } : entry)));
+      update(list.map((entry, at) => (at === index ? { id: entry.id, ...(entry.side ? { side: entry.side } : {}), ...(counted ? { reps: value } : { seconds: value }) } : entry)));
     });
-    const unit = element("span", "routine-custom-unit", `${t(counted ? "routineUnitReps" : "routineUnitSeconds")}${exercises[item.id].sides > 1 ? ` ${t("sessionPerSide")}` : ""}`);
+    const sided = exercises[item.id].sides > 1;
+    const unit = element("span", "routine-custom-unit", `${t(counted ? "routineUnitReps" : "routineUnitSeconds")}${sided && !item.side ? ` ${t("sessionPerSide")}` : ""}`);
+    // Left and right, both on by default; one can be turned off (not both), to do that side alone, the other
+    // maybe later in the set.
+    const sides = element("div", "segmented routine-custom-sides");
+    if (sided) {
+      sides.setAttribute("role", "group");
+      sides.setAttribute("aria-label", t("routineSidesLabel"));
+      sides.append(...[1, 2].map((side) => {
+        const on = !item.side || item.side === side;
+        const toggle = button("", t(`routineSideShort_${side}`), () => {
+          const other = side === 1 ? 2 : 1;
+          const otherOn = !item.side || item.side === other;
+          if (on && !otherOn) return;
+          const next = on ? other : null;
+          update(list.map((entry, at) => (at === index ? (({ side: _, ...rest }) => (next ? { ...rest, side: next } : rest))(entry) : entry)));
+        }, t(`recoverySide_${side}`));
+        toggle.setAttribute("aria-pressed", String(on));
+        return toggle;
+      }));
+    }
     const move = (by) => {
       const next = [...list];
       const [taken] = next.splice(index, 1);
@@ -87,7 +107,7 @@ function renderCustom(picked) {
     up.disabled = index === 0;
     const down = button("link-button", "↓", () => move(1), t("routineDown"));
     down.disabled = index === list.length - 1;
-    row.append(name, amount, unit, up, down, button("link-button icon-x", "", () => update(list.filter((_, at) => at !== index)), t("routineRemove")));
+    row.append(name, amount, unit, ...(sided ? [sides] : []), up, down, button("link-button icon-x", "", () => update(list.filter((_, at) => at !== index)), t("routineRemove")));
     return row;
   }) : [element("li", "field-note", t("routineCustomEmpty"))]));
 }
@@ -173,8 +193,7 @@ const editedEntry = () => (editing ? routineSaved().find((entry) => entry.id ===
 
 // A saved set back in the editor as a hand-made list, with its name.
 function editSaved(entry) {
-  const { exercises: ids = [], seconds = {}, reps = {} } = entry.set;
-  saveChoice({ mode: "custom", custom: [...new Set(ids)].map((id) => (reps[id] ? { id, reps: reps[id] } : seconds[id] ? { id, seconds: seconds[id] } : { id })) });
+  saveChoice({ mode: "custom", custom: savedItems(entry) });
   editing = entry.id;
   byId("routineName").value = entry.name;
   showTab("new");
@@ -186,9 +205,14 @@ function editSaved(entry) {
 let selected = null;
 const unfolded = new Set();
 
-// A saved set's exercises: in order, each with its dose, once each.
-const savedIds = (entry) => [...new Set(entry.set.exercises ?? [])].filter((id) => exercises[id]);
-const savedDose = (entry, id) => dose(id, entry.set.seconds?.[id], entry.set.reps?.[id]);
+// A saved set's exercises in order, each with its dose and side: as kept since sets keep them, else once each
+// from the list and its doses.
+function savedItems(entry) {
+  const { items, exercises: ids = [], seconds = {}, reps = {} } = entry.set;
+  const list = items ?? [...new Set(ids)].map((id) => (reps[id] ? { id, reps: reps[id] } : seconds[id] ? { id, seconds: seconds[id] } : { id }));
+  return list.filter((item) => exercises[item.id]);
+}
+const itemDose = (item) => dose(item.id, item.seconds ?? exercises[item.id].seconds, item.reps ?? null, item.side ?? null);
 
 // The saved sets, each to start, edit, put on weekdays in the plan or take out (its days in the plan with it).
 function renderSaved() {
@@ -209,13 +233,13 @@ function renderSaved() {
   byId("routineSaved").replaceChildren(...saved.map((entry) => {
     const row = element("li", "routine-saved-item");
     row.classList.toggle("is-selected", entry.id === selected);
-    const ids = savedIds(entry);
+    const items = savedItems(entry);
     // The name with its style, length and count under it, then its buttons on the same line. A click on the name
     // shows its exercises beside the list.
     const text = element("button", "routine-saved-name", entry.name);
     text.type = "button";
     text.addEventListener("click", () => { selected = entry.id; renderSaved(); });
-    text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min · ${t("routineSavedCount", { count: ids.length })}`));
+    text.append(element("span", "field-note", `${t(`routineStyle_${entry.set.style}`)} · ${entry.set.minutes} min · ${t("routineSavedCount", { count: items.length })}`));
     const remove = button("link-button icon-x", "", async () => {
       // A set in the plan asks first, naming its days: they stay empty, what was there before does not come back.
       const days = Object.entries(routinePlan()).filter(([, item]) => item.style === "saved" && item.saved === entry.id).map(([weekday]) => weekdayName(Number(weekday), "long"));
@@ -248,12 +272,12 @@ function renderSaved() {
     const fold = element("details", "routine-saved-fold");
     fold.open = unfolded.has(entry.id);
     fold.addEventListener("toggle", () => { if (fold.open) unfolded.add(entry.id); else unfolded.delete(entry.id); });
-    fold.append(element("summary", "", t("routineSavedShow", { count: ids.length })));
+    fold.append(element("summary", "", t("routineSavedShow", { count: items.length })));
     const list = element("ol", "routine-saved-exercises");
-    list.append(...ids.map((id) => {
-      const item = element("li", "");
-      item.append(element("span", "routine-saved-exercise", t(`recovery_${id}`)), element("span", "field-note", savedDose(entry, id)));
-      return item;
+    list.append(...items.map((item) => {
+      const row = element("li", "");
+      row.append(element("span", "routine-saved-exercise", t(`recovery_${item.id}`)), element("span", "field-note", itemDose(item)));
+      return row;
     }));
     fold.append(list);
     row.append(days, fold);
@@ -262,7 +286,7 @@ function renderSaved() {
   // Beside the list: the chosen set's exercises as cards, each with its figures, how-to and video.
   const entry = saved.find((item) => item.id === selected);
   byId("routineSavedHead").textContent = entry ? `${entry.name} · ${entry.set.minutes} min` : "";
-  byId("routineSavedCards").replaceChildren(...(entry ? savedIds(entry).map((id) => card(id, savedDose(entry, id))) : []));
+  byId("routineSavedCards").replaceChildren(...(entry ? savedItems(entry).map((item) => card(item.id, itemDose(item))) : []));
 }
 
 function render() {
@@ -470,8 +494,8 @@ export function setupRoutine() {
     const set = buildRoutine(current(picked));
     if (!set.steps.length) return;
     const name = byId("routineName").value.trim() || defaultName(picked, set);
-    const { style, minutes, exercises: ids, seconds, reps, steps } = set;
-    const saved = { name, set: { style, minutes, exercises: ids, seconds, reps: reps ?? {}, steps } };
+    const { style, minutes, exercises: ids, seconds, reps, steps, items } = set;
+    const saved = { name, set: { style, minutes, exercises: ids, seconds, reps: reps ?? {}, steps, ...(items ? { items } : {}) } };
     // An edited set keeps its id (and so its days in the plan); one taken out meanwhile is saved anew.
     const list = routineSaved();
     const edited = Boolean(editedEntry());

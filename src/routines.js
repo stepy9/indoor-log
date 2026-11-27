@@ -107,7 +107,7 @@ function strengthSet({ strengthSteps = 0 } = {}) {
 function stepsOf(work, rest = restSeconds) {
   const steps = [];
   for (const item of work) {
-    steps.push({ type: "rest", seconds: item.side === 2 ? switchSeconds : rest, next: item.id, ...(item.round ? { round: item.round } : {}) });
+    steps.push({ type: "rest", seconds: item.side === 2 && !item.alone ? switchSeconds : rest, next: item.id, ...(item.round ? { round: item.round } : {}) });
     steps.push({ type: "work", ...item });
   }
   const total = steps.reduce((sum, step) => sum + (step.seconds ?? step.reps * repSeconds), 0);
@@ -137,14 +137,18 @@ function balanceSet({ weak = "none", reps = 10 } = {}) {
   return { style: "balance", weak, rounds: 1, exercises: balanceMoves, seconds: {}, reps: Object.fromEntries(balanceMoves.map((id) => [id, reps])), minutes, steps };
 }
 
-// A set put together by hand: [{ id, seconds | reps }] in the order given, each per side where it has two.
+// A set put together by hand: [{ id, seconds | reps, side }] in the order given, each per side where it has two;
+// side (1 left, 2 right) keeps one of them only, a step alone, so the other can come later in the set.
 export const defaultDose = (id) => (exercises[id].reps ? { reps: exercises[id].reps } : { seconds: exercises[id].seconds });
 function customSet(items = []) {
   const list = items.filter((item) => exercises[item.id]);
-  const work = list.flatMap((item) => sidesOf(item.id, () => (item.reps ? { reps: item.reps } : { seconds: item.seconds ?? exercises[item.id].seconds })));
+  const amount = (item) => (item.reps ? { reps: item.reps } : { seconds: item.seconds ?? exercises[item.id].seconds });
+  const one = (item) => exercises[item.id].sides > 1 && (item.side === 1 || item.side === 2);
+  const work = list.flatMap((item) => (one(item) ? [{ id: item.id, side: item.side, alone: true, ...amount(item) }] : sidesOf(item.id, () => amount(item))));
   const { steps, minutes } = stepsOf(work);
   return {
     style: "custom", rounds: 1, minutes, steps,
+    items: list.map((item) => ({ id: item.id, ...amount(item), ...(one(item) ? { side: item.side } : {}) })),
     exercises: list.map((item) => item.id),
     seconds: Object.fromEntries(list.filter((item) => !item.reps).map((item) => [item.id, item.seconds ?? exercises[item.id].seconds])),
     reps: Object.fromEntries(list.filter((item) => item.reps).map((item) => [item.id, item.reps])),

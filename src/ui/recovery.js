@@ -53,13 +53,14 @@ export function figures(id) {
   });
 }
 
-// The time, said as a hold or as a move to repeat, and per side where it has two.
-export function dose(id, seconds = exercises[id].seconds, reps = null) {
+// The time, said as a hold or as a move to repeat, and per side where it has two; side: one side only, named.
+export function dose(id, seconds = exercises[id].seconds, reps = null, side = null) {
   const { sides, hold } = exercises[id];
   // A breathing exercise: just its length.
   if (exercises[id].pattern) return `${minutesText(seconds)} min`;
   // A long hold (yin's) in minutes.
   const time = reps ? t("strengthReps", { reps }) : hold && seconds >= 120 ? t("recoveryHoldForMinutes", { minutes: minutesText(seconds) }) : t(hold ? "recoveryHoldFor" : "recoveryMoveFor", { seconds });
+  if (side && sides > 1) return `${time} · ${t(`recoverySide_${side}`).toLocaleLowerCase()}`;
   return sides > 1 ? `${time} ${t("recoveryEachSide")}` : time;
 }
 
@@ -145,12 +146,13 @@ const quiet = () => {
 };
 function announce(coming) {
   if (!coming || coming.type !== "work") return;
-  if (coming.side === 2) return speak(t("speakRight"));
+  // The right side straight after the left says only so; a side alone is announced in full, naming it.
+  if (coming.side === 2 && !coming.alone) return speak(t("speakRight"));
   const { hold } = exercises[coming.id];
   // Two short sentences, as a coach would say them: "Next exercise: push-ups. 8 repeats." The name in lower case
   // inside the sentence, the side after it.
   const name = t(`recovery_${coming.id}`).toLocaleLowerCase();
-  const side = coming.side === 1 ? `, ${t("recoverySide_1").toLocaleLowerCase()}` : "";
+  const side = coming.side === 1 || coming.alone ? `, ${t(`recoverySide_${coming.side}`).toLocaleLowerCase()}` : "";
   const amount = coming.reps ? t("speakReps", { reps: coming.reps }) : hold && coming.seconds >= 120 ? spokenMinutes(coming.seconds) : t(hold ? "speakHold" : "speakMove", { seconds: coming.seconds });
   // The first exercise of the last of several rounds says so first.
   const rounds = Math.max(1, ...player.list.map((item) => item.round ?? 1));
@@ -193,7 +195,7 @@ function showStep() {
   // In work the side, if any, and whether to hold or move.
   const mode = t(`recoveryMode_${modeKind(id)}`);
   const what = work && step.reps ? t("strengthReps", { reps: step.reps }) : mode;
-  byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${what}` : what) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
+  byId("recoveryPlayerPhase").textContent = work ? (step.side ? `${t(`recoverySide_${step.side}`)} · ${what}` : what) : coming?.alone ? t(`recoveryReadyOnly_${coming.side}`) : coming?.side === 2 ? t("recoverySwitch") : coming?.side === 1 ? t("recoveryReadySide") : t("recoveryNext");
   byId("recoveryPlayerName").textContent = t(`recovery_${id}`);
   byId("recoveryPlayerHow").textContent = t(`recoveryHow_${id}`);
   // The book's video for the exercise, played in the app; the set pauses while it plays.
