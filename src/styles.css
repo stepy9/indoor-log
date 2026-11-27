@@ -2225,3 +2225,28 @@ body.is-exercises-page .app-nav button[aria-pressed="true"]:not(.app-nav-exercis
 @media (prefers-reduced-motion: reduce) { .breath-line .breath-cue { animation: none; } .breath-line .is-second { opacity: 0; } }
 .routine-done-item { margin-left: 4px; }
 .routine-done-item + .routine-done-remove { margin-left: 2px; font-weight: 400; }
+
+/* The Set tab in two: My sets and New set, as tabs under the dialog head. */
+.routine-tabs { display: flex; gap: 4px; margin: 4px 0 14px; border-bottom: 1px solid var(--line); }
+.routine-tabs button { margin: 0 0 -1px; padding: 8px 14px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); background: none; font-size: var(--fs-md); font-weight: 600; cursor: pointer; }
+.routine-tabs button[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--ink); }
+.routine-panel .routine-layout[hidden] { display: none; }
+@media (max-width: 640px) { .routine-tabs button { flex: 1; } }
+/* A saved set: its name a button showing its exercises beside the list; the one shown marked. */
+.routine-saved-item .routine-saved-name { padding: 0; border: 0; color: var(--ink); background: none; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.routine-saved-list { margin-top: 0; }
+.routine-new-link { margin: 4px 0 12px; }
+.routine-saved-head { margin: 0 0 10px; font-size: var(--fs-md); font-weight: 600; }
+.routine-saved-fold { flex: 1 1 100%; }
+.routine-saved-fold > summary { color: var(--muted); font-size: var(--fs-base); cursor: pointer; }
+.routine-saved-exercises { display: grid; margin: 6px 0 2px; padding: 0; list-style: none; counter-reset: step; }
+.routine-saved-exercises li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); counter-increment: step; }
+.routine-saved-exercises li::before { content: counter(step); min-width: 16px; color: var(--muted); font-size: var(--fs-sm); }
+.routine-saved-exercises .field-note { margin: 0 0 0 auto; text-align: right; }
+@media (min-width: 901px) {
+  .routine-saved-fold { display: none; }
+  .routine-saved-item.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+}
+@media (max-width: 900px) { .routine-saved-detail { display: none; } }
+/* Editing a saved set: a line above the editor naming it, with a way out. */
+.routine-editing { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--accent-soft); font-weight: 600; }

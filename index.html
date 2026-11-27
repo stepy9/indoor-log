@@ -700,11 +700,26 @@
         </div>
         <p class="field-note" data-i18n="exercisesIntro">Všechny cviky rozcvičky před veslováním a protažení po něm. Sestavu podle tréninku nabízí karta Dnes v Tréninku a detail aktivity.</p>
         <div class="exercises-panel routine-panel" id="exercisesRoutine">
-          <div class="routine-layout">
+          <div class="routine-tabs" role="tablist" aria-label="Sestavy" data-i18n-aria="exercisesRoutine">
+            <button type="button" role="tab" id="routineTabNew" data-routine-tab="new" data-i18n="routineTabNew">Nová sestava</button>
+            <button type="button" role="tab" id="routineTabMine" data-routine-tab="mine" data-i18n="routineTabMine">Moje sestavy</button>
+          </div>
+          <div class="routine-layout routine-mine" id="routineMine" role="tabpanel" aria-labelledby="routineTabMine">
             <div class="routine-side">
-              <div class="routine-saved" id="routineSavedBox" hidden>
-                <span class="field-label" data-i18n="routineSavedLabel">Uložené sestavy</span>
-                <ul class="routine-saved-list" id="routineSaved"></ul>
+              <p class="field-note" id="routineSavedEmpty" data-i18n="routineSavedEmpty">Zatím žádná uložená sestava. Vytvořte si ji v tabu Nová sestava, nebo začněte ranní mobilitou.</p>
+              <ul class="routine-saved-list" id="routineSaved"></ul>
+              <button class="link-button routine-new-link" id="routineNewLink" type="button" data-i18n="routineNewLink">+ Nová sestava</button>
+            </div>
+            <div class="routine-main routine-saved-detail">
+              <p class="routine-saved-head" id="routineSavedHead"></p>
+              <ul class="recovery-list" id="routineSavedCards"></ul>
+            </div>
+          </div>
+          <div class="routine-layout" id="routineNew" role="tabpanel" aria-labelledby="routineTabNew">
+            <div class="routine-side">
+              <div class="routine-editing" id="routineEditing" hidden>
+                <span id="routineEditingText"></span>
+                <button class="link-button" id="routineEditCancel" type="button" data-i18n="cancel">Zrušit</button>
               </div>
               <details class="routine-setup" id="routineSetup" open>
               <summary class="routine-summary" id="routineSummary"></summary>
